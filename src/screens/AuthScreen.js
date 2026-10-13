@@ -6,7 +6,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context/AuthContext';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { useAuth, AUTH_CANCELLED } from '../context/AuthContext';
 import { themes } from '../theme/colors';
 
 export default function AuthScreen() {
@@ -27,9 +28,32 @@ export default function AuthScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
-  const { signIn, signUp, sendPasswordReset, verifyPasswordReset } = useAuth();
+  const {
+    signIn, signUp, sendPasswordReset, verifyPasswordReset,
+    signInWithApple, signInWithGoogle, appleAvailable,
+  } = useAuth();
+  const [socialLoading, setSocialLoading] = useState(null); // 'apple' | 'google' | null
   const scheme = useColorScheme();
-  const theme = themes[scheme === 'dark' ? 'dark' : 'light'];
+  const isDark = scheme === 'dark';
+  const theme = themes[isDark ? 'dark' : 'light'];
+
+  const handleSocial = async (provider) => {
+    if (loading || socialLoading) return;
+    setError('');
+    setSuccessMsg('');
+    setSocialLoading(provider);
+    try {
+      if (provider === 'apple') await signInWithApple();
+      else await signInWithGoogle();
+      // On success onAuthStateChange swaps AuthScreen out for the app.
+    } catch (e) {
+      if (e?.code !== AUTH_CANCELLED) {
+        setError(e?.message || `Could not sign in with ${provider === 'apple' ? 'Apple' : 'Google'}. Please try again.`);
+      }
+    } finally {
+      setSocialLoading(null);
+    }
+  };
 
   const handleSubmit = async () => {
     setError('');
@@ -314,6 +338,53 @@ export default function AuthScreen() {
                       <Text style={[s.forgotText, { color: theme.primary }]}>Forgot password?</Text>
                     </TouchableOpacity>
                   )}
+
+                  {/* ── Social sign-in ── */}
+                  <View style={s.dividerRow}>
+                    <View style={[s.dividerLine, { backgroundColor: theme.border }]} />
+                    <Text style={[s.dividerText, { color: theme.textMuted }]}>or continue with</Text>
+                    <View style={[s.dividerLine, { backgroundColor: theme.border }]} />
+                  </View>
+
+                  {Platform.OS === 'ios' && appleAvailable && (
+                    socialLoading === 'apple' ? (
+                      <View style={[s.socialBtn, { backgroundColor: isDark ? '#fff' : '#000' }]}>
+                        <ActivityIndicator color={isDark ? '#000' : '#fff'} />
+                      </View>
+                    ) : (
+                      <AppleAuthentication.AppleAuthenticationButton
+                        buttonType={mode === 'register'
+                          ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP
+                          : AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                        buttonStyle={isDark
+                          ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                          : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                        cornerRadius={12}
+                        style={s.socialBtn}
+                        onPress={() => handleSocial('apple')}
+                      />
+                    )
+                  )}
+
+                  <TouchableOpacity
+                    style={[s.socialBtn, s.googleBtn, { backgroundColor: theme.surface, borderColor: theme.border }, (loading || socialLoading) && s.btnDisabled]}
+                    onPress={() => handleSocial('google')}
+                    disabled={loading || !!socialLoading}
+                    activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={mode === 'register' ? 'Sign up with Google' : 'Sign in with Google'}
+                  >
+                    {socialLoading === 'google'
+                      ? <ActivityIndicator color={theme.text} />
+                      : (
+                        <>
+                          <Ionicons name="logo-google" size={18} color={theme.text} style={s.googleIcon} />
+                          <Text style={[s.googleText, { color: theme.text }]}>
+                            {mode === 'register' ? 'Sign up with Google' : 'Sign in with Google'}
+                          </Text>
+                        </>
+                      )}
+                  </TouchableOpacity>
                 </>
               )}
             </View>
@@ -412,4 +483,11 @@ const s = StyleSheet.create({
   footer: { textAlign: 'center', marginTop: 24, fontSize: 14 },
   forgotBtn: { alignItems: 'center', marginTop: 10 },
   forgotText: { fontSize: 13 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18, marginBottom: 10 },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
+  dividerText: { fontSize: 12, marginHorizontal: 10 },
+  socialBtn: { height: 48, borderRadius: 12, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
+  googleBtn: { flexDirection: 'row', borderWidth: 1 },
+  googleIcon: { marginRight: 8 },
+  googleText: { fontSize: 15, fontWeight: '600' },
 });

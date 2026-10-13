@@ -1,17 +1,92 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import * as Crypto from 'expo-crypto';
 import { supabase } from '../utils/supabase';
 import { syncProfile, deleteAllUserData } from '../services/sync';
 import { clearAll, saveData } from '../utils/storage';
 import * as SecureStore from 'expo-secure-store';
 
+// On web, lets the auth popup/redirect hand control back to the app.
+WebBrowser.maybeCompleteAuthSession();
+
 const AuthContext = createContext(null);
+
+// Thrown (as an Error with this code) when the user dismisses a social sign-in sheet.
+// Callers can check `err.code === AUTH_CANCELLED` to skip showing an error message.
+export const AUTH_CANCELLED = 'AUTH_CANCELLED';
+
+function cancelledError() {
+  const e = new Error('Sign in cancelled');
+  e.code = AUTH_CANCELLED;
+  return e;
+}
+
+// Derive a human display name from whatever the identity provider gave us.
+// Email sign-up sets `display_name`; Google sets `full_name`/`name`; Apple is
+// handled explicitly in signInWithApple (it only sends the name once).
+function nameFromUser(user) {
+  const m = user?.user_metadata ?? {};
+  return (m.display_name || m.full_name || m.name || '').trim();
+}
+
+// Parse the URL the OAuth provider redirected back to. Supports both the PKCE
+// flow (`?code=...`) and the implicit flow (`#access_token=...&refresh_token=...`).
+function parseAuthRedirect(url) {
+  if (!url) return {};
+  const out = {};
+  const qIdx = url.indexOf('?');
+  const hIdx = url.indexOf('#');
+  const take = (str) => {
+    if (!str) return;
+    for (const pair of str.split('&')) {
+      const [k, v = ''] = pair.split('=');
+      if (k) out[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' '));
+    }
+  };
+  if (qIdx !== -1) take(url.slice(qIdx + 1, hIdx !== -1 && hIdx > qIdx ? hIdx : undefined));
+  if (hIdx !== -1) take(url.slice(hIdx + 1));
+  return out;
+}
+
+async function createSessionFromUrl(url) {
+  const params = parseAuthRedirect(url);
+  if (params.error_description || params.error) {
+    throw new Error(params.error_description || params.error);
+  }
+  if (params.code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(params.code);
+    if (error) throw error;
+    return data.session;
+  }
+  if (params.access_token && params.refresh_token) {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: params.access_token,
+      refresh_token: params.refresh_token,
+    });
+    if (error) throw error;
+    return data.session;
+  }
+  return null;
+}
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [appleAvailable, setAppleAvailable] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+
+    // Sign in with Apple is only offered on iOS / iPadOS (Apple guideline 4.8 only
+    // requires it where it is natively supported, and the native sheet needs iOS 13+).
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync()
+        .then((ok) => { if (isMounted) setAppleAvailable(!!ok); })
+        .catch(() => {});
+    }
 
     // Restore session from local storage immediately — no network needed.
     // This keeps the user logged in when offline and avoids a loading screen on every launch.
@@ -42,13 +117,29 @@ export function AuthProvider({ children }) {
       // Network unavailable — keep the locally restored session as-is.
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isMounted) setSession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+      setSession(session);
+      // Social sign-ins never go through signUp(), so make sure the profiles row
+      // (used by the AI edge functions) exists with the provider-supplied name.
+      if (event === 'SIGNED_IN' && session?.user) {
+        const name = nameFromUser(session.user);
+        if (name) syncProfile(session.user.id, name).catch(() => {});
+      }
+    });
+
+    // Some Android browsers return the OAuth redirect as a deep link into the running
+    // app instead of resolving openAuthSessionAsync. Handle that path too.
+    const linkSub = Linking.addEventListener('url', ({ url }) => {
+      if (url && (url.includes('code=') || url.includes('access_token='))) {
+        createSessionFromUrl(url).catch(() => {});
+      }
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      linkSub.remove();
     };
   }, []);
 
@@ -70,6 +161,77 @@ export function AuthProvider({ children }) {
       syncProfile(data.user.id, trimmedName).catch(() => {});
     }
     return data;
+  };
+
+  // ── Sign in with Apple (iOS / iPadOS only, native sheet) ──────────────────
+  const signInWithApple = async () => {
+    if (Platform.OS !== 'ios') throw new Error('Sign in with Apple is only available on iOS and iPadOS.');
+
+    // Nonce binds the Apple identity token to this request. Apple receives the SHA-256
+    // hash; Supabase receives the raw value and verifies it against the token's claim.
+    const rawNonce = Crypto.randomUUID();
+    const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+
+    let credential;
+    try {
+      credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce: hashedNonce,
+      });
+    } catch (e) {
+      if (e?.code === 'ERR_REQUEST_CANCELED' || e?.code === 'ERR_CANCELED') throw cancelledError();
+      throw e;
+    }
+    if (!credential?.identityToken) throw new Error('Apple did not return an identity token.');
+
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'apple',
+      token: credential.identityToken,
+      nonce: rawNonce,
+    });
+    if (error) throw error;
+
+    // Apple only provides the name on the very first authorization, so capture it now.
+    const given = credential.fullName?.givenName?.trim() ?? '';
+    const family = credential.fullName?.familyName?.trim() ?? '';
+    const appleName = [given, family].filter(Boolean).join(' ');
+    if (appleName && data?.user && !nameFromUser(data.user)) {
+      await supabase.auth.updateUser({ data: { display_name: appleName } }).catch(() => {});
+      syncProfile(data.user.id, appleName).catch(() => {});
+    }
+    return data;
+  };
+
+  // ── Sign in with Google (Supabase OAuth through the system browser) ──────
+  // Uses one Google "Web application" OAuth client configured in Supabase; no native
+  // Google SDK, so it works in Expo Go, dev builds, iOS, Android and web alike.
+  const signInWithGoogle = async () => {
+    if (Platform.OS === 'web') {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined },
+      });
+      if (error) throw error;
+      return null; // full-page redirect; session is picked up on return via detectSessionInUrl
+    }
+
+    const redirectTo = Linking.createURL('auth/callback'); // groov://auth/callback (exp:// in Expo Go)
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error) throw error;
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, { showInRecents: true });
+    if (result.type === 'cancel' || result.type === 'dismiss') throw cancelledError();
+    if (result.type !== 'success' || !result.url) throw new Error('Google sign-in did not complete.');
+
+    const newSession = await createSessionFromUrl(result.url);
+    if (!newSession) throw new Error('Google sign-in did not return a session.');
+    return newSession;
   };
 
   const signOut = async () => {
@@ -134,7 +296,9 @@ export function AuthProvider({ children }) {
     if (updateError) throw updateError;
   };
 
-  const displayName = session?.user?.user_metadata?.display_name ?? '';
+  const displayName = nameFromUser(session?.user);
+  // 'email' | 'apple' | 'google' — handy for Settings (e.g. hide "Reset Password" for social accounts)
+  const authProvider = session?.user?.app_metadata?.provider ?? 'email';
 
   return (
     <AuthContext.Provider value={{
@@ -142,8 +306,12 @@ export function AuthProvider({ children }) {
       loading,
       user: session?.user ?? null,
       displayName,
+      authProvider,
+      appleAvailable,
       signIn,
       signUp,
+      signInWithApple,
+      signInWithGoogle,
       signOut,
       updateDisplayName,
       deleteAccount,

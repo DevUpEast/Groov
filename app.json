@@ -21,7 +21,8 @@
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -55,7 +56,9 @@
           "cameraPermission": "Allow Groov to use the camera to take a habit icon photo."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-web-browser",
+      "expo-apple-authentication"
     ],
     "extra": {
       "eas": {
