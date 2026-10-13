@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, Alert, Platform,
   PanResponder, Keyboard, Animated, Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp, getChallengeTier, TIER_STYLES } from '../context/AppContext';
 import Slider from '../components/Slider';
 import BottomSheet from '../components/BottomSheet';
@@ -562,7 +563,7 @@ export default function ChallengeScreen() {
   const canAddMore = effectiveChallenges.length < 3;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.headingRow}>
           <Text style={[styles.heading, { color: theme.text }]}>Challenges</Text>

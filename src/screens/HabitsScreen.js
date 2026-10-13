@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, Alert, Animated,
   PanResponder, TouchableWithoutFeedback, Keyboard, Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useApp } from '../context/AppContext';
@@ -403,7 +404,7 @@ export default function HabitsScreen() {
   const targetHabit = reminderTarget ? habits.find(h => h.id === reminderTarget) : null;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <Text style={[styles.heading, { color: theme.text }]}>My Habits</Text>

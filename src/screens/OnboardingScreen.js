@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Dimensions,
+  View, Text, StyleSheet, TouchableOpacity, Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
 
 const { width } = Dimensions.get('window');

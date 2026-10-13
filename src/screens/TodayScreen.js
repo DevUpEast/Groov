@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
-  TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
@@ -265,7 +265,7 @@ export default function TodayScreen() {
   ]);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.primary }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.primary }]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -326,7 +326,7 @@ export default function TodayScreen() {
             <>
               <EmptyCard
                 emoji="🌱"
-                title="Get into Rythm"
+                title="Get into Rhythm"
                 body="Add your first habit"
                 theme={theme}
                 style={{ backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }}
