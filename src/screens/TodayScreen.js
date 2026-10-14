@@ -33,7 +33,9 @@ function SproutIcon({ size = 24 }) {
 }
 
 function getGreeting(offset = 0) {
-  const h = new Date().getHours();
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const h = d.getHours();
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
   return 'Good evening';

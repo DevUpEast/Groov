@@ -69,7 +69,7 @@ const TABS = [
 const SCREENS = [TodayScreen, ProgressScreen, ChallengeScreen, HabitsScreen, SettingsScreen];
 
 function AppNavigator() {
-  const { hasOnboarded, theme, settings, requestedTab, setRequestedTab, modalOpen } = useApp();
+  const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen } = useApp();
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -168,7 +168,7 @@ function AppNavigator() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
-      <StatusBar style={activeIndex === 0 ? 'light' : (settings.theme === 'dark' ? 'light' : 'dark')} />
+      <StatusBar style={activeIndex === 0 ? 'light' : (themeName === 'dark' ? 'light' : 'dark')} />
 
       <Animated.View
         style={[styles.screenRow, { transform: [{ translateX }] }]}

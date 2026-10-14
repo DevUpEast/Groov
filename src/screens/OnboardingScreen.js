@@ -45,7 +45,7 @@ export default function OnboardingScreen() {
           ))}
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: theme.surface }]}>
           <Text style={styles.emoji}>{s.emoji}</Text>
           <Text style={[styles.title, { color: theme.text }]}>{s.title}</Text>
           <Text style={[styles.body, { color: theme.textMuted }]}>{s.body}</Text>
@@ -75,7 +75,6 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   dotActive: { width: 24 },
   card: {
-    backgroundColor: '#fff',
     borderRadius: 24,
     padding: 36,
     alignItems: 'center',

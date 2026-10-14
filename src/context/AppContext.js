@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { AppState } from 'react-native';
+import { AppState, useColorScheme } from 'react-native';
 import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage';
 import { themes } from '../theme/colors';
 import { useAuth } from './AuthContext';
@@ -36,7 +36,7 @@ const DEFAULT_SETTINGS = {
   reminders: DEFAULT_REMINDERS,
   soundEnabled: true,
   hapticsEnabled: true,
-  theme: 'light',
+  theme: 'system',
   eveningReminderEnabled: false,
   eveningReminderHour: 20,
   eveningReminderMinute: 0,
@@ -100,7 +100,7 @@ function migrateSettings(s) {
     notificationsEnabled: s.notificationsEnabled ?? true,
     soundEnabled: s.soundEnabled ?? true,
     hapticsEnabled: s.hapticsEnabled ?? true,
-    theme: s.theme ?? 'light',
+    theme: s.theme ?? 'system',
     eveningReminderEnabled: s.eveningReminderEnabled ?? false,
     eveningReminderHour: s.eveningReminderHour ?? 20,
     eveningReminderMinute: s.eveningReminderMinute ?? 0,
@@ -806,13 +806,18 @@ export function AppProvider({ children }) {
 
   const getLast30Days = useCallback(() => getLastNDays(30), [getLastNDays]);
 
-  const theme = themes[settings.theme] || themes.light;
+  // 'system' follows the OS appearance; 'light' / 'dark' are explicit overrides.
+  const systemScheme = useColorScheme();
+  const themeName = settings.theme === 'system'
+    ? (systemScheme === 'dark' ? 'dark' : 'light')
+    : (settings.theme === 'dark' ? 'dark' : 'light');
+  const theme = themes[themeName];
 
   if (!loaded) return null;
 
   return (
     <AppContext.Provider value={{
-      habits, completions, settings, challenges, pastChallenges, hasOnboarded, theme,
+      habits, completions, settings, challenges, pastChallenges, hasOnboarded, theme, themeName,
       effectiveChallenges, effectivePastChallenges,
       dateOffset, setDateOffset, accountCreatedAt, displayName,
       devMode, setDevMode,
