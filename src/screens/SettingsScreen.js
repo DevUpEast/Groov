@@ -4,6 +4,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import TimePicker from '../components/TimePicker';
@@ -13,6 +15,11 @@ import { to12h, to24h, formatTime12 as formatTime } from '../utils/time';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
 const DEV_CODE = 'devmode';
+
+// "v1.2.0 (7)": app version from app.json, native build number from the binary.
+const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0';
+const BUILD_NUMBER = Application.nativeBuildVersion;
+const VERSION_LABEL = `Groov v${APP_VERSION}${BUILD_NUMBER ? ` (${BUILD_NUMBER})` : ''}`;
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light' },
@@ -612,7 +619,7 @@ export default function SettingsScreen() {
         </Section>
 
         <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7} style={styles.versionBtn}>
-          <Text style={[styles.version, { color: theme.textMuted }]}>Groov v1.0</Text>
+          <Text style={[styles.version, { color: theme.textMuted }]}>{VERSION_LABEL}</Text>
           {devTapCount > 2 && !showDevTools && (
             <Text style={[styles.devHint, { color: theme.textMuted }]}>
               {7 - devTapCount} more tap{7 - devTapCount !== 1 ? 's' : ''} to unlock dev tools
