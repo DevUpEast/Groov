@@ -14,9 +14,102 @@ import EmptyCard from '../components/EmptyCard';
 import { SheetDragHandle } from '../components/SheetHeader';
 import TimePicker from '../components/TimePicker';
 import { lightImpact, mediumImpact } from '../utils/haptics';
+import { describeSchedule, WEEKDAY_LABELS, DEFAULT_SCHEDULE } from '../utils/schedule';
 
 const ICONS = ['⭐', '🎯', '💪', '🧠', '✍️', '🎨', '🚶', '🛁', '🌿', '❤️', '💧', '🏃', '📚', '🧘', '😴', '🥗', '🍎', '☕', '🎵', '🌅'];
-const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null };
+const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE };
+
+const SCHEDULE_OPTIONS = [
+  { type: 'daily', label: 'Every day' },
+  { type: 'weekdays', label: 'Specific days' },
+  { type: 'perWeek', label: 'Times a week' },
+];
+// Monday-first display order; values are JS weekday numbers (0 = Sunday).
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+// Schedule section of the habit form: pick a pattern, then its details.
+function SchedulePicker({ schedule, onChange, theme }) {
+  const type = schedule?.type ?? 'daily';
+  const days = schedule?.days ?? [1, 2, 3, 4, 5];
+  const target = schedule?.target ?? 3;
+
+  const select = (t) => {
+    if (t === 'daily') onChange({ type: 'daily' });
+    else if (t === 'weekdays') onChange({ type: 'weekdays', days: type === 'weekdays' ? days : [1, 2, 3, 4, 5] });
+    else onChange({ type: 'perWeek', target: type === 'perWeek' ? target : 3 });
+  };
+
+  const toggleDay = (d) => {
+    const next = days.includes(d) ? days.filter(x => x !== d) : [...days, d];
+    if (next.length === 0) return; // keep at least one day; "none" is not a schedule
+    onChange({ type: 'weekdays', days: next });
+  };
+
+  return (
+    <>
+      <Text style={[styles.label, { color: theme.textMuted }]}>Schedule</Text>
+      <View style={styles.typeRow}>
+        {SCHEDULE_OPTIONS.map(opt => {
+          const active = type === opt.type;
+          return (
+            <TouchableOpacity
+              key={opt.type}
+              style={[styles.scheduleBtn, { borderColor: active ? theme.primary : theme.border }, active && { backgroundColor: theme.primaryLight }]}
+              onPress={() => select(opt.type)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              <Text style={[styles.scheduleBtnText, { color: active ? theme.primary : theme.textMuted }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {type === 'weekdays' && (
+        <View style={styles.dayRow}>
+          {WEEKDAY_ORDER.map(d => {
+            const on = days.includes(d);
+            return (
+              <TouchableOpacity
+                key={d}
+                style={[styles.dayChip, { borderColor: on ? theme.primary : theme.border, backgroundColor: on ? theme.primary : theme.bg }]}
+                onPress={() => toggleDay(d)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={WEEKDAY_LABELS[d]}
+              >
+                <Text style={[styles.dayChipText, { color: on ? '#fff' : theme.textMuted }]}>{WEEKDAY_LABELS[d]}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {type === 'perWeek' && (
+        <View style={styles.perWeekRow}>
+          <Text style={[styles.perWeekText, { color: theme.text }]}>{target} day{target !== 1 ? 's' : ''} a week, any days you like</Text>
+          <View style={styles.stepper}>
+            <TouchableOpacity
+              style={[styles.stepBtn, { borderColor: theme.border, opacity: target <= 1 ? 0.4 : 1 }]}
+              onPress={() => target > 1 && onChange({ type: 'perWeek', target: target - 1 })}
+              accessibilityRole="button" accessibilityLabel="Fewer days per week"
+            >
+              <Text style={[styles.stepBtnText, { color: theme.text }]}>−</Text>
+            </TouchableOpacity>
+            <Text style={[styles.stepValue, { color: theme.text }]}>{target}</Text>
+            <TouchableOpacity
+              style={[styles.stepBtn, { borderColor: theme.border, opacity: target >= 6 ? 0.4 : 1 }]}
+              onPress={() => target < 6 && onChange({ type: 'perWeek', target: target + 1 })}
+              accessibilityRole="button" accessibilityLabel="More days per week"
+            >
+              <Text style={[styles.stepBtnText, { color: theme.text }]}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </>
+  );
+}
 const DEFAULT_REMINDER = { enabled: false, hour12: 9, minute: 0, ampm: 'AM' };
 
 function formatReminder(reminder) {
@@ -202,6 +295,12 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   ))}
                 </View>
 
+                <SchedulePicker
+                  schedule={form.schedule}
+                  onChange={schedule => setForm(f => ({ ...f, schedule }))}
+                  theme={theme}
+                />
+
                 {form.type === 'volume' && (
                   <>
                     <Text style={[styles.label, { color: theme.textMuted }]}>Times per day: {form.volumeGoal}</Text>
@@ -254,6 +353,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
 function HabitRow({ habit, theme, onEdit, onDelete, onBell }) {
   const reminderTime = formatReminder(habit.reminder);
   const reminderOn = habit.reminder?.enabled;
+  const scheduleLabel = habit.schedule && habit.schedule.type !== 'daily' ? describeSchedule(habit.schedule) : null;
   return (
     <View style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       {habit.customIconUri ? (
@@ -269,6 +369,11 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell }) {
               {habit.type === 'daily' ? 'Daily' : `${habit.volumeGoal}× / day`}
             </Text>
           </View>
+          {scheduleLabel && (
+            <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
+              <Text style={[styles.typePillText, { color: theme.primary }]}>📅 {scheduleLabel}</Text>
+            </View>
+          )}
           {reminderTime && (
             <View style={[styles.reminderPill, { backgroundColor: theme.primaryLight }]}>
               <Text style={[styles.reminderPillText, { color: theme.primary }]}>🔔 {reminderTime}</Text>
@@ -328,7 +433,7 @@ export default function HabitsScreen() {
 
   const openEdit = (habit) => {
     setEditingId(habit.id);
-    setForm({ name: habit.name, icon: habit.icon, type: habit.type, volumeGoal: habit.volumeGoal, customIconUri: habit.customIconUri ?? null });
+    setForm({ name: habit.name, icon: habit.icon, type: habit.type, volumeGoal: habit.volumeGoal, customIconUri: habit.customIconUri ?? null, schedule: habit.schedule ?? DEFAULT_SCHEDULE });
     setModalVisible(true);
   };
 
@@ -504,6 +609,17 @@ const styles = StyleSheet.create({
   typeRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   typeBtn: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },
   typeBtnText: { fontSize: 14, fontWeight: '600' },
+  scheduleBtn: { flex: 1, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },
+  scheduleBtnText: { fontSize: 13, fontWeight: '600' },
+  dayRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  dayChip: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  dayChipText: { fontSize: 13, fontWeight: '700' },
+  perWeekRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  perWeekText: { fontSize: 14, flex: 1, marginRight: 12 },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  stepBtnText: { fontSize: 18, fontWeight: '600' },
+  stepValue: { fontSize: 18, fontWeight: '700', minWidth: 20, textAlign: 'center' },
   volMaxRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   volMaxBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
   volMaxBtnText: { fontSize: 12, fontWeight: '700' },

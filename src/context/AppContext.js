@@ -12,7 +12,8 @@ import {
 } from '../services/sync';
 import { applyReminderSchedule, scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../utils/notifications';
 import { localDateKey, todayKey, addDays } from '../utils/dates';
-import { countBackStreak } from '../utils/streaks';
+import { overallStreak } from '../utils/streaks';
+import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak, dayStatus } from '../utils/schedule';
 import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots } from '../utils/mergeSync';
@@ -116,6 +117,17 @@ function migrateSettings(s) {
   };
 }
 
+// Every habit carries a normalised schedule (missing = every day, the pre-schedule
+// behaviour). Snapshots are rewritten the same way so history stays consistent.
+function migrateHabits(hs) {
+  if (!Array.isArray(hs)) return [];
+  return hs.map(h => ({ ...h, schedule: normalizeSchedule(h.schedule) }));
+}
+
+const snapshotOf = (habits) => habits.map(h => ({
+  id: h.id, name: h.name, icon: h.icon, volumeGoal: h.volumeGoal, schedule: normalizeSchedule(h.schedule),
+}));
+
 function migrateChallenges(chs) {
   if (!Array.isArray(chs)) return [];
   return chs.map(ch => {
@@ -217,7 +229,7 @@ export function AppProvider({ children }) {
       loadDevMode(),
     ]);
 
-    if (h) setHabits(h);
+    if (h) setHabits(migrateHabits(h));
     if (c) setCompletions(c);
     setSettings(migrateSettings(s));
     if (ch) {
@@ -264,10 +276,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!loaded) return;
     const today = todayStr();
-    setDailySnapshot(prev => ({
-      ...prev,
-      [today]: habits.map(h => ({ id: h.id, name: h.name, icon: h.icon, volumeGoal: h.volumeGoal })),
-    }));
+    setDailySnapshot(prev => ({ ...prev, [today]: snapshotOf(habits) }));
   }, [habits, loaded, todayStr]);
 
   // Keep stateRef fresh so the cloud sync effect can access current state without
@@ -301,8 +310,9 @@ export function AppProvider({ children }) {
       cancelEveningHabitReminder(realToday);
       return;
     }
-    const todayCompletions = completions[realToday] || {};
-    const allDone = habits.length > 0 && habits.every(h => (todayCompletions[h.id] || 0) >= h.volumeGoal);
+    const due = habits.filter(h => isScheduledOn(h.schedule, realToday));
+    const allDone = due.length > 0 && due.every(h =>
+      isSatisfiedOn(h.schedule, realToday, (k) => ((completions[k] || {})[h.id] || 0) >= h.volumeGoal));
     if (allDone) {
       cancelEveningHabitReminder(realToday);
     } else {
@@ -373,7 +383,7 @@ export function AppProvider({ children }) {
         const pulledAt = Date.now();
         const hasCloudData = cloudData.habits !== null && cloudData.habits.length > 0;
         if (hasCloudData) {
-          setHabits(cloudData.habits);
+          setHabits(migrateHabits(cloudData.habits));
           if (cloudData.completions) setCompletions(cloudData.completions);
           if (cloudData.settings) setSettings(migrateSettings(cloudData.settings));
           if (cloudData.challenges) setChallenges(migrateChallenges(cloudData.challenges));
@@ -407,7 +417,7 @@ export function AppProvider({ children }) {
       .then((delta) => {
         const sinceMs = since;
         if (delta.habits.length || delta.habitIds) {
-          setHabits(prev => mergeRecords(prev, delta.habits, delta.habitIds, sinceMs)
+          setHabits(prev => migrateHabits(mergeRecords(prev, delta.habits, delta.habitIds, sinceMs))
             .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? '') || a.id.localeCompare(b.id)));
         }
         if (delta.challenges.length || delta.challengeIds) {
@@ -438,19 +448,37 @@ export function AppProvider({ children }) {
     return getHabitCount(habit.id) >= habit.volumeGoal;
   }, [getHabitCount]);
 
+  // Goal met on `key` (any date) for a habit.
+  const isHabitDoneOn = useCallback((habit, key) => {
+    return ((completions[key] || {})[habit.id] || 0) >= habit.volumeGoal;
+  }, [completions]);
+
+  // Habits the Today screen shows: everything scheduled today. perWeek habits are
+  // always available so the user can log them on any day they choose.
+  const dueHabits = useMemo(() => {
+    const today = todayStr();
+    return habits.filter(h => isScheduledOn(h.schedule, today));
+  }, [habits, todayStr]);
+
+  // "Counts as done today": goal met, or nothing was asked of the habit today
+  // (a perWeek habit whose weekly target is already met).
+  const isHabitSatisfied = useCallback((habit) => {
+    return isSatisfiedOn(habit.schedule, todayStr(), (k) => isHabitDoneOn(habit, k));
+  }, [isHabitDoneOn, todayStr]);
+
   const getCompletedCount = useCallback(() => {
-    return habits.filter(h => isHabitDone(h)).length;
-  }, [habits, isHabitDone]);
+    return dueHabits.filter(h => isHabitSatisfied(h)).length;
+  }, [dueHabits, isHabitSatisfied]);
 
   const isAllDone = useCallback(() => {
-    return habits.length > 0 && habits.every(h => isHabitDone(h));
-  }, [habits, isHabitDone]);
+    return dueHabits.length > 0 && dueHabits.every(h => isHabitSatisfied(h));
+  }, [dueHabits, isHabitSatisfied]);
 
   const isChallengeHabitsDone = useCallback((challenge) => {
     const ids = challenge.linkedHabitIds || [];
-    const relevant = ids.length > 0 ? habits.filter(h => ids.includes(h.id)) : habits;
-    return relevant.length > 0 && relevant.every(h => isHabitDone(h));
-  }, [habits, isHabitDone]);
+    const relevant = ids.length > 0 ? dueHabits.filter(h => ids.includes(h.id)) : dueHabits;
+    return relevant.length > 0 && relevant.every(h => isHabitSatisfied(h));
+  }, [dueHabits, isHabitSatisfied]);
 
   // ── Habit mutations ──────────────────────────────────────────────────────────
 
@@ -467,10 +495,7 @@ export function AppProvider({ children }) {
     }));
     setDailySnapshot(prev => {
       if (prev[today]) return prev;
-      return {
-        ...prev,
-        [today]: habits.map(h => ({ id: h.id, name: h.name, icon: h.icon, volumeGoal: h.volumeGoal })),
-      };
+      return { ...prev, [today]: snapshotOf(habits) };
     });
     if (userId) syncCompletion(userId, today, habitId, next);
     return next >= habit.volumeGoal;
@@ -488,13 +513,14 @@ export function AppProvider({ children }) {
   }, [completions, todayStr, userId]);
 
   const addHabit = useCallback((habit) => {
-    const newHabit = { ...habit, id: Date.now().toString(), createdAt: todayStr() };
+    const newHabit = { ...habit, schedule: normalizeSchedule(habit.schedule), id: Date.now().toString(), createdAt: todayStr() };
     setHabits(prev => [...prev, newHabit]);
     if (userId) syncHabit(userId, newHabit);
     return newHabit.id;
   }, [todayStr, userId]);
 
   const updateHabit = useCallback((id, updates) => {
+    if (updates.schedule) updates = { ...updates, schedule: normalizeSchedule(updates.schedule) };
     setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
     if (userId) {
       const habit = habits.find(h => h.id === id);
@@ -611,11 +637,11 @@ export function AppProvider({ children }) {
 
   const setAllHabitCounts = useCallback((getValue) => {
     const today = todayStr();
-    const todayMap = {};
-    habits.forEach(h => { todayMap[h.id] = getValue(h); });
+    const todayMap = { ...(completions[today] || {}) };
+    dueHabits.forEach(h => { todayMap[h.id] = getValue(h); });
     setCompletions(prev => ({ ...prev, [today]: todayMap }));
     if (userId) syncCompletionsForDate(userId, today, todayMap);
-  }, [habits, todayStr, userId]);
+  }, [dueHabits, completions, todayStr, userId]);
 
   const selectAllHabitsToday = useCallback(() => setAllHabitCounts(h => h.volumeGoal), [setAllHabitCounts]);
   const resetAllHabitsToday = useCallback(() => setAllHabitCounts(() => 0), [setAllHabitCounts]);
@@ -737,7 +763,7 @@ export function AppProvider({ children }) {
 
   // Dev tool: fill the last 30 days with random completion data
   const seedRandomHistory = useCallback(async () => {
-    const habitSnapshot = habits.map(h => ({ id: h.id, name: h.name, icon: h.icon, volumeGoal: h.volumeGoal }));
+    const habitSnapshot = snapshotOf(habits);
     const newCompletions = { ...completions };
     const newSnapshot = { ...dailySnapshot };
 
@@ -775,21 +801,24 @@ export function AppProvider({ children }) {
 
   // ── Streak / progress helpers ────────────────────────────────────────────────
 
+  // Habits that existed on a given day (snapshot), falling back to the live list.
+  const habitsOnDay = useCallback((key) => dailySnapshot[key] || habits, [dailySnapshot, habits]);
+
   const getStreakForHabit = useCallback((habitId) => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return 0;
-    return countBackStreak(todayKey(dateOffset), (dateStr) => {
-      return ((completions[dateStr] || {})[habitId] || 0) >= habit.volumeGoal;
-    });
-  }, [completions, habits, dateOffset]);
+    const today = todayKey(dateOffset);
+    return habitStreak(habit.schedule, today, today, (k) => isHabitDoneOn(habit, k));
+  }, [habits, dateOffset, isHabitDoneOn]);
 
   const getOverallStreak = useCallback(() => {
-    return countBackStreak(todayKey(dateOffset), (dateStr) => {
-      const dayCompletions = completions[dateStr] || {};
-      const dayHabits = dailySnapshot[dateStr] || habits;
-      return dayHabits.length > 0 && dayHabits.every(h => (dayCompletions[h.id] || 0) >= h.volumeGoal);
-    });
-  }, [completions, habits, dailySnapshot, dateOffset]);
+    const today = todayKey(dateOffset);
+    return overallStreak(today, today, habitsOnDay,
+      (k, id) => {
+        const h = habitsOnDay(k).find(x => x.id === id);
+        return !!h && ((completions[k] || {})[id] || 0) >= h.volumeGoal;
+      });
+  }, [completions, habitsOnDay, dateOffset]);
 
   const getLastNDays = useCallback((n) => {
     const days = [];
@@ -810,9 +839,15 @@ export function AppProvider({ children }) {
       } else {
         const dayCompletions = completions[dateStr] || {};
         const snapshot = dailySnapshot[dateStr];
-        const dayHabits = snapshot || habits.map(h => ({ id: h.id, name: h.name, icon: h.icon, volumeGoal: h.volumeGoal }));
-        const done = dayHabits.filter(h => (dayCompletions[h.id] || 0) >= h.volumeGoal).length;
-        days.push({ date: dateStr, completed: done, total: dayHabits.length, habits: dayHabits });
+        // Each habit gets its schedule status for the day; rest days drop out of the
+        // totals so an unscheduled habit never makes a day look "partial".
+        const dayHabits = (snapshot || snapshotOf(habits)).map(h => ({
+          ...h,
+          status: dayStatus(h.schedule, dateStr, todayLocal, (k) => ((completions[k] || {})[h.id] || 0) >= h.volumeGoal),
+        }));
+        const counted = dayHabits.filter(h => h.status !== 'rest');
+        const done = counted.filter(h => h.status === 'done').length;
+        days.push({ date: dateStr, completed: done, total: counted.length, habits: dayHabits });
       }
     }
     return days;
@@ -840,8 +875,8 @@ export function AppProvider({ children }) {
       modalOpen, setModalOpen,
       requestedTab, setRequestedTab,
       pendingHabitLinkChallenge, setPendingHabitLinkChallenge,
-      getTodayCompletions, getHabitCount, isHabitDone, getCompletedCount, isAllDone,
-      isChallengeHabitsDone,
+      getTodayCompletions, getHabitCount, isHabitDone, isHabitDoneOn, isHabitSatisfied, dueHabits,
+      getCompletedCount, isAllDone, isChallengeHabitsDone,
       incrementHabit, decrementHabit,
       addHabit, updateHabit, deleteHabit,
       updateSettings,

@@ -21,6 +21,7 @@ const habitToRow = (habit, userId) => ({
   created_at: habit.createdAt,
   reminder: habit.reminder ?? null,
   custom_icon_uri: habit.customIconUri ?? null,
+  schedule: habit.schedule ?? null,
 });
 
 const rowToHabit = (row) => ({
@@ -32,6 +33,7 @@ const rowToHabit = (row) => ({
   createdAt: row.created_at,
   reminder: row.reminder ?? undefined,
   customIconUri: row.custom_icon_uri ?? null,
+  schedule: row.schedule ?? undefined,
 });
 
 const completionsToRows = (completions, userId) => {

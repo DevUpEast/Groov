@@ -86,7 +86,7 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 
 ## Data Models
 
-- **Habit:** `{ id, name, icon (emoji|null), customIconUri, type ('daily'|'volume'), volumeGoal, reminder: { enabled, hour12, minute, ampm }, createdAt }`. Every habit is due every day (no schedules yet).
+- **Habit:** `{ id, name, icon (emoji|null), customIconUri, type ('daily'|'volume'), volumeGoal, schedule, reminder: { enabled, hour12, minute, ampm }, createdAt }`. `schedule` is `{ type: 'daily' }` | `{ type: 'weekdays', days: [0-6] }` | `{ type: 'perWeek', target: 1-6 }` (missing = daily). All schedule/streak rules live in `src/utils/schedule.js` and `src/utils/streaks.js` (pure, Jest-tested; the edge functions mirror them in `supabase/functions/_shared/schedule.ts`).
 - **Completions:** keyed by `YYYY-MM-DD`, each date maps `habitId → count`. `dailySnapshot` records which habits existed each day so history stays accurate.
 - **Challenge:** `{ id, name, description, days, icon, completedDays[], completed, startDate, linkedHabitIds[] }`. Tier (platinum/gold/silver/copper) is computed at archive time from completedDays/days via `getChallengeTier`.
 - **Settings:** `{ theme, soundEnabled, hapticsEnabled, notificationsEnabled, reminders[], eveningReminder* }`. `dateOffset` is stored separately (dev tool).
@@ -95,6 +95,6 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 
 - "Today" uses `dateOffset` (from Settings dev tools) to simulate different dates during development.
 - Volume habits track a numeric count; daily habits toggle 0/1. Only today can be logged.
-- Streaks are computed on the fly; the overall streak counts a day only if every habit in that day's snapshot met its goal.
+- Streaks are computed on the fly; the overall streak counts a day only if every *scheduled* habit in that day's snapshot met its goal. Unscheduled days are rest days (chain preserved, no increment) and an unfinished today never breaks a streak.
 - Challenge days are auto-claimed from `TodayScreen` when all linked habits are done; expired challenges archive with a tiered reward modal.
 - Date keys must be local dates; several places still use `toISOString()` (UTC) and are tracked as a bug.

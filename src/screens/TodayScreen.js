@@ -53,15 +53,17 @@ function hapticFillSequence(hapticsEnabled) {
   successNotification();
 }
 
-function getRelevantHabits(challenge, habits) {
+// Habits a challenge watches today: its linked habits (or all of them) that are
+// actually scheduled today, so a weekday-only habit never blocks a weekend claim.
+function getRelevantHabits(challenge, dueHabits) {
   const ids = challenge.linkedHabitIds || [];
-  return ids.length > 0 ? habits.filter(h => ids.includes(h.id)) : habits;
+  return ids.length > 0 ? dueHabits.filter(h => ids.includes(h.id)) : dueHabits;
 }
 
 export default function TodayScreen() {
   const {
-    habits, challenges, effectiveChallenges, completions, getCompletedCount, isAllDone,
-    incrementHabit, decrementHabit,
+    habits, dueHabits, challenges, effectiveChallenges, completions, getCompletedCount, isAllDone,
+    incrementHabit, decrementHabit, isHabitSatisfied,
     isChallengeHabitsDone, settings, theme, markChallengeDay, unmarkChallengeDay,
     getHabitCount, dateOffset, todayStr, accountCreatedAt, displayName, devMode,
     completeChallengeImmediately, selectAllHabitsToday, resetAllHabitsToday,
@@ -129,7 +131,7 @@ export default function TodayScreen() {
   const allDone = isAllDone();
 
   const completed = getCompletedCount();
-  const total = habits.length;
+  const total = dueHabits.length;
   const progress = total > 0 ? completed / total : 0;
 
   // Shared logic for auto-claiming/completing challenges after habits are done.
@@ -148,12 +150,12 @@ export default function TodayScreen() {
       if (ch.completedDays.includes(today)) return;
       if (isChallengeExpired(ch, today)) return;
 
-      const relevant = getRelevantHabits(ch, habits);
+      const relevant = getRelevantHabits(ch, dueHabits);
       if (relevant.length === 0) return;
 
       const allRelevantDone = assumeAllDone || relevant.every(h => {
         if (justCompletedHabitId && h.id === justCompletedHabitId) return true;
-        return getHabitCount(h.id) >= h.volumeGoal;
+        return isHabitSatisfied(h);
       });
 
       if (!allRelevantDone) return;
@@ -169,7 +171,7 @@ export default function TodayScreen() {
     });
 
     return { anyClaimed, anyComplete };
-  }, [effectiveChallenges, challenges, habits, getHabitCount, markChallengeDay, completeChallengeImmediately, todayStr]);
+  }, [effectiveChallenges, challenges, dueHabits, isHabitSatisfied, markChallengeDay, completeChallengeImmediately, todayStr]);
 
   const handleIncrement = useCallback(async (habit) => {
     const justCompleted = incrementHabit(habit.id);
@@ -179,10 +181,9 @@ export default function TodayScreen() {
     if (justCompleted) {
       // Compute synchronously: this habit just hit its goal; check every other habit
       // against the pre-increment completions (they haven't changed).
-      const todayComps = completions[todayStr()] || {};
-      const willAllBeDone = habits.every(h => {
+      const willAllBeDone = dueHabits.every(h => {
         if (h.id === habit.id) return true;
-        return (todayComps[h.id] || 0) >= h.volumeGoal;
+        return isHabitSatisfied(h);
       });
 
       const { anyClaimed, anyComplete } = autoClaimChallenges(habit.id);
@@ -198,7 +199,7 @@ export default function TodayScreen() {
         setFullCelebration(true);
       }
     }
-  }, [habits, completions, todayStr, autoClaimChallenges, incrementHabit, settings]);
+  }, [dueHabits, isHabitSatisfied, todayStr, autoClaimChallenges, incrementHabit, settings]);
 
   const handleDecrement = useCallback(async (habit) => {
     const today = todayStr();
@@ -214,13 +215,13 @@ export default function TodayScreen() {
       effectiveChallenges.forEach(ch => {
         if (!challenges.some(c => c.id === ch.id)) return;
         if (!ch.completedDays.includes(today)) return;
-        const relevant = getRelevantHabits(ch, habits);
+        const relevant = getRelevantHabits(ch, dueHabits);
         if (relevant.some(h => h.id === habit.id)) {
           unmarkChallengeDay(ch.id);
         }
       });
     }
-  }, [decrementHabit, effectiveChallenges, challenges, habits, getHabitCount, unmarkChallengeDay, todayStr]);
+  }, [decrementHabit, effectiveChallenges, challenges, dueHabits, getHabitCount, unmarkChallengeDay, todayStr]);
 
   const handleSelectAll = useCallback(async () => {
     const today = todayStr();
@@ -352,6 +353,14 @@ export default function TodayScreen() {
                 </TouchableOpacity>
               )}
             </>
+          ) : dueHabits.length === 0 ? (
+            <EmptyCard
+              emoji="🛋️"
+              title="Rest day"
+              body="None of your habits are scheduled today. Enjoy the break, your streaks are safe."
+              theme={theme}
+              style={{ backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, marginTop: 0 }}
+            />
           ) : (
             <>
               <View style={styles.sectionHeader}>
@@ -365,7 +374,7 @@ export default function TodayScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
-              {habits.map(habit => (
+              {dueHabits.map(habit => (
                 <HabitCard
                   key={habit.id}
                   habit={habit}

@@ -1,15 +1,21 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
+import { completionsInWeek } from '../utils/schedule';
 
 export default function HabitCard({ habit, onIncrement, onDecrement }) {
-  const { getHabitCount, isHabitDone, getStreakForHabit, theme } = useApp();
+  const { getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, todayStr } = useApp();
   const count = getHabitCount(habit.id);
   const done = isHabitDone(habit);
   const isVolume = habit.type === 'volume';
   // Consecutive days (ending today) this habit hit its goal; one day is not yet a streak.
   const streak = getStreakForHabit(habit.id);
   const streakLabel = streak >= 2 ? `🔥 ${streak}-day streak` : null;
+  // perWeek habits show weekly progress instead of a per-day count.
+  const perWeek = habit.schedule?.type === 'perWeek' ? habit.schedule.target : 0;
+  const weekDone = perWeek ? completionsInWeek(todayStr(), todayStr(), (k) => isHabitDoneOn(habit, k)) : 0;
+  const weekLabel = perWeek ? (weekDone >= perWeek ? `✓ ${weekDone}/${perWeek} this week` : `${weekDone}/${perWeek} this week`) : null;
+  const subParts = [isVolume ? `${count}/${habit.volumeGoal} today` : null, weekLabel, streakLabel].filter(Boolean);
 
   // Tapping anywhere on the card:
   //   daily  → toggle done/undone
@@ -38,12 +44,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
           numberOfLines={1}>
           {habit.name}
         </Text>
-        {(isVolume || streakLabel) && (
-          <Text style={[styles.sub, { color: theme.textMuted }]}>
-            {isVolume ? `${count}/${habit.volumeGoal} today` : ''}
-            {isVolume && streakLabel ? ' · ' : ''}
-            {streakLabel ?? ''}
-          </Text>
+        {subParts.length > 0 && (
+          <Text style={[styles.sub, { color: theme.textMuted }]}>{subParts.join(' · ')}</Text>
         )}
       </View>
 
