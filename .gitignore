@@ -44,3 +44,13 @@ yarn-error.*
 /android
 .fallow/
 supabase/.temp/
+
+# Claude Code research output (local only)
+research_notes/
+reports/
+
+# emulator screenshots from scripts/emu.sh
+.emu-shots/
+
+# per-machine Claude Code settings
+.claude/settings.local.json

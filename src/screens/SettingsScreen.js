@@ -50,7 +50,9 @@ function Section({ title, children, theme }) {
 
 export default function SettingsScreen() {
   const { settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory } = useApp();
-  const { user, signOut, displayName, deleteAccount, sendPasswordReset, verifyPasswordReset } = useAuth();
+  const { user, signOut, displayName, deleteAccount, sendPasswordReset, verifyPasswordReset, authProvider } = useAuth();
+  // Apple/Google accounts have no Groov password to reset.
+  const canResetPassword = authProvider === 'email';
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -548,16 +550,18 @@ export default function SettingsScreen() {
 
         {/* Data */}
         <Section title="DATA" theme={theme}>
-          <TouchableOpacity
-            style={[styles.dangerRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
-            onPress={handleResetPassword}
-            disabled={resetLoading}
-          >
-            <Text style={[styles.dangerText, { color: theme.primary }]}>Reset Password</Text>
-            <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
-              Send a reset code to your email
-            </Text>
-          </TouchableOpacity>
+          {canResetPassword && (
+            <TouchableOpacity
+              style={[styles.dangerRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
+              onPress={handleResetPassword}
+              disabled={resetLoading}
+            >
+              <Text style={[styles.dangerText, { color: theme.primary }]}>Reset Password</Text>
+              <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
+                Send a reset code to your email
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[styles.dangerRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
             onPress={handleClearData}
