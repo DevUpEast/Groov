@@ -45,7 +45,17 @@ const DEFAULT_SETTINGS = {
   // sit out; streakFreezes are whole days covered automatically (2 per month).
   skips: {},
   streakFreezes: [],
+  // Earned streak milestones: [{ id: 'streak-7', date }]. Big celebrations are
+  // reserved for these (and challenge completion); a perfect day is a small cheer.
+  milestones: [],
 };
+
+export const STREAK_MILESTONES = [
+  { days: 7, emoji: '🥉', label: 'One week' },
+  { days: 30, emoji: '🥈', label: 'One month' },
+  { days: 100, emoji: '🥇', label: '100 days' },
+  { days: 365, emoji: '💎', label: 'One year' },
+];
 
 // The challenge promised on the last onboarding slide. An empty linkedHabitIds means
 // "every habit", so it works however many habits the user goes on to create.
@@ -88,6 +98,7 @@ function migrateSettings(s) {
       ...s,
       skips: s.skips && typeof s.skips === 'object' ? s.skips : {},
       streakFreezes: Array.isArray(s.streakFreezes) ? s.streakFreezes : [],
+      milestones: Array.isArray(s.milestones) ? s.milestones : [],
       // Per-habit reminders used to be mirrored in here; habit.reminder is now the
       // only source of truth, so drop any stale mirrors.
       reminders: s.reminders.filter(r => !r.habitId).map(r => ({
@@ -656,6 +667,11 @@ export function AppProvider({ children }) {
 
   const freezesLeft = freezesLeftInMonth(settings.streakFreezes, todayStr());
 
+  // ── Streak milestones ────────────────────────────────────────────────────────
+  // The milestone just crossed, waiting for TodayScreen to celebrate it.
+  const [pendingMilestone, setPendingMilestone] = useState(null);
+  const clearPendingMilestone = useCallback(() => setPendingMilestone(null), []);
+
   // ── Challenge actions ────────────────────────────────────────────────────────
 
   const markChallengeDay = useCallback((challengeId) => {
@@ -937,6 +953,20 @@ export function AppProvider({ children }) {
     return Math.max(bestOverallStreak(from, today, today, habitsOnDay, isSnapshotHabitDone, isExcused), getOverallStreak());
   }, [habitsOnDay, isSnapshotHabitDone, isExcused, dateOffset, accountCreatedAt, getOverallStreak]);
 
+  // Record newly crossed streak milestones (7/30/100/365). Runs after any change to
+  // the data; the first new one found is queued for a celebration.
+  useEffect(() => {
+    if (!loaded) return;
+    const streak = getOverallStreak();
+    const have = new Set((settings.milestones || []).map(m => m.id));
+    const earned = STREAK_MILESTONES.filter(m => streak >= m.days && !have.has(`streak-${m.days}`));
+    if (earned.length === 0) return;
+    const today = todayStr();
+    const added = earned.map(m => ({ id: `streak-${m.days}`, days: m.days, date: today }));
+    updateSettings({ milestones: [...(settings.milestones || []), ...added] });
+    setPendingMilestone(earned[earned.length - 1]);
+  }, [loaded, getOverallStreak, settings.milestones]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto streak freezes: once the data is loaded and whenever the date or history
   // changes, cover up to two missed days per month in the last week. A frozen day
   // that is later filled in (edit yesterday) releases its freeze. Uses the real
@@ -1009,6 +1039,7 @@ export function AppProvider({ children }) {
       getCompletedCount, isAllDone, isChallengeHabitsDone,
       incrementHabit, decrementHabit, setHabitCountOn, toggleHabitDoneOn,
       isHabitSkippedOn, toggleSkipHabitOn, isDayFrozen, isExcused, freezesLeft,
+      pendingMilestone, clearPendingMilestone,
       addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit,
       getNote, setNote,
       updateSettings,

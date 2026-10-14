@@ -60,7 +60,7 @@ function ConfettiPiece({ index, color }) {
   );
 }
 
-export default function CompletionCelebration({ visible, onDone, primaryColor }) {
+export default function CompletionCelebration({ visible, onDone, primaryColor, emoji = '🎉', title = 'Congrats!', subtitle = 'You completed all tasks for the day!' }) {
   const circleScale = useRef(new Animated.Value(0.06)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
   const textScale = useRef(new Animated.Value(0.8)).current;
@@ -131,9 +131,9 @@ export default function CompletionCelebration({ visible, onDone, primaryColor })
         pointerEvents="none"
         style={[styles.textContainer, { opacity: textOpacity, transform: [{ scale: textScale }] }]}
       >
-        <Text style={styles.emoji}>🎉</Text>
-        <Text style={styles.congrats}>Congrats!</Text>
-        <Text style={styles.subText}>You completed all tasks for the day!</Text>
+        <Text style={styles.emoji}>{emoji}</Text>
+        <Text style={styles.congrats}>{title}</Text>
+        <Text style={styles.subText}>{subtitle}</Text>
       </Animated.View>
 
       {/* Tap to dismiss */}

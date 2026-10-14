@@ -133,6 +133,7 @@ const settingsToRow = (settings, userId) => ({
   evening_reminder_minute: settings.eveningReminderMinute ?? 0,
   skips: settings.skips ?? {},
   streak_freezes: settings.streakFreezes ?? [],
+  milestones: settings.milestones ?? [],
 });
 
 const rowToSettings = (row) => ({
@@ -146,6 +147,7 @@ const rowToSettings = (row) => ({
   eveningReminderMinute: row.evening_reminder_minute ?? 0,
   skips: row.skips ?? {},
   streakFreezes: row.streak_freezes ?? [],
+  milestones: row.milestones ?? [],
 });
 
 // ── Bulk operations ───────────────────────────────────────────────────────────
