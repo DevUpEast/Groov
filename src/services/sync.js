@@ -103,6 +103,8 @@ const settingsToRow = (settings, userId) => ({
   evening_reminder_enabled: settings.eveningReminderEnabled ?? false,
   evening_reminder_hour: settings.eveningReminderHour ?? 20,
   evening_reminder_minute: settings.eveningReminderMinute ?? 0,
+  skips: settings.skips ?? {},
+  streak_freezes: settings.streakFreezes ?? [],
 });
 
 const rowToSettings = (row) => ({
@@ -114,6 +116,8 @@ const rowToSettings = (row) => ({
   eveningReminderEnabled: row.evening_reminder_enabled ?? false,
   eveningReminderHour: row.evening_reminder_hour ?? 20,
   eveningReminderMinute: row.evening_reminder_minute ?? 0,
+  skips: row.skips ?? {},
+  streakFreezes: row.streak_freezes ?? [],
 });
 
 // ── Bulk operations ───────────────────────────────────────────────────────────

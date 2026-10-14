@@ -85,9 +85,12 @@ export function remainingThisWeek(schedule, key, isDoneOnDate) {
 //
 // For perWeek habits a day is only a miss once the week is over (or `today` has
 // arrived with no way left to reach the target). Unfinished weeks are neutral.
-export function dayStatus(schedule, key, today, isDoneOnDate) {
+// `isExcused(key)` (optional) marks a day the user skipped or a streak freeze covered:
+// it is a rest day for that habit unless the goal was met anyway.
+export function dayStatus(schedule, key, today, isDoneOnDate, isExcused) {
   const s = normalizeSchedule(schedule);
   if (isDoneOnDate(key)) return 'done';
+  if (isExcused && isExcused(key)) return 'rest';
   if (s.type === 'weekdays') return s.days.includes(weekdayOf(key)) ? 'missed' : 'rest';
   if (s.type === 'daily') return 'missed';
   // perWeek: judge the day by its week. Days in a week that has already met (or can
@@ -113,11 +116,11 @@ export function dayStatus(schedule, key, today, isDoneOnDate) {
 //   - the first `missed` day ends it
 // `today` being unfinished never breaks a streak: a missed *today* is treated as rest
 // so the number shown during the day is the streak the user is defending.
-export function habitStreak(schedule, startKey, today, isDoneOnDate, { maxDays = 3660 } = {}) {
+export function habitStreak(schedule, startKey, today, isDoneOnDate, { maxDays = 3660, isExcused } = {}) {
   let streak = 0;
   let key = startKey;
   for (let i = 0; i < maxDays; i++) {
-    const st = dayStatus(schedule, key, today, isDoneOnDate);
+    const st = dayStatus(schedule, key, today, isDoneOnDate, isExcused);
     if (st === 'done') streak++;
     else if (st === 'missed') {
       if (key === today) { key = addDays(key, -1); continue; }
@@ -130,11 +133,11 @@ export function habitStreak(schedule, startKey, today, isDoneOnDate, { maxDays =
 }
 
 // Best (longest) streak between `fromKey` and `toKey` inclusive, same rules.
-export function bestHabitStreak(schedule, fromKey, toKey, today, isDoneOnDate) {
+export function bestHabitStreak(schedule, fromKey, toKey, today, isDoneOnDate, isExcused) {
   let best = 0, run = 0;
   let key = fromKey;
   while (key <= toKey) {
-    const st = dayStatus(schedule, key, today, isDoneOnDate);
+    const st = dayStatus(schedule, key, today, isDoneOnDate, isExcused);
     if (st === 'done') { run++; if (run > best) best = run; }
     else if (st === 'missed' && key !== today) run = 0;
     key = addDays(key, 1);

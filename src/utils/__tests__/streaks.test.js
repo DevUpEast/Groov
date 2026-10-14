@@ -58,3 +58,40 @@ describe('overall streak with schedules', () => {
     expect(bestOverallStreak('2026-10-01', '2026-10-06', '2026-10-06', () => only, isDone)).toBe(2);
   });
 });
+
+import { reconcileFreezes, freezesLeftInMonth, FREEZES_PER_MONTH } from '../streaks';
+
+describe('streak freezes', () => {
+  const statusFrom = (missed) => (k) => (missed.includes(k) ? 'missed' : 'done');
+
+  it('freezes up to two missed days per month, oldest first', () => {
+    const today = '2026-10-14';
+    const out = reconcileFreezes([], today, statusFrom(['2026-10-09', '2026-10-11', '2026-10-13']));
+    expect(out).toEqual(['2026-10-09', '2026-10-11']);
+    expect(freezesLeftInMonth(out, today)).toBe(0);
+    expect(FREEZES_PER_MONTH).toBe(2);
+  });
+
+  it('never freezes today and respects the floor', () => {
+    const out = reconcileFreezes([], '2026-10-14', statusFrom(['2026-10-14', '2026-10-08']), { floor: '2026-10-09' });
+    expect(out).toEqual([]);
+  });
+
+  it('gives a freeze back when the day is filled in later', () => {
+    const out = reconcileFreezes(['2026-10-12'], '2026-10-14', statusFrom([]));
+    expect(out).toEqual([]);
+  });
+
+  it('returns the same reference when nothing changes', () => {
+    const f = ['2026-10-12'];
+    expect(reconcileFreezes(f, '2026-10-14', statusFrom(['2026-10-12']))).toBe(f);
+  });
+
+  it('excused days keep the chain alive', () => {
+    const only = [{ id: 'a' }];
+    const isDone = (k) => ['2026-10-12', '2026-10-14'].includes(k);
+    const excused = (k) => k === '2026-10-13';
+    expect(overallStreak('2026-10-14', '2026-10-14', () => only, (k) => isDone(k), { isExcused: excused })).toBe(2);
+    expect(overallStreak('2026-10-14', '2026-10-14', () => only, (k) => isDone(k))).toBe(1);
+  });
+});

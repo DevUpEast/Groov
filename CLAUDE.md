@@ -94,7 +94,8 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 ## Key Behaviors
 
 - "Today" uses `dateOffset` (from Settings dev tools) to simulate different dates during development.
-- Volume habits track a numeric count; daily habits toggle 0/1. Only today can be logged.
+- Volume habits track a numeric count; daily habits toggle 0/1. Today is logged from the card; past days via long-press (yesterday) or `setHabitCountOn`/`toggleHabitDoneOn`; never the future.
+- Streak forgiveness: `settings.skips` ({date: [habitId]}, long-press "Skip today") and `settings.streakFreezes` (date list, 2 auto per month, reconciled in AppContext from the real date) are rest days for streak purposes (`isExcused`). Both sync via the settings row.
 - Streaks are computed on the fly; the overall streak counts a day only if every *scheduled* habit in that day's snapshot met its goal. Unscheduled days are rest days (chain preserved, no increment) and an unfinished today never breaks a streak.
 - Challenge days are auto-claimed from `TodayScreen` when all linked habits are done; expired challenges archive with a tiered reward modal.
 - Date keys must be local dates; several places still use `toISOString()` (UTC) and are tracked as a bug.
