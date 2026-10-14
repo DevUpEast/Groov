@@ -58,11 +58,18 @@ It will ask for the database password. After that `supabase db push`, `supabase 
 
 With those set, `eas build --platform ios --profile development` provisions the App ID, enables the Sign in with Apple capability (from `ios.usesAppleSignIn` in app.json) and signs the build without prompts.
 
+## 3b. What actually happened (2026-10-14)
+
+- The App Store Connect API key approach returned `Apple 401` for the provisioning API with both an App Manager and an Admin key, most likely an Issuer ID / key-type mismatch (Individual keys have no Issuer ID). Rather than debug it, the one-time credential setup was done by running `eas build --platform ios --profile preview` **interactively with the Apple ID login** (password + 2FA). The distribution certificate and ad hoc provisioning profile are now stored on Expo's servers, so every later build runs with `--non-interactive` and no Apple auth.
+- The API key is therefore only needed for `eas submit` (TestFlight / App Store). If that fails with 401, re-check the Issuer ID on the **Team Keys** tab of https://appstoreconnect.apple.com/access/integrations/api.
+- Registered device: Isaac's iPhone (UDID ending 601E). Add more with `eas device:create` (needs an interactive window).
+- Both providers verified: Google on the Android emulator (identity linked to the existing beastlyiceking@gmail.com account), Apple on the iPhone (private relay email, so it is a separate Groov account).
+
 ## 4. Testing
 
 - **Android emulator** (this PC): `npx expo run:android` or an EAS dev build. Google sign-in opens Chrome inside the emulator; Apple button is hidden.
 - **Web**: `npm run web`, Google works via full-page redirect; Apple hidden.
-- **iPhone/iPad**: install the EAS development build or TestFlight build. Both buttons appear. First Apple sign-in returns the name; subsequent ones do not (handled in code).
+- **iPhone/iPad**: `eas build --platform ios --profile preview --non-interactive --no-wait`, then open the build page from `eas build:list` **in Safari on the phone** (Chrome on iOS starts the install and silently drops it) and tap Install. If the icon is missing afterwards, check the App Library. Both buttons appear. First Apple sign-in returns the name; subsequent ones do not (handled in code).
 
 ## Notes
 
