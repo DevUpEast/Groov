@@ -10,7 +10,7 @@ import {
   syncChallenge, deleteChallengeSync, syncPastChallenge,
   syncSettings,
 } from '../services/sync';
-import { scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../utils/notifications';
+import { applyReminderSchedule, scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../utils/notifications';
 import { localDateKey, todayKey, addDays } from '../utils/dates';
 import { countBackStreak } from '../utils/streaks';
 import { loadDevMode, saveDevMode } from '../utils/devMode';
@@ -76,7 +76,9 @@ function migrateSettings(s) {
     return {
       ...DEFAULT_SETTINGS,
       ...s,
-      reminders: s.reminders.map(r => ({
+      // Per-habit reminders used to be mirrored in here; habit.reminder is now the
+      // only source of truth, so drop any stale mirrors.
+      reminders: s.reminders.filter(r => !r.habitId).map(r => ({
         ...r,
         time: r.time || { hour12: 8, minute: 0, ampm: 'AM' },
         enabled: r.enabled !== false,
@@ -269,7 +271,21 @@ export function AppProvider({ children }) {
     stateRef.current = { habits, completions, settings, challenges, pastChallenges, dailySnapshot };
   }, [habits, completions, settings, challenges, pastChallenges, dailySnapshot]);
 
-  // ── Evening reminder scheduling ──────────────────────────────────────────────
+  // ── Daily reminder scheduling ────────────────────────────────────────────────
+  // Make the OS schedule match settings.reminders + habit.reminder on launch and
+  // whenever either changes (including the master toggle). Keyed on the reminder
+  // fields only so a completion tap does not reschedule anything.
+  const habitReminderKey = JSON.stringify(habits.map(h => [h.id, h.name, h.icon, h.reminder ?? null]));
+  const remindersAppliedOnce = useRef(false);
+  useEffect(() => {
+    if (!loaded) return;
+    // Never show the OS permission dialog from the launch pass; only after the user
+    // changes a reminder (which is what the later runs of this effect represent).
+    applyReminderSchedule(settings, habits, { prompt: remindersAppliedOnce.current });
+    remindersAppliedOnce.current = true;
+  }, [loaded, settings.notificationsEnabled, settings.reminders, habitReminderKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Smart check-in (evening) scheduling ──────────────────────────────────────
   // Reschedule (or cancel) the evening habit reminder whenever completions or
   // relevant settings change. Uses real today — not the dev date offset — so the
   // notification fires at the right wall-clock time.
@@ -287,7 +303,7 @@ export function AppProvider({ children }) {
     } else {
       scheduleEveningHabitReminder(realToday, settings.eveningReminderHour ?? 20, settings.eveningReminderMinute ?? 0);
     }
-  }, [completions, habits, settings.eveningReminderEnabled, settings.notificationsEnabled, settings.eveningReminderHour, settings.eveningReminderMinute, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [completions, habits, settings.eveningReminderEnabled, settings.notificationsEnabled, settings.eveningReminderHour, settings.eveningReminderMinute, loaded, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cloud sync ───────────────────────────────────────────────────────────────
   // Runs once when the user logs in (userId changes from null → id) and after local data loads.
@@ -487,14 +503,11 @@ export function AppProvider({ children }) {
       linkedHabitIds: (ch.linkedHabitIds || []).filter(hid => hid !== id),
     }));
     setChallenges(updatedChallenges);
-    const updatedSettings = { ...settings, reminders: settings.reminders.filter(r => r.id !== `habit-${id}`) };
-    setSettings(updatedSettings);
     if (userId) {
       deleteHabitSync(userId, id);
       updatedChallenges.forEach(ch => syncChallenge(userId, ch));
-      syncSettings(userId, updatedSettings);
     }
-  }, [challenges, settings, userId]);
+  }, [challenges, userId]);
 
   const updateSettings = useCallback((updates) => {
     const next = { ...settings, ...updates };

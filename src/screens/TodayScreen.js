@@ -16,7 +16,6 @@ import TrophyCelebration from '../components/TrophyCelebration';
 import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import { successNotification, mediumImpact } from '../utils/haptics';
 import { fetchDailyNudge } from '../services/aiCoaching';
-import { scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../utils/notifications';
 import { localDateKey } from '../utils/dates';
 import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
 
@@ -123,19 +122,8 @@ export default function TodayScreen() {
       .finally(() => setNudgeLoading(false));
   }, [user, habits.length, canShowNudge]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Schedule a one-time evening notification if habits aren't done; cancel it when they are.
+  // The smart evening check-in is scheduled from AppContext (real date, not the dev offset).
   const allDone = isAllDone();
-  useEffect(() => {
-    if (!settings.notificationsEnabled || !settings.eveningReminderEnabled) {
-      cancelEveningHabitReminder(today);
-      return;
-    }
-    if (allDone || habits.length === 0) {
-      cancelEveningHabitReminder(today);
-    } else {
-      scheduleEveningHabitReminder(today, settings.eveningReminderHour ?? 20, settings.eveningReminderMinute ?? 0);
-    }
-  }, [allDone, today, habits.length, settings.notificationsEnabled, settings.eveningReminderEnabled, settings.eveningReminderHour, settings.eveningReminderMinute]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const completed = getCompletedCount();
   const total = habits.length;

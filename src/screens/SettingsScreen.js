@@ -7,18 +7,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import TimePicker from '../components/TimePicker';
-import { applyAllReminders, cancelNotification, scheduleHabitReminder, sendTestNotification } from '../utils/notifications';
-import { lightImpact, mediumImpact } from '../utils/haptics';
+import { sendTestNotification } from '../utils/notifications';
+import { lightImpact } from '../utils/haptics';
+import { to12h, to24h, formatTime12 as formatTime } from '../utils/time';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
 const DEV_CODE = 'devmode';
-
-function formatTime(t) {
-  if (!t) return '-';
-  const { hour12, minute, ampm } = t;
-  if (hour12 === undefined) return '-';
-  return `${hour12}:${String(minute).padStart(2, '0')} ${ampm}`;
-}
 
 
 function Row({ label, sublabel, right, theme, onPress }) {
@@ -35,6 +29,62 @@ function Row({ label, sublabel, right, theme, onPress }) {
     return <TouchableOpacity onPress={onPress} activeOpacity={0.7}>{content}</TouchableOpacity>;
   }
   return content;
+}
+
+// One reminder entry: label (editable for global reminders), enabled switch, time + remove.
+function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn, time, onToggle, onTime, onRemove, editing, labelDraft, onLabelDraft, onLabelSave, onStartEdit }) {
+  return (
+    <View style={[styles.reminderBlock, { borderTopColor: theme.border }]}>
+      <View style={styles.reminderLabelRow}>
+        {editing ? (
+          <TextInput
+            style={[styles.labelInput, { color: theme.text, borderColor: theme.border }]}
+            value={labelDraft}
+            onChangeText={onLabelDraft}
+            onBlur={onLabelSave}
+            onSubmitEditing={onLabelSave}
+            autoFocus
+            returnKeyType="done"
+          />
+        ) : (
+          <TouchableOpacity onPress={onStartEdit} style={{ flex: 1 }} activeOpacity={onStartEdit ? 0.7 : 1}>
+            <View style={styles.reminderLabelInner}>
+              {!!icon && <Text style={styles.habitReminderIcon}>{icon}</Text>}
+              <Text style={[styles.reminderLabel, { color: theme.text }]}>{label}</Text>
+              {!!badge && (
+                <View style={[styles.habitBadge, { backgroundColor: theme.primaryLight }]}>
+                  <Text style={[styles.habitBadgeText, { color: theme.primary }]}>{badge}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.reminderSublabel, { color: theme.textMuted }]}>
+              {!masterOn ? 'Notifications disabled' : sublabel ?? `Fires at ${formatTime(time)}`}
+            </Text>
+          </TouchableOpacity>
+        )}
+        <Switch
+          value={enabled && masterOn}
+          onValueChange={() => masterOn && onToggle()}
+          trackColor={{ false: theme.border, true: theme.primary }}
+          thumbColor="#fff"
+          style={{ opacity: masterOn ? 1 : 0.4 }}
+        />
+      </View>
+      <View style={styles.reminderActionsRow}>
+        <TouchableOpacity
+          style={[styles.timeBtn, { borderColor: theme.border, opacity: masterOn && enabled ? 1 : 0.4 }]}
+          onPress={() => masterOn && enabled && onTime()}
+        >
+          <Text style={[styles.timeBtnText, { color: theme.primary }]}>{formatTime(time)}</Text>
+        </TouchableOpacity>
+        {onRemove && (
+          <TouchableOpacity style={styles.deleteReminderBtn} onPress={onRemove}>
+            <Ionicons name="trash-outline" size={18} color={theme.danger} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
 }
 
 function Section({ title, children, theme }) {
@@ -188,64 +238,55 @@ export default function SettingsScreen() {
     }
   };
 
+  // Global reminders live in settings.reminders; per-habit reminders live on the habit.
+  // AppContext reschedules the OS notifications whenever either changes.
   const reminders = settings.reminders || [];
+  const habitReminders = habits.filter(h => h.reminder && h.reminder.hour12 !== undefined);
+  const masterOn = settings.notificationsEnabled;
 
-  const updateReminders = (newReminders) => {
-    updateSettings({ reminders: newReminders });
-    applyAllReminders({ ...settings, reminders: newReminders });
-  };
+  const updateReminders = (newReminders) => updateSettings({ reminders: newReminders });
 
-  const toggleReminderEnabled = (idx) => {
-    const r = reminders[idx];
-    const next = reminders.map((r2, i) => i === idx ? { ...r2, enabled: !r2.enabled } : r2);
-    updateReminders(next);
+  const toggleReminderEnabled = (idx) =>
+    updateReminders(reminders.map((r, i) => i === idx ? { ...r, enabled: !r.enabled } : r));
 
-    // If this reminder is linked to a habit, sync back
-    if (r.habitId) {
-      const habit = habits.find(h => h.id === r.habitId);
-      if (habit) updateHabit(r.habitId, { reminder: { ...(habit.reminder || {}), enabled: !r.enabled } });
-    }
-  };
-
-  const updateReminderTime = (idx, time) => {
-    const r = reminders[idx];
-    const next = reminders.map((r2, i) => i === idx ? { ...r2, time } : r2);
-    updateReminders(next);
-
-    // If this reminder is linked to a habit, sync back
-    if (r.habitId) {
-      const habit = habits.find(h => h.id === r.habitId);
-      if (habit) {
-        const updatedReminder = { hour12: time.hour12, minute: time.minute, ampm: time.ampm, enabled: r.enabled };
-        updateHabit(r.habitId, { reminder: updatedReminder });
-        if (settings.notificationsEnabled) {
-          scheduleHabitReminder({ ...habit, reminder: updatedReminder });
-        }
-      }
-    }
-  };
+  const updateReminderTime = (idx, time) =>
+    updateReminders(reminders.map((r, i) => i === idx ? { ...r, time } : r));
 
   const removeReminder = (idx) => {
-    const r = reminders[idx];
     if (settings.hapticsEnabled) lightImpact();
     Alert.alert('Remove Reminder', 'Delete this reminder?', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove', style: 'destructive', onPress: () => {
-          const next = reminders.filter((_, i) => i !== idx);
-          updateReminders(next);
-
-          // If linked to a habit, disable the habit's reminder and cancel notification
-          if (r.habitId) {
-            const habit = habits.find(h => h.id === r.habitId);
-            if (habit) {
-              updateHabit(r.habitId, { reminder: { ...(habit.reminder || {}), enabled: false } });
-              cancelNotification(`habit-${r.habitId}`);
-            }
-          }
-        },
-      },
+      { text: 'Remove', style: 'destructive', onPress: () => updateReminders(reminders.filter((_, i) => i !== idx)) },
     ]);
+  };
+
+  const addReminder = () => {
+    if (settings.hapticsEnabled) lightImpact();
+    updateReminders([
+      ...reminders,
+      { id: `r-${Date.now()}`, label: 'Reminder', time: { hour12: 12, minute: 0, ampm: 'PM' }, enabled: true },
+    ]);
+  };
+
+  const toggleHabitReminder = (habit) =>
+    updateHabit(habit.id, { reminder: { ...habit.reminder, enabled: !habit.reminder.enabled } });
+
+  const updateHabitReminderTime = (habit, t) =>
+    updateHabit(habit.id, { reminder: { ...habit.reminder, hour12: t.hour12, minute: t.minute, ampm: t.ampm, enabled: true } });
+
+  const removeHabitReminder = (habit) => {
+    if (settings.hapticsEnabled) lightImpact();
+    Alert.alert('Remove Reminder', `Turn off the reminder for "${habit.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => updateHabit(habit.id, { reminder: { ...habit.reminder, enabled: false } }) },
+    ]);
+  };
+
+  // Smart check-in: one-off evening nudge that only fires while habits are unfinished.
+  const eveningTime = to12h(settings.eveningReminderHour ?? 20, settings.eveningReminderMinute ?? 0);
+  const setEveningTime = (t) => {
+    const { hour, minute } = to24h(t);
+    updateSettings({ eveningReminderHour: hour, eveningReminderMinute: minute, eveningReminderEnabled: true });
   };
 
   const startEditLabel = (idx) => {
@@ -319,80 +360,68 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={settings.notificationsEnabled}
-                onValueChange={v => {
-                  updateSettings({ notificationsEnabled: v });
-                  applyAllReminders({ ...settings, notificationsEnabled: v });
-                }}
+                onValueChange={v => updateSettings({ notificationsEnabled: v })}
                 trackColor={{ false: theme.border, true: theme.primary }}
                 thumbColor="#fff"
               />
             }
           />
 
-          {reminders.map((r, i) => {
-            const linkedHabit = r.habitId ? habits.find(h => h.id === r.habitId) : null;
-            return (
-              <View key={r.id ?? i} style={[styles.reminderBlock, { borderTopColor: theme.border }]}>
-                {/* Label row */}
-                <View style={styles.reminderLabelRow}>
-                  {editingLabel === i && !r.habitId ? (
-                    <TextInput
-                      style={[styles.labelInput, { color: theme.text, borderColor: theme.border }]}
-                      value={labelDraft}
-                      onChangeText={setLabelDraft}
-                      onBlur={saveLabel}
-                      onSubmitEditing={saveLabel}
-                      autoFocus
-                      returnKeyType="done"
-                    />
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => !r.habitId && startEditLabel(i)}
-                      style={{ flex: 1 }}
-                      activeOpacity={r.habitId ? 1 : 0.7}
-                    >
-                      <View style={styles.reminderLabelInner}>
-                        {linkedHabit && (
-                          <Text style={styles.habitReminderIcon}>
-                            {linkedHabit.icon ?? '🔔'}
-                          </Text>
-                        )}
-                        <Text style={[styles.reminderLabel, { color: theme.text }]}>{r.label}</Text>
-                        {r.habitId && (
-                          <View style={[styles.habitBadge, { backgroundColor: theme.primaryLight }]}>
-                            <Text style={[styles.habitBadgeText, { color: theme.primary }]}>Habit</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={[styles.reminderSublabel, { color: theme.textMuted }]}>
-                        {settings.notificationsEnabled ? `Fires at ${formatTime(r.time)}` : 'Notifications disabled'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  <Switch
-                    value={r.enabled && settings.notificationsEnabled}
-                    onValueChange={() => settings.notificationsEnabled && toggleReminderEnabled(i)}
-                    trackColor={{ false: theme.border, true: theme.primary }}
-                    thumbColor="#fff"
-                    style={{ opacity: settings.notificationsEnabled ? 1 : 0.4 }}
-                  />
-                </View>
-                {/* Time + delete row */}
-                <View style={styles.reminderActionsRow}>
-                  <TouchableOpacity
-                    style={[styles.timeBtn, { borderColor: theme.border, opacity: settings.notificationsEnabled && r.enabled ? 1 : 0.4 }]}
-                    onPress={() => settings.notificationsEnabled && r.enabled && setTimeModal(i)}
-                  >
-                    <Text style={[styles.timeBtnText, { color: theme.primary }]}>{formatTime(r.time)}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.deleteReminderBtn} onPress={() => removeReminder(i)}>
-                    <Ionicons name="trash-outline" size={18} color={theme.danger} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
+          <ReminderBlock
+            theme={theme}
+            icon="🌙"
+            label="Smart Check-in"
+            sublabel={masterOn ? `Fires at ${formatTime(eveningTime)} only if habits are still unfinished` : undefined}
+            enabled={!!settings.eveningReminderEnabled}
+            masterOn={masterOn}
+            time={eveningTime}
+            onToggle={() => updateSettings({ eveningReminderEnabled: !settings.eveningReminderEnabled })}
+            onTime={() => setTimeModal({ kind: 'evening' })}
+          />
 
+          {reminders.map((r, i) => (
+            <ReminderBlock
+              key={r.id ?? i}
+              theme={theme}
+              label={r.label}
+              enabled={r.enabled}
+              masterOn={masterOn}
+              time={r.time}
+              onToggle={() => toggleReminderEnabled(i)}
+              onTime={() => setTimeModal({ kind: 'reminder', idx: i })}
+              onRemove={() => removeReminder(i)}
+              editing={editingLabel === i}
+              labelDraft={labelDraft}
+              onLabelDraft={setLabelDraft}
+              onLabelSave={saveLabel}
+              onStartEdit={() => startEditLabel(i)}
+            />
+          ))}
+
+          {habitReminders.map(h => (
+            <ReminderBlock
+              key={`habit-${h.id}`}
+              theme={theme}
+              icon={h.icon ?? '🔔'}
+              label={h.name}
+              badge="Habit"
+              enabled={!!h.reminder.enabled}
+              masterOn={masterOn}
+              time={h.reminder}
+              onToggle={() => toggleHabitReminder(h)}
+              onTime={() => setTimeModal({ kind: 'habit', id: h.id })}
+              onRemove={() => removeHabitReminder(h)}
+            />
+          ))}
+
+          <TouchableOpacity
+            style={[styles.addReminderBtn, { borderColor: theme.border, opacity: masterOn ? 1 : 0.4 }]}
+            onPress={() => masterOn && addReminder()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
+            <Text style={[styles.addReminderText, { color: theme.primary }]}>Add Reminder</Text>
+          </TouchableOpacity>
         </Section>
 
         {/* Feedback */}
@@ -669,20 +698,29 @@ export default function SettingsScreen() {
         </View>
       )}
 
-      {timeModal !== null && reminders[timeModal] && (
-        <TimePicker
-          visible={true}
-          hour12={reminders[timeModal].time?.hour12 ?? 8}
-          minute={reminders[timeModal].time?.minute ?? 0}
-          ampm={reminders[timeModal].time?.ampm ?? 'AM'}
-          onClose={() => setTimeModal(null)}
-          onSave={t => {
-            updateReminderTime(timeModal, t);
-            setTimeModal(null);
-          }}
-          theme={theme}
-        />
-      )}
+      {timeModal && (() => {
+        const habit = timeModal.kind === 'habit' ? habits.find(h => h.id === timeModal.id) : null;
+        const current = timeModal.kind === 'evening' ? eveningTime
+          : timeModal.kind === 'habit' ? habit?.reminder
+          : reminders[timeModal.idx]?.time;
+        if (!current) return null;
+        return (
+          <TimePicker
+            visible={true}
+            hour12={current.hour12 ?? 8}
+            minute={current.minute ?? 0}
+            ampm={current.ampm ?? 'AM'}
+            onClose={() => setTimeModal(null)}
+            onSave={t => {
+              if (timeModal.kind === 'evening') setEveningTime(t);
+              else if (timeModal.kind === 'habit') updateHabitReminderTime(habit, t);
+              else updateReminderTime(timeModal.idx, t);
+              setTimeModal(null);
+            }}
+            theme={theme}
+          />
+        );
+      })()}
 
     </SafeAreaView>
   );
