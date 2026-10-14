@@ -18,7 +18,7 @@ import { lightImpact, mediumImpact } from '../utils/haptics';
 import { describeSchedule, WEEKDAY_LABELS, DEFAULT_SCHEDULE } from '../utils/schedule';
 
 const ICONS = ['⭐', '🎯', '💪', '🧠', '✍️', '🎨', '🚶', '🛁', '🌿', '❤️', '💧', '🏃', '📚', '🧘', '😴', '🥗', '🍎', '☕', '🎵', '🌅'];
-const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE, color: null, timeOfDay: 'anytime', unit: '' };
+const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE, color: null, timeOfDay: 'anytime', unit: '', intention: '' };
 
 // Per-habit accent colours (null = theme primary). Chosen to read on light and dark.
 const HABIT_COLORS = [null, '#EF4444', '#F97316', '#EAB308', '#22C55E', '#14B8A6', '#3B82F6', '#A855F7', '#EC4899'];
@@ -305,6 +305,19 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   onSubmitEditing={Keyboard.dismiss}
                 />
 
+                <Text style={[styles.label, { color: theme.textMuted }]}>Plan (optional)</Text>
+                <TextInput
+                  style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+                  placeholder="After I… (e.g. brush my teeth, in the kitchen)"
+                  placeholderTextColor={theme.textMuted}
+                  value={form.intention || ''}
+                  onChangeText={intention => setForm(f => ({ ...f, intention }))}
+                  maxLength={80}
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                  accessibilityLabel="Implementation plan"
+                />
+
                 <Text style={[styles.label, { color: theme.textMuted }]}>Type</Text>
                 <View style={styles.typeRow}>
                   {['daily', 'volume'].map(t => (
@@ -534,6 +547,7 @@ export default function HabitsScreen() {
     setForm({
       name: habit.name, icon: habit.icon, type: habit.type, volumeGoal: habit.volumeGoal, customIconUri: habit.customIconUri ?? null,
       schedule: habit.schedule ?? DEFAULT_SCHEDULE, color: habit.color ?? null, timeOfDay: habit.timeOfDay ?? 'anytime', unit: habit.unit ?? '',
+      intention: habit.intention ?? '',
     });
     setModalVisible(true);
   };
@@ -545,6 +559,7 @@ export default function HabitsScreen() {
       ...form,
       name: form.name.trim(),
       unit: form.type === 'volume' ? (form.unit || '').trim() || null : null,
+      intention: (form.intention || '').trim() || null,
       volumeGoal: form.type === 'daily' ? 1 : Math.max(1, Number(form.volumeGoal) || 1),
     };
     if (editingId) {

@@ -158,8 +158,11 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
           <View style={{ flex: 1 }}>
             <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>{habit.name}</Text>
             <Text style={[styles.meta, { color: theme.textMuted }]}>
-              {describeSchedule(habit.schedule)}{habit.type === 'volume' ? ` · ${habit.volumeGoal}× a day` : ''}
+              {describeSchedule(habit.schedule)}{habit.type === 'volume' ? ` · ${habit.volumeGoal} ${habit.unit || '×'} a day` : ''}
             </Text>
+            {!!habit.intention && (
+              <Text style={[styles.meta, { color: theme.primary }]} numberOfLines={2}>After I {habit.intention}</Text>
+            )}
           </View>
           {onEdit && (
             <TouchableOpacity onPress={() => { close(); setTimeout(() => onEdit(habit), 250); }} style={[styles.editBtn, { borderColor: theme.border }]} accessibilityRole="button" accessibilityLabel="Edit habit">

@@ -76,7 +76,7 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 - `ChallengeScreen` — active & archived challenges (max 3 concurrent), create/edit sheet
 - `HabitsScreen` — create/edit/delete habits, per-habit reminders, emoji or photo icons
 - `SettingsScreen` — theme, notifications, haptics, account, data, hidden dev tools (date offset, seed history)
-- `OnboardingScreen` — 3-slide first-run walkthrough (rendered outside the navigator)
+- `OnboardingScreen` — first-run flow: 2 intro slides, starter-habit picker (`STARTER_HABITS`), per-habit time-of-day + implementation intention (`habit.intention`, "After I …"), then `completeOnboarding(habits)` creates them plus the 3-Day Kickstart (rendered outside the navigator)
 
 **Components** (`src/components/`): `HabitCard`, `HabitDetailSheet` (per-habit grid/stats, opened from the Habits list), `ProgressRing` (SVG), `TimePicker` (wheel-only modal), `BottomSheet`, `SheetHeader`, `EmptyCard`, `Slider`, `TrophyCelebration`, `CelebrationOverlay`, `CompletionCelebration`, `ChallengeRewardModal`
 

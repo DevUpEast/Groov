@@ -120,6 +120,15 @@ function AppNavigator() {
     }).start(() => { isAnimating.current = false; });
   }, [translateX]);
 
+  // Fresh onboarding always lands on Today, whatever tab was active before a reset.
+  useEffect(() => {
+    if (hasOnboarded && activeIndexRef.current !== 0) {
+      activeIndexRef.current = 0;
+      setActiveIndex(0);
+      translateX.setValue(0);
+    }
+  }, [hasOnboarded]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Navigate when a screen requests a tab switch
   useEffect(() => {
     if (requestedTab !== null) {
