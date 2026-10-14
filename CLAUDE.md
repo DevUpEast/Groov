@@ -49,7 +49,7 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 - **Expo SDK 54** / React Native 0.81.5 / React 19.1.0, JavaScript (tsconfig exists but all files are `.js`)
 - No file-based routing; no React Navigation library (custom pager in `App.js`)
 - **Supabase** for auth and cloud sync (`@supabase/supabase-js`), AsyncStorage as the local-first store
-- expo-av (deprecated, migration to expo-audio pending) + Web Audio API in `src/utils/sounds.js` (currently not wired in)
+- expo-audio (native) + Web Audio API in `src/utils/sounds.js`; chimes play on habit/challenge completion when `settings.soundEnabled`
 - expo-notifications for local per-habit and global reminders
 - react-native-svg for the progress ring; charts and heatmap are hand-built (no chart library installed)
 - expo-apple-authentication, expo-web-browser, expo-linking, expo-crypto for social sign-in
