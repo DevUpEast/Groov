@@ -13,7 +13,6 @@ import BottomSheet from '../components/BottomSheet';
 import EmptyCard from '../components/EmptyCard';
 import { SheetDragHandle } from '../components/SheetHeader';
 import TimePicker from '../components/TimePicker';
-import { scheduleHabitReminder } from '../utils/notifications';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 
 const ICONS = ['⭐', '🎯', '💪', '🧠', '✍️', '🎨', '🚶', '🛁', '🌿', '❤️', '💧', '🏃', '📚', '🧘', '😴', '🥗', '🍎', '☕', '🎵', '🌅'];
@@ -298,7 +297,7 @@ export default function HabitsScreen() {
   const {
     habits, addHabit, updateHabit, deleteHabit, theme,
     pendingHabitLinkChallenge, setPendingHabitLinkChallenge, linkHabitToChallenge,
-    setModalOpen, settings, updateSettings,
+    setModalOpen, settings,
   } = useApp();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -362,43 +361,15 @@ export default function HabitsScreen() {
     ]);
   };
 
-  const handleReminderSave = async (habitId, reminderData) => {
-    const updatedReminder = { ...reminderData, enabled: true };
-    const habit = habits.find(h => h.id === habitId);
-    updateHabit(habitId, { reminder: updatedReminder });
-    if (settings.notificationsEnabled) {
-      await scheduleHabitReminder({ ...habit, reminder: updatedReminder });
-    }
-
-    // Sync into settings.reminders so the entry appears in the Settings screen
-    const reminderId = `habit-${habitId}`;
-    const newEntry = {
-      id: reminderId,
-      label: habit.name,
-      time: { hour12: updatedReminder.hour12, minute: updatedReminder.minute, ampm: updatedReminder.ampm },
-      enabled: true,
-      habitId: habitId,
-    };
-    const existing = (settings.reminders || []);
-    const idx = existing.findIndex(r => r.id === reminderId);
-    const newReminders = idx >= 0
-      ? existing.map((r, i) => i === idx ? newEntry : r)
-      : [...existing, newEntry];
-    updateSettings({ reminders: newReminders });
-
+  // habit.reminder is the single source of truth; AppContext reschedules the OS
+  // notifications whenever it changes, and Settings lists it from the habit itself.
+  const handleReminderSave = (habitId, reminderData) => {
+    updateHabit(habitId, { reminder: { hour12: reminderData.hour12, minute: reminderData.minute, ampm: reminderData.ampm, enabled: true } });
     setReminderTarget(null);
   };
 
-  const handleReminderToggleOff = async (habit) => {
+  const handleReminderToggleOff = (habit) => {
     updateHabit(habit.id, { reminder: { ...habit.reminder, enabled: false } });
-    await scheduleHabitReminder({ ...habit, reminder: { enabled: false } });
-
-    // Mirror the disabled state in settings.reminders
-    const reminderId = `habit-${habit.id}`;
-    const existing = settings.reminders || [];
-    if (existing.some(r => r.id === reminderId)) {
-      updateSettings({ reminders: existing.map(r => r.id === reminderId ? { ...r, enabled: false } : r) });
-    }
   };
 
   const targetHabit = reminderTarget ? habits.find(h => h.id === reminderTarget) : null;
