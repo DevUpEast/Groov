@@ -4,7 +4,7 @@ import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage'
 import { themes } from '../theme/colors';
 import { useAuth } from './AuthContext';
 import {
-  pullAllData, pushAllLocalData, deleteAllUserData,
+  pullAllData, pullChangesSince, pushAllLocalData, deleteAllUserData,
   syncHabit, deleteHabitSync,
   syncCompletion, syncCompletionsForDate,
   syncChallenge, deleteChallengeSync, syncPastChallenge,
@@ -15,6 +15,7 @@ import { localDateKey, todayKey, addDays } from '../utils/dates';
 import { countBackStreak } from '../utils/streaks';
 import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
+import { mergeRecords, mergeCompletions, mergeSnapshots } from '../utils/mergeSync';
 
 const AppContext = createContext(null);
 
@@ -142,6 +143,10 @@ export function AppProvider({ children }) {
   const userId = user?.id ?? null;
   // Holds latest state snapshot for first-login cloud migration without re-triggering sync effect
   const stateRef = useRef({});
+  // Server-time cursor (ms since epoch, client clock) of the last successful cloud pull.
+  // null until the login-time full pull has completed.
+  const lastPulledAtRef = useRef(null);
+  const pullInFlightRef = useRef(false);
 
   // Bumped when the app returns to the foreground and at local midnight, so everything
   // derived from todayStr() re-evaluates when the calendar date changes while the app
@@ -344,6 +349,7 @@ export function AppProvider({ children }) {
           return;
         }
 
+        const pulledAt = Date.now();
         const hasCloudData = cloudData.habits !== null && cloudData.habits.length > 0;
         if (hasCloudData) {
           setHabits(cloudData.habits);
@@ -356,12 +362,46 @@ export function AppProvider({ children }) {
         } else {
           await pushAllLocalData(userId, stateRef.current);
         }
+        lastPulledAtRef.current = pulledAt;
       } catch (e) {
         if (__DEV__) console.warn('Cloud sync error:', e.message);
       }
     };
     sync();
   }, [userId, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Foreground pull ──────────────────────────────────────────────────────────
+  // When the app returns to the foreground, fetch everything the server has changed
+  // since the last pull (another device, or a push that completed while suspended)
+  // and merge it over local state. Deletions are reconciled against the cloud id lists.
+  useEffect(() => {
+    if (!loaded || !userId || clockTick === 0) return;
+    const since = lastPulledAtRef.current;
+    if (!since || pullInFlightRef.current) return;
+    pullInFlightRef.current = true;
+    const startedAt = Date.now();
+    // Generous margin for client/server clock skew; re-applying unchanged rows is harmless.
+    const sinceIso = new Date(since - 10 * 60 * 1000).toISOString();
+    pullChangesSince(userId, sinceIso)
+      .then((delta) => {
+        const sinceMs = since;
+        if (delta.habits.length || delta.habitIds) {
+          setHabits(prev => mergeRecords(prev, delta.habits, delta.habitIds, sinceMs));
+        }
+        if (delta.challenges.length || delta.challengeIds) {
+          setChallenges(prev => migrateChallenges(mergeRecords(prev, delta.challenges, delta.challengeIds, sinceMs)));
+        }
+        if (delta.pastChallenges.length) {
+          setPastChallenges(prev => mergeRecords(prev, delta.pastChallenges, null, sinceMs));
+        }
+        if (delta.completions.length) setCompletions(prev => mergeCompletions(prev, delta.completions));
+        if (delta.dailySnapshots.length) setDailySnapshot(prev => mergeSnapshots(prev, delta.dailySnapshots));
+        if (delta.settings) setSettings(migrateSettings(delta.settings));
+        lastPulledAtRef.current = startedAt;
+      })
+      .catch((e) => { if (__DEV__) console.warn('Foreground pull failed:', e.message); })
+      .finally(() => { pullInFlightRef.current = false; });
+  }, [clockTick, loaded, userId]);
 
   // ── Completion helpers ───────────────────────────────────────────────────────
 

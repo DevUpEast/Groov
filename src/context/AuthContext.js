@@ -255,15 +255,9 @@ export function AuthProvider({ children }) {
     // (TOKEN_REFRESHED events). Calling getSession() here would risk returning a stale
     // token if autoRefreshToken recently failed (e.g. stale Expo Go session).
     const token = session?.access_token;
-    // Delete all user data from database tables first
-    await deleteAllUserData(userId);
-    // Wipe local storage so any re-registration starts completely clean.
-    // Write the sentinel AFTER clearAll so it survives the wipe and AppContext
-    // can detect it on the next login and reset in-memory state too.
-    await clearAll();
-    await saveData('accountWasDeleted', true);
-    await clearDevMode();
-    // Call Edge Function to delete the auth user (requires service role)
+    // The edge function deletes every user-data row with the service role and then the
+    // auth user. Local data is only wiped once it has confirmed success, so a failed
+    // request (offline, server error) leaves the device fully usable and retryable.
     const res = await fetch(
       `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/delete-account`,
       {
@@ -275,8 +269,16 @@ export function AuthProvider({ children }) {
         },
       }
     );
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json.error || 'Failed to delete account');
+    // Belt and braces: the client's own RLS-scoped delete, in case the server missed a table.
+    await deleteAllUserData(userId).catch(() => {});
+    // Wipe local storage so any re-registration starts completely clean.
+    // Write the sentinel AFTER clearAll so it survives the wipe and AppContext
+    // can detect it on the next login and reset in-memory state too.
+    await clearAll();
+    await saveData('accountWasDeleted', true);
+    await clearDevMode();
     await supabase.auth.signOut();
   };
 
