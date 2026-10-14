@@ -82,3 +82,19 @@ describe('mergeSnapshots', () => {
     expect(out['2026-10-14']).toHaveLength(2);
   });
 });
+
+import { mergeNotes } from '../mergeSync';
+
+describe('mergeNotes', () => {
+  it('adds, replaces and removes notes from completion rows', () => {
+    const local = { '2026-10-13': { a: 'old' } };
+    const out = mergeNotes(local, [
+      { date: '2026-10-13', habit_id: 'a', note: 'new' },
+      { date: '2026-10-14', habit_id: 'b', note: 'hi' },
+      { date: '2026-10-14', habit_id: 'c', note: null },
+    ]);
+    expect(out).toEqual({ '2026-10-13': { a: 'new' }, '2026-10-14': { b: 'hi' } });
+    expect(mergeNotes(out, [{ date: '2026-10-13', habit_id: 'a', note: '' }])).toEqual({ '2026-10-14': { b: 'hi' } });
+    expect(mergeNotes(local, [])).toBe(local);
+  });
+});

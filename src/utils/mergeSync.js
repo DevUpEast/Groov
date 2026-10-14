@@ -49,3 +49,18 @@ export function mergeSnapshots(local, rows) {
   for (const row of rows) next[row.date] = row.snapshot;
   return next;
 }
+
+// Apply changed completion rows' notes ({ date, habit_id, note }) to the local
+// { date: { habitId: note } } map. A null/empty note removes the entry.
+export function mergeNotes(local, rows) {
+  if (!rows?.length) return local;
+  const next = { ...local };
+  for (const row of rows) {
+    const day = { ...(next[row.date] || {}) };
+    if (row.note) day[row.habit_id] = row.note;
+    else delete day[row.habit_id];
+    if (Object.keys(day).length > 0) next[row.date] = day;
+    else delete next[row.date];
+  }
+  return next;
+}

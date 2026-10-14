@@ -6,7 +6,7 @@ import { useAuth } from './AuthContext';
 import {
   pullAllData, pullChangesSince, pushAllLocalData, deleteAllUserData,
   syncHabit, deleteHabitSync,
-  syncCompletion, syncCompletionsForDate,
+  syncCompletion, syncCompletionsForDate, syncNote,
   syncChallenge, deleteChallengeSync, syncPastChallenge,
   syncSettings,
 } from '../services/sync';
@@ -16,7 +16,7 @@ import { overallStreak, bestOverallStreak, overallDayStatus, reconcileFreezes, f
 import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak, dayStatus } from '../utils/schedule';
 import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
-import { mergeRecords, mergeCompletions, mergeSnapshots } from '../utils/mergeSync';
+import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
 
 const AppContext = createContext(null);
 
@@ -146,8 +146,12 @@ function migrateChallenges(chs) {
 }
 
 export function AppProvider({ children }) {
-  const [habits, setHabits] = useState([]);
+  // Every habit, archived ones included. `habits` (below) is the active, ordered list
+  // that the rest of the app works with.
+  const [allHabits, setHabits] = useState([]);
   const [completions, setCompletions] = useState({});
+  // Free-text note per completion: { 'YYYY-MM-DD': { habitId: 'text' } }.
+  const [notes, setNotes] = useState({});
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [challenges, setChallenges] = useState([]);
   const [pastChallenges, setPastChallenges] = useState([]);
@@ -193,6 +197,12 @@ export function AppProvider({ children }) {
 
   const todayStr = useCallback(() => todayKey(dateOffset), [dateOffset, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const habits = useMemo(() => allHabits
+    .filter(h => !h.archived)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || (a.createdAt ?? '').localeCompare(b.createdAt ?? '') || a.id.localeCompare(b.id)),
+  [allHabits]);
+  const archivedHabits = useMemo(() => allHabits.filter(h => h.archived), [allHabits]);
+
   // These reflect the simulated date: past challenges archived in the "future" revert to
   // active, and history only shows challenges archived on or before the simulated date.
   const effectiveChallenges = useMemo(() => {
@@ -221,7 +231,7 @@ export function AppProvider({ children }) {
     // NOTE: userId is always null here (auth resolves asynchronously after mount).
     // Do NOT check lastUserId vs userId here — it will always look like a different user.
     // The user-switch check runs in the cloud sync effect below, where userId is known.
-    const [h, c, s, ch, ob, ds, pc, aca, savedOffset, pcr, dev] = await Promise.all([
+    const [h, c, s, ch, ob, ds, pc, aca, savedOffset, pcr, dev, n] = await Promise.all([
       loadData('habits'),
       loadData('completions'),
       loadData('settings'),
@@ -233,10 +243,12 @@ export function AppProvider({ children }) {
       loadData('dateOffset'),
       loadData('pendingChallengeRewards'),
       loadDevMode(),
+      loadData('notes'),
     ]);
 
     if (h) setHabits(migrateHabits(h));
     if (c) setCompletions(c);
+    if (n) setNotes(n);
     setSettings(migrateSettings(s));
     if (ch) {
       setChallenges(migrateChallenges(Array.isArray(ch) ? ch : [ch]));
@@ -268,8 +280,9 @@ export function AppProvider({ children }) {
   }
 
   // ── AsyncStorage persistence ─────────────────────────────────────────────────
-  useEffect(() => { if (loaded) saveData('habits', habits); }, [habits, loaded]);
+  useEffect(() => { if (loaded) saveData('habits', allHabits); }, [allHabits, loaded]);
   useEffect(() => { if (loaded) saveData('completions', completions); }, [completions, loaded]);
+  useEffect(() => { if (loaded) saveData('notes', notes); }, [notes, loaded]);
   useEffect(() => { if (loaded) saveData('settings', settings); }, [settings, loaded]);
   useEffect(() => { if (loaded) saveData('dateOffset', dateOffset); }, [dateOffset, loaded]);
   useEffect(() => { if (loaded) saveData('challenges', challenges); }, [challenges, loaded]);
@@ -288,8 +301,8 @@ export function AppProvider({ children }) {
   // Keep stateRef fresh so the cloud sync effect can access current state without
   // adding all these values to its dependency array (which would re-trigger on every mutation)
   useEffect(() => {
-    stateRef.current = { habits, completions, settings, challenges, pastChallenges, dailySnapshot };
-  }, [habits, completions, settings, challenges, pastChallenges, dailySnapshot]);
+    stateRef.current = { habits: allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot };
+  }, [allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot]);
 
   // ── Daily reminder scheduling ────────────────────────────────────────────────
   // Make the OS schedule match settings.reminders + habit.reminder on launch and
@@ -341,7 +354,7 @@ export function AppProvider({ children }) {
         // An empty state to reset to when switching/deleting accounts. Resetting stateRef
         // here (not just the React setters) ensures pushAllLocalData sends empty data
         // synchronously before React re-renders propagate the setter calls.
-        const emptyState = { habits: [], completions: {}, settings: DEFAULT_SETTINGS, challenges: [], pastChallenges: [], dailySnapshot: {} };
+        const emptyState = { habits: [], completions: {}, notes: {}, settings: DEFAULT_SETTINGS, challenges: [], pastChallenges: [], dailySnapshot: {} };
 
         if (accountWasDeleted) {
           // Account was explicitly deleted — the previous user's storage was already wiped in
@@ -350,6 +363,7 @@ export function AppProvider({ children }) {
           stateRef.current = emptyState;
           setHabits([]);
           setCompletions({});
+          setNotes({});
           setChallenges([]);
           setPastChallenges([]);
           setDailySnapshot({});
@@ -359,6 +373,7 @@ export function AppProvider({ children }) {
           stateRef.current = emptyState;
           setHabits([]);
           setCompletions({});
+          setNotes({});
           setChallenges([]);
           setPastChallenges([]);
           setDailySnapshot({});
@@ -391,6 +406,7 @@ export function AppProvider({ children }) {
         if (hasCloudData) {
           setHabits(migrateHabits(cloudData.habits));
           if (cloudData.completions) setCompletions(cloudData.completions);
+          if (cloudData.notes) setNotes(cloudData.notes);
           if (cloudData.settings) setSettings(migrateSettings(cloudData.settings));
           if (cloudData.challenges) setChallenges(migrateChallenges(cloudData.challenges));
           if (cloudData.pastChallenges) setPastChallenges(cloudData.pastChallenges);
@@ -432,7 +448,10 @@ export function AppProvider({ children }) {
         if (delta.pastChallenges.length) {
           setPastChallenges(prev => mergeRecords(prev, delta.pastChallenges, null, sinceMs));
         }
-        if (delta.completions.length) setCompletions(prev => mergeCompletions(prev, delta.completions));
+        if (delta.completions.length) {
+          setCompletions(prev => mergeCompletions(prev, delta.completions));
+          setNotes(prev => mergeNotes(prev, delta.completions));
+        }
         if (delta.dailySnapshots.length) setDailySnapshot(prev => mergeSnapshots(prev, delta.dailySnapshots));
         if (delta.settings) setSettings(migrateSettings(delta.settings));
         lastPulledAtRef.current = startedAt;
@@ -544,20 +563,54 @@ export function AppProvider({ children }) {
   }, [habits, completions, setHabitCountOn]);
 
   const addHabit = useCallback((habit) => {
-    const newHabit = { ...habit, schedule: normalizeSchedule(habit.schedule), id: Date.now().toString(), createdAt: todayStr() };
+    const sortOrder = habits.reduce((m, h) => Math.max(m, h.sortOrder ?? 0), -1) + 1;
+    const newHabit = { ...habit, schedule: normalizeSchedule(habit.schedule), sortOrder, id: Date.now().toString(), createdAt: todayStr() };
     setHabits(prev => [...prev, newHabit]);
     if (userId) syncHabit(userId, newHabit);
     return newHabit.id;
-  }, [todayStr, userId]);
+  }, [habits, todayStr, userId]);
 
   const updateHabit = useCallback((id, updates) => {
     if (updates.schedule) updates = { ...updates, schedule: normalizeSchedule(updates.schedule) };
     setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
     if (userId) {
-      const habit = habits.find(h => h.id === id);
+      const habit = allHabits.find(h => h.id === id);
       if (habit) syncHabit(userId, { ...habit, ...updates });
     }
-  }, [habits, userId]);
+  }, [allHabits, userId]);
+
+  // Archive keeps the history (heatmap, snapshots, streak past) but removes the habit
+  // from Today, reminders and challenges-to-claim. Reversible from the Habits screen.
+  const archiveHabit = useCallback((id) => updateHabit(id, { archived: true, reminder: undefined }), [updateHabit]);
+  const unarchiveHabit = useCallback((id) => updateHabit(id, { archived: false }), [updateHabit]);
+
+  // Move a habit one slot up or down in the active list and persist the new order.
+  const moveHabit = useCallback((id, delta) => {
+    const idx = habits.findIndex(h => h.id === id);
+    const to = idx + delta;
+    if (idx < 0 || to < 0 || to >= habits.length) return;
+    const order = habits.map(h => h.id);
+    order.splice(idx, 1);
+    order.splice(to, 0, id);
+    const rank = new Map(order.map((hid, i) => [hid, i]));
+    const updated = allHabits.map(h => (rank.has(h.id) ? { ...h, sortOrder: rank.get(h.id) } : h));
+    setHabits(updated);
+    if (userId) updated.filter(h => rank.has(h.id)).forEach(h => syncHabit(userId, h));
+  }, [habits, allHabits, userId]);
+
+  const getNote = useCallback((habitId, key) => (notes[key] || {})[habitId] || '', [notes]);
+
+  const setNote = useCallback((habitId, key, text) => {
+    const trimmed = (text || '').trim();
+    setNotes(prev => {
+      const day = { ...(prev[key] || {}) };
+      if (trimmed) day[habitId] = trimmed; else delete day[habitId];
+      const out = { ...prev };
+      if (Object.keys(day).length > 0) out[key] = day; else delete out[key];
+      return out;
+    });
+    if (userId) syncNote(userId, key, habitId, trimmed, (completions[key] || {})[habitId] || 0);
+  }, [userId, completions]);
 
   const deleteHabit = useCallback((id) => {
     setHabits(prev => prev.filter(h => h.id !== id));
@@ -802,6 +855,7 @@ export function AppProvider({ children }) {
     saveData('lastUserId', userId);
     setHabits([]);
     setCompletions({});
+    setNotes({});
     setSettings(DEFAULT_SETTINGS);
     setChallenges([]);
     setPastChallenges([]);
@@ -942,7 +996,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      habits, completions, settings, challenges, pastChallenges, hasOnboarded, theme, themeName,
+      habits, allHabits, archivedHabits, completions, notes, settings, challenges, pastChallenges, hasOnboarded, theme, themeName,
       effectiveChallenges, effectivePastChallenges,
       dateOffset, setDateOffset, accountCreatedAt, displayName,
       devMode, setDevMode,
@@ -955,7 +1009,8 @@ export function AppProvider({ children }) {
       getCompletedCount, isAllDone, isChallengeHabitsDone,
       incrementHabit, decrementHabit, setHabitCountOn, toggleHabitDoneOn,
       isHabitSkippedOn, toggleSkipHabitOn, isDayFrozen, isExcused, freezesLeft,
-      addHabit, updateHabit, deleteHabit,
+      addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit,
+      getNote, setNote,
       updateSettings,
       markChallengeDay, unmarkChallengeDay, editChallenge, createChallenge, deleteChallenge,
       archiveExpiredChallenge, completeChallengeImmediately,

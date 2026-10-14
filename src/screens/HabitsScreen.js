@@ -18,7 +18,16 @@ import { lightImpact, mediumImpact } from '../utils/haptics';
 import { describeSchedule, WEEKDAY_LABELS, DEFAULT_SCHEDULE } from '../utils/schedule';
 
 const ICONS = ['⭐', '🎯', '💪', '🧠', '✍️', '🎨', '🚶', '🛁', '🌿', '❤️', '💧', '🏃', '📚', '🧘', '😴', '🥗', '🍎', '☕', '🎵', '🌅'];
-const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE };
+const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE, color: null, timeOfDay: 'anytime', unit: '' };
+
+// Per-habit accent colours (null = theme primary). Chosen to read on light and dark.
+const HABIT_COLORS = [null, '#EF4444', '#F97316', '#EAB308', '#22C55E', '#14B8A6', '#3B82F6', '#A855F7', '#EC4899'];
+const TIME_OPTIONS = [
+  { value: 'anytime', label: 'Anytime' },
+  { value: 'morning', label: '🌅 Morning' },
+  { value: 'afternoon', label: '☀️ Afternoon' },
+  { value: 'evening', label: '🌙 Evening' },
+];
 
 const SCHEDULE_OPTIONS = [
   { type: 'daily', label: 'Every day' },
@@ -266,6 +275,25 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   theme={theme}
                 />
 
+                <Text style={[styles.label, { color: theme.textMuted }]}>Colour</Text>
+                <View style={styles.colorRow}>
+                  {HABIT_COLORS.map(c => {
+                    const active = (form.color || null) === c;
+                    return (
+                      <TouchableOpacity
+                        key={c || 'default'}
+                        style={[styles.colorDot, { backgroundColor: c || theme.primary, borderColor: active ? theme.text : 'transparent' }]}
+                        onPress={() => setForm(f => ({ ...f, color: c }))}
+                        accessibilityRole="button"
+                        accessibilityLabel={c ? `Colour ${c}` : 'Default colour'}
+                        accessibilityState={{ selected: active }}
+                      >
+                        {active && <Text style={styles.colorCheck}>✓</Text>}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
                 <Text style={[styles.label, { color: theme.textMuted }]}>Name</Text>
                 <TextInput
                   style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
@@ -287,7 +315,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                         { borderColor: form.type === t ? theme.primary : theme.border },
                         form.type === t && { backgroundColor: theme.primaryLight },
                       ]}
-                      onPress={() => setForm(f => ({ ...f, type: t }))}
+                      onPress={() => setForm(f => ({ ...f, type: t, volumeGoal: t === 'volume' && !(f.volumeGoal >= 2) ? 3 : f.volumeGoal }))}
                     >
                       <Text style={[styles.typeBtnText, { color: form.type === t ? theme.primary : theme.textMuted }]}>
                         {t === 'daily' ? '✓  Once a day' : '🔢  Volume goal'}
@@ -301,6 +329,24 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   onChange={schedule => setForm(f => ({ ...f, schedule }))}
                   theme={theme}
                 />
+
+                <Text style={[styles.label, { color: theme.textMuted }]}>Time of day</Text>
+                <View style={styles.timeRow}>
+                  {TIME_OPTIONS.map(opt => {
+                    const active = (form.timeOfDay || 'anytime') === opt.value;
+                    return (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={[styles.timeChip, { borderColor: active ? theme.primary : theme.border }, active && { backgroundColor: theme.primaryLight }]}
+                        onPress={() => setForm(f => ({ ...f, timeOfDay: opt.value }))}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                      >
+                        <Text style={[styles.timeChipText, { color: active ? theme.primary : theme.textMuted }]}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
                 {form.type === 'volume' && (
                   <>
@@ -333,6 +379,18 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                       <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>2</Text>
                       <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>{volMax}</Text>
                     </View>
+                    <Text style={[styles.label, { color: theme.textMuted }]}>Unit (optional)</Text>
+                    <TextInput
+                      style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+                      placeholder="glasses, pages, minutes…"
+                      placeholderTextColor={theme.textMuted}
+                      value={form.unit || ''}
+                      onChangeText={unit => setForm(f => ({ ...f, unit }))}
+                      maxLength={20}
+                      returnKeyType="done"
+                      onSubmitEditing={Keyboard.dismiss}
+                      accessibilityLabel="Unit"
+                    />
                   </>
                 )}
               </View>
@@ -351,12 +409,14 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
   );
 }
 
-function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen }) {
+function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen, reorder, onMove, isFirst, isLast }) {
   const reminderTime = formatReminder(habit.reminder);
   const reminderOn = habit.reminder?.enabled;
   const scheduleLabel = habit.schedule && habit.schedule.type !== 'daily' ? describeSchedule(habit.schedule) : null;
+  const accent = habit.color || theme.primary;
   return (
     <View style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      {habit.color ? <View style={[styles.rowStripe, { backgroundColor: accent }]} /> : null}
       {habit.customIconUri ? (
         <Image source={{ uri: habit.customIconUri }} style={styles.rowIconImage} />
       ) : (
@@ -367,9 +427,14 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen }) {
         <View style={styles.rowMeta}>
           <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
             <Text style={[styles.typePillText, { color: theme.primary }]}>
-              {habit.type === 'daily' ? 'Daily' : `${habit.volumeGoal}× / day`}
+              {habit.type === 'daily' ? 'Daily' : `${habit.volumeGoal} ${habit.unit || '×'} / day`}
             </Text>
           </View>
+          {habit.timeOfDay && habit.timeOfDay !== 'anytime' && (
+            <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
+              <Text style={[styles.typePillText, { color: theme.primary }]}>{TIME_OPTIONS.find(t => t.value === habit.timeOfDay)?.label}</Text>
+            </View>
+          )}
           {scheduleLabel && (
             <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
               <Text style={[styles.typePillText, { color: theme.primary }]}>📅 {scheduleLabel}</Text>
@@ -382,18 +447,48 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen }) {
           )}
         </View>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.bellBtn} onPress={onBell}>
-        <Ionicons
-          name={reminderOn ? 'notifications' : 'notifications-outline'}
-          size={20}
-          color={reminderOn ? theme.primary : theme.textMuted}
-        />
+      {reorder ? (
+        <>
+          <TouchableOpacity style={[styles.moveBtn, { borderColor: theme.border, opacity: isFirst ? 0.3 : 1 }]} onPress={() => !isFirst && onMove(-1)} accessibilityRole="button" accessibilityLabel="Move up">
+            <Ionicons name="chevron-up" size={18} color={theme.text} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.moveBtn, { borderColor: theme.border, opacity: isLast ? 0.3 : 1 }]} onPress={() => !isLast && onMove(1)} accessibilityRole="button" accessibilityLabel="Move down">
+            <Ionicons name="chevron-down" size={18} color={theme.text} />
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <TouchableOpacity style={styles.bellBtn} onPress={onBell} accessibilityRole="button" accessibilityLabel={reminderOn ? 'Turn reminder off' : 'Set reminder'}>
+            <Ionicons
+              name={reminderOn ? 'notifications' : 'notifications-outline'}
+              size={20}
+              color={reminderOn ? theme.primary : theme.textMuted}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.editBtn} onPress={onEdit} accessibilityRole="button" accessibilityLabel="Edit habit">
+            <Text style={[styles.editBtnText, { color: theme.textMuted }]}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} accessibilityRole="button" accessibilityLabel="Archive or delete habit">
+            <Ionicons name="archive-outline" size={18} color={theme.textMuted} />
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+}
+
+function ArchivedRow({ habit, theme, onRestore, onDelete }) {
+  return (
+    <View style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border, opacity: 0.75 }]}>
+      <Text style={styles.rowIcon}>{habit.icon ?? '📦'}</Text>
+      <View style={styles.rowInfo}>
+        <Text style={[styles.rowName, { color: theme.textMuted }]} numberOfLines={1}>{habit.name}</Text>
+      </View>
+      <TouchableOpacity style={styles.editBtn} onPress={onRestore} accessibilityRole="button" accessibilityLabel="Restore habit">
+        <Text style={[styles.editBtnText, { color: theme.primary }]}>Restore</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.editBtn} onPress={onEdit}>
-        <Text style={[styles.editBtnText, { color: theme.textMuted }]}>Edit</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
-        <Text style={styles.deleteBtnText}>✕</Text>
+      <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} accessibilityRole="button" accessibilityLabel="Delete habit permanently">
+        <Ionicons name="trash-outline" size={18} color={theme.danger} />
       </TouchableOpacity>
     </View>
   );
@@ -401,7 +496,7 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen }) {
 
 export default function HabitsScreen() {
   const {
-    habits, addHabit, updateHabit, deleteHabit, theme,
+    habits, archivedHabits, addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit, theme,
     pendingHabitLinkChallenge, setPendingHabitLinkChallenge, linkHabitToChallenge,
     setModalOpen, settings,
   } = useApp();
@@ -410,6 +505,7 @@ export default function HabitsScreen() {
   const [form, setForm] = useState(BLANK);
   const [reminderTarget, setReminderTarget] = useState(null);
   const [detailHabit, setDetailHabit] = useState(null);
+  const [reorder, setReorder] = useState(false);
 
   // Track modal open for swipe lock
   useEffect(() => { setModalOpen(modalVisible || !!reminderTarget || !!detailHabit); }, [modalVisible, reminderTarget, detailHabit]);
@@ -435,7 +531,10 @@ export default function HabitsScreen() {
 
   const openEdit = (habit) => {
     setEditingId(habit.id);
-    setForm({ name: habit.name, icon: habit.icon, type: habit.type, volumeGoal: habit.volumeGoal, customIconUri: habit.customIconUri ?? null, schedule: habit.schedule ?? DEFAULT_SCHEDULE });
+    setForm({
+      name: habit.name, icon: habit.icon, type: habit.type, volumeGoal: habit.volumeGoal, customIconUri: habit.customIconUri ?? null,
+      schedule: habit.schedule ?? DEFAULT_SCHEDULE, color: habit.color ?? null, timeOfDay: habit.timeOfDay ?? 'anytime', unit: habit.unit ?? '',
+    });
     setModalVisible(true);
   };
 
@@ -445,6 +544,7 @@ export default function HabitsScreen() {
     const habit = {
       ...form,
       name: form.name.trim(),
+      unit: form.type === 'volume' ? (form.unit || '').trim() || null : null,
       volumeGoal: form.type === 'daily' ? 1 : Math.max(1, Number(form.volumeGoal) || 1),
     };
     if (editingId) {
@@ -460,9 +560,18 @@ export default function HabitsScreen() {
     setModalVisible(false);
   };
 
+  // Archive is the default; permanent deletion is one more step away.
   const handleDelete = (id, name) => {
     if (settings.hapticsEnabled) lightImpact();
-    Alert.alert('Delete Habit', `Remove "${name}"? This can't be undone.`, [
+    Alert.alert('Archive Habit', `Archive "${name}"? It leaves Today but keeps its history, and you can restore it any time.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete forever', style: 'destructive', onPress: () => handleDeleteForever(id, name) },
+      { text: 'Archive', onPress: () => archiveHabit(id) },
+    ]);
+  };
+
+  const handleDeleteForever = (id, name) => {
+    Alert.alert('Delete Habit', `Permanently delete "${name}" and its history? This can't be undone.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deleteHabit(id) },
     ]);
@@ -486,9 +595,22 @@ export default function HabitsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <Text style={[styles.heading, { color: theme.text }]}>My Habits</Text>
-          <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.primary }]} onPress={openAdd}>
-            <Text style={styles.addBtnText}>+ Add</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {habits.length > 1 && (
+              <TouchableOpacity
+                style={[styles.reorderBtn, { borderColor: reorder ? theme.primary : theme.border, backgroundColor: reorder ? theme.primaryLight : 'transparent' }]}
+                onPress={() => { if (settings.hapticsEnabled) lightImpact(); setReorder(r => !r); }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: reorder }}
+                accessibilityLabel={reorder ? 'Finish reordering' : 'Reorder habits'}
+              >
+                <Ionicons name={reorder ? 'checkmark' : 'swap-vertical'} size={18} color={reorder ? theme.primary : theme.textMuted} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.primary }]} onPress={openAdd} accessibilityRole="button" accessibilityLabel="Add habit">
+              <Text style={styles.addBtnText}>+ Add</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {habits.length === 0 ? (
@@ -501,17 +623,36 @@ export default function HabitsScreen() {
             style={{ backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }}
           />
         ) : (
-          habits.map(habit => (
+          habits.map((habit, i) => (
             <HabitRow
               key={habit.id}
               habit={habit}
               theme={theme}
+              reorder={reorder}
+              isFirst={i === 0}
+              isLast={i === habits.length - 1}
+              onMove={(d) => { if (settings.hapticsEnabled) lightImpact(); moveHabit(habit.id, d); }}
               onEdit={() => openEdit(habit)}
               onOpen={() => { if (settings.hapticsEnabled) lightImpact(); setDetailHabit(habit); }}
               onDelete={() => handleDelete(habit.id, habit.name)}
               onBell={() => { lightImpact(); habit.reminder?.enabled ? handleReminderToggleOff(habit) : setReminderTarget(habit.id); }}
             />
           ))
+        )}
+
+        {archivedHabits.length > 0 && (
+          <View style={{ marginTop: 20 }}>
+            <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>ARCHIVED ({archivedHabits.length})</Text>
+            {archivedHabits.map(habit => (
+              <ArchivedRow
+                key={habit.id}
+                habit={habit}
+                theme={theme}
+                onRestore={() => { if (settings.hapticsEnabled) lightImpact(); unarchiveHabit(habit.id); }}
+                onDelete={() => handleDeleteForever(habit.id, habit.name)}
+              />
+            ))}
+          </View>
         )}
       </ScrollView>
 
@@ -568,10 +709,20 @@ const styles = StyleSheet.create({
   heading: { fontSize: 28, fontWeight: 'bold' },
   addBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  reorderBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 10 },
   row: {
     flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1,
-    padding: 14, marginBottom: 10,
+    padding: 14, marginBottom: 10, overflow: 'hidden',
   },
+  rowStripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  moveBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  colorDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
+  colorCheck: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  timeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
+  timeChipText: { fontSize: 13, fontWeight: '600' },
   rowIcon: { fontSize: 26, marginRight: 12 },
   rowIconImage: { width: 32, height: 32, borderRadius: 6, marginRight: 12 },
   rowInfo: { flex: 1 },

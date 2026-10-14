@@ -152,7 +152,7 @@ Deno.serve(async (req: Request) => {
 
     // Fetch habits with their individual creation dates + completions for the active period
     const [{ data: habits }, { data: completionRows }] = await Promise.all([
-      supabase.from('habits').select('id, name, icon, volume_goal, created_at, schedule').eq('user_id', user.id),
+      supabase.from('habits').select('id, name, icon, volume_goal, created_at, schedule').eq('user_id', user.id).eq('archived', false),
       supabase
         .from('completions')
         .select('date, habit_id, count')

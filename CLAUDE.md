@@ -86,8 +86,8 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 
 ## Data Models
 
-- **Habit:** `{ id, name, icon (emoji|null), customIconUri, type ('daily'|'volume'), volumeGoal, schedule, reminder: { enabled, hour12, minute, ampm }, createdAt }`. `schedule` is `{ type: 'daily' }` | `{ type: 'weekdays', days: [0-6] }` | `{ type: 'perWeek', target: 1-6 }` (missing = daily). All schedule/streak rules live in `src/utils/schedule.js` and `src/utils/streaks.js` (pure, Jest-tested; the edge functions mirror them in `supabase/functions/_shared/schedule.ts`).
-- **Completions:** keyed by `YYYY-MM-DD`, each date maps `habitId → count`. `dailySnapshot` records which habits existed each day so history stays accurate.
+- **Habit:** `{ id, name, icon (emoji|null), customIconUri, type ('daily'|'volume'), volumeGoal, unit, schedule, color (hex|null), timeOfDay ('anytime'|'morning'|'afternoon'|'evening'), archived, sortOrder, reminder: { enabled, hour12, minute, ampm }, createdAt }`. `AppContext.habits` is the active ordered list; `allHabits`/`archivedHabits` include archived ones. `schedule` is `{ type: 'daily' }` | `{ type: 'weekdays', days: [0-6] }` | `{ type: 'perWeek', target: 1-6 }` (missing = daily). All schedule/streak rules live in `src/utils/schedule.js` and `src/utils/streaks.js` (pure, Jest-tested; the edge functions mirror them in `supabase/functions/_shared/schedule.ts`).
+- **Completions:** keyed by `YYYY-MM-DD`, each date maps `habitId → count`. `notes` has the same shape with text values and rides on the `completions.note` column. `dailySnapshot` records which habits existed each day so history stays accurate.
 - **Challenge:** `{ id, name, description, days, icon, completedDays[], completed, startDate, linkedHabitIds[] }`. Tier (platinum/gold/silver/copper) is computed at archive time from completedDays/days via `getChallengeTier`.
 - **Settings:** `{ theme, soundEnabled, hapticsEnabled, notificationsEnabled, reminders[], eveningReminder* }`. `dateOffset` is stored separately (dev tool).
 

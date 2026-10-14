@@ -5,11 +5,13 @@ import { completionsInWeek } from '../utils/schedule';
 import { addDays } from '../utils/dates';
 import { lightImpact } from '../utils/haptics';
 
-export default function HabitCard({ habit, onIncrement, onDecrement }) {
+export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   const {
     getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, todayStr,
-    isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, settings,
+    isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, settings, getNote,
   } = useApp();
+  // Per-habit accent colour falls back to the theme primary.
+  const accent = habit.color || theme.primary;
   const count = getHabitCount(habit.id);
   const done = isHabitDone(habit);
   const today = todayStr();
@@ -22,7 +24,12 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
   const perWeek = habit.schedule?.type === 'perWeek' ? habit.schedule.target : 0;
   const weekDone = perWeek ? completionsInWeek(todayStr(), todayStr(), (k) => isHabitDoneOn(habit, k)) : 0;
   const weekLabel = perWeek ? (weekDone >= perWeek ? `✓ ${weekDone}/${perWeek} this week` : `${weekDone}/${perWeek} this week`) : null;
-  const subParts = [skipped ? '💤 Skipped today' : null, isVolume ? `${count}/${habit.volumeGoal} today` : null, weekLabel, streakLabel].filter(Boolean);
+  const note = getNote(habit.id, today);
+  const subParts = [
+    skipped ? '💤 Skipped today' : null,
+    isVolume ? `${count}/${habit.volumeGoal} ${habit.unit || 'today'}` : null,
+    weekLabel, streakLabel, note ? '📝' : null,
+  ].filter(Boolean);
 
   // Long-press: forgiveness actions (skip today keeps the streak; fix yesterday).
   const yesterday = addDays(today, -1);
@@ -32,6 +39,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
     Alert.alert(habit.name, 'Life happens. Pick an option:', [
       { text: skipped ? 'Unskip today' : 'Skip today (keeps streak)', onPress: () => toggleSkipHabitOn(habit.id, today) },
       { text: yesterdayDone ? "Undo yesterday's check" : 'Mark done yesterday', onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
+      ...(onNote ? [{ text: note ? 'Edit note' : 'Add a note', onPress: () => onNote(habit, today) }] : []),
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -47,8 +55,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
     <TouchableOpacity
       style={[
         styles.card,
-        { backgroundColor: theme.surface, borderColor: done ? theme.primary : theme.border },
-        done && { backgroundColor: theme.primaryLight },
+        { backgroundColor: theme.surface, borderColor: done ? accent : theme.border },
+        done && { backgroundColor: habit.color ? `${habit.color}1F` : theme.primaryLight },
         skipped && { opacity: 0.6, borderStyle: 'dashed' },
       ]}
       onPress={handleCardPress}
@@ -57,8 +65,9 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={`${habit.name}${isVolume ? `, ${count} of ${habit.volumeGoal}` : ''}${done ? ', done' : skipped ? ', skipped today' : ''}`}
-      accessibilityHint="Double tap to log. Long press for skip and yesterday options."
+      accessibilityHint="Double tap to log. Long press for skip, yesterday and note options."
     >
+      {habit.color ? <View style={[styles.stripe, { backgroundColor: habit.color }]} /> : null}
       {habit.customIconUri
         ? <Image source={{ uri: habit.customIconUri }} style={styles.iconImage} />
         : <Text style={styles.icon}>{habit.icon}</Text>
@@ -89,7 +98,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
           {/* When done: visual-only ✓ badge (touching it does nothing extra) */}
           {/* When not done: tappable + button */}
           {done ? (
-            <View style={[styles.counterBtn, { borderColor: theme.primary, backgroundColor: theme.primary }]}>
+            <View style={[styles.counterBtn, { borderColor: accent, backgroundColor: accent }]}>
               <Text style={[styles.counterBtnText, { color: '#fff' }]}>✓</Text>
             </View>
           ) : (
@@ -105,8 +114,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
         /* Daily habit: visual-only checkbox; the whole card handles the tap */
         <View style={[
           styles.checkbox,
-          { borderColor: done ? theme.primary : theme.border },
-          done && { backgroundColor: theme.primary },
+          { borderColor: done ? accent : theme.border },
+          done && { backgroundColor: accent },
         ]}>
           {done ? <Text style={styles.check}>✓</Text> : skipped ? <Text style={{ fontSize: 13 }}>💤</Text> : null}
         </View>
@@ -127,7 +136,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
+    overflow: 'hidden',
   },
+  stripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   icon: { fontSize: 26, marginRight: 12 },
   iconImage: { width: 32, height: 32, borderRadius: 6, marginRight: 12 },
   info: { flex: 1 },
