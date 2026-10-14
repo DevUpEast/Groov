@@ -78,7 +78,7 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 - `SettingsScreen` — theme, notifications, haptics, account, data, hidden dev tools (date offset, seed history)
 - `OnboardingScreen` — 3-slide first-run walkthrough (rendered outside the navigator)
 
-**Components** (`src/components/`): `HabitCard`, `ProgressRing` (SVG), `TimePicker` (wheel-only modal), `BottomSheet`, `SheetHeader`, `EmptyCard`, `Slider`, `TrophyCelebration`, `CelebrationOverlay`, `CompletionCelebration`, `ChallengeRewardModal`
+**Components** (`src/components/`): `HabitCard`, `HabitDetailSheet` (per-habit grid/stats, opened from the Habits list), `ProgressRing` (SVG), `TimePicker` (wheel-only modal), `BottomSheet`, `SheetHeader`, `EmptyCard`, `Slider`, `TrophyCelebration`, `CelebrationOverlay`, `CompletionCelebration`, `ChallengeRewardModal`
 
 **Utilities** (`src/utils/`): `storage.js` (AsyncStorage wrappers), `supabase.js` (client, PKCE), `sounds.js`, `haptics.js`, `notifications.js`
 
