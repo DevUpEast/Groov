@@ -65,6 +65,13 @@
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "isaac-23",
+          "project": "groov"
+        }
       ]
     ],
     "extra": {
