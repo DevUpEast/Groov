@@ -22,10 +22,10 @@ const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0';
 const BUILD_NUMBER = Application.nativeBuildVersion;
 const VERSION_LABEL = `Groov v${APP_VERSION}${BUILD_NUMBER ? ` (${BUILD_NUMBER})` : ''}`;
 
-// Hosted on GitHub Pages from docs/ (see docs/privacy.html, docs/terms.html).
-const SITE_URL = 'https://devupeast.github.io/Groov';
-const PRIVACY_URL = `${SITE_URL}/privacy.html`;
-const TERMS_URL = `${SITE_URL}/terms.html`;
+// Static site in site/, deployed by Cloudflare Pages at isaaceast.com/groov.
+const SITE_URL = 'https://isaaceast.com/groov';
+const PRIVACY_URL = `${SITE_URL}/privacy-policy`;
+const TERMS_URL = `${SITE_URL}/terms`;
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light' },
