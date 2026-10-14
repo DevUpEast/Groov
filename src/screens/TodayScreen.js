@@ -15,6 +15,7 @@ import CompletionCelebration from '../components/CompletionCelebration';
 import TrophyCelebration from '../components/TrophyCelebration';
 import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import { successNotification, mediumImpact } from '../utils/haptics';
+import { playChime, playSuccessChime, playChallengeChime, playHornFanfare } from '../utils/sounds';
 import { fetchDailyNudge } from '../services/aiCoaching';
 import { localDateKey } from '../utils/dates';
 import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
@@ -173,6 +174,7 @@ export default function TodayScreen() {
   const handleIncrement = useCallback(async (habit) => {
     const justCompleted = incrementHabit(habit.id);
     if (settings.hapticsEnabled) await mediumImpact();
+    if (settings.soundEnabled) (justCompleted ? playSuccessChime : playChime)();
 
     if (justCompleted) {
       // Compute synchronously: this habit just hit its goal; check every other habit
@@ -184,6 +186,10 @@ export default function TodayScreen() {
       });
 
       const { anyClaimed, anyComplete } = autoClaimChallenges(habit.id);
+      if (settings.soundEnabled && anyClaimed) {
+        // Let the habit chime finish before the challenge sound starts.
+        setTimeout(anyComplete ? playHornFanfare : playChallengeChime, 320);
+      }
       if (anyComplete) setTimeout(() => setTrophyCelebrating(true), 100);
 
       if (willAllBeDone && !allDoneCelebrated.current) {
@@ -229,8 +235,12 @@ export default function TodayScreen() {
       });
     } else {
       selectAllHabitsToday();
+      if (settings.soundEnabled) playSuccessChime();
       // assumeAllDone=true because selectAllHabitsToday hasn't flushed to state yet
       const { anyClaimed, anyComplete } = autoClaimChallenges(null, true);
+      if (settings.soundEnabled && anyClaimed) {
+        setTimeout(anyComplete ? playHornFanfare : playChallengeChime, 320);
+      }
 
       if (!allDoneCelebrated.current) {
         allDoneCelebrated.current = true;

@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import TimePicker from '../components/TimePicker';
 import { sendTestNotification } from '../utils/notifications';
 import { lightImpact } from '../utils/haptics';
+import { playSuccessChime } from '../utils/sounds';
 import { to12h, to24h, formatTime12 as formatTime } from '../utils/time';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
@@ -449,6 +450,22 @@ export default function SettingsScreen() {
 
         {/* Feedback */}
         <Section title="FEEDBACK" theme={theme}>
+          <Row
+            label="Sounds"
+            sublabel="Chimes when you complete habits and challenges"
+            theme={theme}
+            right={
+              <Switch
+                value={settings.soundEnabled}
+                onValueChange={v => {
+                  updateSettings({ soundEnabled: v });
+                  if (v) playSuccessChime();
+                }}
+                trackColor={{ false: theme.border, true: theme.primary }}
+                thumbColor="#fff"
+              />
+            }
+          />
           <Row
             label="Haptic Feedback"
             sublabel="Vibration on check-off (device only)"

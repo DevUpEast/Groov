@@ -1,6 +1,10 @@
 import { Platform } from 'react-native';
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
+
+// Short synthesised chimes. On web they are generated live with the Web Audio API;
+// on iOS/Android a tiny WAV is rendered once per tone, cached in the document
+// directory and played through expo-audio. Callers gate on settings.soundEnabled.
 
 // ─── Web Audio API (browser) ──────────────────────────────────────────────────
 
@@ -32,7 +36,7 @@ async function playToneWeb(frequency, duration, gainValue = 0.25) {
   } catch { /* silent */ }
 }
 
-// ─── Native audio via expo-av ─────────────────────────────────────────────────
+// ─── Native audio via expo-audio ─────────────────────────────────────────────
 
 function buildWAV(frequency, duration, gain = 0.45) {
   const sampleRate = 22050;
@@ -82,28 +86,25 @@ function uint8ToBase64(bytes) {
   return result;
 }
 
-// ─── Audio mode — singleton promise so concurrent tones don't race each other ──
-// (playChime fires 3 tones nearly simultaneously; 3 parallel setAudioModeAsync
-// calls racing each other would corrupt the audio session on some platforms)
-
+// Audio mode is configured once; a singleton promise keeps the near-simultaneous
+// tones of a multi-note chime from racing each other.
 let audioModePromise = null;
 
 function ensureAudioMode() {
   if (audioModePromise) return audioModePromise;
-  audioModePromise = Audio.setAudioModeAsync({
-    playsInSilentModeIOS: true,
-    allowsRecordingIOS: false,
-    staysActiveInBackground: false,
-    shouldDuckAndroid: true,
-    playThroughEarpieceAndroid: false,
+  audioModePromise = setAudioModeAsync({
+    playsInSilentMode: true,
+    interruptionMode: 'mixWithOthers',
+    allowsRecording: false,
+    shouldPlayInBackground: false,
   }).catch(e => {
     console.warn('[Sound] setAudioModeAsync failed:', e?.message ?? e);
-    audioModePromise = null; // reset so next call retries
+    audioModePromise = null; // reset so the next call retries
   });
   return audioModePromise;
 }
 
-// ─── WAV file cache (documentDirectory = stable, never cleared by OS) ─────────
+// ─── WAV file cache (documentDirectory is stable, never cleared by the OS) ───
 
 const memCache = {}; // key → file URI (in-memory, reset on app restart)
 
@@ -112,7 +113,7 @@ async function getOrCreateWav(key, frequency, duration, gain) {
 
   const uri = `${FileSystem.documentDirectory}snd_${key}.wav`;
 
-  // Reuse file written in a previous session
+  // Reuse a file written in a previous session
   const info = await FileSystem.getInfoAsync(uri);
   if (!info.exists) {
     const wav = buildWAV(frequency, duration, gain);
@@ -132,13 +133,22 @@ async function playToneNative(frequency, duration, gain = 0.3) {
     const key = `${frequency}_${Math.round(duration * 1000)}_${Math.round(gain * 100)}`;
     const uri = await getOrCreateWav(key, frequency, duration, gain);
 
-    const { sound } = await Audio.Sound.createAsync(
-      { uri },
-      { volume: 1.0, shouldPlay: true }
-    );
-    sound.setOnPlaybackStatusUpdate(status => {
-      if (status.didJustFinish) sound.unloadAsync().catch(() => {});
+    const player = createAudioPlayer({ uri }, { updateInterval: 100 });
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      try { sub.remove(); } catch {}
+      try { player.remove(); } catch {}
+    };
+    const sub = player.addListener('playbackStatusUpdate', (status) => {
+      if (status.didJustFinish) release();
     });
+    // Safety net in case didJustFinish never arrives (e.g. interrupted playback).
+    setTimeout(release, duration * 1000 + 1500);
+
+    player.volume = 1.0;
+    player.play();
   } catch (e) {
     console.warn('[Sound] playback failed:', e?.message ?? e);
   }
@@ -157,18 +167,18 @@ function playTone(frequency, duration, gain = 0.3) {
 // ─── Public chime functions ───────────────────────────────────────────────────
 // All sounds kept soft (gain ≤ 0.18) and brief (total ≤ 350 ms).
 
-// Single soft ding — habit check-off
+// Single soft ding — a volume habit ticked up one step
 export function playChime() {
   playTone(1047, 0.13, 0.16);
 }
 
-// Two ascending notes — habit fully completed
+// Two ascending notes — a habit reached its goal
 export function playSuccessChime() {
   playTone(784, 0.11, 0.15);
   setTimeout(() => playTone(1047, 0.14, 0.13), 90);
 }
 
-// Three ascending notes — challenge milestone
+// Three ascending notes — a challenge day claimed
 export function playChallengeChime() {
   playTone(659, 0.10, 0.14);
   setTimeout(() => playTone(784, 0.10, 0.13), 85);
@@ -181,39 +191,4 @@ export function playHornFanfare() {
   setTimeout(() => playTone(659, 0.10, 0.13), 80);
   setTimeout(() => playTone(784, 0.10, 0.12), 160);
   setTimeout(() => playTone(1047, 0.16, 0.12), 240);
-}
-
-// ─── Sound option samples (for user to test and choose) ───────────────────────
-
-// Option 1 — "Clean Ding": single crisp bell
-export function playSoundSample1() {
-  playTone(1209, 0.13, 0.18);
-}
-
-// Option 2 — "Two-Tap": two quick ascending notes
-export function playSoundSample2() {
-  playTone(523, 0.10, 0.16);
-  setTimeout(() => playTone(784, 0.13, 0.14), 75);
-}
-
-// Option 3 — "Soft Rise": three gentle ascending notes
-export function playSoundSample3() {
-  [440, 554, 659].forEach((f, i) => setTimeout(() => playTone(f, 0.11, 0.15), i * 90));
-}
-
-// Option 4 — "Sparkle": four rapid bright notes
-export function playSoundSample4() {
-  [659, 784, 988, 1319].forEach((f, i) => setTimeout(() => playTone(f, 0.09, 0.15), i * 52));
-}
-
-// Option 5 — "Pop": short punchy double-tone
-export function playSoundSample5() {
-  playTone(660, 0.11, 0.18);
-  setTimeout(() => playTone(990, 0.13, 0.14), 42);
-}
-
-// Option 6 — "Coin": two soft metallic tones
-export function playSoundSample6() {
-  playTone(1320, 0.08, 0.22);
-  setTimeout(() => playTone(1760, 0.12, 0.17), 52);
 }
