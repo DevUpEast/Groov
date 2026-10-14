@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy | Groov</title>
+  <meta name="description" content="What the Groov habit tracker collects, why, who processes it and how to delete it." />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --indigo: #4F46E5; --indigo-light: #EEF2FF; --indigo-mid: #818CF8;
+      --text: #111827; --muted: #6B7280; --border: #E5E7EB; --bg: #F9FAFB; --white: #ffffff;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.75; font-size: 16px; }
+    nav { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-links { display: flex; align-items: center; gap: 24px; list-style: none; }
+    .nav-links a { color: var(--muted); font-size: 14px; font-weight: 500; text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover { color: var(--indigo); }
+    @media (max-width: 600px) { .nav-links { display: none; } }
+    .logo-text { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+    .hero { background: linear-gradient(135deg, var(--indigo) 0%, #6366F1 60%, var(--indigo-mid) 100%); color: white; padding: 64px 24px 56px; text-align: center; }
+    .hero h1 { font-family: 'Sora', sans-serif; font-size: clamp(28px, 5vw, 42px); font-weight: 700; letter-spacing: -0.5px; margin-bottom: 12px; }
+    .hero p { font-size: 16px; color: #fff; max-width: 520px; margin: 0 auto; }
+    .effective-badge { display: inline-block; margin-top: 20px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 99px; padding: 5px 16px; font-size: 13px; font-weight: 500; letter-spacing: 0.2px; }
+    main { max-width: 740px; margin: 0 auto; padding: 56px 24px 80px; }
+    .toc { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-bottom: 48px; }
+    .toc h2 { font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 14px; }
+    .toc ol { list-style: none; counter-reset: toc; display: flex; flex-direction: column; gap: 8px; }
+    .toc ol li { counter-increment: toc; display: flex; align-items: baseline; gap: 10px; }
+    .toc ol li::before { content: counter(toc, decimal-leading-zero); font-size: 11px; font-weight: 600; color: var(--indigo-mid); min-width: 22px; }
+    .toc ol li a { color: var(--text); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.15s; }
+    .toc ol li a:hover { color: var(--indigo); }
+    section { margin-bottom: 48px; }
+    section h2 { font-family: 'Sora', sans-serif; font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid var(--indigo-light); display: flex; align-items: center; gap: 10px; }
+    section h3 { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 600; color: var(--text); margin: 18px 0 8px; }
+    .section-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: var(--indigo); color: white; border-radius: 6px; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    p { margin-bottom: 14px; color: #374151; }
+    p:last-child { margin-bottom: 0; }
+    ul, ol { padding-left: 20px; margin-bottom: 14px; color: #374151; }
+    li { margin-bottom: 6px; }
+    .data-table { width: 100%; border-collapse: collapse; margin: 16px 0 20px; font-size: 14px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+    .data-table thead { background: var(--indigo); color: white; }
+    .data-table thead th { padding: 11px 16px; text-align: left; font-weight: 600; font-size: 13px; letter-spacing: 0.2px; }
+    .data-table tbody tr:nth-child(even) { background: var(--indigo-light); }
+    .data-table tbody tr:nth-child(odd) { background: var(--white); }
+    .data-table tbody td { padding: 10px 16px; color: #374151; border-top: 1px solid var(--border); vertical-align: top; }
+    .callout { background: var(--indigo-light); border-left: 3px solid var(--indigo); border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; font-size: 14px; color: #3730A3; }
+    .callout strong { font-weight: 600; }
+    .warn-callout { background: #FEF3C7; border-left: 3px solid #F59E0B; border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 16px 0; font-size: 14px; color: #92400E; }
+    a { color: var(--indigo); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .contact-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 24px 28px; margin-top: 12px; }
+    .contact-card p { margin-bottom: 6px; font-size: 15px; }
+    .contact-card strong { font-weight: 600; color: var(--text); }
+    footer { text-align: center; padding: 32px 24px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); background: var(--white); }
+    footer a { color: var(--indigo); }
+    @media (max-width: 600px) { .data-table { font-size: 13px; } .data-table thead th, .data-table tbody td { padding: 9px 12px; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">
+    <img src="favicon.png" alt="Groov" width="32" height="32" style="border-radius:8px;" />
+    <span class="logo-text">Groov</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="support.html">Support</a></li>
+    <li><a href="privacy-policy.html">Privacy Policy</a></li>
+    <li><a href="terms.html">Terms of Use</a></li>
+  </ul>
+</nav>
+
+<div class="hero">
+  <h1>Privacy Policy</h1>
+  <p>Your habit data is yours. Here is exactly what Groov collects, why, who processes it, and how to delete it.</p>
+  <span class="effective-badge">Effective October 14, 2026</span>
+</div>
+
+<main>
+
+  <div class="toc">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#information">Information We Collect</a></li>
+      <li><a href="#how-we-use">How We Use Your Information</a></li>
+      <li><a href="#ai-coach">AI Coaching</a></li>
+      <li><a href="#storage">Data Storage &amp; Security</a></li>
+      <li><a href="#sharing">Who Processes Your Data</a></li>
+      <li><a href="#notifications">Notifications</a></li>
+      <li><a href="#children">Children's Privacy</a></li>
+      <li><a href="#your-rights">Your Rights &amp; Choices</a></li>
+      <li><a href="#deletion">Deleting Your Data or Account</a></li>
+      <li><a href="#ccpa">California &amp; Other Regional Rights</a></li>
+      <li><a href="#changes">Changes to This Policy</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ol>
+  </div>
+
+  <section id="information">
+    <h2><span class="section-num">1</span> Information We Collect</h2>
+    <p>Groov collects only what it needs to keep your habits in sync across your devices and to coach you. We do not sell your data, we show no advertising, and we use no advertising identifiers or third-party analytics.</p>
+
+    <table class="data-table">
+      <thead>
+        <tr><th>Data</th><th>Examples</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Account</strong></td>
+          <td>Email address and a hashed password (email sign-up), or the name and email your Apple or Google account shares when you sign in with them; your display name</td>
+          <td>Signing you in, greeting you, personalising coaching</td>
+        </tr>
+        <tr>
+          <td><strong>Habit data</strong></td>
+          <td>Habits (name, icon, type, goal, reminder time), daily completions, the list of habits that existed each day, challenges and their progress</td>
+          <td>Core functionality and cloud sync</td>
+        </tr>
+        <tr>
+          <td><strong>Settings</strong></td>
+          <td>Theme, notification, sound and haptic preferences, reminder times</td>
+          <td>Keeping your preferences across devices</td>
+        </tr>
+        <tr>
+          <td><strong>Photos (optional)</strong></td>
+          <td>A photo you choose as a habit icon. The image stays on your device; we store only its file path</td>
+          <td>Showing your custom icon on that device</td>
+        </tr>
+        <tr>
+          <td><strong>Crash reports</strong></td>
+          <td>Error and stack trace, device model, OS version, app version, a random installation id, your account id</td>
+          <td>Finding and fixing bugs</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>We do not collect your location, contacts, payment details, advertising identifiers or any government-issued identifiers. Apple lets you hide your real email address when you sign in with Apple; we only receive what you approve.</p>
+  </section>
+
+  <section id="how-we-use">
+    <h2><span class="section-num">2</span> How We Use Your Information</h2>
+    <p>Your information is used only to:</p>
+    <ul>
+      <li>Create and sign you in to your account</li>
+      <li>Sync your habits, completions, challenges and settings across your devices and restore them after a reinstall</li>
+      <li>Generate your daily nudge and weekly or monthly reflection (see section 3)</li>
+      <li>Find and fix crashes</li>
+    </ul>
+    <p>We do not use your data to build advertising profiles or to infer sensitive characteristics about you.</p>
+  </section>
+
+  <section id="ai-coach">
+    <h2><span class="section-num">3</span> AI Coaching</h2>
+    <p>Groov's AI coach writes a short daily nudge and, on request, a weekly or monthly reflection. To do that, our server sends the following to Anthropic's Claude API: your habit names and icons, your completion statistics for the recent period (counts, streaks and completion rates), how long you have been using Groov, and your display name.</p>
+    <p>Anthropic processes this under its commercial API terms, which do not permit using the data to train its models. The generated message is cached on our server so it is not regenerated every time you open the app, and it is deleted with your account.</p>
+    <div class="callout"><strong>Not sent:</strong> your email address, your password, your photos, or anything from your device other than the habit statistics listed above.</div>
+  </section>
+
+  <section id="storage">
+    <h2><span class="section-num">4</span> Data Storage &amp; Security</h2>
+    <p>Your account and habit data are stored with <strong>Supabase</strong>. Every database table enforces row-level security, so an account can only read and write its own records.</p>
+    <ul>
+      <li>Data travels over HTTPS and is encrypted at rest by Supabase.</li>
+      <li>Passwords are hashed by Supabase's authentication service; we never see them.</li>
+      <li>Sign-in tokens are stored on your device so you stay signed in; the app keeps a local copy of your habit data so it works offline.</li>
+      <li>The key used to call the AI service lives only on our server and is never shipped inside the app.</li>
+    </ul>
+  </section>
+
+  <section id="sharing">
+    <h2><span class="section-num">5</span> Who Processes Your Data</h2>
+    <p>We do not sell, rent or share your personal information with anyone for their own purposes. These providers process data on our instructions:</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Provider</th><th>Purpose</th><th>Data</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Supabase</strong></td><td>Authentication, database, server functions</td><td>Account and habit data</td></tr>
+        <tr><td><strong>Anthropic</strong></td><td>Generating coaching messages</td><td>Habit names, completion statistics, display name</td></tr>
+        <tr><td><strong>Apple / Google</strong></td><td>Optional sign-in</td><td>Identity token, name, email</td></tr>
+        <tr><td><strong>Sentry</strong></td><td>Crash reporting</td><td>Crash details, device and app version, account id</td></tr>
+      </tbody>
+    </table>
+    <p>We may also disclose data if required by law or to protect the rights and safety of users, and if Groov is ever transferred to a new owner your data would move with it under protections equivalent to this policy.</p>
+  </section>
+
+  <section id="notifications">
+    <h2><span class="section-num">6</span> Notifications</h2>
+    <p>All Groov reminders are scheduled locally on your device. We do not run a push notification service and do not hold push tokens. You can change or disable every reminder in the app's Settings, or turn off notifications for Groov in your device settings.</p>
+  </section>
+
+  <section id="children">
+    <h2><span class="section-num">7</span> Children's Privacy</h2>
+    <p>Groov is intended for users aged 13 and older (or the minimum age for online services in your country). We do not knowingly collect personal information from children under that age. If you believe a child has created an account, contact us (section 12) and we will delete it.</p>
+  </section>
+
+  <section id="your-rights">
+    <h2><span class="section-num">8</span> Your Rights &amp; Choices</h2>
+    <ul>
+      <li><strong>Access and correct:</strong> everything we hold about you is visible and editable in the app (habits, completions, challenges, settings, display name).</li>
+      <li><strong>Delete:</strong> clear your habit data or delete your whole account from Settings at any time, without contacting us (section 9).</li>
+      <li><strong>Notifications, sounds and haptics:</strong> switch each off in Settings.</li>
+      <li><strong>Photos:</strong> revoke photo access in your device settings; habits keep working with an emoji icon.</li>
+      <li><strong>Password:</strong> reset it from Settings or from the "Forgot password?" link on the sign-in screen.</li>
+      <li>If you are in the EU, UK, California or another region with privacy rights, you can also ask us to access, correct, port or delete your data, or object to processing, by contacting us.</li>
+    </ul>
+  </section>
+
+  <section id="deletion">
+    <h2><span class="section-num">9</span> Deleting Your Data or Account</h2>
+    <div class="callout"><strong>Clear All Data:</strong> Settings → Clear All Data removes every habit, completion, challenge and setting from your device and our servers but keeps your account.</div>
+    <div class="callout"><strong>Delete Account:</strong> Settings → Delete Account permanently removes your account, all habit data and any cached coaching messages from our servers immediately.</div>
+    <p>If you can no longer sign in, contact us (section 12) with the email address on the account and we will delete it for you within 30 days.</p>
+    <p>Deletion is irreversible. Crash reports are retained by Sentry for 90 days and contain no habit data.</p>
+  </section>
+
+  <section id="ccpa">
+    <h2><span class="section-num">10</span> California &amp; Other Regional Rights</h2>
+    <p>If you are a California resident you have the right to know what personal information we collect, to request its deletion, and not to be discriminated against for exercising those rights. We do not sell or share personal information for cross-context advertising, so there is nothing to opt out of. Residents of the EU, UK and other regions with similar laws have equivalent rights. To exercise any of them, use the in-app controls above or contact us.</p>
+  </section>
+
+  <section id="changes">
+    <h2><span class="section-num">11</span> Changes to This Policy</h2>
+    <p>If this policy changes in a way that matters, we will update the date at the top of this page and mention it in the app's release notes. The current version always lives at this address.</p>
+  </section>
+
+  <section id="contact">
+    <h2><span class="section-num">12</span> Contact</h2>
+    <p>Questions, requests or concerns about this policy or your data:</p>
+    <div class="contact-card">
+      <p><strong>Isaac East</strong></p>
+      <p>Independent developer, Groov</p>
+      <p>Open an issue at <a href="https://github.com/DevUpEast/Groov/issues">github.com/DevUpEast/Groov/issues</a> (please do not post your email address or other personal details there) or use the support contact on the app's store listing.</p>
+      <p style="margin-top:10px;font-size:13px;color:#6B7280;">We aim to respond to privacy requests within 5 business days.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>&copy; 2026 Isaac East · Groov &nbsp;·&nbsp; <a href="index.html">Home</a> &nbsp;·&nbsp; <a href="privacy-policy.html">Privacy Policy</a> &nbsp;·&nbsp; <a href="terms.html">Terms of Use</a> &nbsp;·&nbsp; <a href="support.html">Support</a></p>
+</footer>
+
+</body>
+</html>
