@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Platform, TextInput,
+  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Platform, TextInput, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,11 @@ const DEV_CODE = 'devmode';
 const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0';
 const BUILD_NUMBER = Application.nativeBuildVersion;
 const VERSION_LABEL = `Groov v${APP_VERSION}${BUILD_NUMBER ? ` (${BUILD_NUMBER})` : ''}`;
+
+// Hosted on GitHub Pages from docs/ (see docs/privacy.html, docs/terms.html).
+const SITE_URL = 'https://devupeast.github.io/Groov';
+const PRIVACY_URL = `${SITE_URL}/privacy.html`;
+const TERMS_URL = `${SITE_URL}/terms.html`;
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light' },
@@ -633,6 +638,23 @@ export default function SettingsScreen() {
               Permanently removes your account and all data
             </Text>
           </TouchableOpacity>
+        </Section>
+
+        {/* About */}
+        <Section title="ABOUT" theme={theme}>
+          <Row
+            label="Privacy Policy"
+            sublabel="What Groov collects and why"
+            theme={theme}
+            onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
+            right={<Ionicons name="open-outline" size={18} color={theme.textMuted} />}
+          />
+          <Row
+            label="Terms of Use"
+            theme={theme}
+            onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}
+            right={<Ionicons name="open-outline" size={18} color={theme.textMuted} />}
+          />
         </Section>
 
         <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7} style={styles.versionBtn}>
