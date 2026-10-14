@@ -21,7 +21,7 @@ npm run web       # Browser
 
 > Always refer to versioned Expo docs at https://docs.expo.dev/versions/v54.0.0/ before writing Expo-specific code.
 
-**Local env:** `.env.local` (gitignored) holds `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`. The same values are inlined in `eas.json` for production builds. `EXPO_PUBLIC_SENTRY_DSN` turns on crash reporting via `src/utils/sentry.js` (Sentry org `isaac-23`, project `groov`; the DSN is public and lives in eas.json); without it Sentry is a no-op. Source-map upload additionally needs the `@sentry/react-native/expo` plugin in app.json with the org/project slugs and a `SENTRY_AUTH_TOKEN` EAS secret (not set up yet).
+**Local env:** `.env.local` (gitignored) holds `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`. The same values are inlined in `eas.json` for production builds. `EXPO_PUBLIC_SENTRY_DSN` turns on crash reporting via `src/utils/sentry.js` (Sentry org `isaac-23`, project `groov`; the DSN is public and lives in eas.json); without it Sentry is a no-op. Source-map upload uses the `@sentry/react-native/expo` plugin in app.json (org `isaac-23`, project `groov`) plus the `SENTRY_AUTH_TOKEN` EAS environment variable (set for production and preview); local builds skip the upload because the token is not present locally.
 
 **Quick compile check (no device):** `npx expo export --platform web --output-dir $env:TEMP\groov-web-export`
 
