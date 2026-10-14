@@ -80,7 +80,22 @@ export default function TodayScreen() {
     completeChallengeImmediately, selectAllHabitsToday, resetAllHabitsToday,
     pendingChallengeRewards, clearPendingChallengeRewards,
     setRequestedTab, getNote, setNote,
+    pendingMilestone, clearPendingMilestone,
   } = useApp();
+
+  // Big celebration only for streak milestones; a perfect day gets a light cheer.
+  const [milestoneShown, setMilestoneShown] = useState(null);
+  useEffect(() => {
+    if (!pendingMilestone) return;
+    const t = setTimeout(() => {
+      setMilestoneShown(pendingMilestone);
+      setFullCelebration(true);
+      if (settings.soundEnabled) playHornFanfare();
+      if (settings.hapticsEnabled) successNotification();
+      clearPendingMilestone();
+    }, 900);
+    return () => clearTimeout(t);
+  }, [pendingMilestone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [toast, setToast] = useState(null);
   const [noteTarget, setNoteTarget] = useState(null);
@@ -228,7 +243,7 @@ export default function TodayScreen() {
       if (willAllBeDone && !allDoneCelebrated.current) {
         allDoneCelebrated.current = true;
         hapticFillSequence(settings.hapticsEnabled);
-        setFullCelebration(true);
+        setCelebrating(true);
       }
     }
   }, [dueHabits, isHabitSatisfied, todayStr, autoClaimChallenges, incrementHabit, settings, getHabitCount]);
@@ -278,7 +293,7 @@ export default function TodayScreen() {
       if (!allDoneCelebrated.current) {
         allDoneCelebrated.current = true;
         hapticFillSequence(settings.hapticsEnabled);
-        setFullCelebration(true);
+        setCelebrating(true);
       }
       if (anyComplete) {
         setTimeout(() => setTrophyCelebrating(true), 500);
@@ -489,8 +504,11 @@ export default function TodayScreen() {
 
       <CompletionCelebration
         visible={fullCelebration}
-        onDone={() => setFullCelebration(false)}
+        onDone={() => { setFullCelebration(false); setMilestoneShown(null); }}
         primaryColor={theme.primary}
+        emoji={milestoneShown?.emoji ?? '🎉'}
+        title={milestoneShown ? `${milestoneShown.days}-day streak!` : 'Congrats!'}
+        subtitle={milestoneShown ? `${milestoneShown.label} of showing up. That's a real habit now.` : 'You completed all tasks for the day!'}
       />
 
       <TrophyCelebration

@@ -4,7 +4,7 @@ import {
   TouchableOpacity, Modal, Animated, PanResponder, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useApp } from '../context/AppContext';
+import { useApp, STREAK_MILESTONES, TIER_STYLES } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { fetchReflection } from '../services/aiCoaching';
 import { localDateKey } from '../utils/dates';
@@ -222,7 +222,9 @@ function BarTooltip({ label, value, onClose, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
-  const { getLastNDays, getOverallStreak, getBestStreak, freezesLeft, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode } = useApp();
+  const { getLastNDays, getOverallStreak, getBestStreak, freezesLeft, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode, settings, effectivePastChallenges } = useApp();
+  const earned = useMemo(() => new Map((settings.milestones || []).map(m => [m.id, m])), [settings.milestones]);
+  const trophies = useMemo(() => effectivePastChallenges.filter(c => c.tier && c.tier !== 'none'), [effectivePastChallenges]);
   const [heatPeriodIdx, setHeatPeriodIdx] = useState(0);
   const [selectedDay, setSelectedDay] = useState(null);
   const [tooltipInfo, setTooltipInfo] = useState(null);
@@ -402,6 +404,36 @@ export default function ProgressScreen() {
             ))}
           </View>
         </View>
+        {/* Trophy case: streak milestones + challenge medals */}
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>🏆 Trophy Case</Text>
+          <Text style={[styles.cardHint, { color: theme.textMuted }]}>Streak milestones and challenge medals</Text>
+          <View style={styles.trophyRow}>
+            {STREAK_MILESTONES.map(m => {
+              const got = earned.get(`streak-${m.days}`);
+              return (
+                <View key={m.days} style={[styles.trophyTile, { backgroundColor: got ? theme.primaryLight : theme.bg, borderColor: got ? theme.primary : theme.border, opacity: got ? 1 : 0.55 }]} accessible accessibilityLabel={`${m.label} streak: ${got ? 'earned ' + got.date : 'locked'}`}>
+                  <Text style={styles.trophyEmoji}>{got ? m.emoji : '🔒'}</Text>
+                  <Text style={[styles.trophyDays, { color: got ? theme.primary : theme.textMuted }]}>{m.days}d</Text>
+                  <Text style={[styles.trophyLabel, { color: theme.textMuted }]} numberOfLines={1}>{got ? got.date.slice(5) : m.label}</Text>
+                </View>
+              );
+            })}
+          </View>
+          {trophies.length > 0 ? (
+            <View style={styles.medalRow}>
+              {trophies.map(c => (
+                <View key={c.id} style={[styles.medal, { backgroundColor: TIER_STYLES[c.tier].bg, borderColor: TIER_STYLES[c.tier].border }]} accessible accessibilityLabel={`${c.name}: ${c.tier}`}>
+                  <Text style={styles.medalEmoji}>{TIER_STYLES[c.tier].badge}</Text>
+                  <Text style={[styles.medalName, { color: TIER_STYLES[c.tier].text }]} numberOfLines={1}>{c.name}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={[styles.cardHint, { color: theme.textMuted, marginTop: 8 }]}>Finish a challenge to earn your first medal.</Text>
+          )}
+        </View>
+
         {/* AI Reflection */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.cardHeaderRow}>
@@ -530,6 +562,15 @@ const styles = StyleSheet.create({
   periodBtn: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 16, borderWidth: 1.5 },
   periodBtnText: { fontSize: 11, fontWeight: '700' },
   heatGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
+  trophyRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  trophyTile: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, gap: 2 },
+  trophyEmoji: { fontSize: 24 },
+  trophyDays: { fontSize: 14, fontWeight: '800' },
+  trophyLabel: { fontSize: 10 },
+  medalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  medal: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '100%' },
+  medalEmoji: { fontSize: 16 },
+  medalName: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
   heatLegend: { flexDirection: 'row', gap: 14, marginBottom: 2 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 10, height: 10, borderRadius: 2 },
