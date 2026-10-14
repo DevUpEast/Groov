@@ -10,6 +10,8 @@ import {
   syncSettings,
 } from '../services/sync';
 import { scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../utils/notifications';
+import { localDateKey, todayKey, addDays } from '../utils/dates';
+import { countBackStreak } from '../utils/streaks';
 
 const AppContext = createContext(null);
 
@@ -43,32 +45,9 @@ const STARTER_CHALLENGE = {
   days: 3,
   completedDays: [],
   completed: false,
-  startDate: new Date().toISOString().split('T')[0],
+  startDate: localDateKey(),
   linkedHabitIds: ['1', '2', '3', '4'],
 };
-
-function localDateStr(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function todayStrWithOffset(offset) {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-  return localDateStr(d);
-}
-
-function countBackStreak(startDate, isDoneOnDate) {
-  let streak = 0;
-  const date = new Date(startDate);
-  while (true) {
-    const dateStr = localDateStr(date);
-    if (isDoneOnDate(dateStr)) {
-      streak++;
-      date.setDate(date.getDate() - 1);
-    } else break;
-  }
-  return streak;
-}
 
 export function getChallengeTier(completedCount, totalDays) {
   const ratio = totalDays > 0 ? completedCount / totalDays : 0;
@@ -158,7 +137,7 @@ export function AppProvider({ children }) {
   // Holds latest state snapshot for first-login cloud migration without re-triggering sync effect
   const stateRef = useRef({});
 
-  const todayStr = useCallback(() => todayStrWithOffset(dateOffset), [dateOffset]);
+  const todayStr = useCallback(() => todayKey(dateOffset), [dateOffset]);
 
   // These reflect the simulated date: past challenges archived in the "future" revert to
   // active, and history only shows challenges archived on or before the simulated date.
@@ -215,12 +194,12 @@ export function AppProvider({ children }) {
     if (pc) setPastChallenges(pc);
     if (aca) {
       // Clamp a stored UTC-based date that landed in the future due to timezone mismatch
-      const localToday = localDateStr(new Date());
+      const localToday = localDateKey();
       const clamped = aca > localToday ? localToday : aca;
       if (clamped !== aca) saveData('accountCreatedAt', clamped);
       setAccountCreatedAt(clamped);
     } else {
-      const today = localDateStr(new Date());
+      const today = localDateKey();
       const completionDates = c ? Object.keys(c).sort() : [];
       const firstDate = completionDates.length > 0 ? completionDates[0] : today;
       setAccountCreatedAt(firstDate);
@@ -264,7 +243,7 @@ export function AppProvider({ children }) {
   // notification fires at the right wall-clock time.
   useEffect(() => {
     if (!loaded) return;
-    const realToday = new Date().toISOString().split('T')[0];
+    const realToday = localDateKey();
     if (!settings.eveningReminderEnabled || !settings.notificationsEnabled) {
       cancelEveningHabitReminder(realToday);
       return;
@@ -622,7 +601,7 @@ export function AppProvider({ children }) {
   const completeOnboarding = useCallback(() => setHasOnboarded(true), []);
 
   const resetAll = useCallback(async () => {
-    const today = localDateStr(new Date());
+    const today = localDateKey();
     await storeClearAll();
     if (userId) await deleteAllUserData(userId).catch(e => console.warn('deleteAllUserData:', e));
     saveData('lastUserId', userId);
@@ -649,10 +628,9 @@ export function AppProvider({ children }) {
     const newCompletions = { ...completions };
     const newSnapshot = { ...dailySnapshot };
 
+    const realToday = localDateKey();
     for (let i = 1; i <= 30; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = addDays(realToday, -i);
       const dayMap = {};
       habits.forEach(h => {
         // Each habit independently gets a 55–95% daily completion rate
@@ -664,11 +642,7 @@ export function AppProvider({ children }) {
     }
 
     // Ensure accountCreatedAt is at least 31 days back so history is visible
-    const floorDate = (() => {
-      const d = new Date();
-      d.setDate(d.getDate() - 31);
-      return d.toISOString().split('T')[0];
-    })();
+    const floorDate = addDays(realToday, -31);
     const newAca = !accountCreatedAt || accountCreatedAt > floorDate ? floorDate : accountCreatedAt;
 
     setCompletions(newCompletions);
@@ -691,17 +665,13 @@ export function AppProvider({ children }) {
   const getStreakForHabit = useCallback((habitId) => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return 0;
-    const start = new Date();
-    start.setDate(start.getDate() + dateOffset);
-    return countBackStreak(start, (dateStr) => {
+    return countBackStreak(todayKey(dateOffset), (dateStr) => {
       return ((completions[dateStr] || {})[habitId] || 0) >= habit.volumeGoal;
     });
   }, [completions, habits, dateOffset]);
 
   const getOverallStreak = useCallback(() => {
-    const start = new Date();
-    start.setDate(start.getDate() + dateOffset);
-    return countBackStreak(start, (dateStr) => {
+    return countBackStreak(todayKey(dateOffset), (dateStr) => {
       const dayCompletions = completions[dateStr] || {};
       const dayHabits = dailySnapshot[dateStr] || habits;
       return dayHabits.length > 0 && dayHabits.every(h => (dayCompletions[h.id] || 0) >= h.volumeGoal);
@@ -711,23 +681,16 @@ export function AppProvider({ children }) {
   const getLastNDays = useCallback((n) => {
     const days = [];
 
-    const ref = new Date();
-    ref.setDate(ref.getDate() + dateOffset);
-    const todayLocal = localDateStr(ref);
+    const todayLocal = todayKey(dateOffset);
 
     // Window starts at today-(n-1), but no earlier than account creation
-    const rawStart = new Date(ref);
-    rawStart.setDate(rawStart.getDate() - (n - 1));
-    let windowStart = localDateStr(rawStart);
+    let windowStart = addDays(todayLocal, -(n - 1));
     if (accountCreatedAt && accountCreatedAt > windowStart) {
       windowStart = accountCreatedAt;
     }
 
     for (let i = 0; i < n; i++) {
-      // Iterate using local noon to avoid DST-induced date boundary issues
-      const d = new Date(windowStart + 'T12:00:00');
-      d.setDate(d.getDate() + i);
-      const dateStr = localDateStr(d);
+      const dateStr = addDays(windowStart, i);
 
       if (dateStr > todayLocal) {
         days.push({ date: dateStr, completed: 0, total: 0, habits: [], future: true });

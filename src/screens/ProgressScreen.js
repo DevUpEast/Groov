@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { fetchReflection } from '../services/aiCoaching';
+import { localDateKey } from '../utils/dates';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CHART_H = 150;
@@ -242,7 +243,7 @@ export default function ProgressScreen() {
 
   // Dev users pass the offset-aware date so the reflection window shifts with the simulated date.
   // All other users always use the real date.
-  const excludeDate = isDevEmail ? todayStr() : new Date().toISOString().split('T')[0];
+  const excludeDate = isDevEmail ? todayStr() : localDateKey();
 
   const handleGenerateReflection = useCallback(async () => {
     if (habits.length === 0) return;
