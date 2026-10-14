@@ -69,7 +69,7 @@ export default function TodayScreen() {
     habits, challenges, effectiveChallenges, completions, getCompletedCount, isAllDone,
     incrementHabit, decrementHabit,
     isChallengeHabitsDone, settings, theme, markChallengeDay, unmarkChallengeDay,
-    getHabitCount, dateOffset, todayStr, accountCreatedAt, displayName, isDevEmail,
+    getHabitCount, dateOffset, todayStr, accountCreatedAt, displayName, devMode,
     completeChallengeImmediately, selectAllHabitsToday, resetAllHabitsToday,
     pendingChallengeRewards, clearPendingChallengeRewards,
     setRequestedTab,
@@ -114,9 +114,9 @@ export default function TodayScreen() {
     : 0;
   const canShowNudge = accountAgeDays >= 1;
 
-  // Dev users pass todayStr() (which reflects the date offset) so the AI coach
-  // responds to the simulated date. All other users always use the real date.
-  const excludeDate = isDevEmail ? today : localDateKey();
+  // In dev mode the AI coach follows the simulated date offset; otherwise it always
+  // gets the real local date.
+  const coachToday = devMode ? today : localDateKey();
 
   // Fetch daily nudge once when habits are available, but only from day 2 onwards
   // so the coach always works from at least one full day of completed history.
@@ -125,7 +125,7 @@ export default function TodayScreen() {
     if (!user || habits.length === 0 || nudgeFetched.current || !canShowNudge) return;
     nudgeFetched.current = true;
     setNudgeLoading(true);
-    fetchDailyNudge(accountCreatedAt, displayName, excludeDate)
+    fetchDailyNudge(accountCreatedAt, displayName, coachToday)
       .then((data) => { if (data?.message) setNudgeMessage(data.message); })
       .catch(() => {})
       .finally(() => setNudgeLoading(false));
