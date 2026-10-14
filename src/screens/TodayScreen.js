@@ -14,11 +14,22 @@ import CelebrationOverlay from '../components/CelebrationOverlay';
 import CompletionCelebration from '../components/CompletionCelebration';
 import TrophyCelebration from '../components/TrophyCelebration';
 import ChallengeRewardModal from '../components/ChallengeRewardModal';
+import UndoToast from '../components/UndoToast';
+import NoteModal from '../components/NoteModal';
 import { successNotification, mediumImpact } from '../utils/haptics';
 import { playChime, playSuccessChime, playChallengeChime, playHornFanfare } from '../utils/sounds';
 import { fetchDailyNudge } from '../services/aiCoaching';
-import { localDateKey } from '../utils/dates';
+import { localDateKey, parseDateKey } from '../utils/dates';
 import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
+
+// Today list sections. Habits without a time of day go under "Anytime", which is
+// omitted (plain list) when no habit has a time set at all.
+const TIME_SECTIONS = [
+  { key: 'morning', label: '🌅 Morning' },
+  { key: 'afternoon', label: '☀️ Afternoon' },
+  { key: 'evening', label: '🌙 Evening' },
+  { key: 'anytime', label: '✨ Anytime' },
+];
 
 function SproutIcon({ size = 24 }) {
   return (
@@ -68,8 +79,27 @@ export default function TodayScreen() {
     getHabitCount, dateOffset, todayStr, accountCreatedAt, displayName, devMode,
     completeChallengeImmediately, selectAllHabitsToday, resetAllHabitsToday,
     pendingChallengeRewards, clearPendingChallengeRewards,
-    setRequestedTab,
+    setRequestedTab, getNote, setNote,
   } = useApp();
+
+  const [toast, setToast] = useState(null);
+  const [noteTarget, setNoteTarget] = useState(null);
+
+  const openNote = useCallback((habit, key) => {
+    setNoteTarget({
+      habitId: habit.id, habitName: habit.name, key,
+      note: getNote(habit.id, key),
+      dateLabel: parseDateKey(key).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+    });
+  }, [getNote]);
+
+  const grouped = React.useMemo(() => {
+    const anyTimed = dueHabits.some(h => h.timeOfDay && h.timeOfDay !== 'anytime');
+    if (!anyTimed) return null;
+    return TIME_SECTIONS
+      .map(s => ({ ...s, habits: dueHabits.filter(h => (h.timeOfDay || 'anytime') === s.key) }))
+      .filter(s => s.habits.length > 0);
+  }, [dueHabits]);
   const { user } = useAuth();
 
   const [celebrating, setCelebrating] = useState(false);
@@ -175,6 +205,8 @@ export default function TodayScreen() {
 
   const handleIncrement = useCallback(async (habit) => {
     const justCompleted = incrementHabit(habit.id);
+    if (justCompleted === false && getHabitCount(habit.id) >= habit.volumeGoal) return; // already maxed
+    setToast({ habit, message: justCompleted ? `${habit.name} done ✓` : `${habit.name} +1` });
     if (settings.hapticsEnabled) await mediumImpact();
     if (settings.soundEnabled) (justCompleted ? playSuccessChime : playChime)();
 
@@ -199,7 +231,7 @@ export default function TodayScreen() {
         setFullCelebration(true);
       }
     }
-  }, [dueHabits, isHabitSatisfied, todayStr, autoClaimChallenges, incrementHabit, settings]);
+  }, [dueHabits, isHabitSatisfied, todayStr, autoClaimChallenges, incrementHabit, settings, getHabitCount]);
 
   const handleDecrement = useCallback(async (habit) => {
     const today = todayStr();
@@ -374,12 +406,26 @@ export default function TodayScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
-              {dueHabits.map(habit => (
+              {grouped ? grouped.map(section => (
+                <View key={section.key}>
+                  <Text style={[styles.timeLabel, { color: theme.textMuted }]}>{section.label}</Text>
+                  {section.habits.map(habit => (
+                    <HabitCard
+                      key={habit.id}
+                      habit={habit}
+                      onIncrement={() => handleIncrement(habit)}
+                      onDecrement={() => handleDecrement(habit)}
+                      onNote={openNote}
+                    />
+                  ))}
+                </View>
+              )) : dueHabits.map(habit => (
                 <HabitCard
                   key={habit.id}
                   habit={habit}
                   onIncrement={() => handleIncrement(habit)}
                   onDecrement={() => handleDecrement(habit)}
+                  onNote={openNote}
                 />
               ))}
             </>
@@ -421,6 +467,20 @@ export default function TodayScreen() {
           )}
         </View>
       </ScrollView>
+
+      <UndoToast
+        toast={toast}
+        theme={theme}
+        onHide={() => setToast(null)}
+        onUndo={() => { const h = toast?.habit; setToast(null); if (h) handleDecrement(h); }}
+      />
+
+      <NoteModal
+        target={noteTarget}
+        theme={theme}
+        onClose={() => setNoteTarget(null)}
+        onSave={(text) => { setNote(noteTarget.habitId, noteTarget.key, text); setNoteTarget(null); }}
+      />
 
       <CelebrationOverlay
         visible={celebrating}
@@ -487,6 +547,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
   },
   selectAllBtnText: { fontSize: 12, fontWeight: '700' },
+  timeLabel: { fontSize: 12, fontWeight: '700', marginTop: 6, marginBottom: 8 },
   nudgeCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
     borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 16,

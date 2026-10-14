@@ -136,7 +136,7 @@ Deno.serve(async (req: Request) => {
     const accountActiveDays = Math.round((today2.getTime() - accountCreatedDate.getTime()) / msPerDay) + 1
 
     const [{ data: habits }, { data: completionRows }] = await Promise.all([
-      supabase.from('habits').select('id, name, icon, volume_goal, created_at, schedule').eq('user_id', user.id),
+      supabase.from('habits').select('id, name, icon, volume_goal, created_at, schedule').eq('user_id', user.id).eq('archived', false),
       supabase
         .from('completions')
         .select('date, habit_id, count')

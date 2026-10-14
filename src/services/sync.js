@@ -22,6 +22,11 @@ const habitToRow = (habit, userId) => ({
   reminder: habit.reminder ?? null,
   custom_icon_uri: habit.customIconUri ?? null,
   schedule: habit.schedule ?? null,
+  color: habit.color ?? null,
+  time_of_day: habit.timeOfDay ?? null,
+  archived: habit.archived ?? false,
+  sort_order: habit.sortOrder ?? 0,
+  unit: habit.unit ?? null,
 });
 
 const rowToHabit = (row) => ({
@@ -34,16 +39,39 @@ const rowToHabit = (row) => ({
   reminder: row.reminder ?? undefined,
   customIconUri: row.custom_icon_uri ?? null,
   schedule: row.schedule ?? undefined,
+  color: row.color ?? null,
+  timeOfDay: row.time_of_day ?? null,
+  archived: row.archived ?? false,
+  sortOrder: row.sort_order ?? 0,
+  unit: row.unit ?? null,
 });
 
-const completionsToRows = (completions, userId) => {
+// Notes ride on the completions row (a note without a count is a 0-count row).
+const completionsToRows = (completions, userId, notes = {}) => {
   const rows = [];
+  const seen = new Set();
   for (const [date, habitMap] of Object.entries(completions)) {
     for (const [habitId, count] of Object.entries(habitMap)) {
-      if (count > 0) rows.push({ user_id: userId, date, habit_id: habitId, count });
+      const note = (notes[date] || {})[habitId] || null;
+      if (count > 0 || note) { rows.push({ user_id: userId, date, habit_id: habitId, count, note }); seen.add(`${date}|${habitId}`); }
+    }
+  }
+  for (const [date, habitMap] of Object.entries(notes)) {
+    for (const [habitId, note] of Object.entries(habitMap)) {
+      if (note && !seen.has(`${date}|${habitId}`)) rows.push({ user_id: userId, date, habit_id: habitId, count: 0, note });
     }
   }
   return rows;
+};
+
+const rowsToNotes = (rows) => {
+  const notes = {};
+  for (const row of rows) {
+    if (!row.note) continue;
+    if (!notes[row.date]) notes[row.date] = {};
+    notes[row.date][row.habit_id] = row.note;
+  }
+  return notes;
 };
 
 const rowsToCompletions = (rows) => {
@@ -122,13 +150,13 @@ const rowToSettings = (row) => ({
 
 // ── Bulk operations ───────────────────────────────────────────────────────────
 
-export async function pushAllLocalData(userId, { habits, completions, settings, challenges, pastChallenges, dailySnapshot }) {
+export async function pushAllLocalData(userId, { habits, completions, notes, settings, challenges, pastChallenges, dailySnapshot }) {
   const ops = [];
 
   if (habits.length > 0)
     ops.push(supabase.from('habits').upsert(habits.map(h => habitToRow(h, userId))));
 
-  const completionRows = completionsToRows(completions, userId);
+  const completionRows = completionsToRows(completions, userId, notes);
   if (completionRows.length > 0)
     ops.push(supabase.from('completions').upsert(completionRows));
 
@@ -166,6 +194,7 @@ export async function pullAllData(userId) {
   return {
     habits: habitsRes.data ? habitsRes.data.map(rowToHabit) : null,
     completions: completionsRes.data ? rowsToCompletions(completionsRes.data) : null,
+    notes: completionsRes.data ? rowsToNotes(completionsRes.data) : null,
     challenges: challengesRes.data ? challengesRes.data.map(rowToChallenge) : null,
     pastChallenges: pastRes.data ? pastRes.data.map(rowToPastChallenge) : null,
     settings: settingsRes.data ? rowToSettings(settingsRes.data) : null,
@@ -239,6 +268,12 @@ export async function syncCompletion(userId, date, habitId, count) {
   const { error } = await supabase.from('completions')
     .upsert({ user_id: userId, date, habit_id: habitId, count: Math.max(0, count) });
   if (error) syncWarn('syncCompletion:', error.message);
+}
+
+export async function syncNote(userId, date, habitId, note, count = 0) {
+  const { error } = await supabase.from('completions')
+    .upsert({ user_id: userId, date, habit_id: habitId, count: Math.max(0, count), note: note || null });
+  if (error) syncWarn('syncNote:', error.message);
 }
 
 export async function syncCompletionsForDate(userId, date, habitMap) {
