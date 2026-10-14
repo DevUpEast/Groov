@@ -14,6 +14,12 @@ import { to12h, to24h, formatTime12 as formatTime } from '../utils/time';
 // Secret code for first-time dev unlock (tap version label 7× then enter)
 const DEV_CODE = 'devmode';
 
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'Auto' },
+];
+
 
 function Row({ label, sublabel, right, theme, onPress }) {
   const content = (
@@ -336,19 +342,29 @@ export default function SettingsScreen() {
 
         {/* Appearance */}
         <Section title="APPEARANCE" theme={theme}>
-          <Row
-            label="Dark Mode"
-            sublabel="Switch between light and dark theme"
-            theme={theme}
-            right={
-              <Switch
-                value={settings.theme === 'dark'}
-                onValueChange={v => updateSettings({ theme: v ? 'dark' : 'light' })}
-                trackColor={{ false: theme.border, true: theme.primary }}
-                thumbColor="#fff"
-              />
-            }
-          />
+          <View style={[styles.row, { borderBottomColor: 'transparent' }]}>
+            <View style={styles.rowLeft}>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>Theme</Text>
+              <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+                {settings.theme === 'system' ? 'Follows your device setting' : `Always ${settings.theme}`}
+              </Text>
+            </View>
+            <View style={[styles.segment, { borderColor: theme.border }]}>
+              {THEME_OPTIONS.map(opt => {
+                const active = (settings.theme ?? 'system') === opt.value;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={[styles.segmentBtn, active && { backgroundColor: theme.primary }]}
+                    onPress={() => updateSettings({ theme: opt.value })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.segmentText, { color: active ? '#fff' : theme.textMuted }]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
         </Section>
 
         {/* Notifications */}
@@ -743,6 +759,9 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 15, fontWeight: '500' },
   rowSub: { fontSize: 12, marginTop: 2 },
   rowRight: { marginLeft: 12 },
+  segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 10, overflow: 'hidden', marginLeft: 12 },
+  segmentBtn: { paddingHorizontal: 12, paddingVertical: 7 },
+  segmentText: { fontSize: 13, fontWeight: '600' },
   reminderBlock: {
     borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8,
   },
