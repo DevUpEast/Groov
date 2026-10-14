@@ -3,7 +3,13 @@ import { supabase } from '../utils/supabase';
 // Only emit sync diagnostics in development builds
 const syncWarn = __DEV__ ? (msg, detail) => console.warn(msg, detail) : () => {};
 
+// Tables that carry user data. Every one has user_id and a trigger-maintained
+// updated_at column (see supabase/migrations/20261014_sync_fields.sql).
+const USER_TABLES = ['habits', 'completions', 'challenges', 'past_challenges', 'settings', 'daily_snapshots'];
+
 // ── Transformers ──────────────────────────────────────────────────────────────
+// updated_at is never sent: the server stamps inserts (default now()) and updates
+// (trigger), so change tracking is always in server time.
 
 const habitToRow = (habit, userId) => ({
   id: habit.id,
@@ -13,6 +19,8 @@ const habitToRow = (habit, userId) => ({
   type: habit.type,
   volume_goal: habit.volumeGoal ?? 1,
   created_at: habit.createdAt,
+  reminder: habit.reminder ?? null,
+  custom_icon_uri: habit.customIconUri ?? null,
 });
 
 const rowToHabit = (row) => ({
@@ -22,6 +30,8 @@ const rowToHabit = (row) => ({
   type: row.type,
   volumeGoal: row.volume_goal,
   createdAt: row.created_at,
+  reminder: row.reminder ?? undefined,
+  customIconUri: row.custom_icon_uri ?? null,
 });
 
 const completionsToRows = (completions, userId) => {
@@ -37,6 +47,7 @@ const completionsToRows = (completions, userId) => {
 const rowsToCompletions = (rows) => {
   const completions = {};
   for (const row of rows) {
+    if (!(row.count > 0)) continue;
     if (!completions[row.date]) completions[row.date] = {};
     completions[row.date][row.habit_id] = row.count;
   }
@@ -87,6 +98,9 @@ const settingsToRow = (settings, userId) => ({
   sound_enabled: settings.soundEnabled ?? true,
   haptics_enabled: settings.hapticsEnabled ?? true,
   reminders: settings.reminders ?? [],
+  evening_reminder_enabled: settings.eveningReminderEnabled ?? false,
+  evening_reminder_hour: settings.eveningReminderHour ?? 20,
+  evening_reminder_minute: settings.eveningReminderMinute ?? 0,
 });
 
 const rowToSettings = (row) => ({
@@ -95,6 +109,9 @@ const rowToSettings = (row) => ({
   soundEnabled: row.sound_enabled,
   hapticsEnabled: row.haptics_enabled,
   reminders: row.reminders ?? [],
+  eveningReminderEnabled: row.evening_reminder_enabled ?? false,
+  eveningReminderHour: row.evening_reminder_hour ?? 20,
+  eveningReminderMinute: row.evening_reminder_minute ?? 0,
 });
 
 // ── Bulk operations ───────────────────────────────────────────────────────────
@@ -152,14 +169,37 @@ export async function pullAllData(userId) {
   };
 }
 
+// Incremental pull: every row changed on the server after `sinceIso`, plus the ids
+// still present for the tables that support deletion, so the caller can reconcile.
+// Throws on the first failed query so the caller can keep its previous cursor.
+export async function pullChangesSince(userId, sinceIso) {
+  const changed = (table) => supabase.from(table).select('*').eq('user_id', userId).gt('updated_at', sinceIso);
+  const ids = (table) => supabase.from(table).select('id').eq('user_id', userId);
+
+  const results = await Promise.all([
+    changed('habits'), changed('completions'), changed('challenges'), changed('past_challenges'),
+    changed('settings'), changed('daily_snapshots'),
+    ids('habits'), ids('challenges'),
+  ]);
+  const failed = results.find(r => r.error);
+  if (failed) throw new Error(failed.error.message);
+  const [habitsRes, completionsRes, challengesRes, pastRes, settingsRes, snapshotsRes, habitIdsRes, challengeIdsRes] = results;
+
+  return {
+    habits: habitsRes.data.map(rowToHabit),
+    completions: completionsRes.data, // raw rows; count 0 means deleted
+    challenges: challengesRes.data.map(rowToChallenge),
+    pastChallenges: pastRes.data.map(rowToPastChallenge),
+    settings: settingsRes.data[0] ? rowToSettings(settingsRes.data[0]) : null,
+    dailySnapshots: snapshotsRes.data,
+    habitIds: habitIdsRes.data.map(r => r.id),
+    challengeIds: challengeIdsRes.data.map(r => r.id),
+  };
+}
+
 export async function deleteAllUserData(userId) {
   await Promise.allSettled([
-    supabase.from('habits').delete().eq('user_id', userId),
-    supabase.from('completions').delete().eq('user_id', userId),
-    supabase.from('challenges').delete().eq('user_id', userId),
-    supabase.from('past_challenges').delete().eq('user_id', userId),
-    supabase.from('settings').delete().eq('user_id', userId),
-    supabase.from('daily_snapshots').delete().eq('user_id', userId),
+    ...USER_TABLES.map(t => supabase.from(t).delete().eq('user_id', userId)),
     supabase.from('ai_nudges').delete().eq('user_id', userId),
     supabase.from('ai_reflections').delete().eq('user_id', userId),
     supabase.from('profiles').delete().eq('user_id', userId),
@@ -196,25 +236,19 @@ export async function deleteHabitSync(userId, habitId) {
   if (error) syncWarn('deleteHabitSync:', error.message);
 }
 
+// A count of 0 is stored rather than deleted so that other devices see the
+// "un-complete" in their next incremental pull.
 export async function syncCompletion(userId, date, habitId, count) {
-  if (count <= 0) {
-    const { error } = await supabase.from('completions').delete()
-      .eq('user_id', userId).eq('date', date).eq('habit_id', habitId);
-    if (error) syncWarn('syncCompletion delete:', error.message);
-  } else {
-    const { error } = await supabase.from('completions')
-      .upsert({ user_id: userId, date, habit_id: habitId, count });
-    if (error) syncWarn('syncCompletion upsert:', error.message);
-  }
+  const { error } = await supabase.from('completions')
+    .upsert({ user_id: userId, date, habit_id: habitId, count: Math.max(0, count) });
+  if (error) syncWarn('syncCompletion:', error.message);
 }
 
 export async function syncCompletionsForDate(userId, date, habitMap) {
-  await supabase.from('completions').delete().eq('user_id', userId).eq('date', date);
   const rows = Object.entries(habitMap)
-    .filter(([, count]) => count > 0)
-    .map(([habitId, count]) => ({ user_id: userId, date, habit_id: habitId, count }));
+    .map(([habitId, count]) => ({ user_id: userId, date, habit_id: habitId, count: Math.max(0, count) }));
   if (rows.length > 0) {
-    const { error } = await supabase.from('completions').insert(rows);
+    const { error } = await supabase.from('completions').upsert(rows);
     if (error) syncWarn('syncCompletionsForDate:', error.message);
   }
 }
