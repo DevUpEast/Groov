@@ -19,8 +19,9 @@ export function initSentry() {
     sendDefaultPii: false,
     tracesSampleRate: 0.1,
     enableNativeFramesTracking: false,
-    // Dev builds already surface errors in the red box; keep the quota for real users.
-    enabled: !__DEV__,
+    // Dev builds report too (tagged environment=development) so Test Crash can be
+    // verified from the emulator; the free quota is ample for that.
+    enabled: true,
   });
 }
 
