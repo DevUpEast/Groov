@@ -18,6 +18,7 @@ import { successNotification, mediumImpact } from '../utils/haptics';
 import { fetchDailyNudge } from '../services/aiCoaching';
 import { scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../utils/notifications';
 import { localDateKey } from '../utils/dates';
+import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
 
 function SproutIcon({ size = 24 }) {
   return (
@@ -55,15 +56,6 @@ function getRelevantHabits(challenge, habits) {
   return ids.length > 0 ? habits.filter(h => ids.includes(h.id)) : habits;
 }
 
-// Returns true if the challenge period has elapsed (today is after all challenge days)
-function isChallengeExpiredFor(ch, today) {
-  if (!ch.startDate) return false;
-  const startMs = new Date(ch.startDate + 'T00:00:00').getTime();
-  const todayMs = new Date(today + 'T00:00:00').getTime();
-  const elapsed = Math.max(0, Math.floor((todayMs - startMs) / 86400000));
-  return elapsed >= ch.days;
-}
-
 export default function TodayScreen() {
   const {
     habits, challenges, effectiveChallenges, completions, getCompletedCount, isAllDone,
@@ -95,7 +87,7 @@ export default function TodayScreen() {
   }, [today]);
 
   // Show challenge reward popup once per session when pending rewards exist.
-  // Delayed 600ms so ChallengeScreen's mount-time archiving effects can run first.
+  // Delayed 600ms so AppContext's load-time archiving effect can finish first.
   useEffect(() => {
     if (rewardModalShown.current) return;
     if (pendingChallengeRewards.length === 0) return;
@@ -163,7 +155,7 @@ export default function TodayScreen() {
     effectiveChallenges.forEach(ch => {
       if (!challenges.some(c => c.id === ch.id)) return;
       if (ch.completedDays.includes(today)) return;
-      if (isChallengeExpiredFor(ch, today)) return;
+      if (isChallengeExpired(ch, today)) return;
 
       const relevant = getRelevantHabits(ch, habits);
       if (relevant.length === 0) return;
@@ -385,20 +377,16 @@ export default function TodayScreen() {
           )}
 
           {/* Active Challenges */}
-          {effectiveChallenges.filter(ch => !isChallengeExpiredFor(ch, today)).length > 0 && (
+          {effectiveChallenges.filter(ch => !isChallengeExpired(ch, today)).length > 0 && (
             <View style={styles.challengesSection}>
               <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>ACTIVE CHALLENGES</Text>
               {effectiveChallenges
-                .filter(ch => !isChallengeExpiredFor(ch, today))
+                .filter(ch => !isChallengeExpired(ch, today))
                 .map(ch => {
                   const completedCount = ch.completedDays.length;
                   const todayDone = ch.completedDays.includes(today);
                   const progress = ch.days > 0 ? completedCount / ch.days : 0;
-                  const currentDay = Math.min(ch.days, Math.max(1,
-                    ch.startDate
-                      ? Math.floor((new Date(today + 'T00:00:00') - new Date(ch.startDate + 'T00:00:00')) / 86400000) + 1
-                      : 1
-                  ));
+                  const currentDay = currentChallengeDay(ch, today);
                   return (
                     <View key={ch.id} style={[styles.challengeMini, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                       <View style={styles.challengeMiniRow}>
