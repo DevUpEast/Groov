@@ -17,6 +17,7 @@ import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak, dayStatus
 import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
+import { mergeBackup } from '../utils/backup';
 
 const AppContext = createContext(null);
 
@@ -175,6 +176,8 @@ export function AppProvider({ children }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [accountCreatedAt, setAccountCreatedAt] = useState(null);
   const [pendingChallengeRewards, setPendingChallengeRewards] = useState([]);
+  // ISO timestamp of the last successful JSON export (backup indicator in Settings).
+  const [lastBackupAt, setLastBackupAt] = useState(null);
   // Developer mode: unlocked per device from Settings (tap the version label). Gates the
   // dev tools section and makes the AI coach follow the simulated date offset.
   const [devMode, setDevModeState] = useState(false);
@@ -242,7 +245,7 @@ export function AppProvider({ children }) {
     // NOTE: userId is always null here (auth resolves asynchronously after mount).
     // Do NOT check lastUserId vs userId here — it will always look like a different user.
     // The user-switch check runs in the cloud sync effect below, where userId is known.
-    const [h, c, s, ch, ob, ds, pc, aca, savedOffset, pcr, dev, n] = await Promise.all([
+    const [h, c, s, ch, ob, ds, pc, aca, savedOffset, pcr, dev, n, lba] = await Promise.all([
       loadData('habits'),
       loadData('completions'),
       loadData('settings'),
@@ -255,11 +258,13 @@ export function AppProvider({ children }) {
       loadData('pendingChallengeRewards'),
       loadDevMode(),
       loadData('notes'),
+      loadData('lastBackupAt'),
     ]);
 
     if (h) setHabits(migrateHabits(h));
     if (c) setCompletions(c);
     if (n) setNotes(n);
+    if (lba) setLastBackupAt(lba);
     setSettings(migrateSettings(s));
     if (ch) {
       setChallenges(migrateChallenges(Array.isArray(ch) ? ch : [ch]));
@@ -896,6 +901,39 @@ export function AppProvider({ children }) {
     setAccountCreatedAt(today);
   }, [userId]);
 
+  const markBackedUp = useCallback(() => {
+    const now = new Date().toISOString();
+    setLastBackupAt(now);
+    saveData('lastBackupAt', now);
+  }, []);
+
+  // Apply a validated backup ('replace' wipes current data first; 'merge' layers it
+  // over). Everything is persisted locally through the normal effects and pushed to
+  // the cloud in one go.
+  const importBackup = useCallback(async (data, mode = 'merge') => {
+    const current = { habits: allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt };
+    const next = mode === 'replace'
+      ? { ...data, settings: data.settings ? migrateSettings(data.settings) : settings }
+      : mergeBackup(current, data);
+    const nextHabits = migrateHabits(next.habits);
+    const nextSettings = migrateSettings(next.settings);
+    const nextChallenges = migrateChallenges(next.challenges);
+    setHabits(nextHabits);
+    setCompletions(next.completions);
+    setNotes(next.notes);
+    setSettings(nextSettings);
+    setChallenges(nextChallenges);
+    setPastChallenges(next.pastChallenges);
+    setDailySnapshot(next.dailySnapshot);
+    if (next.accountCreatedAt) setAccountCreatedAt(next.accountCreatedAt);
+    setHasOnboarded(true);
+    stateRef.current = { habits: nextHabits, completions: next.completions, notes: next.notes, settings: nextSettings, challenges: nextChallenges, pastChallenges: next.pastChallenges, dailySnapshot: next.dailySnapshot };
+    if (userId) {
+      if (mode === 'replace') await deleteAllUserData(userId).catch(() => {});
+      await pushAllLocalData(userId, stateRef.current);
+    }
+  }, [allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt, userId]);
+
   // Flush all current state to Supabase — call before sign-out to avoid data loss
   const pushAllData = useCallback(async () => {
     if (!userId) return;
@@ -1063,6 +1101,7 @@ export function AppProvider({ children }) {
       selectAllHabitsToday, resetAllHabitsToday,
       linkHabitToChallenge, unlinkHabitFromChallenge, linkAllHabitsToChallenge,
       completeOnboarding, resetAll, pushAllData, seedRandomHistory,
+      lastBackupAt, markBackedUp, importBackup,
       getStreakForHabit, getOverallStreak, getBestStreak, getLast30Days, getLastNDays,
       todayStr,
     }}>

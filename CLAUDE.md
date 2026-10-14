@@ -80,7 +80,7 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 
 **Components** (`src/components/`): `HabitCard`, `HabitDetailSheet` (per-habit grid/stats, opened from the Habits list), `ProgressRing` (SVG), `TimePicker` (wheel-only modal), `BottomSheet`, `SheetHeader`, `EmptyCard`, `Slider`, `TrophyCelebration`, `CelebrationOverlay`, `CompletionCelebration`, `ChallengeRewardModal`
 
-**Utilities** (`src/utils/`): `storage.js` (AsyncStorage wrappers), `supabase.js` (client, PKCE), `sounds.js`, `haptics.js`, `notifications.js`
+**Utilities** (`src/utils/`): `storage.js` (AsyncStorage wrappers), `backup.js` (JSON backup build/validate/merge; `src/services/backup.js` does the share sheet / document picker, Settings → Backup), `supabase.js` (client, PKCE), `sounds.js`, `haptics.js`, `notifications.js`
 
 **Theme:** `src/theme/colors.js` exports light and dark token objects; the in-app theme is a manual toggle in settings (does not follow the system yet).
 
