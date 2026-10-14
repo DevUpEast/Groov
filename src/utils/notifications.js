@@ -67,7 +67,11 @@ function desiredDailyReminders(settings, habits) {
   for (const h of habits || []) {
     if (!h.reminder?.enabled) continue;
     const { hour, minute } = to24h(h.reminder);
-    out.push({ identifier: `${HABIT_PREFIX}${h.id}`, hour, minute, title: `${h.icon ?? '🔔'} Time for: ${h.name}`, body: 'Tap to log your habit!' });
+    out.push({
+      identifier: `${HABIT_PREFIX}${h.id}`, hour, minute,
+      title: `${h.icon ?? '🔔'} Time for: ${h.name}`,
+      body: h.intention ? `After you ${h.intention}. Tap to log it.` : 'Tap to log your habit!',
+    });
   }
   return out;
 }

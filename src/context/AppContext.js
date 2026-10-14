@@ -319,7 +319,7 @@ export function AppProvider({ children }) {
   // Make the OS schedule match settings.reminders + habit.reminder on launch and
   // whenever either changes (including the master toggle). Keyed on the reminder
   // fields only so a completion tap does not reschedule anything.
-  const habitReminderKey = JSON.stringify(habits.map(h => [h.id, h.name, h.icon, h.reminder ?? null]));
+  const habitReminderKey = JSON.stringify(habits.map(h => [h.id, h.name, h.icon, h.intention ?? null, h.reminder ?? null]));
   const remindersAppliedOnce = useRef(false);
   useEffect(() => {
     if (!loaded) return;
@@ -854,15 +854,30 @@ export function AppProvider({ children }) {
 
   // ── Onboarding / reset ───────────────────────────────────────────────────────
 
-  const completeOnboarding = useCallback(() => {
+  // `starterHabits` (optional) are created in order with the onboarding plan the user
+  // chose. The 3-Day Kickstart is only created on a true first run: a returning user
+  // restored from the cloud already has history.
+  const completeOnboarding = useCallback((starterHabits = []) => {
     setHasOnboarded(true);
-    // First-run only: a returning user restored from the cloud already has history.
+    const today = todayStr();
+    if (starterHabits.length > 0 && habits.length === 0) {
+      const base = Date.now();
+      const created = starterHabits.map((h, i) => ({
+        ...h,
+        id: String(base + i),
+        createdAt: today,
+        schedule: normalizeSchedule(h.schedule),
+        sortOrder: i,
+      }));
+      setHabits(prev => [...prev, ...created]);
+      if (userId) created.forEach(h => syncHabit(userId, h));
+    }
     if (challenges.length === 0 && pastChallenges.length === 0) {
-      const starter = makeStarterChallenge(todayStr());
+      const starter = makeStarterChallenge(today);
       setChallenges([starter]);
       if (userId) syncChallenge(userId, starter);
     }
-  }, [challenges.length, pastChallenges.length, todayStr, userId]);
+  }, [challenges.length, pastChallenges.length, habits.length, todayStr, userId]);
 
   const resetAll = useCallback(async () => {
     const today = localDateKey();
