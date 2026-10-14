@@ -231,6 +231,9 @@ export default function SettingsScreen() {
   const [devCodeDraft, setDevCodeDraft] = useState('');
   const devTapTimer = useRef(null);
   const showDevTools = devMode;
+  // Throws during render so the root ErrorBoundary (and Sentry, when configured) can be exercised.
+  const [crashTest, setCrashTest] = useState(false);
+  if (crashTest) throw new Error('Test crash from Settings dev tools');
 
   const handleVersionTap = () => {
     if (showDevTools) return;
@@ -557,6 +560,24 @@ export default function SettingsScreen() {
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>Random completions for the past 30 days</Text>
               </View>
               <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+            </TouchableOpacity>
+
+            {/* Crash test */}
+            <TouchableOpacity
+              style={[styles.row, { borderBottomColor: theme.border }]}
+              onPress={() => {
+                Alert.alert('Test Crash', 'This throws a render error so you can check the crash screen and Sentry.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Crash', style: 'destructive', onPress: () => setCrashTest(true) },
+                ]);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>Test Crash</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>Throws an error to exercise the crash screen</Text>
+              </View>
+              <Ionicons name="warning-outline" size={20} color={theme.warning} />
             </TouchableOpacity>
 
             {/* Lock dev tools */}

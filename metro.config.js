@@ -1,6 +1,8 @@
-const { getDefaultConfig } = require('expo/metro-config');
+// Sentry's wrapper around Expo's default Metro config adds debug ids to bundles so
+// uploaded source maps match; it is a plain pass-through when Sentry is not configured.
+const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
 // react-native ships a nested copy of itself inside its own node_modules.
 // Metro resolves that nested copy and fails on VirtualViewExperimentalNativeComponent
