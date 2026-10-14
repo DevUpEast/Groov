@@ -12,6 +12,7 @@ import EmptyCard from '../components/EmptyCard';
 import { SheetDragHandle, SheetHeader } from '../components/SheetHeader';
 import CelebrationOverlay from '../components/CelebrationOverlay';
 import { lightImpact, mediumImpact } from '../utils/haptics';
+import { addDays } from '../utils/dates';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -412,12 +413,7 @@ function ChallengeCard({ challenge, habits, today, onEdit, onDelete, theme }) {
       {/* Day badges */}
       <View style={styles.badgeRow}>
         {Array.from({ length: challenge.days }).map((_, i) => {
-          const dayDate = (() => {
-            if (!challenge.startDate) return null;
-            const d = new Date(challenge.startDate + 'T00:00:00');
-            d.setDate(d.getDate() + i);
-            return d.toISOString().split('T')[0];
-          })();
+          const dayDate = challenge.startDate ? addDays(challenge.startDate, i) : null;
           const completed = dayDate ? challenge.completedDays.includes(dayDate) : i < completedCount;
           const isCurrent = i + 1 === currentDay && !completed;
           const isMissed = dayDate && dayDate < today && !completed;

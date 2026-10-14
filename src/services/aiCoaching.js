@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { localDateKey } from '../utils/dates';
 
 function stripEmDashes(text) {
   if (!text) return text;
@@ -23,13 +24,14 @@ async function authHeaders() {
   return { Authorization: `Bearer ${session.access_token}` };
 }
 
-export async function fetchDailyNudge(accountCreatedAt, displayName, excludeDate) {
-  const realToday = new Date().toISOString().split('T')[0];
+// `today` is the client's LOCAL date key. The edge functions run in UTC, so without it
+// they would evaluate "today" on the wrong calendar day for much of the world.
+export async function fetchDailyNudge(accountCreatedAt, displayName, today) {
   const { data, error } = await supabase.functions.invoke('generate-nudge', {
     body: {
       accountCreatedAt: accountCreatedAt || null,
       displayName: displayName || null,
-      excludeDate: excludeDate ?? realToday,
+      today: today ?? localDateKey(),
     },
     headers: await authHeaders(),
   });
@@ -42,14 +44,13 @@ export async function fetchDailyNudge(accountCreatedAt, displayName, excludeDate
   return data;
 }
 
-export async function fetchReflection(period = 'weekly', accountCreatedAt, displayName, excludeDate) {
-  const realToday = new Date().toISOString().split('T')[0];
+export async function fetchReflection(period = 'weekly', accountCreatedAt, displayName, today) {
   const { data, error } = await supabase.functions.invoke('generate-reflection', {
     body: {
       period,
       accountCreatedAt: accountCreatedAt || null,
       displayName: displayName || null,
-      excludeDate: excludeDate ?? realToday,
+      today: today ?? localDateKey(),
     },
     headers: await authHeaders(),
   });

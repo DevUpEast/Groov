@@ -19,6 +19,21 @@ function localDate(dateStr: string): Date {
   return d
 }
 
+// Date -> 'YYYY-MM-DD' in this runtime's local zone (UTC on Supabase).
+function dateKey(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+// Validate the client-supplied local date. Any zone is at most ±1 day from UTC;
+// allow 2 to be safe and fall back to the server date otherwise.
+function clientToday(value: unknown): string {
+  const serverToday = dateKey(new Date())
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return serverToday
+  const diff = Math.abs(localDate(value).getTime() - localDate(serverToday).getTime()) / 86400000
+  return Number.isFinite(diff) && diff <= 2 ? value : serverToday
+}
+
 function stripEmDashes(text: string): string {
   return text
     .replace(/\s*—\s*/g, ', ')
@@ -82,9 +97,11 @@ Deno.serve(async (req: Request) => {
         : null
     const accountCreatedStr: string = clientAccountCreatedAt ?? toDateOnly(user.created_at)
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todayStr = toDateOnly(today.toISOString())
+    // "Today" is the CLIENT's local calendar date. This function runs in UTC, so the
+    // server clock is the wrong day for most of the world for part of every day.
+    // Accept the client value when it is a plausible date (within 2 days of now).
+    const todayStr = clientToday(body.today)
+    const today = localDate(todayStr)
 
     const accountCreatedDate = localDate(accountCreatedStr)
 
@@ -92,7 +109,7 @@ Deno.serve(async (req: Request) => {
     const requestedStartDate = new Date(today)
     requestedStartDate.setDate(requestedStartDate.getDate() - days + 1)
     const effectiveStartDate = requestedStartDate > accountCreatedDate ? requestedStartDate : accountCreatedDate
-    const periodStart = toDateOnly(effectiveStartDate.toISOString())
+    const periodStart = dateKey(effectiveStartDate)
 
     // Account-level active days in this period
     const msPerDay = 1000 * 60 * 60 * 24
@@ -163,14 +180,14 @@ Deno.serve(async (req: Request) => {
       const habitCreatedDate = localDate(habitCreatedStr)
       // Habit's active window starts at whichever is latest: period start or habit creation
       const habitStartDate = habitCreatedDate > effectiveStartDate ? habitCreatedDate : effectiveStartDate
-      const habitStartStr = toDateOnly(habitStartDate.toISOString())
+      const habitStartStr = dateKey(habitStartDate)
       const habitActiveDays = Math.round((today.getTime() - habitStartDate.getTime()) / msPerDay) + 1
 
       let completedDays = 0
       for (let i = 0; i < habitActiveDays; i++) {
         const d = new Date(today)
         d.setDate(d.getDate() - i)
-        const dateStr = toDateOnly(d.toISOString())
+        const dateStr = dateKey(d)
         if (((completions[dateStr] ?? {})[h.id] ?? 0) >= h.volume_goal) completedDays++
       }
 
@@ -190,7 +207,7 @@ Deno.serve(async (req: Request) => {
     for (let i = 0; i < accountActiveDays; i++) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
-      const dateStr = toDateOnly(d.toISOString())
+      const dateStr = dateKey(d)
       const dayComps = completions[dateStr] ?? {}
       // Only consider habits that were active on this date
       const activeOnDay = habits.filter(h => {

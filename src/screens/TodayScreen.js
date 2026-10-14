@@ -17,6 +17,7 @@ import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import { successNotification, mediumImpact } from '../utils/haptics';
 import { fetchDailyNudge } from '../services/aiCoaching';
 import { scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../utils/notifications';
+import { localDateKey } from '../utils/dates';
 
 function SproutIcon({ size = 24 }) {
   return (
@@ -115,7 +116,7 @@ export default function TodayScreen() {
 
   // Dev users pass todayStr() (which reflects the date offset) so the AI coach
   // responds to the simulated date. All other users always use the real date.
-  const excludeDate = isDevEmail ? today : new Date().toISOString().split('T')[0];
+  const excludeDate = isDevEmail ? today : localDateKey();
 
   // Fetch daily nudge once when habits are available, but only from day 2 onwards
   // so the coach always works from at least one full day of completed history.

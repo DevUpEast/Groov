@@ -16,6 +16,21 @@ function localDate(dateStr: string): Date {
   return d
 }
 
+// Date -> 'YYYY-MM-DD' in this runtime's local zone (UTC on Supabase).
+function dateKey(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+// Validate the client-supplied local date. Any zone is at most ±1 day from UTC;
+// allow 2 to be safe and fall back to the server date otherwise.
+function clientToday(value: unknown): string {
+  const serverToday = dateKey(new Date())
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return serverToday
+  const diff = Math.abs(localDate(value).getTime() - localDate(serverToday).getTime()) / 86400000
+  return Number.isFinite(diff) && diff <= 2 ? value : serverToday
+}
+
 function stripEmDashes(text: string): string {
   return text
     .replace(/\s*—\s*/g, ', ')
@@ -68,9 +83,11 @@ Deno.serve(async (req: Request) => {
     // even after the user clears and starts fresh.
     const accountCreatedStr: string = clientAccountCreatedAt ?? toDateOnly(user.created_at)
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todayStr = toDateOnly(today.toISOString())
+    // "Today" is the CLIENT's local calendar date. This function runs in UTC, so the
+    // server clock is the wrong day for most of the world for part of every day.
+    // Accept the client value when it is a plausible date (within 2 days of now).
+    const todayStr = clientToday(body.today)
+    const today = localDate(todayStr)
 
     // Return today's cached nudge only if it was generated after accountCreatedAt
     // (prevents stale caches from before a data reset from being served).
@@ -106,15 +123,14 @@ Deno.serve(async (req: Request) => {
 
     const accountCreatedDate = localDate(accountCreatedStr)
 
-    const today2 = new Date()
-    today2.setHours(0, 0, 0, 0)
+    const today2 = today
     const msPerDay = 1000 * 60 * 60 * 24
 
     // Global query window: up to 30 days back, no earlier than account creation
     const rawCutoff = new Date(today2)
     rawCutoff.setDate(rawCutoff.getDate() - 29)
     const globalCutoffDate = rawCutoff > accountCreatedDate ? rawCutoff : accountCreatedDate
-    const globalCutoffStr = toDateOnly(globalCutoffDate.toISOString())
+    const globalCutoffStr = dateKey(globalCutoffDate)
 
     const accountActiveDays = Math.round((today2.getTime() - accountCreatedDate.getTime()) / msPerDay) + 1
 
@@ -144,13 +160,13 @@ Deno.serve(async (req: Request) => {
       const habitCreatedStr = h.created_at ? toDateOnly(h.created_at) : accountCreatedStr
       const habitCreatedDate = localDate(habitCreatedStr)
       const habitStartDate = habitCreatedDate > globalCutoffDate ? habitCreatedDate : globalCutoffDate
-      const habitStartStr = toDateOnly(habitStartDate.toISOString())
+      const habitStartStr = dateKey(habitStartDate)
       const habitActiveDays = Math.round((today2.getTime() - habitStartDate.getTime()) / msPerDay) + 1
 
       let streak = 0
       const d = new Date(today2)
       while (streak < habitActiveDays) {
-        const dateStr = toDateOnly(d.toISOString())
+        const dateStr = dateKey(d)
         if (((completions[dateStr] ?? {})[h.id] ?? 0) >= h.volume_goal) {
           streak++
           d.setDate(d.getDate() - 1)
@@ -176,7 +192,7 @@ Deno.serve(async (req: Request) => {
     let overallStreak = 0
     const od = new Date(today2)
     while (overallStreak < accountActiveDays) {
-      const dateStr = toDateOnly(od.toISOString())
+      const dateStr = dateKey(od)
       const day = completions[dateStr] ?? {}
       const activeHabits = habits.filter(h => {
         const hCreated = h.created_at ? toDateOnly(h.created_at) : accountCreatedStr
