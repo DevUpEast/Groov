@@ -175,16 +175,19 @@ function DayDetailModal({ visible, day, onClose, theme }) {
               dayHabits.map(h => {
                 const count = dayCompletions[h.id] || 0;
                 const done = count >= h.volumeGoal;
+                const rest = !done && h.status === 'rest';
                 return (
-                  <View key={h.id} style={[styles.habitRow, { borderBottomColor: theme.border }]}>
+                  <View key={h.id} style={[styles.habitRow, { borderBottomColor: theme.border, opacity: rest ? 0.55 : 1 }]}>
                     <Text style={styles.habitIcon}>{h.icon || '📋'}</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.habitName, { color: theme.text }]}>{h.name}</Text>
-                      {h.volumeGoal > 1 && (
+                      {rest ? (
+                        <Text style={[styles.habitSub, { color: theme.textMuted }]}>Not scheduled</Text>
+                      ) : h.volumeGoal > 1 ? (
                         <Text style={[styles.habitSub, { color: theme.textMuted }]}>{count}/{h.volumeGoal}</Text>
-                      )}
+                      ) : null}
                     </View>
-                    <Text style={{ fontSize: 18 }}>{done ? '✅' : '⬜'}</Text>
+                    <Text style={{ fontSize: 18 }}>{done ? '✅' : rest ? '💤' : '⬜'}</Text>
                   </View>
                 );
               })

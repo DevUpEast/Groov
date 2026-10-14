@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
+import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn } from '../_shared/schedule.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -135,7 +136,7 @@ Deno.serve(async (req: Request) => {
     const accountActiveDays = Math.round((today2.getTime() - accountCreatedDate.getTime()) / msPerDay) + 1
 
     const [{ data: habits }, { data: completionRows }] = await Promise.all([
-      supabase.from('habits').select('id, name, icon, volume_goal, created_at').eq('user_id', user.id),
+      supabase.from('habits').select('id, name, icon, volume_goal, created_at, schedule').eq('user_id', user.id),
       supabase
         .from('completions')
         .select('date, habit_id, count')
@@ -161,16 +162,19 @@ Deno.serve(async (req: Request) => {
       const habitCreatedDate = localDate(habitCreatedStr)
       const habitStartDate = habitCreatedDate > globalCutoffDate ? habitCreatedDate : globalCutoffDate
       const habitStartStr = dateKey(habitStartDate)
-      const habitActiveDays = Math.round((today2.getTime() - habitStartDate.getTime()) / msPerDay) + 1
+      const schedule = normalizeSchedule(h.schedule)
+      const habitActiveDays = Math.max(1, expectedDays(schedule, habitStartDate, today2))
 
+      // Streak of scheduled days done; unscheduled days are skipped, not broken on.
       let streak = 0
       const d = new Date(today2)
-      while (streak < habitActiveDays) {
+      for (let guard = 0; guard < 400; guard++) {
         const dateStr = dateKey(d)
-        if (((completions[dateStr] ?? {})[h.id] ?? 0) >= h.volume_goal) {
-          streak++
-          d.setDate(d.getDate() - 1)
-        } else break
+        if (d < habitStartDate) break
+        const done = ((completions[dateStr] ?? {})[h.id] ?? 0) >= h.volume_goal
+        if (done) streak++
+        else if (schedule.type === 'daily' || (schedule.type === 'weekdays' && isScheduledOn(schedule, d))) break
+        d.setDate(d.getDate() - 1)
       }
 
       const completedDays = Object.entries(completions)
@@ -182,10 +186,11 @@ Deno.serve(async (req: Request) => {
         name: h.name,
         icon: h.icon ?? '',
         createdStr: habitCreatedStr,
+        schedule: describeSchedule(schedule),
         streak,
         completedDays,
         activeDays: habitActiveDays,
-        rate: Math.round((completedDays / habitActiveDays) * 100),
+        rate: Math.min(100, Math.round((completedDays / habitActiveDays) * 100)),
       }
     })
 
@@ -196,9 +201,17 @@ Deno.serve(async (req: Request) => {
       const day = completions[dateStr] ?? {}
       const activeHabits = habits.filter(h => {
         const hCreated = h.created_at ? toDateOnly(h.created_at) : accountCreatedStr
-        return dateStr >= hCreated
+        return dateStr >= hCreated && isScheduledOn(normalizeSchedule(h.schedule), od)
       })
-      if (activeHabits.length > 0 && activeHabits.every((h) => (day[h.id] ?? 0) >= h.volume_goal)) {
+      const dueToday = activeHabits.filter(h => normalizeSchedule(h.schedule).type !== 'perWeek')
+      if (activeHabits.length === 0 || (dueToday.length === 0)) {
+        // Rest day: nothing scheduled; the chain survives but does not grow.
+        if (overallStreak >= accountActiveDays) break
+        od.setDate(od.getDate() - 1)
+        if (dateStr <= accountCreatedStr) break
+        continue
+      }
+      if (dueToday.every((h) => (day[h.id] ?? 0) >= h.volume_goal)) {
         overallStreak++
         od.setDate(od.getDate() - 1)
       } else break
@@ -227,7 +240,7 @@ Deno.serve(async (req: Request) => {
     const prompt = `You are a warm, encouraging habit coach. ${namePrefix}Based on the user's data below, write a concise daily nudge (2-3 sentences). Acknowledge what they are doing well using specific numbers, then give ONE actionable tip for the habit they struggle with most. Avoid generic openers like "Great job" or "Keep it up". Never use em dashes (the long dash) or en dashes in your response - use commas, hyphens, or separate sentences instead.
 
 ${timeSpanRule}
-IMPORTANT: Each habit shows its own active days since it was created. Use each habit's own denominator for its completion rate.
+IMPORTANT: Each habit shows its own expected days since it was created, based on its schedule (some habits are only due on certain days or N times a week). Use each habit's own denominator for its completion rate and never call an unscheduled day a miss.
 
 Today: ${todayStr}
 ${accountAgeLine}
@@ -235,7 +248,7 @@ Overall streak: ${overallStreak} day${overallStreak !== 1 ? 's' : ''}
 Strongest habit: ${best.icon} ${best.name} - ${best.streak}-day streak, ${best.completedDays}/${best.activeDays} active days (${best.rate}%)
 Needs work: ${worst.icon} ${worst.name} - ${worst.streak}-day streak, ${worst.completedDays}/${worst.activeDays} active days (${worst.rate}%)
 All habits:
-${habitStats.map((h) => `  * ${h.icon} ${h.name}: ${h.streak}-day streak, ${h.completedDays}/${h.activeDays} days (${h.rate}%) - active since ${h.createdStr}`).join('\n')}
+${habitStats.map((h) => `  * ${h.icon} ${h.name} [${h.schedule}]: ${h.streak}-day streak, ${h.completedDays}/${h.activeDays} expected days (${h.rate}%) - active since ${h.createdStr}`).join('\n')}
 
 Write the nudge:`
 

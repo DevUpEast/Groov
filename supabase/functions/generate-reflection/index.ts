@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
+import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn } from '../_shared/schedule.ts'
 
 // Wildcard origin is intentional: CORS is a browser mechanism and does not apply to
 // native mobile clients. Supabase edge functions require this header for the OPTIONS
@@ -151,7 +152,7 @@ Deno.serve(async (req: Request) => {
 
     // Fetch habits with their individual creation dates + completions for the active period
     const [{ data: habits }, { data: completionRows }] = await Promise.all([
-      supabase.from('habits').select('id, name, icon, volume_goal, created_at').eq('user_id', user.id),
+      supabase.from('habits').select('id, name, icon, volume_goal, created_at, schedule').eq('user_id', user.id),
       supabase
         .from('completions')
         .select('date, habit_id, count')
@@ -181,10 +182,12 @@ Deno.serve(async (req: Request) => {
       // Habit's active window starts at whichever is latest: period start or habit creation
       const habitStartDate = habitCreatedDate > effectiveStartDate ? habitCreatedDate : effectiveStartDate
       const habitStartStr = dateKey(habitStartDate)
-      const habitActiveDays = Math.round((today.getTime() - habitStartDate.getTime()) / msPerDay) + 1
+      const schedule = normalizeSchedule(h.schedule)
+      const calendarDays = Math.round((today.getTime() - habitStartDate.getTime()) / msPerDay) + 1
+      const habitActiveDays = Math.max(1, expectedDays(schedule, habitStartDate, today))
 
       let completedDays = 0
-      for (let i = 0; i < habitActiveDays; i++) {
+      for (let i = 0; i < calendarDays; i++) {
         const d = new Date(today)
         d.setDate(d.getDate() - i)
         const dateStr = dateKey(d)
@@ -195,9 +198,10 @@ Deno.serve(async (req: Request) => {
         name: h.name,
         icon: h.icon ?? '',
         createdStr: habitCreatedStr,
+        schedule: describeSchedule(schedule),
         completedDays,
         activeDays: habitActiveDays,
-        rate: Math.round((completedDays / habitActiveDays) * 100),
+        rate: Math.min(100, Math.round((completedDays / habitActiveDays) * 100)),
         isNew: habitCreatedStr > periodStart,
       }
     })
@@ -212,7 +216,8 @@ Deno.serve(async (req: Request) => {
       // Only consider habits that were active on this date
       const activeOnDay = habits.filter(h => {
         const hCreated = h.created_at ? toDateOnly(h.created_at) : accountCreatedStr
-        return dateStr >= hCreated
+        const s = normalizeSchedule(h.schedule)
+        return dateStr >= hCreated && s.type !== 'perWeek' && isScheduledOn(s, d)
       })
       if (activeOnDay.length > 0 && activeOnDay.every((h) => (dayComps[h.id] ?? 0) >= h.volume_goal)) {
         perfectDays++
@@ -238,7 +243,7 @@ Deno.serve(async (req: Request) => {
     const prompt = `You are a warm, insightful habit coach. Write a ${period} reflection summary (3-5 sentences) for a user based on the data below. Be specific and data-driven. Highlight the standout habit, address the one that needs attention, and give one concrete actionable tip. End on an encouraging note. Never use em dashes (the long dash) or en dashes in your response - use commas, hyphens, or separate sentences instead.
 
 ${timeSpanRule}
-IMPORTANT: Each habit shows its own active days since it was created. Use each habit's own denominator - never compare completedDays against the full ${days}-day period if the habit was created more recently. Do not reference days before the account or any habit was created.
+IMPORTANT: Each habit shows its own expected days since it was created, based on its schedule (some habits are only due on certain days or N times a week). Use each habit's own denominator - never compare completedDays against the full ${days}-day period if the habit was created more recently or is not due every day. Do not reference days before the account or any habit was created.
 
 Period: ${periodStart} to ${todayStr}
 ${accountAgeLine}
@@ -247,7 +252,7 @@ Perfect days (all active habits done): ${perfectDays}/${accountActiveDays}
 Habits (completions / days that habit was active):
 ${habitStats.map((h) => {
   const newTag = h.isNew ? ` (new habit, active since ${h.createdStr})` : ''
-  return `  * ${h.icon} ${h.name}: ${h.completedDays}/${h.activeDays} days (${h.rate}%)${newTag}`
+  return `  * ${h.icon} ${h.name} [${h.schedule}]: ${h.completedDays}/${h.activeDays} expected days (${h.rate}%)${newTag}`
 }).join('\n')}
 
 Most consistent: ${best.icon} ${best.name} at ${best.rate}% (${best.completedDays}/${best.activeDays} days)
