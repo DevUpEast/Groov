@@ -51,3 +51,6 @@ reports/
 
 # emulator screenshots from scripts/emu.sh
 .emu-shots/
+
+# per-machine Claude Code settings
+.claude/settings.local.json
