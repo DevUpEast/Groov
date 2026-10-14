@@ -1,10 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Platform, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import TimePicker from '../components/TimePicker';
@@ -13,7 +12,6 @@ import { lightImpact, mediumImpact } from '../utils/haptics';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
 const DEV_CODE = 'devmode';
-const DEV_STORE_KEY = 'GROOV_DEV_DEVICE_OWNER';
 
 function formatTime(t) {
   if (!t) return '-';
@@ -49,7 +47,7 @@ function Section({ title, children, theme }) {
 }
 
 export default function SettingsScreen() {
-  const { settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory } = useApp();
+  const { settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, devMode, setDevMode } = useApp();
   const { user, signOut, displayName, deleteAccount, sendPasswordReset, verifyPasswordReset, authProvider } = useAuth();
   // Apple/Google accounts have no Groov password to reset.
   const canResetPassword = authProvider === 'email';
@@ -158,19 +156,12 @@ export default function SettingsScreen() {
   const [editingLabel, setEditingLabel] = useState(null);
   const [labelDraft, setLabelDraft] = useState('');
 
-  // Dev tools — locked to this specific device via SecureStore
-  const [devUnlocked, setDevUnlocked] = useState(false);
+  // Dev tools — unlocked per device; state lives in AppContext (persisted via SecureStore)
   const [devTapCount, setDevTapCount] = useState(0);
   const [showDevInput, setShowDevInput] = useState(false);
   const [devCodeDraft, setDevCodeDraft] = useState('');
   const devTapTimer = useRef(null);
-  const showDevTools = devUnlocked;
-
-  useEffect(() => {
-    SecureStore.getItemAsync(DEV_STORE_KEY).then(val => {
-      if (val === 'true') setDevUnlocked(true);
-    }).catch(() => {});
-  }, []);
+  const showDevTools = devMode;
 
   const handleVersionTap = () => {
     if (showDevTools) return;
@@ -186,8 +177,7 @@ export default function SettingsScreen() {
 
   const handleDevCodeSubmit = async () => {
     if (devCodeDraft === DEV_CODE) {
-      await SecureStore.setItemAsync(DEV_STORE_KEY, 'true').catch(() => {});
-      setDevUnlocked(true);
+      setDevMode(true);
       setShowDevInput(false);
       setDevCodeDraft('');
       lightImpact();
@@ -505,10 +495,7 @@ export default function SettingsScreen() {
                   [
                     { text: 'Cancel', style: 'cancel' },
                     {
-                      text: 'Disable', style: 'destructive', onPress: async () => {
-                        await SecureStore.deleteItemAsync(DEV_STORE_KEY).catch(() => {});
-                        setDevUnlocked(false);
-                      },
+                      text: 'Disable', style: 'destructive', onPress: () => setDevMode(false),
                     },
                   ]
                 );

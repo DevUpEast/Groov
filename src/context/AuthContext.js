@@ -7,7 +7,7 @@ import * as Crypto from 'expo-crypto';
 import { supabase } from '../utils/supabase';
 import { syncProfile, deleteAllUserData } from '../services/sync';
 import { clearAll, saveData } from '../utils/storage';
-import * as SecureStore from 'expo-secure-store';
+import { clearDevMode } from '../utils/devMode';
 
 // On web, lets the auth popup/redirect hand control back to the app.
 WebBrowser.maybeCompleteAuthSession();
@@ -262,7 +262,7 @@ export function AuthProvider({ children }) {
     // can detect it on the next login and reset in-memory state too.
     await clearAll();
     await saveData('accountWasDeleted', true);
-    await SecureStore.deleteItemAsync('GROOV_DEV_DEVICE_OWNER').catch(() => {});
+    await clearDevMode();
     // Call Edge Function to delete the auth user (requires service role)
     const res = await fetch(
       `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/delete-account`,

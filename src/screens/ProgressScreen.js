@@ -214,7 +214,7 @@ function BarTooltip({ label, value, onClose, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
-  const { getLastNDays, getOverallStreak, habits, theme, completions, accountCreatedAt, displayName, todayStr, isDevEmail } = useApp();
+  const { getLastNDays, getOverallStreak, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode } = useApp();
   const [heatPeriodIdx, setHeatPeriodIdx] = useState(0);
   const [selectedDay, setSelectedDay] = useState(null);
   const [tooltipInfo, setTooltipInfo] = useState(null);
@@ -241,9 +241,9 @@ export default function ProgressScreen() {
 
   const reflectionLocked = reflectionPeriod === 'weekly' ? !canGenerateWeekly : !canGenerateMonthly;
 
-  // Dev users pass the offset-aware date so the reflection window shifts with the simulated date.
-  // All other users always use the real date.
-  const excludeDate = isDevEmail ? todayStr() : localDateKey();
+  // In dev mode the reflection window follows the simulated date offset; otherwise it
+  // always uses the real local date.
+  const coachToday = devMode ? todayStr() : localDateKey();
 
   const handleGenerateReflection = useCallback(async () => {
     if (habits.length === 0) return;
@@ -254,7 +254,7 @@ export default function ProgressScreen() {
     setReflectionError(false);
     lightImpact();
     try {
-      const data = await fetchReflection(reflectionPeriod, accountCreatedAt, displayName, excludeDate);
+      const data = await fetchReflection(reflectionPeriod, accountCreatedAt, displayName, coachToday);
       if (data?.message) {
         setReflectionMessage(data.message);
         setReflectionGeneratedAt(data.generatedAt ?? new Date().toISOString());
@@ -264,7 +264,7 @@ export default function ProgressScreen() {
     } finally {
       setReflectionLoading(false);
     }
-  }, [habits.length, reflectionPeriod, canGenerateWeekly, canGenerateMonthly, accountCreatedAt, excludeDate]);
+  }, [habits.length, reflectionPeriod, canGenerateWeekly, canGenerateMonthly, accountCreatedAt, displayName, coachToday]);
 
   const heatCfg = PERIOD_CONFIG[heatPeriodIdx];
 

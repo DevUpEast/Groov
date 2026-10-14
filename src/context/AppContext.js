@@ -12,6 +12,7 @@ import {
 import { scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../utils/notifications';
 import { localDateKey, todayKey, addDays } from '../utils/dates';
 import { countBackStreak } from '../utils/streaks';
+import { loadDevMode, saveDevMode } from '../utils/devMode';
 
 const AppContext = createContext(null);
 
@@ -131,6 +132,9 @@ export function AppProvider({ children }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [accountCreatedAt, setAccountCreatedAt] = useState(null);
   const [pendingChallengeRewards, setPendingChallengeRewards] = useState([]);
+  // Developer mode: unlocked per device from Settings (tap the version label). Gates the
+  // dev tools section and makes the AI coach follow the simulated date offset.
+  const [devMode, setDevModeState] = useState(false);
 
   const { user, displayName } = useAuth();
   const userId = user?.id ?? null;
@@ -167,7 +171,7 @@ export function AppProvider({ children }) {
     // NOTE: userId is always null here (auth resolves asynchronously after mount).
     // Do NOT check lastUserId vs userId here — it will always look like a different user.
     // The user-switch check runs in the cloud sync effect below, where userId is known.
-    const [h, c, s, ch, ob, ds, pc, aca, savedOffset, pcr] = await Promise.all([
+    const [h, c, s, ch, ob, ds, pc, aca, savedOffset, pcr, dev] = await Promise.all([
       loadData('habits'),
       loadData('completions'),
       loadData('settings'),
@@ -178,6 +182,7 @@ export function AppProvider({ children }) {
       loadData('accountCreatedAt'),
       loadData('dateOffset'),
       loadData('pendingChallengeRewards'),
+      loadDevMode(),
     ]);
 
     if (h) setHabits(h);
@@ -205,8 +210,10 @@ export function AppProvider({ children }) {
       setAccountCreatedAt(firstDate);
       saveData('accountCreatedAt', firstDate);
     }
-    if (savedOffset !== null) setDateOffset(savedOffset);
     if (pcr) setPendingChallengeRewards(pcr);
+    setDevModeState(dev);
+    // The simulated date only makes sense while dev mode is unlocked.
+    if (dev && savedOffset !== null) setDateOffset(savedOffset);
     setLoaded(true);
   }
 
@@ -596,6 +603,14 @@ export function AppProvider({ children }) {
     }
   }, [challenges, habits, userId]);
 
+  // ── Developer mode ───────────────────────────────────────────────────────────
+
+  const setDevMode = useCallback((enabled) => {
+    setDevModeState(enabled);
+    if (!enabled) setDateOffset(0);
+    saveDevMode(enabled);
+  }, []);
+
   // ── Onboarding / reset ───────────────────────────────────────────────────────
 
   const completeOnboarding = useCallback(() => setHasOnboarded(true), []);
@@ -716,6 +731,7 @@ export function AppProvider({ children }) {
       habits, completions, settings, challenges, pastChallenges, hasOnboarded, theme,
       effectiveChallenges, effectivePastChallenges,
       dateOffset, setDateOffset, accountCreatedAt, displayName,
+      devMode, setDevMode,
       loaded,
       pendingChallengeRewards, clearPendingChallengeRewards,
       modalOpen, setModalOpen,
