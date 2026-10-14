@@ -149,10 +149,10 @@ export async function pushAllLocalData(userId, { habits, completions, settings, 
 
 export async function pullAllData(userId) {
   const [habitsRes, completionsRes, challengesRes, pastRes, settingsRes, snapshotsRes] = await Promise.all([
-    supabase.from('habits').select('*').eq('user_id', userId),
+    supabase.from('habits').select('*').eq('user_id', userId).order('created_at').order('id'),
     supabase.from('completions').select('*').eq('user_id', userId),
-    supabase.from('challenges').select('*').eq('user_id', userId),
-    supabase.from('past_challenges').select('*').eq('user_id', userId),
+    supabase.from('challenges').select('*').eq('user_id', userId).order('start_date').order('id'),
+    supabase.from('past_challenges').select('*').eq('user_id', userId).order('archived_at', { ascending: false }).order('id'),
     supabase.from('settings').select('*').eq('user_id', userId).maybeSingle(),
     supabase.from('daily_snapshots').select('*').eq('user_id', userId),
   ]);
@@ -215,15 +215,6 @@ export async function syncProfile(userId, displayName) {
   if (error) syncWarn('syncProfile:', error.message);
 }
 
-export async function fetchProfile(userId) {
-  const { data, error } = await supabase.from('profiles')
-    .select('display_name')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error) syncWarn('fetchProfile:', error.message);
-  return data;
-}
-
 // ── Individual mutation syncs ─────────────────────────────────────────────────
 
 export async function syncHabit(userId, habit) {
@@ -271,10 +262,4 @@ export async function syncPastChallenge(userId, challenge) {
 export async function syncSettings(userId, settings) {
   const { error } = await supabase.from('settings').upsert(settingsToRow(settings, userId));
   if (error) syncWarn('syncSettings:', error.message);
-}
-
-export async function syncDailySnapshot(userId, date, snapshot) {
-  const { error } = await supabase.from('daily_snapshots')
-    .upsert({ user_id: userId, date, snapshot });
-  if (error) syncWarn('syncDailySnapshot:', error.message);
 }

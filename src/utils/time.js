@@ -1,7 +1,7 @@
 // Conversions between the 12-hour { hour12, minute, ampm } shape used by the
 // TimePicker and the 24-hour { hour, minute } shape notification triggers expect.
 
-export const DEFAULT_TIME_12 = { hour12: 8, minute: 0, ampm: 'AM' };
+const DEFAULT_TIME_12 = { hour12: 8, minute: 0, ampm: 'AM' };
 
 export function to24h(time) {
   const t = time && time.hour12 !== undefined ? time : DEFAULT_TIME_12;

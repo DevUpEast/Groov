@@ -56,7 +56,7 @@ async function cancel(identifier) {
 }
 
 // Build the full list of daily reminders that should exist for this state.
-export function desiredDailyReminders(settings, habits) {
+function desiredDailyReminders(settings, habits) {
   if (!settings?.notificationsEnabled) return [];
   const out = [];
   for (const r of settings.reminders || []) {
