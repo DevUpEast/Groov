@@ -13,6 +13,7 @@ import BottomSheet from '../components/BottomSheet';
 import EmptyCard from '../components/EmptyCard';
 import { SheetDragHandle } from '../components/SheetHeader';
 import TimePicker from '../components/TimePicker';
+import HabitDetailSheet from '../components/HabitDetailSheet';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { describeSchedule, WEEKDAY_LABELS, DEFAULT_SCHEDULE } from '../utils/schedule';
 
@@ -350,7 +351,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
   );
 }
 
-function HabitRow({ habit, theme, onEdit, onDelete, onBell }) {
+function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen }) {
   const reminderTime = formatReminder(habit.reminder);
   const reminderOn = habit.reminder?.enabled;
   const scheduleLabel = habit.schedule && habit.schedule.type !== 'daily' ? describeSchedule(habit.schedule) : null;
@@ -361,7 +362,7 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell }) {
       ) : (
         <Text style={styles.rowIcon}>{habit.icon}</Text>
       )}
-      <View style={styles.rowInfo}>
+      <TouchableOpacity style={styles.rowInfo} onPress={onOpen} activeOpacity={0.6} accessibilityRole="button" accessibilityLabel={`${habit.name}, show details`}>
         <Text style={[styles.rowName, { color: theme.text }]} numberOfLines={1}>{habit.name}</Text>
         <View style={styles.rowMeta}>
           <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
@@ -380,7 +381,7 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell }) {
             </View>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
       <TouchableOpacity style={styles.bellBtn} onPress={onBell}>
         <Ionicons
           name={reminderOn ? 'notifications' : 'notifications-outline'}
@@ -408,9 +409,10 @@ export default function HabitsScreen() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(BLANK);
   const [reminderTarget, setReminderTarget] = useState(null);
+  const [detailHabit, setDetailHabit] = useState(null);
 
   // Track modal open for swipe lock
-  useEffect(() => { setModalOpen(modalVisible || !!reminderTarget); }, [modalVisible, reminderTarget]);
+  useEffect(() => { setModalOpen(modalVisible || !!reminderTarget || !!detailHabit); }, [modalVisible, reminderTarget, detailHabit]);
 
   // Open Add Habit modal when navigated here from Challenge with a pending link
   useEffect(() => {
@@ -505,12 +507,19 @@ export default function HabitsScreen() {
               habit={habit}
               theme={theme}
               onEdit={() => openEdit(habit)}
+              onOpen={() => { if (settings.hapticsEnabled) lightImpact(); setDetailHabit(habit); }}
               onDelete={() => handleDelete(habit.id, habit.name)}
               onBell={() => { lightImpact(); habit.reminder?.enabled ? handleReminderToggleOff(habit) : setReminderTarget(habit.id); }}
             />
           ))
         )}
       </ScrollView>
+
+      <HabitDetailSheet
+        habit={detailHabit ? habits.find(h => h.id === detailHabit.id) || null : null}
+        onClose={() => setDetailHabit(null)}
+        onEdit={openEdit}
+      />
 
       <HabitModal
         visible={modalVisible}
