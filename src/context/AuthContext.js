@@ -8,6 +8,7 @@ import { supabase } from '../utils/supabase';
 import { syncProfile, deleteAllUserData } from '../services/sync';
 import { clearAll, saveData } from '../utils/storage';
 import { clearDevMode } from '../utils/devMode';
+import { setSentryUser } from '../utils/sentry';
 
 // On web, lets the auth popup/redirect hand control back to the app.
 WebBrowser.maybeCompleteAuthSession();
@@ -120,6 +121,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
       setSession(session);
+      setSentryUser(session?.user?.id ?? null);
       // Social sign-ins never go through signUp(), so make sure the profiles row
       // (used by the AI edge functions) exists with the provider-supplied name.
       if (event === 'SIGNED_IN' && session?.user) {

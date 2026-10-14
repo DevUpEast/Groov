@@ -6,40 +6,66 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { initSentry, captureException, wrapRoot } from './src/utils/sentry';
 
-// Surfaces crashes as readable text instead of a silent white screen in production,
-// where there is no Metro red-box and no console output to inspect.
+// Crash reporting is a no-op until EXPO_PUBLIC_SENTRY_DSN is set (see src/utils/sentry.js).
+initSentry();
+
+// Catches render errors below the root. In production shows a friendly retry screen
+// and reports to Sentry; in development also shows the message and stack so the
+// cause is visible without a debugger.
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { error: null };
+    this.state = { error: null, resetKey: 0 };
   }
   static getDerivedStateFromError(error) {
     return { error };
   }
   componentDidCatch(error, info) {
     console.error('App crashed:', error, info?.componentStack);
+    captureException(error, { extra: { componentStack: info?.componentStack } });
   }
+  retry = () => {
+    // Remount the whole tree so transient state that caused the crash is discarded.
+    this.setState(s => ({ error: null, resetKey: s.resetKey + 1 }));
+  };
   render() {
     if (this.state.error) {
+      const scheme = this.props.colorScheme === 'dark' ? themes.dark : themes.light;
       return (
-        <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: 60, paddingHorizontal: 20 }}>
-          <Text style={{ color: '#C00', fontWeight: '700', fontSize: 16, marginBottom: 12 }}>
-            App crashed
+        <View style={[crashStyles.root, { backgroundColor: scheme.bg }]}>
+          <Text style={crashStyles.emoji}>😵</Text>
+          <Text style={[crashStyles.title, { color: scheme.text }]}>Something went wrong</Text>
+          <Text style={[crashStyles.body, { color: scheme.textMuted }]}>
+            Groov hit an unexpected error. Your habits are saved. Tap below to try again, and if it
+            keeps happening, restart the app.
           </Text>
-          <ScrollView>
-            <Text selectable style={{ color: '#000', fontSize: 13, marginBottom: 12 }}>
-              {String(this.state.error?.message || this.state.error)}
-            </Text>
-            <Text selectable style={{ color: '#666', fontSize: 11 }}>
-              {String(this.state.error?.stack || '')}
-            </Text>
-          </ScrollView>
+          <TouchableOpacity style={[crashStyles.btn, { backgroundColor: scheme.primary }]} onPress={this.retry} activeOpacity={0.8}>
+            <Text style={crashStyles.btnText}>Try again</Text>
+          </TouchableOpacity>
+          {__DEV__ && (
+            <ScrollView style={crashStyles.devBox}>
+              <Text selectable style={[crashStyles.devText, { color: scheme.danger }]}>
+                {String(this.state.error?.message || this.state.error)}
+              </Text>
+              <Text selectable style={[crashStyles.devStack, { color: scheme.textMuted }]}>
+                {String(this.state.error?.stack || '')}
+              </Text>
+            </ScrollView>
+          )}
         </View>
       );
     }
-    return this.props.children;
+    return <React.Fragment key={this.state.resetKey}>{this.props.children}</React.Fragment>;
   }
+}
+
+// Class components cannot call hooks; read the scheme here so the crash screen
+// matches the device appearance even though the app's own theme is unavailable.
+function ThemedErrorBoundary({ children }) {
+  const colorScheme = useColorScheme();
+  return <ErrorBoundary colorScheme={colorScheme}>{children}</ErrorBoundary>;
 }
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -249,17 +275,31 @@ function AuthGate() {
   );
 }
 
-export default function App() {
+function App() {
   return (
-    <ErrorBoundary>
+    <ThemedErrorBoundary>
       <SafeAreaProvider>
         <AuthProvider>
           <AuthGate />
         </AuthProvider>
       </SafeAreaProvider>
-    </ErrorBoundary>
+    </ThemedErrorBoundary>
   );
 }
+
+export default wrapRoot(App);
+
+const crashStyles = StyleSheet.create({
+  root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  emoji: { fontSize: 56, marginBottom: 16 },
+  title: { fontSize: 22, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
+  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', marginBottom: 24 },
+  btn: { paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14 },
+  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  devBox: { marginTop: 24, maxHeight: 260, alignSelf: 'stretch' },
+  devText: { fontSize: 13, marginBottom: 8 },
+  devStack: { fontSize: 11 },
+});
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
