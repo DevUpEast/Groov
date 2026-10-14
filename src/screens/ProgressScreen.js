@@ -12,6 +12,7 @@ import { localDateKey } from '../utils/dates';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CHART_H = 150;
 const PARTIAL_COLOR = '#FDE68A';
+const FROZEN_COLOR = '#7DD3FC';
 
 // Card inner width: screen − 48 (scroll padding) − 40 (card padding=20×2) − 2 (border)
 const HEAT_INNER = SCREEN_WIDTH - 90;
@@ -86,9 +87,10 @@ function BarChart({ data, labels, theme, onBarPress, futureFlags }) {
 // ─── Heatmap cell ─────────────────────────────────────────────────────────────
 
 function HeatmapCell({ day, size, gap, theme, onPress }) {
-  const { completed, total, future } = day;
+  const { completed, total, future, frozen } = day;
   let bg = theme.progressBarBg;
   if (!future && total > 0 && completed >= total) bg = theme.primary;
+  else if (!future && frozen) bg = FROZEN_COLOR;
   else if (!future && total > 0 && completed > 0) bg = PARTIAL_COLOR;
 
   return (
@@ -156,10 +158,13 @@ function DayDetailModal({ visible, day, onClose, theme }) {
                 {day.completed}/{day.total} habits completed
               </Text>
             </View>
-            <TouchableOpacity onPress={doClose} style={styles.closeBtn}>
+            <TouchableOpacity onPress={doClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
               <Text style={[styles.closeBtnTxt, { color: theme.textMuted }]}>✕</Text>
             </TouchableOpacity>
           </View>
+          {day.frozen && (
+            <Text style={[styles.sheetSub, { color: '#0369A1', marginBottom: 8 }]}>❄️ Streak freeze used: this day did not break your streak.</Text>
+          )}
 
           <View style={[styles.ratioBarBg, { backgroundColor: theme.progressBarBg }]}>
             <View style={[styles.ratioBarFill, {
@@ -182,7 +187,7 @@ function DayDetailModal({ visible, day, onClose, theme }) {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.habitName, { color: theme.text }]}>{h.name}</Text>
                       {rest ? (
-                        <Text style={[styles.habitSub, { color: theme.textMuted }]}>Not scheduled</Text>
+                        <Text style={[styles.habitSub, { color: theme.textMuted }]}>{h.skipped ? 'Skipped' : day.frozen ? 'Frozen' : 'Not scheduled'}</Text>
                       ) : h.volumeGoal > 1 ? (
                         <Text style={[styles.habitSub, { color: theme.textMuted }]}>{count}/{h.volumeGoal}</Text>
                       ) : null}
@@ -217,7 +222,7 @@ function BarTooltip({ label, value, onClose, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
-  const { getLastNDays, getOverallStreak, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode } = useApp();
+  const { getLastNDays, getOverallStreak, getBestStreak, freezesLeft, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode } = useApp();
   const [heatPeriodIdx, setHeatPeriodIdx] = useState(0);
   const [selectedDay, setSelectedDay] = useState(null);
   const [tooltipInfo, setTooltipInfo] = useState(null);
@@ -277,6 +282,7 @@ export default function ProgressScreen() {
   const heatDays = useMemo(() => getLastNDays(heatCfg.days), [getLastNDays, heatCfg.days]);
 
   const streak = getOverallStreak();
+  const bestStreak = getBestStreak();
   const allDays30 = useMemo(() => getLastNDays(30), [getLastNDays]);
   const totalCompleted = allDays30.reduce((a, d) => a + (d.completed === d.total && d.total > 0 ? 1 : 0), 0);
 
@@ -321,16 +327,19 @@ export default function ProgressScreen() {
         <View style={styles.statsRow}>
           {[
             { label: 'Day Streak', value: streak, emoji: '🔥' },
-            { label: 'Perfect Days', value: totalCompleted, emoji: '⭐' },
-            { label: 'Habits', value: habits.length, emoji: '📋' },
+            { label: 'Best Streak', value: bestStreak, emoji: '🏅' },
+            { label: 'Perfect Days', value: totalCompleted, emoji: '⭐', hint: 'last 30' },
           ].map(stat => (
-            <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]} accessible accessibilityLabel={`${stat.label}: ${stat.value}`}>
               <Text style={styles.statEmoji}>{stat.emoji}</Text>
               <Text style={[styles.statValue, { color: theme.primary }]}>{stat.value}</Text>
               <Text style={[styles.statLabel, { color: theme.textMuted }]}>{stat.label}</Text>
             </View>
           ))}
         </View>
+        <Text style={[styles.freezeLine, { color: theme.textMuted }]}>
+          ❄️ {freezesLeft} streak freeze{freezesLeft !== 1 ? 's' : ''} left this month · a missed day is covered automatically
+        </Text>
 
         {/* Weekly bar chart — always 7 days */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -367,6 +376,7 @@ export default function ProgressScreen() {
             {[
               { color: theme.progressBarBg, label: 'None' },
               { color: PARTIAL_COLOR, label: 'Partial' },
+              { color: FROZEN_COLOR, label: 'Frozen' },
               { color: theme.primary, label: 'Perfect' },
             ].map(l => (
               <View key={l.label} style={styles.legendItem}>
@@ -503,7 +513,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: 24, paddingBottom: 48 },
   heading: { fontSize: 28, fontWeight: 'bold', marginBottom: 24 },
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  freezeLine: { fontSize: 12, textAlign: 'center', marginBottom: 24, lineHeight: 17 },
   statCard: {
     flex: 1, alignItems: 'center', paddingVertical: 20, paddingHorizontal: 8,
     borderRadius: 14, borderWidth: 1, gap: 6,

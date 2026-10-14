@@ -1,12 +1,19 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { completionsInWeek } from '../utils/schedule';
+import { addDays } from '../utils/dates';
+import { lightImpact } from '../utils/haptics';
 
 export default function HabitCard({ habit, onIncrement, onDecrement }) {
-  const { getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, todayStr } = useApp();
+  const {
+    getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, todayStr,
+    isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, settings,
+  } = useApp();
   const count = getHabitCount(habit.id);
   const done = isHabitDone(habit);
+  const today = todayStr();
+  const skipped = !done && isHabitSkippedOn(habit.id, today);
   const isVolume = habit.type === 'volume';
   // Consecutive days (ending today) this habit hit its goal; one day is not yet a streak.
   const streak = getStreakForHabit(habit.id);
@@ -15,7 +22,19 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
   const perWeek = habit.schedule?.type === 'perWeek' ? habit.schedule.target : 0;
   const weekDone = perWeek ? completionsInWeek(todayStr(), todayStr(), (k) => isHabitDoneOn(habit, k)) : 0;
   const weekLabel = perWeek ? (weekDone >= perWeek ? `✓ ${weekDone}/${perWeek} this week` : `${weekDone}/${perWeek} this week`) : null;
-  const subParts = [isVolume ? `${count}/${habit.volumeGoal} today` : null, weekLabel, streakLabel].filter(Boolean);
+  const subParts = [skipped ? '💤 Skipped today' : null, isVolume ? `${count}/${habit.volumeGoal} today` : null, weekLabel, streakLabel].filter(Boolean);
+
+  // Long-press: forgiveness actions (skip today keeps the streak; fix yesterday).
+  const yesterday = addDays(today, -1);
+  const yesterdayDone = isHabitDoneOn(habit, yesterday);
+  const handleLongPress = () => {
+    if (settings.hapticsEnabled) lightImpact();
+    Alert.alert(habit.name, 'Life happens. Pick an option:', [
+      { text: skipped ? 'Unskip today' : 'Skip today (keeps streak)', onPress: () => toggleSkipHabitOn(habit.id, today) },
+      { text: yesterdayDone ? "Undo yesterday's check" : 'Mark done yesterday', onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   // Tapping anywhere on the card:
   //   daily  → toggle done/undone
@@ -30,9 +49,15 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
         styles.card,
         { backgroundColor: theme.surface, borderColor: done ? theme.primary : theme.border },
         done && { backgroundColor: theme.primaryLight },
+        skipped && { opacity: 0.6, borderStyle: 'dashed' },
       ]}
       onPress={handleCardPress}
+      onLongPress={handleLongPress}
+      delayLongPress={350}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${habit.name}${isVolume ? `, ${count} of ${habit.volumeGoal}` : ''}${done ? ', done' : skipped ? ', skipped today' : ''}`}
+      accessibilityHint="Double tap to log. Long press for skip and yesterday options."
     >
       {habit.customIconUri
         ? <Image source={{ uri: habit.customIconUri }} style={styles.iconImage} />
@@ -83,7 +108,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
           { borderColor: done ? theme.primary : theme.border },
           done && { backgroundColor: theme.primary },
         ]}>
-          {done && <Text style={styles.check}>✓</Text>}
+          {done ? <Text style={styles.check}>✓</Text> : skipped ? <Text style={{ fontSize: 13 }}>💤</Text> : null}
         </View>
       )}
     </TouchableOpacity>

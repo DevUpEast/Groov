@@ -12,7 +12,7 @@ import {
 } from '../services/sync';
 import { applyReminderSchedule, scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../utils/notifications';
 import { localDateKey, todayKey, addDays } from '../utils/dates';
-import { overallStreak } from '../utils/streaks';
+import { overallStreak, bestOverallStreak, overallDayStatus, reconcileFreezes, freezesLeftInMonth } from '../utils/streaks';
 import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak, dayStatus } from '../utils/schedule';
 import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
@@ -41,6 +41,10 @@ const DEFAULT_SETTINGS = {
   eveningReminderEnabled: false,
   eveningReminderHour: 20,
   eveningReminderMinute: 0,
+  // Streak forgiveness (#20): skips are { 'YYYY-MM-DD': [habitId] } the user chose to
+  // sit out; streakFreezes are whole days covered automatically (2 per month).
+  skips: {},
+  streakFreezes: [],
 };
 
 // The challenge promised on the last onboarding slide. An empty linkedHabitIds means
@@ -82,6 +86,8 @@ function migrateSettings(s) {
     return {
       ...DEFAULT_SETTINGS,
       ...s,
+      skips: s.skips && typeof s.skips === 'object' ? s.skips : {},
+      streakFreezes: Array.isArray(s.streakFreezes) ? s.streakFreezes : [],
       // Per-habit reminders used to be mirrored in here; habit.reminder is now the
       // only source of truth, so drop any stale mirrors.
       reminders: s.reminders.filter(r => !r.habitId).map(r => ({
@@ -512,6 +518,31 @@ export function AppProvider({ children }) {
     if (userId) syncCompletion(userId, today, habitId, current - 1);
   }, [completions, todayStr, userId]);
 
+  // Set a habit's count on any past day (edit yesterday, habit detail calendar).
+  // Future days are refused. The snapshot for that day is backfilled from the live
+  // list when none exists so history stays consistent.
+  const setHabitCountOn = useCallback((habitId, key, count) => {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit || key > todayStr()) return;
+    const next = Math.max(0, Math.min(habit.volumeGoal, Math.round(count)));
+    setCompletions(prev => {
+      const day = { ...(prev[key] || {}) };
+      if (next > 0) day[habitId] = next; else delete day[habitId];
+      const out = { ...prev };
+      if (Object.keys(day).length > 0) out[key] = day; else delete out[key];
+      return out;
+    });
+    setDailySnapshot(prev => (prev[key] ? prev : { ...prev, [key]: snapshotOf(habits) }));
+    if (userId) syncCompletion(userId, key, habitId, next);
+  }, [habits, todayStr, userId]);
+
+  const toggleHabitDoneOn = useCallback((habitId, key) => {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit) return;
+    const done = ((completions[key] || {})[habitId] || 0) >= habit.volumeGoal;
+    setHabitCountOn(habitId, key, done ? 0 : habit.volumeGoal);
+  }, [habits, completions, setHabitCountOn]);
+
   const addHabit = useCallback((habit) => {
     const newHabit = { ...habit, schedule: normalizeSchedule(habit.schedule), id: Date.now().toString(), createdAt: todayStr() };
     setHabits(prev => [...prev, newHabit]);
@@ -546,6 +577,31 @@ export function AppProvider({ children }) {
     setSettings(next);
     if (userId) syncSettings(userId, next);
   }, [settings, userId]);
+
+  // ── Streak forgiveness ───────────────────────────────────────────────────────
+
+  const isHabitSkippedOn = useCallback((habitId, key) => {
+    return !!(settings.skips?.[key] || []).includes(habitId);
+  }, [settings.skips]);
+
+  // Skip (or unskip) a habit for a day: the day becomes a rest day for that habit, so
+  // the streak is preserved without counting it.
+  const toggleSkipHabitOn = useCallback((habitId, key) => {
+    const current = settings.skips?.[key] || [];
+    const nextDay = current.includes(habitId) ? current.filter(id => id !== habitId) : [...current, habitId];
+    const skips = { ...(settings.skips || {}) };
+    if (nextDay.length > 0) skips[key] = nextDay; else delete skips[key];
+    updateSettings({ skips });
+  }, [settings.skips, updateSettings]);
+
+  const isDayFrozen = useCallback((key) => (settings.streakFreezes || []).includes(key), [settings.streakFreezes]);
+
+  // Skipped habit-days and frozen days both count as rest.
+  const isExcused = useCallback((key, habitId) => {
+    return isDayFrozen(key) || isHabitSkippedOn(habitId, key);
+  }, [isDayFrozen, isHabitSkippedOn]);
+
+  const freezesLeft = freezesLeftInMonth(settings.streakFreezes, todayStr());
 
   // ── Challenge actions ────────────────────────────────────────────────────────
 
@@ -804,21 +860,40 @@ export function AppProvider({ children }) {
   // Habits that existed on a given day (snapshot), falling back to the live list.
   const habitsOnDay = useCallback((key) => dailySnapshot[key] || habits, [dailySnapshot, habits]);
 
+  const isSnapshotHabitDone = useCallback((k, id) => {
+    const h = habitsOnDay(k).find(x => x.id === id);
+    return !!h && ((completions[k] || {})[id] || 0) >= h.volumeGoal;
+  }, [habitsOnDay, completions]);
+
   const getStreakForHabit = useCallback((habitId) => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return 0;
     const today = todayKey(dateOffset);
-    return habitStreak(habit.schedule, today, today, (k) => isHabitDoneOn(habit, k));
-  }, [habits, dateOffset, isHabitDoneOn]);
+    return habitStreak(habit.schedule, today, today, (k) => isHabitDoneOn(habit, k), { isExcused: (k) => isExcused(k, habitId) });
+  }, [habits, dateOffset, isHabitDoneOn, isExcused]);
 
   const getOverallStreak = useCallback(() => {
     const today = todayKey(dateOffset);
-    return overallStreak(today, today, habitsOnDay,
-      (k, id) => {
-        const h = habitsOnDay(k).find(x => x.id === id);
-        return !!h && ((completions[k] || {})[id] || 0) >= h.volumeGoal;
-      });
-  }, [completions, habitsOnDay, dateOffset]);
+    return overallStreak(today, today, habitsOnDay, isSnapshotHabitDone, { isExcused });
+  }, [habitsOnDay, isSnapshotHabitDone, isExcused, dateOffset]);
+
+  const getBestStreak = useCallback(() => {
+    const today = todayKey(dateOffset);
+    const from = accountCreatedAt && accountCreatedAt <= today ? accountCreatedAt : today;
+    return Math.max(bestOverallStreak(from, today, today, habitsOnDay, isSnapshotHabitDone, isExcused), getOverallStreak());
+  }, [habitsOnDay, isSnapshotHabitDone, isExcused, dateOffset, accountCreatedAt, getOverallStreak]);
+
+  // Auto streak freezes: once the data is loaded and whenever the date or history
+  // changes, cover up to two missed days per month in the last week. A frozen day
+  // that is later filled in (edit yesterday) releases its freeze. Uses the real
+  // date, not the dev offset, so simulated days never burn real freezes.
+  useEffect(() => {
+    if (!loaded) return;
+    const today = localDateKey();
+    const raw = (k) => overallDayStatus(k, today, habitsOnDay, isSnapshotHabitDone, (key, id) => isHabitSkippedOn(id, key));
+    const next = reconcileFreezes(settings.streakFreezes, today, raw, { floor: accountCreatedAt || undefined });
+    if (next !== settings.streakFreezes) updateSettings({ streakFreezes: next });
+  }, [loaded, clockTick, completions, dailySnapshot, habits, settings.skips, settings.streakFreezes, accountCreatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getLastNDays = useCallback((n) => {
     const days = [];
@@ -843,15 +918,16 @@ export function AppProvider({ children }) {
         // totals so an unscheduled habit never makes a day look "partial".
         const dayHabits = (snapshot || snapshotOf(habits)).map(h => ({
           ...h,
-          status: dayStatus(h.schedule, dateStr, todayLocal, (k) => ((completions[k] || {})[h.id] || 0) >= h.volumeGoal),
+          status: dayStatus(h.schedule, dateStr, todayLocal, (k) => ((completions[k] || {})[h.id] || 0) >= h.volumeGoal, (k) => isExcused(k, h.id)),
+          skipped: isHabitSkippedOn(h.id, dateStr),
         }));
         const counted = dayHabits.filter(h => h.status !== 'rest');
         const done = counted.filter(h => h.status === 'done').length;
-        days.push({ date: dateStr, completed: done, total: counted.length, habits: dayHabits });
+        days.push({ date: dateStr, completed: done, total: counted.length, habits: dayHabits, frozen: isDayFrozen(dateStr) });
       }
     }
     return days;
-  }, [completions, habits, dailySnapshot, dateOffset, accountCreatedAt]);
+  }, [completions, habits, dailySnapshot, dateOffset, accountCreatedAt, isExcused, isHabitSkippedOn, isDayFrozen]);
 
   const getLast30Days = useCallback(() => getLastNDays(30), [getLastNDays]);
 
@@ -877,7 +953,8 @@ export function AppProvider({ children }) {
       pendingHabitLinkChallenge, setPendingHabitLinkChallenge,
       getTodayCompletions, getHabitCount, isHabitDone, isHabitDoneOn, isHabitSatisfied, dueHabits,
       getCompletedCount, isAllDone, isChallengeHabitsDone,
-      incrementHabit, decrementHabit,
+      incrementHabit, decrementHabit, setHabitCountOn, toggleHabitDoneOn,
+      isHabitSkippedOn, toggleSkipHabitOn, isDayFrozen, isExcused, freezesLeft,
       addHabit, updateHabit, deleteHabit,
       updateSettings,
       markChallengeDay, unmarkChallengeDay, editChallenge, createChallenge, deleteChallenge,
@@ -885,7 +962,7 @@ export function AppProvider({ children }) {
       selectAllHabitsToday, resetAllHabitsToday,
       linkHabitToChallenge, unlinkHabitFromChallenge, linkAllHabitsToChallenge,
       completeOnboarding, resetAll, pushAllData, seedRandomHistory,
-      getStreakForHabit, getOverallStreak, getLast30Days, getLastNDays,
+      getStreakForHabit, getOverallStreak, getBestStreak, getLast30Days, getLastNDays,
       todayStr,
     }}>
       {children}
