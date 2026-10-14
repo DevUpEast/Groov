@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { AppState } from 'react-native';
 import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage';
 import { themes } from '../theme/colors';
 import { useAuth } from './AuthContext';
@@ -13,6 +14,7 @@ import { scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../uti
 import { localDateKey, todayKey, addDays } from '../utils/dates';
 import { countBackStreak } from '../utils/streaks';
 import { loadDevMode, saveDevMode } from '../utils/devMode';
+import { isChallengeExpired } from '../utils/challenges';
 
 const AppContext = createContext(null);
 
@@ -141,7 +143,25 @@ export function AppProvider({ children }) {
   // Holds latest state snapshot for first-login cloud migration without re-triggering sync effect
   const stateRef = useRef({});
 
-  const todayStr = useCallback(() => todayKey(dateOffset), [dateOffset]);
+  // Bumped when the app returns to the foreground and at local midnight, so everything
+  // derived from todayStr() re-evaluates when the calendar date changes while the app
+  // is open or suspended (streaks, challenge expiry, "today" completions).
+  const [clockTick, setClockTick] = useState(0);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setClockTick(t => t + 1);
+    });
+    let timer;
+    const armMidnight = () => {
+      const now = new Date();
+      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 2);
+      timer = setTimeout(() => { setClockTick(t => t + 1); armMidnight(); }, next - now);
+    };
+    armMidnight();
+    return () => { sub.remove(); clearTimeout(timer); };
+  }, []);
+
+  const todayStr = useCallback(() => todayKey(dateOffset), [dateOffset, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // These reflect the simulated date: past challenges archived in the "future" revert to
   // active, and history only shows challenges archived on or before the simulated date.
@@ -560,6 +580,17 @@ export function AppProvider({ children }) {
       syncPastChallenge(userId, archived);
     }
   }, [challenges, todayStr, userId]);
+
+  // Archive challenges whose window has elapsed. Runs after load, whenever the date
+  // changes (foreground / midnight / dev offset) and whenever challenges change, so it
+  // no longer depends on ChallengeScreen being mounted.
+  useEffect(() => {
+    if (!loaded) return;
+    const today = todayStr();
+    challenges.forEach(ch => {
+      if (isChallengeExpired(ch, today)) archiveExpiredChallenge(ch.id);
+    });
+  }, [loaded, challenges, todayStr, archiveExpiredChallenge]);
 
   const clearPendingChallengeRewards = useCallback(() => {
     setPendingChallengeRewards([]);

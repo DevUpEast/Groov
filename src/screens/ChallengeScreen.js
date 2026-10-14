@@ -13,6 +13,7 @@ import { SheetDragHandle, SheetHeader } from '../components/SheetHeader';
 import CelebrationOverlay from '../components/CelebrationOverlay';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { addDays } from '../utils/dates';
+import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -21,21 +22,6 @@ const RANGE_OPTIONS = [
   { label: 'Month', max: 30 },
   { label: 'Year', max: 365 },
 ];
-
-function daysSince(startDate, today) {
-  if (!startDate) return 0;
-  const s = new Date(startDate + 'T00:00:00');
-  const t = new Date(today + 'T00:00:00');
-  return Math.max(0, Math.floor((t - s) / 86400000));
-}
-
-function currentChallengeDay(challenge, today) {
-  return Math.min(challenge.days, daysSince(challenge.startDate, today) + 1);
-}
-
-function isChallengeExpired(challenge, today) {
-  return daysSince(challenge.startDate, today) >= challenge.days;
-}
 
 // ── Shared bottom-sheet animation ─────────────────────────────────────────────
 
@@ -492,9 +478,8 @@ function ChallengeCard({ challenge, habits, today, onEdit, onDelete, theme }) {
 export default function ChallengeScreen() {
   const {
     habits, challenges, effectiveChallenges, effectivePastChallenges,
-    theme, settings, loaded,
+    theme, settings,
     editChallenge, createChallenge, deleteChallenge,
-    archiveExpiredChallenge,
     setRequestedTab, setPendingHabitLinkChallenge,
     setModalOpen,
     todayStr,
@@ -505,17 +490,6 @@ export default function ChallengeScreen() {
   const [formVisible, setFormVisible] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState(null);
   const [selectedPast, setSelectedPast] = useState(null);
-
-  // Archive expired challenges once data has loaded.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!loaded) return;
-    challenges.forEach(ch => {
-      if (isChallengeExpired(ch, today)) {
-        archiveExpiredChallenge(ch.id);
-      }
-    });
-  }, [today, loaded]);
 
   const anyModalOpen = formVisible || !!selectedPast;
   useEffect(() => { setModalOpen(anyModalOpen); }, [anyModalOpen]);
