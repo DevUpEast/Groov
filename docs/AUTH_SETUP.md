@@ -58,11 +58,13 @@ It will ask for the database password. After that `supabase db push`, `supabase 
 
 With those set, `eas build --platform ios --profile development` provisions the App ID, enables the Sign in with Apple capability (from `ios.usesAppleSignIn` in app.json) and signs the build without prompts.
 
-## 3b. What actually happened (2026-10-14)
+## 3b. The Apple 401 and its fix (2026-10-14)
 
-- The App Store Connect API key approach returned `Apple 401` for the provisioning API with both an App Manager and an Admin key, most likely an Issuer ID / key-type mismatch (Individual keys have no Issuer ID). Rather than debug it, the one-time credential setup was done by running `eas build --platform ios --profile preview` **interactively with the Apple ID login** (password + 2FA). The distribution certificate and ad hoc provisioning profile are now stored on Expo's servers, so every later build runs with `--non-interactive` and no Apple auth.
-- The API key is therefore only needed for `eas submit` (TestFlight / App Store). If that fails with 401, re-check the Issuer ID on the **Team Keys** tab of https://appstoreconnect.apple.com/access/integrations/api.
-- Registered device: Isaac's iPhone (UDID ending 601E). Add more with `eas device:create` (needs an interactive window).
+- The App Store Connect API key, Issuer ID and Team ID are all valid (a hand-signed JWT returns 200 from `/v1/bundleIds`).
+- EAS still got `Apple 401 ... credentials are missing or invalid` because `@expo/apple-utils` signs tokens with a lifetime of exactly 1200 s, Apple's hard maximum. With this PC's clock about one second ahead of Apple's, Apple sees a 1201 s token and rejects it; EAS then falls back to an Apple ID login. Probing confirmed 1199 s -> 200 and 1200 s -> 401.
+- Fix: `node scripts/patch-eas-token-skew.mjs` patches the installed eas-cli's apple-utils to sign 1140 s tokens. It is idempotent; re-run it after `npm install -g eas-cli`. Verified: bundle ID lookup through apple-utils 3/3 OK, and `eas submit:status -p ios --non-interactive` reads App Store Connect.
+- Before the patch, the one-time signing credentials were created by running `eas build --platform ios --profile preview` interactively with the Apple ID login (password + 2FA). The distribution certificate and ad hoc provisioning profile live on Expo's servers, so later builds run with `--non-interactive`.
+- Registered device: Isaac's iPhone (UDID ending 601E). Add more with `eas device:create` (interactive window), then rebuild.
 - Both providers verified: Google on the Android emulator (identity linked to the existing beastlyiceking@gmail.com account), Apple on the iPhone (private relay email, so it is a separate Groov account).
 
 ## 4. Testing
