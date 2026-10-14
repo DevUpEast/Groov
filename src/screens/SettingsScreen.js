@@ -13,6 +13,8 @@ import { sendTestNotification } from '../utils/notifications';
 import { lightImpact } from '../utils/haptics';
 import { playSuccessChime } from '../utils/sounds';
 import { to12h, to24h, formatTime12 as formatTime } from '../utils/time';
+import { exportBackup, pickBackup } from '../services/backup';
+import { summarizeBackup } from '../utils/backup';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
 const DEV_CODE = 'devmode';
@@ -116,7 +118,63 @@ function Section({ title, children, theme }) {
 }
 
 export default function SettingsScreen() {
-  const { settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, devMode, setDevMode } = useApp();
+  const {
+    settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, devMode, setDevMode,
+    allHabits, completions, notes, challenges, pastChallenges, dailySnapshot, accountCreatedAt, lastBackupAt, markBackedUp, importBackup,
+  } = useApp();
+
+  // ── Backup / restore ─────────────────────────────────────────────────────────
+  const [backupBusy, setBackupBusy] = useState(false);
+  const lastBackupLabel = lastBackupAt
+    ? `Last backup ${new Date(lastBackupAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${new Date(lastBackupAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+    : 'Never backed up';
+
+  const handleExport = async () => {
+    if (settings.hapticsEnabled) lightImpact();
+    setBackupBusy(true);
+    try {
+      await exportBackup({ habits: allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt });
+      markBackedUp();
+    } catch (e) {
+      Alert.alert('Export failed', e.message || 'Could not create the backup file.');
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (settings.hapticsEnabled) lightImpact();
+    let picked;
+    try {
+      picked = await pickBackup();
+    } catch (e) {
+      Alert.alert('Cannot import', e.message || 'That file could not be read.');
+      return;
+    }
+    if (!picked) return;
+    const when = picked.exportedAt ? new Date(picked.exportedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'unknown date';
+    Alert.alert(
+      'Restore backup',
+      `Backup from ${when}: ${summarizeBackup(picked.data)}.\n\nMerge keeps what you have and adds the backup on top. Replace wipes your current data first.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Replace', style: 'destructive', onPress: () => runImport(picked.data, 'replace') },
+        { text: 'Merge', onPress: () => runImport(picked.data, 'merge') },
+      ],
+    );
+  };
+
+  const runImport = async (data, mode) => {
+    setBackupBusy(true);
+    try {
+      await importBackup(data, mode);
+      Alert.alert('Restored', mode === 'replace' ? 'Your data was replaced with the backup.' : 'The backup was merged into your data.');
+    } catch (e) {
+      Alert.alert('Import failed', e.message || 'Something went wrong while restoring.');
+    } finally {
+      setBackupBusy(false);
+    }
+  };
   const { user, signOut, displayName, updateDisplayName, deleteAccount, sendPasswordReset, verifyPasswordReset, authProvider } = useAuth();
   // Apple/Google accounts have no Groov password to reset.
   const canResetPassword = authProvider === 'email';
@@ -648,6 +706,27 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </Section>
 
+        {/* Backup */}
+        <Section title="BACKUP" theme={theme}>
+          <Row
+            label="Export backup"
+            sublabel={`${lastBackupLabel} · JSON file with every habit, check-in and setting`}
+            theme={theme}
+            onPress={backupBusy ? undefined : handleExport}
+            right={<Ionicons name="share-outline" size={20} color={theme.primary} />}
+          />
+          <Row
+            label="Restore from backup"
+            sublabel="Pick a Groov backup file to merge or replace"
+            theme={theme}
+            onPress={backupBusy ? undefined : handleImport}
+            right={<Ionicons name="download-outline" size={20} color={theme.primary} />}
+          />
+          {!lastBackupAt && (
+            <Text style={[styles.backupHint, { color: theme.warning }]}>⚠️ Your data syncs to your account, but a file backup is the only copy you fully control.</Text>
+          )}
+        </Section>
+
         {/* Data */}
         <Section title="DATA" theme={theme}>
           {canResetPassword && (
@@ -913,6 +992,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   devBtnText: { fontSize: 16, fontWeight: '700' },
+  backupHint: { fontSize: 12, lineHeight: 17, paddingHorizontal: 16, paddingBottom: 12 },
   dangerRow: { paddingHorizontal: 16, paddingVertical: 14 },
   dangerText: { color: '#EF4444', fontSize: 15, fontWeight: '600' },
   dangerSub: { fontSize: 12, marginTop: 2 },
