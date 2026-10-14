@@ -15,7 +15,7 @@ A habit-tracking mobile app built with Expo / React Native. Users create daily o
 | Navigation | **Custom slide navigator** (no React Navigation) |
 | State | React Context + useState (no Redux / Zustand) |
 | Persistence | @react-native-async-storage/async-storage 2.2.0 |
-| Audio | expo-av ~16.0.8 (static import) + Web Audio API (web) |
+| Audio | expo-audio ~1.1 (static import) + Web Audio API (web) |
 | Haptics | expo-haptics ~15.0.8 + Vibration fallback |
 | Notifications | expo-notifications ~0.32.17 |
 | Image picker | expo-image-picker ~17.0.11 |
@@ -63,7 +63,7 @@ Groov/
     └── utils/
         ├── haptics.js              # Light / medium / heavy impact + success notification
         ├── notifications.js        # Expo Notifications scheduling + permission
-        ├── sounds.js               # Cross-platform audio (Web Audio API / expo-av WAV)
+        ├── sounds.js               # Cross-platform audio (Web Audio API / expo-audio WAV)
         └── storage.js              # AsyncStorage save/load/clear wrappers
 ```
 
@@ -455,7 +455,7 @@ Used in: HabitsScreen, ChallengeScreen (form, past detail, habit link), Progress
 ## Utilities
 
 ### sounds.js
-- **Static imports** of expo-av and expo-file-system (not dynamic `require`).
+- **Static imports** of expo-audio and expo-file-system (not dynamic `require`).
 - **Web:** `window.AudioContext` oscillator.
 - **Native:** `buildWAV()` generates PCM sine wave → `uint8ToBase64()` (8192-byte chunks) → writes to `FileSystem.cacheDirectory` → plays with `Audio.Sound`. File existence verified before using cached URI (OS can clear cache).
 - `ensureAudioMode()` sets `playsInSilentModeIOS: true`, `shouldDuckAndroid: true` once.
@@ -590,7 +590,7 @@ Changed from `void` to return the new habit's ID string, so HabitsScreen can imm
 ## Known Remaining Items / Future Work
 
 - Notification reminders scheduled but not verified to fire in Expo Go on all devices.
-- Sounds (expo-av WAV) work on iOS; Android behavior varies by device audio state.
+- Sounds (expo-audio WAV) work on iOS; Android behavior varies by device audio state.
 - Custom habit icon URIs are local device paths — do not persist across device reinstalls.
 - Challenge `completedDays` are date strings — if user changes device clock or uses dev date offset, past completions remain correctly associated with their original dates.
 - `pendingHabitLinkChallenge` uses a 400ms delay before opening the modal to let the tab slide animation finish.

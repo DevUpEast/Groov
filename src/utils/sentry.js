@@ -9,7 +9,7 @@ import * as Sentry from '@sentry/react-native';
 
 const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
 
-export const sentryEnabled = DSN.length > 0;
+const sentryEnabled = DSN.length > 0;
 
 export function initSentry() {
   if (!sentryEnabled) return;

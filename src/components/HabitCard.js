@@ -3,10 +3,13 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 
 export default function HabitCard({ habit, onIncrement, onDecrement }) {
-  const { getHabitCount, isHabitDone, theme } = useApp();
+  const { getHabitCount, isHabitDone, getStreakForHabit, theme } = useApp();
   const count = getHabitCount(habit.id);
   const done = isHabitDone(habit);
   const isVolume = habit.type === 'volume';
+  // Consecutive days (ending today) this habit hit its goal; one day is not yet a streak.
+  const streak = getStreakForHabit(habit.id);
+  const streakLabel = streak >= 2 ? `🔥 ${streak}-day streak` : null;
 
   // Tapping anywhere on the card:
   //   daily  → toggle done/undone
@@ -35,9 +38,11 @@ export default function HabitCard({ habit, onIncrement, onDecrement }) {
           numberOfLines={1}>
           {habit.name}
         </Text>
-        {isVolume && (
+        {(isVolume || streakLabel) && (
           <Text style={[styles.sub, { color: theme.textMuted }]}>
-            {count}/{habit.volumeGoal} today
+            {isVolume ? `${count}/${habit.volumeGoal} today` : ''}
+            {isVolume && streakLabel ? ' · ' : ''}
+            {streakLabel ?? ''}
           </Text>
         )}
       </View>

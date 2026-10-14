@@ -117,7 +117,7 @@ function Section({ title, children, theme }) {
 
 export default function SettingsScreen() {
   const { settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, devMode, setDevMode } = useApp();
-  const { user, signOut, displayName, deleteAccount, sendPasswordReset, verifyPasswordReset, authProvider } = useAuth();
+  const { user, signOut, displayName, updateDisplayName, deleteAccount, sendPasswordReset, verifyPasswordReset, authProvider } = useAuth();
   // Apple/Google accounts have no Groov password to reset.
   const canResetPassword = authProvider === 'email';
 
@@ -224,6 +224,25 @@ export default function SettingsScreen() {
   const [timeModal, setTimeModal] = useState(null);
   const [editingLabel, setEditingLabel] = useState(null);
   const [labelDraft, setLabelDraft] = useState('');
+
+  // Display name editor
+  const [nameModal, setNameModal] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameSaving, setNameSaving] = useState(false);
+  const openNameEditor = () => { setNameDraft(displayName ?? ''); setNameModal(true); };
+  const saveName = async () => {
+    const next = nameDraft.trim();
+    if (next === (displayName ?? '')) { setNameModal(false); return; }
+    setNameSaving(true);
+    try {
+      await updateDisplayName(next);
+      setNameModal(false);
+    } catch (e) {
+      Alert.alert('Error', e.message || 'Could not update your name. Please try again.');
+    } finally {
+      setNameSaving(false);
+    }
+  };
 
   // Dev tools — unlocked per device; state lives in AppContext (persisted via SecureStore)
   const [devTapCount, setDevTapCount] = useState(0);
@@ -608,14 +627,13 @@ export default function SettingsScreen() {
 
         {/* Account */}
         <Section title="ACCOUNT" theme={theme}>
-          {!!displayName && (
-            <Row
-              label="Display Name"
-              sublabel={displayName}
-              theme={theme}
-              right={null}
-            />
-          )}
+          <Row
+            label="Display Name"
+            sublabel={displayName || 'Add a name for greetings and coaching'}
+            theme={theme}
+            onPress={openNameEditor}
+            right={<Ionicons name="create-outline" size={18} color={theme.textMuted} />}
+          />
           <Row
             label="Signed in as"
             sublabel={user?.email ?? ''}
@@ -740,6 +758,43 @@ export default function SettingsScreen() {
                 <Text style={[styles.devModalBtnText, { color: '#fff' }]}>
                   {resetLoading ? 'Saving…' : 'Set Password'}
                 </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Display name modal */}
+      {nameModal && (
+        <View style={styles.devModal}>
+          <View style={[styles.devModalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.devModalTitle, { color: theme.text }]}>Display Name</Text>
+            <Text style={[styles.devModalSub, { color: theme.textMuted }]}>Used in greetings and by the AI coach.</Text>
+            <TextInput
+              style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
+              value={nameDraft}
+              onChangeText={setNameDraft}
+              placeholder="Your name"
+              placeholderTextColor={theme.textMuted}
+              autoFocus
+              maxLength={40}
+              onSubmitEditing={saveName}
+              returnKeyType="done"
+            />
+            <View style={styles.devModalBtns}>
+              <TouchableOpacity
+                style={[styles.devModalBtn, { borderColor: theme.border }]}
+                onPress={() => setNameModal(false)}
+                disabled={nameSaving}
+              >
+                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.devModalBtn, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: nameSaving ? 0.6 : 1 }]}
+                onPress={saveName}
+                disabled={nameSaving}
+              >
+                <Text style={[styles.devModalBtnText, { color: '#fff' }]}>{nameSaving ? 'Saving…' : 'Save'}</Text>
               </TouchableOpacity>
             </View>
           </View>

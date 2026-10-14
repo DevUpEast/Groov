@@ -42,16 +42,21 @@ const DEFAULT_SETTINGS = {
   eveningReminderMinute: 0,
 };
 
-const STARTER_CHALLENGE = {
-  id: 'starter',
-  name: '3-Day Kickstart',
-  description: 'Complete all your habits for 3 days in a row to build your foundation.',
-  days: 3,
-  completedDays: [],
-  completed: false,
-  startDate: localDateKey(),
-  linkedHabitIds: ['1', '2', '3', '4'],
-};
+// The challenge promised on the last onboarding slide. An empty linkedHabitIds means
+// "every habit", so it works however many habits the user goes on to create.
+function makeStarterChallenge(startDate) {
+  return {
+    id: Date.now().toString(),
+    name: '3-Day Kickstart',
+    description: 'Complete all your habits for 3 days in a row to build your foundation.',
+    days: 3,
+    icon: '🌱',
+    completedDays: [],
+    completed: false,
+    startDate,
+    linkedHabitIds: [],
+  };
+}
 
 export function getChallengeTier(completedCount, totalDays) {
   const ratio = totalDays > 0 ? completedCount / totalDays : 0;
@@ -402,7 +407,8 @@ export function AppProvider({ children }) {
       .then((delta) => {
         const sinceMs = since;
         if (delta.habits.length || delta.habitIds) {
-          setHabits(prev => mergeRecords(prev, delta.habits, delta.habitIds, sinceMs));
+          setHabits(prev => mergeRecords(prev, delta.habits, delta.habitIds, sinceMs)
+            .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? '') || a.id.localeCompare(b.id)));
         }
         if (delta.challenges.length || delta.challengeIds) {
           setChallenges(prev => migrateChallenges(mergeRecords(prev, delta.challenges, delta.challengeIds, sinceMs)));
@@ -697,7 +703,15 @@ export function AppProvider({ children }) {
 
   // ── Onboarding / reset ───────────────────────────────────────────────────────
 
-  const completeOnboarding = useCallback(() => setHasOnboarded(true), []);
+  const completeOnboarding = useCallback(() => {
+    setHasOnboarded(true);
+    // First-run only: a returning user restored from the cloud already has history.
+    if (challenges.length === 0 && pastChallenges.length === 0) {
+      const starter = makeStarterChallenge(todayStr());
+      setChallenges([starter]);
+      if (userId) syncChallenge(userId, starter);
+    }
+  }, [challenges.length, pastChallenges.length, todayStr, userId]);
 
   const resetAll = useCallback(async () => {
     const today = localDateKey();
