@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView, Dimensions,
+  View, Text, StyleSheet, ScrollView, Dimensions,
   TouchableOpacity, Modal, Animated, PanResponder, ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { fetchReflection } from '../services/aiCoaching';
@@ -308,7 +309,7 @@ export default function ProgressScreen() {
   const cs = cellSize(heatCfg);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={[styles.heading, { color: theme.text }]}>Your Progress</Text>
 

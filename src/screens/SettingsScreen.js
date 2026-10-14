@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
-  Switch, TouchableOpacity, Alert, Platform, TextInput,
+  View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Platform, TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { useApp } from '../context/AppContext';
@@ -297,7 +297,7 @@ export default function SettingsScreen() {
   })();
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={[styles.heading, { color: theme.text }]}>Settings</Text>
 
