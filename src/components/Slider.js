@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, PanResponder } from 'react-native';
+import { t } from '../i18n';
 
 export default function Slider({ value, min = 1, max, onValueChange, theme, label }) {
   const layoutRef = useRef({ x: 0, width: 1 });
@@ -50,7 +51,7 @@ export default function Slider({ value, min = 1, max, onValueChange, theme, labe
       style={styles.trackArea}
       accessible={true}
       accessibilityRole="adjustable"
-      accessibilityLabel={label || 'Slider'}
+      accessibilityLabel={label || t('common.slider')}
       accessibilityValue={{ min, max, now: value }}
       accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
       onAccessibilityAction={onAccessibilityAction}

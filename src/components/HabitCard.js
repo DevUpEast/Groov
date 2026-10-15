@@ -7,12 +7,14 @@ import { lightImpact } from '../utils/haptics';
 import { announce } from '../utils/a11y';
 import HabitIcon from './HabitIcon';
 import { usesCounter, countStep, describeProgress, unitLabel } from '../utils/habits';
+import { t, useLocale } from '../i18n';
 
 export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   const {
     getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, todayStr,
     isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, settings, getNote,
   } = useApp();
+  useLocale();
   // Per-habit accent colour falls back to the theme primary.
   const accent = habit.color || theme.primary;
   const count = getHabitCount(habit.id);
@@ -27,7 +29,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   const step = countStep(habit);
   // Consecutive days (ending today) this habit hit its goal; one day is not yet a streak.
   const streak = getStreakForHabit(habit.id);
-  const streakLabel = streak >= 2 ? (isQuit ? `🔥 ${streak} days clean` : `🔥 ${streak}-day streak`) : null;
+  const streakLabel = streak >= 2 ? (isQuit ? t('habitCard.streakClean', { count: streak }) : t('habitCard.streak', { count: streak })) : null;
 
   // Timed habits: a simple start/stop timer that adds whole minutes when stopped.
   const [timerStart, setTimerStart] = useState(null);
@@ -49,12 +51,12 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   // perWeek habits show weekly progress instead of a per-day count.
   const perWeek = habit.schedule?.type === 'perWeek' ? habit.schedule.target : 0;
   const weekDone = perWeek ? completionsInWeek(todayStr(), todayStr(), (k) => isHabitDoneOn(habit, k)) : 0;
-  const weekLabel = perWeek ? (weekDone >= perWeek ? `✓ ${weekDone}/${perWeek} this week` : `${weekDone}/${perWeek} this week`) : null;
+  const weekLabel = perWeek ? (weekDone >= perWeek ? t('habitCard.weekDone', { done: weekDone, target: perWeek }) : t('habitCard.week', { done: weekDone, target: perWeek })) : null;
   const note = getNote(habit.id, today);
   const subParts = [
-    skipped ? '💤 Skipped today' : null,
+    skipped ? t('habitCard.skippedToday') : null,
     describeProgress(habit, count),
-    timerStart ? `⏱ ${Math.floor(elapsedSec / 60)}:${String(elapsedSec % 60).padStart(2, '0')}` : null,
+    timerStart ? t('habitCard.timer', { time: `${Math.floor(elapsedSec / 60)}:${String(elapsedSec % 60).padStart(2, '0')}` }) : null,
     weekLabel, streakLabel, note ? '📝' : null,
   ].filter(Boolean);
 
@@ -63,11 +65,11 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   const yesterdayDone = isHabitDoneOn(habit, yesterday);
   const handleLongPress = () => {
     if (settings.hapticsEnabled) lightImpact();
-    Alert.alert(habit.name, 'Life happens. Pick an option:', [
-      { text: skipped ? 'Unskip today' : 'Skip today (keeps streak)', onPress: () => toggleSkipHabitOn(habit.id, today) },
-      { text: yesterdayDone ? "Undo yesterday's check" : 'Mark done yesterday', onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
-      ...(onNote ? [{ text: note ? 'Edit note' : 'Add a note', onPress: () => onNote(habit, today) }] : []),
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(habit.name, t('habitCard.longPress.body'), [
+      { text: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip'), onPress: () => toggleSkipHabitOn(habit.id, today) },
+      { text: yesterdayDone ? t('habitCard.longPress.undoYesterday') : t('habitCard.longPress.markYesterday'), onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
+      ...(onNote ? [{ text: note ? t('habitCard.longPress.editNote') : t('habitCard.longPress.addNote'), onPress: () => onNote(habit, today) }] : []),
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -75,10 +77,10 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   //   daily  → toggle done/undone
   //   volume → add 1 (ignored when already maxed)
   const handleCardPress = isLimit
-    ? () => { onIncrement(step); announce(`${habit.name}, ${count + step} of ${habit.volumeGoal} max`); }
+    ? () => { onIncrement(step); announce(t('habitCard.announce.countMax', { name: habit.name, count: count + step, goal: habit.volumeGoal })); }
     : isVolume
-      ? () => { onIncrement(step); announce(`${habit.name}, ${count + step} of ${habit.volumeGoal}`); }
-      : () => { if (done) { onDecrement(1); announce(`${habit.name} unchecked`); } else { onIncrement(1); announce(isQuit ? `${habit.name} avoided today` : `${habit.name} done`); } };
+      ? () => { onIncrement(step); announce(t('habitCard.announce.count', { name: habit.name, count: count + step, goal: habit.volumeGoal })); }
+      : () => { if (done) { onDecrement(1); announce(t('habitCard.announce.unchecked', { name: habit.name })); } else { onIncrement(1); announce(isQuit ? t('habitCard.announce.avoided', { name: habit.name }) : t('habitCard.announce.done', { name: habit.name })); } };
 
   return (
     <TouchableOpacity
@@ -95,8 +97,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
       activeOpacity={0.7}
       accessibilityRole={isVolume ? 'button' : 'checkbox'}
       accessibilityState={isVolume ? undefined : { checked: done }}
-      accessibilityLabel={`${habit.name}${isVolume ? `, ${count} of ${habit.volumeGoal}${unitLabel(habit) ? ` ${unitLabel(habit)}` : ''}${isLimit ? ' maximum' : ''}` : ''}${overLimit ? ', over limit' : done ? (isQuit ? ', avoided today' : ', done') : skipped ? ', skipped today' : ', not done'}${streak >= 2 ? `, ${streak} day streak` : ''}`}
-      accessibilityHint="Double tap to log. Long press for skip, yesterday and note options."
+      accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
+      accessibilityHint={t('habitCard.a11y.hint')}
     >
       {habit.color ? <View style={[styles.stripe, { backgroundColor: habit.color }]} /> : null}
       <HabitIcon habit={habit} size={26} imageStyle={styles.iconImage} textStyle={styles.icon} />
@@ -119,7 +121,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
               style={[styles.counterBtn, { borderColor: timerStart ? theme.danger : accent, backgroundColor: timerStart ? theme.danger : 'transparent' }]}
               onPress={toggleTimer}
               accessibilityRole="button"
-              accessibilityLabel={timerStart ? 'Stop timer and log minutes' : 'Start timer'}
+              accessibilityLabel={timerStart ? t('habitCard.a11y.stopTimer') : t('habitCard.a11y.startTimer')}
             >
               <Text style={[styles.counterBtnText, { color: timerStart ? '#fff' : accent, fontSize: 13 }]}>{timerStart ? '■' : '▶'}</Text>
             </TouchableOpacity>
@@ -128,7 +130,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
             style={[styles.counterBtn, { borderColor: theme.border }]}
             onPress={() => onDecrement(step)}
             accessibilityRole="button"
-            accessibilityLabel={`Remove ${step > 1 ? step : 'one'} ${unitLabel(habit)}`.trim()}
+            accessibilityLabel={(step > 1 ? t('habitCard.a11y.removeMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.removeOne', { unit: unitLabel(habit) })).trim()}
             accessibilityState={{ disabled: count <= 0 }}
           >
             <Text style={[styles.counterBtnText, { color: theme.textMuted }]}>−</Text>
@@ -140,7 +142,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
             style={[styles.counterBtn, done && !isLimit ? { borderColor: accent, backgroundColor: accent } : { borderColor: theme.border }]}
             onPress={() => onIncrement(step)}
             accessibilityRole="button"
-            accessibilityLabel={`Add ${step > 1 ? step : 'one'} ${unitLabel(habit)}`.trim()}
+            accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
           >
             <Text style={[styles.counterBtnText, { color: done && !isLimit ? '#fff' : theme.textMuted }]}>+</Text>
           </TouchableOpacity>

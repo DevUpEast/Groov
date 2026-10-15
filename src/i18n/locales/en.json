@@ -1,0 +1,914 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "remove": "Remove",
+    "next": "Next",
+    "back": "Back",
+    "skip": "Skip",
+    "done": "Done",
+    "error": "Error",
+    "notNow": "Not now",
+    "undo": "Undo",
+    "slider": "Slider",
+    "shortDays": "%{count}d"
+  },
+  "app": {
+    "tabs": {
+      "today": "Today",
+      "progress": "Progress",
+      "challenge": "Challenge",
+      "habits": "Habits",
+      "settings": "Settings"
+    },
+    "crash": {
+      "title": "Something went wrong",
+      "body": "Groov hit an unexpected error. Your habits are saved. Tap below to try again, and if it keeps happening, restart the app.",
+      "retry": "Try again"
+    },
+    "quickActions": {
+      "today": "Today",
+      "todaySubtitle": "Check off your habits",
+      "newHabit": "New habit",
+      "progress": "Progress"
+    },
+    "notificationsOff": {
+      "title": "Notifications are off",
+      "body": "Turn them on for Groov in your device settings to get reminders.",
+      "openSettings": "Open Settings"
+    },
+    "kickstart": {
+      "name": "3-Day Kickstart",
+      "description": "Complete all your habits for 3 days in a row to build your foundation."
+    }
+  },
+  "timeOfDay": {
+    "morning": "🌅 Morning",
+    "afternoon": "☀️ Afternoon",
+    "evening": "🌙 Evening",
+    "anytime": "Anytime"
+  },
+  "weekday": {
+    "short": { "su": "Su", "mo": "Mo", "tu": "Tu", "we": "We", "th": "Th", "fr": "Fr", "sa": "Sa" },
+    "initial": { "su": "S", "mo": "M", "tu": "T", "we": "W", "th": "T", "fr": "F", "sa": "S" }
+  },
+  "schedule": {
+    "everyDay": "Every day",
+    "perWeek": "%{count}× per week",
+    "weekdays": "Weekdays",
+    "weekends": "Weekends"
+  },
+  "habitTypes": {
+    "daily": { "label": "Once a day", "hint": "Tick it off once" },
+    "volume": { "label": "Volume goal", "hint": "Count up to a target" },
+    "timed": { "label": "Timed", "hint": "Minutes per day" },
+    "quit": { "label": "Quit habit", "hint": "Stay clean each day" },
+    "atMost": { "label": "Limit", "hint": "Stay at or under a max" }
+  },
+  "goal": {
+    "minutes": "min",
+    "times": "×",
+    "volume": "%{goal} %{unit} / day",
+    "timed": "%{goal} min / day",
+    "quit": "Avoid daily",
+    "atMost": "≤ %{goal} %{unit} / day",
+    "daily": "Daily"
+  },
+  "progressText": {
+    "volume": "%{count}/%{goal} %{unit}",
+    "volumeNoUnit": "%{count}/%{goal} today",
+    "timed": "%{count}/%{goal} min",
+    "atMost": "%{count}/%{goal} %{unit}",
+    "atMostNoUnit": "%{count}/%{goal} max",
+    "atMostOver": "%{count}/%{goal} %{unit} · over limit",
+    "atMostOverNoUnit": "%{count}/%{goal} · over limit",
+    "quit": "Avoided today"
+  },
+  "templates": {
+    "reset7": { "name": "7-Day Reset", "short": "Reset", "description": "One week of showing up every day. Small, fast, doable." },
+    "builder21": { "name": "21-Day Habit Builder", "short": "Habit Builder", "description": "Three weeks to make it feel normal." },
+    "challenge30": { "name": "30-Day Challenge", "short": "Challenge", "description": "A full month. Miss a day, keep going." },
+    "automatic66": { "name": "66-Day Automatic", "short": "Automatic", "description": "The average time for a behaviour to become automatic." },
+    "streak100": { "name": "100-Day Streak", "short": "Streak", "description": "The big one. Triple digits." }
+  },
+  "mood": {
+    "rough": "Rough",
+    "meh": "Meh",
+    "okay": "Okay",
+    "good": "Good",
+    "great": "Great",
+    "correlationBetter": "You tend to feel better on days you do %{name} (%{done} vs %{missed} out of 5).",
+    "correlationWorse": "You tend to feel worse on days you do %{name} (%{done} vs %{missed} out of 5)."
+  },
+  "milestones": {
+    "week": "One week",
+    "month": "One month",
+    "hundred": "100 days",
+    "year": "One year"
+  },
+  "tier": {
+    "platinum": "Platinum",
+    "gold": "Gold",
+    "silver": "Silver",
+    "copper": "Copper",
+    "none": "Ended"
+  },
+  "today": {
+    "sections": {
+      "morning": "🌅 Morning",
+      "afternoon": "☀️ Afternoon",
+      "evening": "🌙 Evening",
+      "anytime": "✨ Anytime"
+    },
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "withName": "%{greeting}, %{name}"
+    },
+    "ring": {
+      "habits": "habits",
+      "a11y": "%{completed} of %{total} habits done today",
+      "allDone": "🎉 All done!",
+      "remaining": "%{count} remaining",
+      "amazing": "Amazing work today!",
+      "keepGoing": "Keep going, you're at %{percent}%"
+    },
+    "coach": "AI Coach",
+    "empty": {
+      "title": "Get into Rhythm",
+      "body": "Add your first habit",
+      "addA11y": "Add your first habit"
+    },
+    "noChallenges": {
+      "title": "No challenges yet",
+      "body": "Start your first challenge",
+      "a11y": "No challenges yet. Start your first challenge"
+    },
+    "restDay": {
+      "title": "Rest day",
+      "body": "None of your habits are scheduled today. Enjoy the break, your streaks are safe."
+    },
+    "sectionHabits": "TODAY'S HABITS",
+    "markAll": "Mark All",
+    "unmarkAll": "Unmark All",
+    "markAllA11y": "Mark all habits done",
+    "unmarkAllA11y": "Unmark all habits",
+    "activeChallenges": "ACTIVE CHALLENGES",
+    "challenge": {
+      "sub": "Day %{day} of %{days} · %{count} logged",
+      "done": "✅ Done",
+      "pending": "Pending",
+      "a11yDone": "%{name}, day %{day} of %{days}, done",
+      "a11yPending": "%{name}, day %{day} of %{days}, pending"
+    },
+    "toast": {
+      "done": "%{name} done ✓",
+      "avoided": "%{name}: avoided ✓",
+      "overLimit": "%{name}: over your limit",
+      "plus": "%{name} +%{amount}"
+    },
+    "milestone": {
+      "title": "%{days}-day streak!",
+      "subtitle": "%{label} of showing up. That's a real habit now."
+    },
+    "congrats": "Congrats!",
+    "allTasks": "You completed all tasks for the day!"
+  },
+  "onboarding": {
+    "intro": {
+      "stick": {
+        "title": "Build habits that stick",
+        "body": "Track daily habits and volume goals. Every check-in brings you closer to the life you want."
+      },
+      "streaks": {
+        "title": "Streaks that forgive",
+        "body": "Complete your habits to grow a streak. Rest days, skips and two monthly freezes keep one bad day from wiping it out."
+      }
+    },
+    "starter": {
+      "water": "Drink water",
+      "move": "Move for 20 minutes",
+      "read": "Read 10 pages",
+      "meditate": "Meditate",
+      "walk": "Take a walk",
+      "sleep": "In bed by 11",
+      "journal": "Journal",
+      "stretch": "Stretch",
+      "unitGlasses": "glasses"
+    },
+    "stepA11y": "Step %{step} of %{total}",
+    "skipA11y": "Skip onboarding",
+    "pick": {
+      "title": "Pick your first habits",
+      "body": "Start small. Two or three is plenty, you can add more any time.",
+      "perDay": "%{goal} %{unit} a day",
+      "onceADay": "Once a day",
+      "selected": "%{count} of %{max} selected",
+      "startEmpty": "Start empty"
+    },
+    "plan": {
+      "title": "When and where?",
+      "body": "Habits with a plan are 2-3× more likely to stick. Finish the sentence for each one.",
+      "placeholder": "After I… (e.g. make coffee, in the kitchen)",
+      "a11y": "Plan for %{name}",
+      "start": "Start my 3-Day Kickstart 🚀"
+    }
+  },
+  "habits": {
+    "title": "My Habits",
+    "add": "+ Add",
+    "addA11y": "Add habit",
+    "reorder": "Reorder habits",
+    "finishReorder": "Finish reordering",
+    "empty": { "title": "No Habits Yet", "body": "Get started" },
+    "archived": "ARCHIVED (%{count})",
+    "row": {
+      "detailsA11y": "%{name}, show details",
+      "schedulePill": "📅 %{schedule}",
+      "reminderPill": "🔔 %{time}",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "reminderOff": "Turn reminder off",
+      "setReminder": "Set reminder",
+      "editA11y": "Edit habit",
+      "archiveA11y": "Archive or delete habit",
+      "restore": "Restore",
+      "restoreA11y": "Restore habit",
+      "deleteForeverA11y": "Delete habit permanently"
+    },
+    "archive": {
+      "title": "Archive Habit",
+      "body": "Archive \"%{name}\"? It leaves Today but keeps its history, and you can restore it any time.",
+      "deleteForever": "Delete forever",
+      "archive": "Archive"
+    },
+    "deleteHabit": {
+      "title": "Delete Habit",
+      "body": "Permanently delete \"%{name}\" and its history? This can't be undone."
+    },
+    "form": {
+      "editTitle": "Edit Habit",
+      "newTitle": "New Habit",
+      "magicTitle": "✨ Describe it, we fill the rest",
+      "magicPlaceholder": "e.g. read 20 pages before bed on weekdays",
+      "magicA11y": "Describe the habit",
+      "magicFillA11y": "Fill the form from the description",
+      "fill": "Fill",
+      "magicError": "Could not fill the form.",
+      "icon": "Icon",
+      "colour": "Colour",
+      "colourA11y": "Colour %{color}",
+      "defaultColour": "Default colour",
+      "name": "Name",
+      "namePlaceholder": "e.g. Walk 10,000 steps",
+      "plan": "Plan (optional)",
+      "planPlaceholder": "After I… (e.g. brush my teeth, in the kitchen)",
+      "planA11y": "Implementation plan",
+      "type": "Type",
+      "typeA11y": "%{label}: %{hint}",
+      "typeChip": "%{emoji}  %{label}",
+      "schedule": "Schedule",
+      "scheduleDaily": "Every day",
+      "scheduleWeekdays": "Specific days",
+      "schedulePerWeek": "Times a week",
+      "perWeekText": { "one": "%{count} day a week, any days you like", "other": "%{count} days a week, any days you like" },
+      "fewerDays": "Fewer days per week",
+      "moreDays": "More days per week",
+      "timeOfDay": "Time of day",
+      "minutesPerDay": "Minutes per day: %{count}",
+      "minutesLabel": "Minutes per day",
+      "fiveMin": "5 min",
+      "threeHours": "3 h",
+      "atMostPerDay": "At most per day: %{count}",
+      "dailyLimit": "Daily limit",
+      "unit": "Unit (optional)",
+      "unitA11y": "Unit",
+      "unitPlaceholderLimit": "coffees, cigarettes, hours…",
+      "unitPlaceholderVolume": "glasses, pages, minutes…",
+      "timesPerDay": "Times per day: %{count}",
+      "max": "Max %{max}",
+      "saveChanges": "Save Changes",
+      "addHabit": "Add Habit"
+    },
+    "permission": {
+      "title": "Permission needed",
+      "body": "Allow photo access to use a custom icon."
+    },
+    "customIcon": {
+      "title": "Custom Icon",
+      "body": "Choose a source",
+      "camera": "Camera",
+      "library": "Photo Library"
+    }
+  },
+  "habitCard": {
+    "streakClean": "🔥 %{count} days clean",
+    "streak": "🔥 %{count}-day streak",
+    "weekDone": "✓ %{done}/%{target} this week",
+    "week": "%{done}/%{target} this week",
+    "skippedToday": "💤 Skipped today",
+    "timer": "⏱ %{time}",
+    "longPress": {
+      "body": "Life happens. Pick an option:",
+      "unskip": "Unskip today",
+      "skip": "Skip today (keeps streak)",
+      "undoYesterday": "Undo yesterday's check",
+      "markYesterday": "Mark done yesterday",
+      "editNote": "Edit note",
+      "addNote": "Add a note"
+    },
+    "announce": {
+      "countMax": "%{name}, %{count} of %{goal} max",
+      "count": "%{name}, %{count} of %{goal}",
+      "unchecked": "%{name} unchecked",
+      "avoided": "%{name} avoided today",
+      "done": "%{name} done"
+    },
+    "a11y": {
+      "count": ", %{count} of %{goal}",
+      "countUnit": ", %{count} of %{goal} %{unit}",
+      "maximum": " maximum",
+      "overLimit": ", over limit",
+      "avoided": ", avoided today",
+      "done": ", done",
+      "skipped": ", skipped today",
+      "notDone": ", not done",
+      "streak": ", %{count} day streak",
+      "hint": "Double tap to log. Long press for skip, yesterday and note options.",
+      "startTimer": "Start timer",
+      "stopTimer": "Stop timer and log minutes",
+      "removeOne": "Remove one %{unit}",
+      "removeMany": "Remove %{count} %{unit}",
+      "addOne": "Add one %{unit}",
+      "addMany": "Add %{count} %{unit}"
+    }
+  },
+  "habitDetail": {
+    "meta": "%{schedule} · %{goal}",
+    "afterI": "After I %{intention}",
+    "editA11y": "Edit habit",
+    "stats": { "current": "Current", "best": "Best", "done": "Done", "total": "Total", "a11y": "%{label}: %{value}" },
+    "history": "History",
+    "hint": "Tap any past day to fix it",
+    "cellA11y": "%{date}: %{status}",
+    "status": { "future": "future", "done": "done", "rest": "rest", "missed": "missed", "none": "none" },
+    "legend": { "done": "Done", "partial": "Partial", "missed": "Missed", "skippedFrozen": "Skipped / frozen", "rest": "Rest" },
+    "byWeekday": "By weekday",
+    "since": "Completion rate since %{date}",
+    "weekdayA11y": "%{day}: %{percent} percent",
+    "fix": {
+      "body": "%{name}: %{count}/%{goal}",
+      "bodyMax": "%{name}: %{count}/%{goal} max",
+      "clear": "Clear",
+      "setOver": "Set %{value} (over limit)",
+      "setDone": "Set %{value} (done)"
+    }
+  },
+  "challenges": {
+    "title": "Challenges",
+    "new": "+ New",
+    "newA11y": "New challenge",
+    "empty": {
+      "title": "No challenges yet",
+      "body": "Tap \"+ New\" to create your first challenge.",
+      "create": "Create a Challenge"
+    },
+    "tip": {
+      "title": "💡 Tip",
+      "body": "You can run up to 3 challenges at once. Link specific habits to each challenge."
+    },
+    "past": "PAST CHALLENGES",
+    "pastEmpty": "Completed or deleted challenges will appear here.",
+    "pastSubTier": "%{done}/%{days} days · %{tier} ✓",
+    "pastSubEnded": "%{done}/%{days} days · Ended",
+    "pastA11yTier": "%{name}, %{tier} completion, %{done} of %{days} days",
+    "pastA11yEnded": "%{name}, ended, %{done} of %{days} days",
+    "card": {
+      "sub": "Day %{day} of %{days} · %{count} completed",
+      "editA11y": "Edit %{name}",
+      "deleteA11y": "Delete challenge",
+      "percentComplete": "%{percent}% complete",
+      "linkedHabits": "Linked Habits (%{count})",
+      "linkedA11y": "Linked habits, %{count}",
+      "noneLinked": "No habits linked",
+      "todayLogged": "✅ Today's logged!",
+      "tapEdit": "Tap Edit to link habits to this challenge.",
+      "completeLinked": "Complete your linked habits to auto-claim today."
+    },
+    "form": {
+      "editTitle": "Edit Challenge",
+      "newTitle": "New Challenge",
+      "template": "Start from a template",
+      "templateA11y": "%{name} template",
+      "templateDays": "%{count}d",
+      "icon": "Icon",
+      "iconA11y": "Icon %{icon}",
+      "name": "Name",
+      "nameA11y": "Challenge name",
+      "namePlaceholder": "e.g. 7-Day Strong",
+      "description": "Description",
+      "descriptionA11y": "Challenge description",
+      "descriptionPlaceholder": "What's the goal?",
+      "duration": { "one": "Duration: %{count} day", "other": "Duration: %{count} days" },
+      "range": { "week": "Week", "month": "Month", "year": "Year" },
+      "rangeA11y": "%{label}, up to %{max} days",
+      "durationA11y": "Challenge duration in days",
+      "linked": "Linked Habits",
+      "noHabits": "No habits yet. Go to the Habits tab to create some.",
+      "linkAll": "⚡ Link All Habits",
+      "linkAllA11y": "Link all habits",
+      "selectOne": "Select at least one habit to save this challenge.",
+      "addNew": "+ Add New Habit",
+      "addNewA11y": "Add new habit",
+      "saveChanges": "Save Changes",
+      "saveA11y": "Save changes",
+      "create": "Create Challenge",
+      "createA11y": "Create challenge"
+    },
+    "detail": {
+      "completion": "%{badge} %{tier} Completion!",
+      "noDescription": "No description",
+      "progress": "Progress: %{done}/%{days} days",
+      "started": "Started: %{date}"
+    },
+    "delete": {
+      "title": "Delete Challenge",
+      "body": "Remove \"%{name}\"? It will be moved to Past Challenges."
+    }
+  },
+  "progress": {
+    "title": "Your Progress",
+    "share": "Share",
+    "shareA11y": "Share your progress",
+    "stats": { "streak": "Day Streak", "best": "Best Streak", "perfect": "Perfect Days", "a11y": "%{label}: %{value}" },
+    "freezes": { "one": "❄️ %{count} streak freeze left this month · a missed day is covered automatically", "other": "❄️ %{count} streak freezes left this month · a missed day is covered automatically" },
+    "weekly": { "title": "Habits Completed: Weekly", "hint": "Tap a bar for details" },
+    "history": "History",
+    "period": { "d7": "7d", "d30": "30d", "d90": "90d" },
+    "lastDaysA11y": "Last %{count} days",
+    "legend": { "none": "None", "partial": "Partial", "frozen": "Frozen", "perfect": "Perfect" },
+    "heatHint": "Tap a cell for details",
+    "heat": {
+      "future": "%{date}: future",
+      "rest": "%{date}: rest day",
+      "count": "%{date}: %{completed} of %{total} habits",
+      "countFrozen": "%{date}: %{completed} of %{total} habits, streak frozen"
+    },
+    "bar": { "noData": "%{label}: no data yet", "percent": "%{label}: %{value} percent" },
+    "tooltip": { "a11y": "%{label}: %{value} percent completed. Dismiss", "completed": "completed" },
+    "mood": {
+      "title": "🙂 Mood & habits",
+      "hint": "From your daily check-ins on Today",
+      "last7A11y": "Last 7 days mood: %{list}",
+      "none": "none",
+      "rateMore": "Rate a few more days to see how your habits and mood connect (%{count}/%{min}).",
+      "avg": "avg / 5",
+      "avgA11y": "Average mood %{value} of 5",
+      "perfectDays": "perfect days",
+      "perfectA11y": "Perfect days %{value}",
+      "otherDays": "other days",
+      "otherA11y": "Other days %{value}",
+      "noData": "no data",
+      "noLink": "No strong link between a single habit and your mood yet."
+    },
+    "trophy": {
+      "title": "🏆 Trophy Case",
+      "hint": "Streak milestones and challenge medals",
+      "earnedA11y": "%{label} streak: earned %{date}",
+      "lockedA11y": "%{label} streak: locked",
+      "firstMedal": "Finish a challenge to earn your first medal.",
+      "medalA11y": "%{name}: %{tier}"
+    },
+    "reflection": {
+      "title": "✨ AI Reflection",
+      "hint": "AI-generated summary of your habit patterns",
+      "weeklyA11y": "Weekly reflection",
+      "monthlyA11y": "Monthly reflection",
+      "lockedSuffix": ", locked",
+      "unlocks": { "one": "Unlocks in %{count} day", "other": "Unlocks in %{count} days" },
+      "unlockWeekly": "Track your habits for a full week to unlock your weekly summary.",
+      "unlockMonthly": "Track your habits for a full month to unlock your monthly summary.",
+      "generatingWeekly": "Generating your weekly reflection...",
+      "generatingMonthly": "Generating your monthly reflection...",
+      "generated": "Generated %{date}",
+      "failed": "Generation failed. Please try again.",
+      "seePro": "  See Groov Pro",
+      "generateWeekly": "Generate weekly summary",
+      "generateMonthly": "Generate monthly summary"
+    },
+    "day": {
+      "habitsCompleted": "%{completed}/%{total} habits completed",
+      "frozen": "❄️ Streak freeze used: this day did not break your streak.",
+      "noData": "No habit data for this day.",
+      "skipped": "Skipped",
+      "frozenLabel": "Frozen",
+      "notScheduled": "Not scheduled"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "APPEARANCE",
+    "theme": "Theme",
+    "themeFollows": "Follows your device setting",
+    "themeAlwaysLight": "Always light",
+    "themeAlwaysDark": "Always dark",
+    "themeOptions": { "light": "Light", "dark": "Dark", "system": "Auto" },
+    "themeA11y": "%{label} theme",
+    "language": "Language",
+    "languageSystem": "System default",
+    "languageSystemSub": "System default (%{label})",
+    "languageTitle": "Language",
+    "languageBody": "Choose the language Groov uses.",
+    "notifications": "NOTIFICATIONS",
+    "enableNotifications": "Enable Notifications",
+    "enableSubWeb": "Push notifications on device only",
+    "enableSub": "Master toggle for all reminders",
+    "smartCheckin": "Smart Check-in",
+    "smartSub": "Fires at %{time} only if habits are still unfinished",
+    "firesAt": "Fires at %{time}",
+    "notificationsDisabled": "Notifications disabled",
+    "reminderLabelA11y": "Reminder label",
+    "editLabelA11y": "Edit reminder label, %{label}",
+    "changeTimeA11y": "Change time, currently %{time}",
+    "removeReminderA11y": "Remove reminder",
+    "habitBadge": "Habit",
+    "addReminder": "Add Reminder",
+    "newReminderLabel": "Reminder",
+    "removeReminder": { "title": "Remove Reminder", "body": "Delete this reminder?", "habitBody": "Turn off the reminder for \"%{name}\"?" },
+    "feedback": "FEEDBACK",
+    "sounds": "Sounds",
+    "soundsSub": "Chimes when you complete habits and challenges",
+    "haptics": "Haptic Feedback",
+    "hapticsSub": "Vibration on check-off (device only)",
+    "dev": {
+      "title": "DEV TOOLS",
+      "simulatedDate": "Simulated Date",
+      "offset": { "one": "Offset: %{offset} day", "other": "Offset: %{offset} days" },
+      "prevDay": "Previous day",
+      "resetDate": "Reset simulated date to now",
+      "now": "NOW",
+      "nextDay": "Next day",
+      "sendTest": "Send Test Notification",
+      "sendTestSub": "Fires a reminder for your first habit, with Done / Snooze",
+      "sent": { "title": "Sent", "body": "Test notification fired. Check your notification tray." },
+      "seed": { "title": "Generate 30-Day History", "body": "This will fill the last 30 days with random completions. Existing history will be overwritten.", "generate": "Generate", "done": "30 days of random history added.", "sub": "Random completions for the past 30 days" },
+      "crash": { "title": "Test Crash", "body": "This throws a render error so you can check the crash screen and Sentry.", "crash": "Crash", "sub": "Throws an error to exercise the crash screen" },
+      "disable": { "title": "Disable Dev Tools", "body": "This will re-lock dev tools on this device. You'll need to tap the version label 7 times and enter the code to unlock again.", "disable": "Disable", "sub": "Re-locks dev tools on this device" },
+      "access": { "title": "Developer Access", "body": "Enter the developer code", "a11y": "Developer code", "placeholder": "Enter code", "unlock": "Unlock" },
+      "unlocked": { "title": "Developer Mode", "body": "Dev tools unlocked on this device permanently." },
+      "invalid": { "title": "Invalid Code", "body": "That code is incorrect." },
+      "moreTaps": { "one": "%{count} more tap to unlock dev tools", "other": "%{count} more taps to unlock dev tools" }
+    },
+    "pro": {
+      "title": "GROOV PRO",
+      "have": "You have Groov Pro",
+      "upgrade": "Upgrade to Groov Pro",
+      "haveSub": "Thank you for supporting a one-person app",
+      "upgradeSub": "Unlimited habits, more reminders and AI coaching"
+    },
+    "account": {
+      "title": "ACCOUNT",
+      "displayName": "Display Name",
+      "displayNameSub": "Add a name for greetings and coaching",
+      "guest": "Guest account",
+      "guestSub": "Your data lives only on this device. Add a sign-in to back it up and sync.",
+      "addSignIn": "Add sign-in",
+      "signedInAs": "Signed in as",
+      "appleId": "Apple ID",
+      "googleAccount": "Google account",
+      "signOut": "Sign Out",
+      "signOutBody": "Are you sure you want to sign out?",
+      "signOutGuest": {
+        "title": "Sign out of guest account?",
+        "body": "You are using Groov without an account. Signing out now would lose your habits and history. Add an email or sign-in first to keep them.",
+        "add": "Add a sign-in",
+        "anyway": "Sign out anyway"
+      },
+      "deleteAccount": {
+        "title": "Delete Account",
+        "body": "This will permanently delete your account and all associated data including habits, progress, challenges, and settings. This cannot be undone.",
+        "sure": "Are you absolutely sure?",
+        "sureBody": "Your account will be permanently deleted. You will not be able to recover it.",
+        "yes": "Yes, Delete Everything",
+        "failed": "Failed to delete account. Please try again."
+      },
+      "linked": { "title": "You're all set", "body": "Your account is linked and your habits now sync." },
+      "nameModal": {
+        "title": "Display Name",
+        "sub": "Used in greetings and by the AI coach.",
+        "placeholder": "Your name",
+        "failed": "Could not update your name. Please try again."
+      }
+    },
+    "backup": {
+      "title": "BACKUP",
+      "export": "Export backup",
+      "exportSub": "%{last} · JSON file with every habit, check-in and setting",
+      "lastBackup": "Last backup %{date} at %{time}",
+      "never": "Never backed up",
+      "restore": "Restore from backup",
+      "restoreSub": "Pick a Groov backup file to merge or replace",
+      "hint": "⚠️ Your data syncs to your account, but a file backup is the only copy you fully control.",
+      "exportFailed": { "title": "Export failed", "body": "Could not create the backup file." },
+      "cannotImport": { "title": "Cannot import", "body": "That file could not be read." },
+      "restoreDialog": {
+        "title": "Restore backup",
+        "body": "Backup from %{when}: %{summary}.\n\nMerge keeps what you have and adds the backup on top. Replace wipes your current data first.",
+        "unknownDate": "unknown date",
+        "replace": "Replace",
+        "merge": "Merge"
+      },
+      "restored": { "title": "Restored", "replaced": "Your data was replaced with the backup.", "merged": "The backup was merged into your data." },
+      "importFailed": { "title": "Import failed", "body": "Something went wrong while restoring." }
+    },
+    "data": {
+      "title": "DATA",
+      "resetPassword": "Reset Password",
+      "resetPasswordSub": "Send a reset code to your email",
+      "resetPasswordA11y": "Reset Password, send a reset code to your email",
+      "resetDialogBody": "A password reset code will be sent to %{email}. Continue?",
+      "yourEmail": "your email",
+      "sendCode": "Send Code",
+      "sendFailed": "Failed to send reset email.",
+      "clear": "Clear All Data",
+      "clearSub": "Permanently removes all habits, progress, and settings",
+      "clearA11y": "Clear All Data, permanently removes all habits, progress, and settings",
+      "clearBody": "This will permanently delete all habits, progress, challenges, and settings. The app will reset completely.",
+      "clearEverything": "Clear Everything",
+      "cleared": "All data cleared. The app has been reset.",
+      "deleteAccount": "Delete Account",
+      "deleteSub": "Permanently removes your account and all data",
+      "deleteA11y": "Delete Account, permanently removes your account and all data"
+    },
+    "resetModal": {
+      "title": "Reset Password",
+      "body": "A reset code was sent to %{email}. Enter it below along with your new password.",
+      "codePlaceholder": "Reset code from email",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "setPassword": "Set Password",
+      "success": { "title": "Success", "body": "Your password has been updated." },
+      "errors": {
+        "enterCode": "Enter the code from your email.",
+        "enterPassword": "Enter a new password.",
+        "min8": "Password must be at least 8 characters.",
+        "mismatch": "Passwords do not match.",
+        "invalidCode": "Invalid or expired code. Please try again."
+      }
+    },
+    "about": {
+      "title": "ABOUT",
+      "widget": "Add home-screen widget",
+      "widgetSub": "Today's habits with one-tap check-off",
+      "widgetUnsupported": { "title": "Not supported", "body": "Your launcher does not support adding widgets from apps. Long-press your home screen and pick Groov from the widget list instead." },
+      "widgetFailed": { "title": "Could not add widget", "body": "Long-press your home screen and pick Groov from the widget list." },
+      "rate": "Rate Groov",
+      "rateSub": "A quick rating helps a solo-built app a lot",
+      "rateThanks": { "title": "Thank you!", "body": "Ratings open once Groov is live on the App Store and Google Play. For now, feedback is just as welcome." },
+      "feedback": "Send feedback",
+      "feedbackEmail": "Email the developer",
+      "feedbackSub": "Report a bug or suggest a feature",
+      "whatsNew": "What's new",
+      "whatsNewSub": "Changes in %{version}",
+      "help": "Help & support",
+      "privacy": "Privacy Policy",
+      "privacySub": "What Groov collects and why",
+      "terms": "Terms of Use"
+    }
+  },
+  "auth": {
+    "tagline": {
+      "login": "Welcome back",
+      "register": "Create your account",
+      "forgot": "Reset your password",
+      "reset": "Enter your reset code"
+    },
+    "login": "Log In",
+    "register": "Register",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "displayName": "Display Name",
+    "displayNamePlaceholder": "What should we call you?",
+    "resetCode": "Reset Code",
+    "codePlaceholder": "Code from your email",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "sendResetCode": "Send Reset Code",
+    "setNewPassword": "Set New Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "showConfirmPassword": "Show confirm password",
+    "hideConfirmPassword": "Hide confirm password",
+    "createAccount": "Create Account",
+    "forgotPassword": "Forgot password?",
+    "orContinue": "or continue with",
+    "googleSignIn": "Sign in with Google",
+    "googleSignUp": "Sign up with Google",
+    "guest": "Continue without an account",
+    "guestHint": "Your habits stay on this device until you add an email or sign-in later. Nothing is lost when you do.",
+    "noAccount": "Don't have an account? ",
+    "haveAccount": "Already have an account? ",
+    "registerLink": "Register",
+    "loginLink": "Log in",
+    "backToLogin": "Back to Log In",
+    "providers": { "apple": "Apple", "google": "Google" },
+    "errors": {
+      "socialFailed": "Could not sign in with %{provider}. Please try again.",
+      "displayNameRequired": "Please enter a display name.",
+      "emailPasswordRequired": "Email and password are required.",
+      "mismatch": "Passwords do not match.",
+      "min8": "Password must be at least 8 characters.",
+      "generic": "Something went wrong. Please try again.",
+      "enterEmail": "Enter your email address.",
+      "sendFailed": "Failed to send reset email. Please try again.",
+      "enterCode": "Enter the code from your email.",
+      "enterNewPassword": "Enter a new password.",
+      "invalidCode": "Invalid or expired code. Please try again.",
+      "appleIosOnly": "Sign in with Apple is only available on iOS and iPadOS.",
+      "appleNoToken": "Apple did not return an identity token.",
+      "googleIncomplete": "Google sign-in did not complete.",
+      "googleNoSession": "Google sign-in did not return a session.",
+      "googleLinkIncomplete": "Google linking did not complete.",
+      "googleLinkNoSession": "Google linking did not return a session.",
+      "deleteFailed": "Failed to delete account"
+    },
+    "success": {
+      "confirmEmail": "Check your email to confirm your account, then log in.",
+      "codeSent": "A reset code has been sent to %{email}. Check your email and enter the code below.",
+      "passwordUpdated": "Password updated successfully! You can now log in."
+    }
+  },
+  "linkAccount": {
+    "title": "Keep your progress safe",
+    "body": "Add a sign-in to back up your habits and use Groov on another device. Everything you have logged stays exactly as it is.",
+    "google": "Continue with Google",
+    "orEmail": "or with email",
+    "namePlaceholder": "Display name (optional)",
+    "nameA11y": "Display name",
+    "emailPlaceholder": "Email",
+    "passwordPlaceholder": "Password (8+ characters)",
+    "create": "Create my account",
+    "errors": {
+      "failed": "Could not link the account. Please try again.",
+      "enterEmail": "Enter an email address.",
+      "min8": "Password must be at least 8 characters."
+    }
+  },
+  "moodCheckIn": {
+    "title": "How are you feeling today?",
+    "optional": "Optional",
+    "a11y": "%{label}, %{value} of 5"
+  },
+  "noteModal": {
+    "sub": "%{date} · a note for this check-in",
+    "placeholder": "How did it go?",
+    "a11y": "Note",
+    "removeNote": "Remove note"
+  },
+  "notificationPrimer": {
+    "title": "A nudge at the right moment",
+    "body": "Groov will remind you only at the times you pick, with a Done button right in the notification. If you keep ignoring a reminder it quietly backs off instead of nagging.",
+    "bullets": {
+      "only": "Only the reminders you set",
+      "actions": "Mark done or snooze without opening the app",
+      "change": "Change or turn off any time in Settings"
+    },
+    "bullet": "•  %{text}",
+    "allow": "Turn on reminders"
+  },
+  "paywall": {
+    "title": "Groov Pro",
+    "reason": {
+      "habits": "You have reached the free limit of habits.",
+      "reminders": "More than one daily reminder is a Pro feature.",
+      "ai": "You have used today's free AI coaching.",
+      "default": "Support a one-person app and unlock a little more."
+    },
+    "plans": {
+      "yearly": { "title": "Yearly", "price": "$11.99 / year", "note": "7-day free trial", "badge": "Best value" },
+      "lifetime": { "title": "Lifetime", "price": "$29.99 once", "note": "Pay once, keep forever" }
+    },
+    "planA11y": "%{title}, %{price}",
+    "features": {
+      "unlimited": "Unlimited habits",
+      "reminders": "Multiple daily reminders",
+      "ai": "More AI coaching and Magic Fill",
+      "free": "Everything else stays free: sync, backup, widgets"
+    },
+    "trial": "Start 7-day free trial",
+    "buyLifetime": "Buy lifetime",
+    "restore": "Restore purchases",
+    "restoring": "Restoring…",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "legalLive": "Yearly renews automatically until cancelled in your store account settings. Prices shown are in USD and may vary by region.",
+    "legalNotLive": "Purchases are not live in this build yet. Nothing will be charged.",
+    "errors": {
+      "incomplete": "The purchase did not complete.",
+      "comingSoon": "Groov Pro is coming soon. You can keep using everything in the free tier for now.",
+      "failed": "Purchase failed. Please try again.",
+      "noPurchase": "No previous purchase found for this account.",
+      "restoreFailed": "Restore failed.",
+      "notConfigured": "Purchases are not set up on this build yet.",
+      "noProducts": "No products are available right now."
+    }
+  },
+  "shareCards": {
+    "title": "Share your progress",
+    "kinds": { "streak": "Streak", "week": "This week", "year": "Year in pixels" },
+    "kindTab": "%{emoji} %{label}",
+    "myStreak": "My streak",
+    "namedStreak": "%{name}'s streak",
+    "daysInRow": { "one": "day in a row", "other": "days in a row" },
+    "best": "best",
+    "perfectDays": "perfect days",
+    "habits": "habits",
+    "myWeek": "My week",
+    "namedWeek": "%{name}'s week",
+    "weekSummary": { "one": "of habits done · %{count} perfect day", "other": "of habits done · %{count} perfect days" },
+    "myYear": "%{year} in pixels",
+    "namedYear": "%{name}'s %{year} in pixels",
+    "legend": { "none": "none", "partial": "partial", "perfect": "perfect" },
+    "shareImage": "Share image",
+    "dialogTitle": "Share your progress"
+  },
+  "rewardModal": {
+    "title": "Challenge Complete",
+    "page": "%{page} of %{total}",
+    "completion": "%{badge} %{tier} Completion",
+    "progress": "%{done} of %{days} days completed (%{percent}%)",
+    "gotIt": "Got It",
+    "next": "Next →",
+    "tiers": {
+      "platinum": { "headline": "🎉 Absolutely Flawless!", "body": "You showed up every single day without fail. That's rare. That's powerful. That discipline is yours to keep. Carry it into what comes next." },
+      "gold": { "headline": "🏆 Outstanding Work!", "body": "You pushed through nearly every day. Gold is earned, not given, and you earned it. Keep building on that momentum." },
+      "silver": { "headline": "🥈 Solid Effort!", "body": "More than halfway there. Silver means you showed up when it counted. Use this as your foundation and push harder next time." },
+      "copper": { "headline": "A Start Worth Building On", "body": "Getting started is step one, but consistency is the real goal. Next time, pick one day at a time and commit to showing up. You have more in you than this challenge showed." },
+      "none": { "headline": "This One Got Away", "body": "No days logged this time, and that's okay. Every stumble is information. Take a moment to honestly ask what got in the way, then come back focused and ready." }
+    }
+  },
+  "trophy": {
+    "announce": "Challenge complete. Trophy earned.",
+    "a11y": "Challenge complete, trophy earned"
+  },
+  "celebration": {
+    "a11y": "%{title}. %{subtitle}. Dismiss"
+  },
+  "whatsNew": {
+    "title": "What's new",
+    "current": "Current",
+    "item": "•  %{text}"
+  },
+  "timePicker": {
+    "title": "Set Time",
+    "a11y": "Time picker",
+    "hour": "Hour",
+    "minute": "Min",
+    "ampm": "AM/PM"
+  },
+  "notifications": {
+    "doneAction": "✓ Done",
+    "snoozeAction": "Snooze 1h",
+    "generalTitle": "🔔 %{label}",
+    "generalBody": "Time to check your habits!",
+    "habitTitle": "%{icon} Time for: %{name}",
+    "habitTitleBackoff": "%{icon} %{name}, still on your list",
+    "habitBodyBackoff": "No pressure. Even a small step today restarts the streak.",
+    "habitBodyIntention": "After you %{intention}. Tap to log it.",
+    "habitBody": "Tap to log your habit!",
+    "reminderTitle": "🔔 Reminder",
+    "eveningTitle": "🌙 Habit Check-in",
+    "eveningBody": "You still have habits left to complete today. Keep that streak going!",
+    "testBody": "Test reminder. Tap Done to log it from here.",
+    "finishTitle": "Finish Habits"
+  },
+  "backup": {
+    "sharingUnavailable": "Sharing is not available on this device.",
+    "dialogTitle": "Save your Groov backup",
+    "invalidJson": "That file is not valid JSON.",
+    "notBackup": "That file is not a Groov backup.",
+    "newerVersion": "This backup was made by a newer version of Groov. Update the app and try again.",
+    "noData": "The backup has no data section.",
+    "empty": "The backup is empty.",
+    "summary": "%{habits}, %{days}, %{challenges}",
+    "habits": { "one": "%{count} habit", "other": "%{count} habits" },
+    "days": { "one": "%{count} day of history", "other": "%{count} days of history" },
+    "challenges": { "one": "%{count} challenge", "other": "%{count} challenges" }
+  },
+  "widget": {
+    "title": "Today",
+    "a11y": "Groov: %{done} of %{total} habits done",
+    "restDay": "Rest day. Nothing scheduled.",
+    "addHabit": "Add a habit to get started",
+    "rowCount": "%{name}  ·  %{count}/%{goal}",
+    "rowDone": "%{name}, done",
+    "more": "+%{count} more in the app"
+  }
+}

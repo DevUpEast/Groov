@@ -1,30 +1,31 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { t, useLocale } from '../i18n';
 
 // Pre-permission screen: explains the value of reminders before the OS dialog,
 // which can only be shown once. Rendered from App.js, driven by AppContext.
 export default function NotificationPrimer({ visible, onAllow, onLater, theme }) {
+  useLocale();
   if (!visible) return null;
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onLater}>
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={styles.emoji}>🔔</Text>
-          <Text style={[styles.title, { color: theme.text }]}>A nudge at the right moment</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('notificationPrimer.title')}</Text>
           <Text style={[styles.body, { color: theme.textMuted }]}>
-            Groov will remind you only at the times you pick, with a Done button right in the
-            notification. If you keep ignoring a reminder it quietly backs off instead of nagging.
+            {t('notificationPrimer.body')}
           </Text>
           <View style={styles.bullets}>
-            {['Only the reminders you set', 'Mark done or snooze without opening the app', 'Change or turn off any time in Settings'].map(b => (
-              <Text key={b} style={[styles.bullet, { color: theme.text }]}>•  {b}</Text>
+            {['only', 'actions', 'change'].map(k => (
+              <Text key={k} style={[styles.bullet, { color: theme.text }]}>{t('notificationPrimer.bullet', { text: t(`notificationPrimer.bullets.${k}`) })}</Text>
             ))}
           </View>
           <TouchableOpacity style={[styles.btn, { backgroundColor: theme.primary }]} onPress={onAllow} accessibilityRole="button">
-            <Text style={styles.btnText}>Turn on reminders</Text>
+            <Text style={styles.btnText}>{t('notificationPrimer.allow')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.later} onPress={onLater} accessibilityRole="button">
-            <Text style={[styles.laterText, { color: theme.textMuted }]}>Not now</Text>
+            <Text style={[styles.laterText, { color: theme.textMuted }]}>{t('common.notNow')}</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -1,0 +1,914 @@
+{
+  "common": {
+    "cancel": "キャンセル",
+    "save": "保存",
+    "saving": "保存中…",
+    "close": "閉じる",
+    "delete": "削除",
+    "edit": "編集",
+    "remove": "削除",
+    "next": "次へ",
+    "back": "戻る",
+    "skip": "スキップ",
+    "done": "完了",
+    "error": "エラー",
+    "notNow": "今はしない",
+    "undo": "元に戻す",
+    "slider": "スライダー",
+    "shortDays": "%{count}日"
+  },
+  "app": {
+    "tabs": {
+      "today": "今日",
+      "progress": "進捗",
+      "challenge": "チャレンジ",
+      "habits": "習慣",
+      "settings": "設定"
+    },
+    "crash": {
+      "title": "問題が発生しました",
+      "body": "Groovで予期しないエラーが発生しました。習慣のデータは保存されています。下のボタンをタップして再試行してください。何度も起きる場合は、アプリを再起動してください。",
+      "retry": "もう一度試す"
+    },
+    "quickActions": {
+      "today": "今日",
+      "todaySubtitle": "習慣をチェックしましょう",
+      "newHabit": "新しい習慣",
+      "progress": "進捗"
+    },
+    "notificationsOff": {
+      "title": "通知がオフです",
+      "body": "リマインダーを受け取るには、端末の設定でGroovの通知をオンにしてください。",
+      "openSettings": "設定を開く"
+    },
+    "kickstart": {
+      "name": "3日間キックスタート",
+      "description": "3日連続ですべての習慣を達成して、土台を作りましょう。"
+    }
+  },
+  "timeOfDay": {
+    "morning": "🌅 朝",
+    "afternoon": "☀️ 昼",
+    "evening": "🌙 夜",
+    "anytime": "いつでも"
+  },
+  "weekday": {
+    "short": { "su": "日", "mo": "月", "tu": "火", "we": "水", "th": "木", "fr": "金", "sa": "土" },
+    "initial": { "su": "日", "mo": "月", "tu": "火", "we": "水", "th": "木", "fr": "金", "sa": "土" }
+  },
+  "schedule": {
+    "everyDay": "毎日",
+    "perWeek": "週%{count}回",
+    "weekdays": "平日",
+    "weekends": "週末"
+  },
+  "habitTypes": {
+    "daily": { "label": "1日1回", "hint": "1回チェックするだけ" },
+    "volume": { "label": "数量目標", "hint": "目標までカウントアップ" },
+    "timed": { "label": "時間", "hint": "1日あたりの分数" },
+    "quit": { "label": "やめる習慣", "hint": "毎日しないでいる" },
+    "atMost": { "label": "上限", "hint": "上限以内に抑える" }
+  },
+  "goal": {
+    "minutes": "分",
+    "times": "×",
+    "volume": "1日%{goal}%{unit}",
+    "timed": "1日%{goal}分",
+    "quit": "毎日避ける",
+    "atMost": "1日%{goal}%{unit}まで",
+    "daily": "毎日"
+  },
+  "progressText": {
+    "volume": "%{count}/%{goal} %{unit}",
+    "volumeNoUnit": "今日 %{count}/%{goal}",
+    "timed": "%{count}/%{goal}分",
+    "atMost": "%{count}/%{goal} %{unit}",
+    "atMostNoUnit": "%{count}/%{goal}（上限）",
+    "atMostOver": "%{count}/%{goal} %{unit} · 上限超過",
+    "atMostOverNoUnit": "%{count}/%{goal} · 上限超過",
+    "quit": "今日は我慢できました"
+  },
+  "templates": {
+    "reset7": { "name": "7日間リセット", "short": "リセット", "description": "1週間、毎日続けてみましょう。小さく、早く、無理なく。" },
+    "builder21": { "name": "21日間習慣づくり", "short": "習慣づくり", "description": "3週間で当たり前にしていきましょう。" },
+    "challenge30": { "name": "30日チャレンジ", "short": "チャレンジ", "description": "まるまる1か月。1日休んでも、続けましょう。" },
+    "automatic66": { "name": "66日で自動化", "short": "自動化", "description": "行動が自動的になるまでの平均的な日数です。" },
+    "streak100": { "name": "100日連続", "short": "連続記録", "description": "大きな目標です。ついに3桁。" }
+  },
+  "mood": {
+    "rough": "つらい",
+    "meh": "いまいち",
+    "okay": "ふつう",
+    "good": "いい感じ",
+    "great": "最高",
+    "correlationBetter": "%{name}をした日は気分が良い傾向があります（5段階中 %{done} 対 %{missed}）。",
+    "correlationWorse": "%{name}をした日は気分が下がる傾向があります（5段階中 %{done} 対 %{missed}）。"
+  },
+  "milestones": {
+    "week": "1週間",
+    "month": "1か月",
+    "hundred": "100日",
+    "year": "1年"
+  },
+  "tier": {
+    "platinum": "プラチナ",
+    "gold": "ゴールド",
+    "silver": "シルバー",
+    "copper": "ブロンズ",
+    "none": "終了"
+  },
+  "today": {
+    "sections": {
+      "morning": "🌅 朝",
+      "afternoon": "☀️ 昼",
+      "evening": "🌙 夜",
+      "anytime": "✨ いつでも"
+    },
+    "greeting": {
+      "morning": "おはようございます",
+      "afternoon": "こんにちは",
+      "evening": "こんばんは",
+      "withName": "%{name}さん、%{greeting}"
+    },
+    "ring": {
+      "habits": "習慣",
+      "a11y": "今日は%{total}個中%{completed}個の習慣を達成しました",
+      "allDone": "🎉 全部完了！",
+      "remaining": "残り%{count}個",
+      "amazing": "今日はすばらしい！",
+      "keepGoing": "その調子です、いま%{percent}%です"
+    },
+    "coach": "AIコーチ",
+    "empty": {
+      "title": "リズムをつかもう",
+      "body": "最初の習慣を追加",
+      "addA11y": "最初の習慣を追加"
+    },
+    "noChallenges": {
+      "title": "チャレンジはまだありません",
+      "body": "最初のチャレンジを始めましょう",
+      "a11y": "チャレンジはまだありません。最初のチャレンジを始めましょう"
+    },
+    "restDay": {
+      "title": "お休みの日",
+      "body": "今日予定されている習慣はありません。ゆっくり休んでください。連続記録は守られています。"
+    },
+    "sectionHabits": "今日の習慣",
+    "markAll": "すべてチェック",
+    "unmarkAll": "すべて解除",
+    "markAllA11y": "すべての習慣を完了にする",
+    "unmarkAllA11y": "すべての習慣の完了を解除する",
+    "activeChallenges": "進行中のチャレンジ",
+    "challenge": {
+      "sub": "%{days}日中%{day}日目 · %{count}日達成",
+      "done": "✅ 完了",
+      "pending": "未完了",
+      "a11yDone": "%{name}、%{days}日中%{day}日目、完了",
+      "a11yPending": "%{name}、%{days}日中%{day}日目、未完了"
+    },
+    "toast": {
+      "done": "%{name}を完了 ✓",
+      "avoided": "%{name}：我慢できました ✓",
+      "overLimit": "%{name}：上限を超えました",
+      "plus": "%{name} +%{amount}"
+    },
+    "milestone": {
+      "title": "%{days}日連続！",
+      "subtitle": "%{label}続けました。もう立派な習慣です。"
+    },
+    "congrats": "おめでとう！",
+    "allTasks": "今日のタスクをすべて達成しました！"
+  },
+  "onboarding": {
+    "intro": {
+      "stick": {
+        "title": "続く習慣をつくろう",
+        "body": "毎日の習慣や数量目標を記録しましょう。チェックするたびに、理想の暮らしへ近づきます。"
+      },
+      "streaks": {
+        "title": "やさしい連続記録",
+        "body": "習慣を達成して連続記録を伸ばしましょう。お休みの日、スキップ、月2回のフリーズがあるので、1日の失敗で途切れません。"
+      }
+    },
+    "starter": {
+      "water": "水を飲む",
+      "move": "20分体を動かす",
+      "read": "10ページ読書する",
+      "meditate": "瞑想する",
+      "walk": "散歩する",
+      "sleep": "11時までに就寝",
+      "journal": "日記を書く",
+      "stretch": "ストレッチ",
+      "unitGlasses": "杯"
+    },
+    "stepA11y": "ステップ%{step}、全%{total}ステップ",
+    "skipA11y": "オンボーディングをスキップ",
+    "pick": {
+      "title": "最初の習慣を選ぼう",
+      "body": "まずは小さく。2、3個で十分です。あとからいつでも追加できます。",
+      "perDay": "1日%{goal}%{unit}",
+      "onceADay": "1日1回",
+      "selected": "%{max}個中%{count}個を選択",
+      "startEmpty": "空のまま始める"
+    },
+    "plan": {
+      "title": "いつ、どこでやる？",
+      "body": "プランのある習慣は、続く確率が2〜3倍になります。それぞれの文を完成させましょう。",
+      "placeholder": "〜したあとで…（例：コーヒーを淹れたら、キッチンで）",
+      "a11y": "%{name}のプラン",
+      "start": "3日間キックスタートを始める 🚀"
+    }
+  },
+  "habits": {
+    "title": "マイ習慣",
+    "add": "+ 追加",
+    "addA11y": "習慣を追加",
+    "reorder": "習慣を並べ替える",
+    "finishReorder": "並べ替えを完了",
+    "empty": { "title": "習慣がまだありません", "body": "さっそく始めましょう" },
+    "archived": "アーカイブ済み（%{count}）",
+    "row": {
+      "detailsA11y": "%{name}、詳細を表示",
+      "schedulePill": "📅 %{schedule}",
+      "reminderPill": "🔔 %{time}",
+      "moveUp": "上へ移動",
+      "moveDown": "下へ移動",
+      "reminderOff": "リマインダーをオフにする",
+      "setReminder": "リマインダーを設定",
+      "editA11y": "習慣を編集",
+      "archiveA11y": "習慣をアーカイブまたは削除",
+      "restore": "復元",
+      "restoreA11y": "習慣を復元",
+      "deleteForeverA11y": "習慣を完全に削除"
+    },
+    "archive": {
+      "title": "習慣をアーカイブ",
+      "body": "「%{name}」をアーカイブしますか？「今日」には表示されなくなりますが、履歴は残り、いつでも復元できます。",
+      "deleteForever": "完全に削除",
+      "archive": "アーカイブ"
+    },
+    "deleteHabit": {
+      "title": "習慣を削除",
+      "body": "「%{name}」と履歴を完全に削除しますか？この操作は元に戻せません。"
+    },
+    "form": {
+      "editTitle": "習慣を編集",
+      "newTitle": "新しい習慣",
+      "magicTitle": "✨ 説明するだけで、残りは自動入力",
+      "magicPlaceholder": "例：平日は寝る前に20ページ読書する",
+      "magicA11y": "習慣を説明する",
+      "magicFillA11y": "説明からフォームを入力する",
+      "fill": "入力",
+      "magicError": "フォームを入力できませんでした。",
+      "icon": "アイコン",
+      "colour": "カラー",
+      "colourA11y": "カラー %{color}",
+      "defaultColour": "デフォルトのカラー",
+      "name": "名前",
+      "namePlaceholder": "例：1万歩歩く",
+      "plan": "プラン（任意）",
+      "planPlaceholder": "〜したあとで…（例：歯を磨いたら、キッチンで）",
+      "planA11y": "実行プラン",
+      "type": "タイプ",
+      "typeA11y": "%{label}：%{hint}",
+      "typeChip": "%{emoji}  %{label}",
+      "schedule": "スケジュール",
+      "scheduleDaily": "毎日",
+      "scheduleWeekdays": "曜日を指定",
+      "schedulePerWeek": "週の回数",
+      "perWeekText": { "one": "週%{count}日、好きな曜日に", "other": "週%{count}日、好きな曜日に" },
+      "fewerDays": "週の日数を減らす",
+      "moreDays": "週の日数を増やす",
+      "timeOfDay": "時間帯",
+      "minutesPerDay": "1日の分数：%{count}",
+      "minutesLabel": "1日の分数",
+      "fiveMin": "5分",
+      "threeHours": "3時間",
+      "atMostPerDay": "1日の上限：%{count}",
+      "dailyLimit": "1日の上限",
+      "unit": "単位（任意）",
+      "unitA11y": "単位",
+      "unitPlaceholderLimit": "コーヒー、タバコ、時間…",
+      "unitPlaceholderVolume": "杯、ページ、分…",
+      "timesPerDay": "1日の回数：%{count}",
+      "max": "最大%{max}",
+      "saveChanges": "変更を保存",
+      "addHabit": "習慣を追加"
+    },
+    "permission": {
+      "title": "許可が必要です",
+      "body": "カスタムアイコンを使うには、写真へのアクセスを許可してください。"
+    },
+    "customIcon": {
+      "title": "カスタムアイコン",
+      "body": "取得元を選んでください",
+      "camera": "カメラ",
+      "library": "フォトライブラリ"
+    }
+  },
+  "habitCard": {
+    "streakClean": "🔥 %{count}日間達成",
+    "streak": "🔥 %{count}日連続",
+    "weekDone": "✓ 今週 %{done}/%{target}",
+    "week": "今週 %{done}/%{target}",
+    "skippedToday": "💤 今日はスキップ",
+    "timer": "⏱ %{time}",
+    "longPress": {
+      "body": "いろいろな日があります。選んでください。",
+      "unskip": "今日のスキップを解除",
+      "skip": "今日をスキップ（連続記録は維持）",
+      "undoYesterday": "昨日のチェックを取り消す",
+      "markYesterday": "昨日を完了にする",
+      "editNote": "メモを編集",
+      "addNote": "メモを追加"
+    },
+    "announce": {
+      "countMax": "%{name}、上限%{goal}のうち%{count}",
+      "count": "%{name}、%{goal}のうち%{count}",
+      "unchecked": "%{name}のチェックを外しました",
+      "avoided": "%{name}、今日は我慢できました",
+      "done": "%{name}を完了しました"
+    },
+    "a11y": {
+      "count": "、%{goal}のうち%{count}",
+      "countUnit": "、%{goal}%{unit}のうち%{count}",
+      "maximum": "（上限）",
+      "overLimit": "、上限超過",
+      "avoided": "、今日は我慢できました",
+      "done": "、完了",
+      "skipped": "、今日はスキップ",
+      "notDone": "、未完了",
+      "streak": "、%{count}日連続",
+      "hint": "ダブルタップで記録します。長押しでスキップ、昨日の記録、メモを選べます。",
+      "startTimer": "タイマーを開始",
+      "stopTimer": "タイマーを止めて分数を記録",
+      "removeOne": "%{unit}を1つ減らす",
+      "removeMany": "%{unit}を%{count}減らす",
+      "addOne": "%{unit}を1つ増やす",
+      "addMany": "%{unit}を%{count}増やす"
+    }
+  },
+  "habitDetail": {
+    "meta": "%{schedule} · %{goal}",
+    "afterI": "%{intention}あとで",
+    "editA11y": "習慣を編集",
+    "stats": { "current": "現在", "best": "最高", "done": "達成", "total": "合計", "a11y": "%{label}：%{value}" },
+    "history": "履歴",
+    "hint": "過去の日をタップして修正できます",
+    "cellA11y": "%{date}：%{status}",
+    "status": { "future": "未来", "done": "完了", "rest": "休み", "missed": "未達成", "none": "なし" },
+    "legend": { "done": "完了", "partial": "一部", "missed": "未達成", "skippedFrozen": "スキップ/フリーズ", "rest": "休み" },
+    "byWeekday": "曜日別",
+    "since": "%{date}からの達成率",
+    "weekdayA11y": "%{day}：%{percent}パーセント",
+    "fix": {
+      "body": "%{name}：%{count}/%{goal}",
+      "bodyMax": "%{name}：%{count}/%{goal}（上限）",
+      "clear": "クリア",
+      "setOver": "%{value}にする（上限超過）",
+      "setDone": "%{value}にする（完了）"
+    }
+  },
+  "challenges": {
+    "title": "チャレンジ",
+    "new": "+ 新規",
+    "newA11y": "新しいチャレンジ",
+    "empty": {
+      "title": "チャレンジはまだありません",
+      "body": "「+ 新規」をタップして、最初のチャレンジを作りましょう。",
+      "create": "チャレンジを作成"
+    },
+    "tip": {
+      "title": "💡 ヒント",
+      "body": "チャレンジは同時に3つまで実行できます。それぞれのチャレンジに特定の習慣をひも付けましょう。"
+    },
+    "past": "過去のチャレンジ",
+    "pastEmpty": "完了または削除したチャレンジがここに表示されます。",
+    "pastSubTier": "%{done}/%{days}日 · %{tier} ✓",
+    "pastSubEnded": "%{done}/%{days}日 · 終了",
+    "pastA11yTier": "%{name}、%{tier}達成、%{days}日中%{done}日",
+    "pastA11yEnded": "%{name}、終了、%{days}日中%{done}日",
+    "card": {
+      "sub": "%{days}日中%{day}日目 · %{count}日達成",
+      "editA11y": "%{name}を編集",
+      "deleteA11y": "チャレンジを削除",
+      "percentComplete": "%{percent}%達成",
+      "linkedHabits": "ひも付けた習慣（%{count}）",
+      "linkedA11y": "ひも付けた習慣、%{count}個",
+      "noneLinked": "ひも付けた習慣はありません",
+      "todayLogged": "✅ 今日の記録完了！",
+      "tapEdit": "「編集」をタップして、このチャレンジに習慣をひも付けましょう。",
+      "completeLinked": "ひも付けた習慣を完了すると、今日が自動で記録されます。"
+    },
+    "form": {
+      "editTitle": "チャレンジを編集",
+      "newTitle": "新しいチャレンジ",
+      "template": "テンプレートから始める",
+      "templateA11y": "%{name}テンプレート",
+      "templateDays": "%{count}日",
+      "icon": "アイコン",
+      "iconA11y": "アイコン %{icon}",
+      "name": "名前",
+      "nameA11y": "チャレンジ名",
+      "namePlaceholder": "例：7日間ストロング",
+      "description": "説明",
+      "descriptionA11y": "チャレンジの説明",
+      "descriptionPlaceholder": "目標は何ですか？",
+      "duration": { "one": "期間：%{count}日", "other": "期間：%{count}日" },
+      "range": { "week": "週", "month": "月", "year": "年" },
+      "rangeA11y": "%{label}、最大%{max}日",
+      "durationA11y": "チャレンジの日数",
+      "linked": "ひも付ける習慣",
+      "noHabits": "習慣がまだありません。「習慣」タブで作成してください。",
+      "linkAll": "⚡ すべての習慣をひも付け",
+      "linkAllA11y": "すべての習慣をひも付ける",
+      "selectOne": "このチャレンジを保存するには、習慣を1つ以上選んでください。",
+      "addNew": "+ 新しい習慣を追加",
+      "addNewA11y": "新しい習慣を追加",
+      "saveChanges": "変更を保存",
+      "saveA11y": "変更を保存",
+      "create": "チャレンジを作成",
+      "createA11y": "チャレンジを作成"
+    },
+    "detail": {
+      "completion": "%{badge} %{tier}達成！",
+      "noDescription": "説明なし",
+      "progress": "進捗：%{done}/%{days}日",
+      "started": "開始日：%{date}"
+    },
+    "delete": {
+      "title": "チャレンジを削除",
+      "body": "「%{name}」を削除しますか？過去のチャレンジに移動されます。"
+    }
+  },
+  "progress": {
+    "title": "あなたの進捗",
+    "share": "共有",
+    "shareA11y": "進捗を共有",
+    "stats": { "streak": "連続日数", "best": "最長記録", "perfect": "パーフェクト日", "a11y": "%{label}：%{value}" },
+    "freezes": { "one": "❄️ 今月のストリークフリーズはあと%{count}回 · 休んだ日は自動でカバーされます", "other": "❄️ 今月のストリークフリーズはあと%{count}回 · 休んだ日は自動でカバーされます" },
+    "weekly": { "title": "達成した習慣：週間", "hint": "バーをタップすると詳細を表示" },
+    "history": "履歴",
+    "period": { "d7": "7日", "d30": "30日", "d90": "90日" },
+    "lastDaysA11y": "過去%{count}日間",
+    "legend": { "none": "なし", "partial": "一部", "frozen": "フリーズ", "perfect": "パーフェクト" },
+    "heatHint": "マスをタップすると詳細を表示",
+    "heat": {
+      "future": "%{date}：未来",
+      "rest": "%{date}：お休みの日",
+      "count": "%{date}：%{total}個中%{completed}個の習慣",
+      "countFrozen": "%{date}：%{total}個中%{completed}個の習慣、連続記録はフリーズ中"
+    },
+    "bar": { "noData": "%{label}：データはまだありません", "percent": "%{label}：%{value}パーセント" },
+    "tooltip": { "a11y": "%{label}：%{value}パーセント達成。閉じる", "completed": "達成" },
+    "mood": {
+      "title": "🙂 気分と習慣",
+      "hint": "「今日」での毎日のチェックインより",
+      "last7A11y": "過去7日間の気分：%{list}",
+      "none": "なし",
+      "rateMore": "あと数日気分を記録すると、習慣と気分の関係が見えてきます（%{count}/%{min}）。",
+      "avg": "平均 / 5",
+      "avgA11y": "平均気分は5段階中%{value}",
+      "perfectDays": "パーフェクトな日",
+      "perfectA11y": "パーフェクトな日 %{value}",
+      "otherDays": "それ以外の日",
+      "otherA11y": "それ以外の日 %{value}",
+      "noData": "データなし",
+      "noLink": "ひとつの習慣と気分のあいだに、強い関連はまだ見つかっていません。"
+    },
+    "trophy": {
+      "title": "🏆 トロフィーケース",
+      "hint": "連続記録のマイルストーンとチャレンジのメダル",
+      "earnedA11y": "%{label}連続：%{date}に獲得",
+      "lockedA11y": "%{label}連続：未獲得",
+      "firstMedal": "チャレンジを完了して、最初のメダルを手に入れましょう。",
+      "medalA11y": "%{name}：%{tier}"
+    },
+    "reflection": {
+      "title": "✨ AIふりかえり",
+      "hint": "習慣パターンのAI要約",
+      "weeklyA11y": "週間ふりかえり",
+      "monthlyA11y": "月間ふりかえり",
+      "lockedSuffix": "、ロック中",
+      "unlocks": { "one": "あと%{count}日で解放", "other": "あと%{count}日で解放" },
+      "unlockWeekly": "丸1週間習慣を記録すると、週間サマリーが解放されます。",
+      "unlockMonthly": "丸1か月習慣を記録すると、月間サマリーが解放されます。",
+      "generatingWeekly": "週間ふりかえりを作成中...",
+      "generatingMonthly": "月間ふりかえりを作成中...",
+      "generated": "%{date}に作成",
+      "failed": "作成に失敗しました。もう一度お試しください。",
+      "seePro": "  Groov Proを見る",
+      "generateWeekly": "週間サマリーを作成",
+      "generateMonthly": "月間サマリーを作成"
+    },
+    "day": {
+      "habitsCompleted": "%{total}個中%{completed}個の習慣を達成",
+      "frozen": "❄️ ストリークフリーズを使用：この日は連続記録が途切れませんでした。",
+      "noData": "この日の習慣データはありません。",
+      "skipped": "スキップ",
+      "frozenLabel": "フリーズ",
+      "notScheduled": "予定なし"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "appearance": "外観",
+    "theme": "テーマ",
+    "themeFollows": "端末の設定に合わせる",
+    "themeAlwaysLight": "常にライト",
+    "themeAlwaysDark": "常にダーク",
+    "themeOptions": { "light": "ライト", "dark": "ダーク", "system": "自動" },
+    "themeA11y": "%{label}テーマ",
+    "language": "言語",
+    "languageSystem": "システムのデフォルト",
+    "languageSystemSub": "システムのデフォルト（%{label}）",
+    "languageTitle": "言語",
+    "languageBody": "Groovで使う言語を選んでください。",
+    "notifications": "通知",
+    "enableNotifications": "通知を有効にする",
+    "enableSubWeb": "プッシュ通知は端末のみ",
+    "enableSub": "すべてのリマインダーのマスタースイッチ",
+    "smartCheckin": "スマートチェックイン",
+    "smartSub": "習慣が未完了のときだけ%{time}に通知",
+    "firesAt": "%{time}に通知",
+    "notificationsDisabled": "通知は無効です",
+    "reminderLabelA11y": "リマインダーのラベル",
+    "editLabelA11y": "リマインダーのラベルを編集、%{label}",
+    "changeTimeA11y": "時刻を変更、現在は%{time}",
+    "removeReminderA11y": "リマインダーを削除",
+    "habitBadge": "習慣",
+    "addReminder": "リマインダーを追加",
+    "newReminderLabel": "リマインダー",
+    "removeReminder": { "title": "リマインダーを削除", "body": "このリマインダーを削除しますか？", "habitBody": "「%{name}」のリマインダーをオフにしますか？" },
+    "feedback": "フィードバック",
+    "sounds": "サウンド",
+    "soundsSub": "習慣やチャレンジの完了時にチャイムを鳴らす",
+    "haptics": "触覚フィードバック",
+    "hapticsSub": "チェック時に振動（端末のみ）",
+    "dev": {
+      "title": "開発者ツール",
+      "simulatedDate": "シミュレーション日付",
+      "offset": { "one": "オフセット：%{offset}日", "other": "オフセット：%{offset}日" },
+      "prevDay": "前の日",
+      "resetDate": "シミュレーション日付を現在に戻す",
+      "now": "現在",
+      "nextDay": "次の日",
+      "sendTest": "テスト通知を送信",
+      "sendTestSub": "最初の習慣のリマインダーを、完了/スヌーズ付きで送ります",
+      "sent": { "title": "送信しました", "body": "テスト通知を送信しました。通知トレイを確認してください。" },
+      "seed": { "title": "30日分の履歴を生成", "body": "直近30日分をランダムな達成記録で埋めます。既存の履歴は上書きされます。", "generate": "生成", "done": "30日分のランダムな履歴を追加しました。", "sub": "過去30日分のランダムな達成記録" },
+      "crash": { "title": "クラッシュのテスト", "body": "描画エラーを発生させて、クラッシュ画面とSentryを確認できます。", "crash": "クラッシュ", "sub": "エラーを発生させてクラッシュ画面を確認" },
+      "disable": { "title": "開発者ツールを無効にする", "body": "この端末の開発者ツールを再びロックします。再度ロック解除するには、バージョン表示を7回タップしてコードを入力する必要があります。", "disable": "無効にする", "sub": "この端末の開発者ツールを再ロック" },
+      "access": { "title": "開発者アクセス", "body": "開発者コードを入力してください", "a11y": "開発者コード", "placeholder": "コードを入力", "unlock": "ロック解除" },
+      "unlocked": { "title": "開発者モード", "body": "この端末で開発者ツールを永続的にロック解除しました。" },
+      "invalid": { "title": "コードが無効です", "body": "コードが正しくありません。" },
+      "moreTaps": { "one": "開発者ツールのロック解除まであと%{count}回タップ", "other": "開発者ツールのロック解除まであと%{count}回タップ" }
+    },
+    "pro": {
+      "title": "GROOV PRO",
+      "have": "Groov Proをご利用中です",
+      "upgrade": "Groov Proにアップグレード",
+      "haveSub": "個人開発のアプリを応援してくださりありがとうございます",
+      "upgradeSub": "習慣の無制限追加、リマインダーの追加、AIコーチング"
+    },
+    "account": {
+      "title": "アカウント",
+      "displayName": "表示名",
+      "displayNameSub": "あいさつやコーチングで使う名前を追加",
+      "guest": "ゲストアカウント",
+      "guestSub": "データはこの端末にのみ保存されています。サインインを追加すると、バックアップと同期ができます。",
+      "addSignIn": "サインインを追加",
+      "signedInAs": "サインイン中のアカウント",
+      "appleId": "Apple ID",
+      "googleAccount": "Googleアカウント",
+      "signOut": "サインアウト",
+      "signOutBody": "サインアウトしてもよろしいですか？",
+      "signOutGuest": {
+        "title": "ゲストアカウントからサインアウトしますか？",
+        "body": "現在、アカウントなしでGroovを使っています。いまサインアウトすると、習慣と履歴が失われます。先にメールアドレスやサインインを追加して、データを残しましょう。",
+        "add": "サインインを追加",
+        "anyway": "それでもサインアウト"
+      },
+      "deleteAccount": {
+        "title": "アカウントを削除",
+        "body": "アカウントと、習慣・進捗・チャレンジ・設定を含むすべての関連データが完全に削除されます。この操作は元に戻せません。",
+        "sure": "本当によろしいですか？",
+        "sureBody": "アカウントは完全に削除され、復元できません。",
+        "yes": "はい、すべて削除します",
+        "failed": "アカウントを削除できませんでした。もう一度お試しください。"
+      },
+      "linked": { "title": "準備完了です", "body": "アカウントがリンクされ、習慣が同期されるようになりました。" },
+      "nameModal": {
+        "title": "表示名",
+        "sub": "あいさつやAIコーチで使われます。",
+        "placeholder": "あなたの名前",
+        "failed": "名前を更新できませんでした。もう一度お試しください。"
+      }
+    },
+    "backup": {
+      "title": "バックアップ",
+      "export": "バックアップを書き出す",
+      "exportSub": "%{last} · すべての習慣、チェック、設定を含むJSONファイル",
+      "lastBackup": "最終バックアップ %{date} %{time}",
+      "never": "バックアップ未作成",
+      "restore": "バックアップから復元",
+      "restoreSub": "Groovのバックアップファイルを選んで、統合または置き換え",
+      "hint": "⚠️ データはアカウントに同期されますが、完全に自分で管理できるのはファイルのバックアップだけです。",
+      "exportFailed": { "title": "書き出しに失敗しました", "body": "バックアップファイルを作成できませんでした。" },
+      "cannotImport": { "title": "読み込めません", "body": "ファイルを読み取れませんでした。" },
+      "restoreDialog": {
+        "title": "バックアップを復元",
+        "body": "%{when}のバックアップ：%{summary}。\n\n「統合」は現在のデータを残したままバックアップを追加します。「置き換え」は現在のデータを消去してから復元します。",
+        "unknownDate": "日付不明",
+        "replace": "置き換え",
+        "merge": "統合"
+      },
+      "restored": { "title": "復元しました", "replaced": "データをバックアップに置き換えました。", "merged": "バックアップをデータに統合しました。" },
+      "importFailed": { "title": "読み込みに失敗しました", "body": "復元中に問題が発生しました。" }
+    },
+    "data": {
+      "title": "データ",
+      "resetPassword": "パスワードをリセット",
+      "resetPasswordSub": "リセットコードをメールで送信",
+      "resetPasswordA11y": "パスワードをリセット、リセットコードをメールで送信",
+      "resetDialogBody": "パスワードのリセットコードを%{email}に送信します。続けますか？",
+      "yourEmail": "あなたのメールアドレス",
+      "sendCode": "コードを送信",
+      "sendFailed": "リセットメールを送信できませんでした。",
+      "clear": "すべてのデータを消去",
+      "clearSub": "すべての習慣、進捗、設定を完全に削除します",
+      "clearA11y": "すべてのデータを消去、すべての習慣、進捗、設定を完全に削除します",
+      "clearBody": "すべての習慣、進捗、チャレンジ、設定が完全に削除されます。アプリは完全に初期化されます。",
+      "clearEverything": "すべて消去",
+      "cleared": "すべてのデータを消去しました。アプリは初期化されました。",
+      "deleteAccount": "アカウントを削除",
+      "deleteSub": "アカウントとすべてのデータを完全に削除します",
+      "deleteA11y": "アカウントを削除、アカウントとすべてのデータを完全に削除します"
+    },
+    "resetModal": {
+      "title": "パスワードをリセット",
+      "body": "リセットコードを%{email}に送信しました。下に、新しいパスワードと一緒に入力してください。",
+      "codePlaceholder": "メールのリセットコード",
+      "newPassword": "新しいパスワード",
+      "confirmPassword": "新しいパスワード（確認）",
+      "setPassword": "パスワードを設定",
+      "success": { "title": "完了", "body": "パスワードを更新しました。" },
+      "errors": {
+        "enterCode": "メールに記載のコードを入力してください。",
+        "enterPassword": "新しいパスワードを入力してください。",
+        "min8": "パスワードは8文字以上にしてください。",
+        "mismatch": "パスワードが一致しません。",
+        "invalidCode": "コードが無効または期限切れです。もう一度お試しください。"
+      }
+    },
+    "about": {
+      "title": "このアプリについて",
+      "widget": "ホーム画面にウィジェットを追加",
+      "widgetSub": "今日の習慣をワンタップでチェック",
+      "widgetUnsupported": { "title": "サポートされていません", "body": "お使いのランチャーは、アプリからのウィジェット追加に対応していません。ホーム画面を長押しして、ウィジェット一覧からGroovを選んでください。" },
+      "widgetFailed": { "title": "ウィジェットを追加できませんでした", "body": "ホーム画面を長押しして、ウィジェット一覧からGroovを選んでください。" },
+      "rate": "Groovを評価",
+      "rateSub": "ひとりで作っているアプリなので、評価がとても励みになります",
+      "rateThanks": { "title": "ありがとうございます！", "body": "評価は、GroovがApp StoreとGoogle Playで公開されたら行えるようになります。それまでは、ご意見をお寄せいただけるとうれしいです。" },
+      "feedback": "フィードバックを送る",
+      "feedbackEmail": "開発者にメールする",
+      "feedbackSub": "不具合の報告や機能のご提案",
+      "whatsNew": "新機能",
+      "whatsNewSub": "%{version}の変更内容",
+      "help": "ヘルプとサポート",
+      "privacy": "プライバシーポリシー",
+      "privacySub": "Groovが収集する情報とその理由",
+      "terms": "利用規約"
+    }
+  },
+  "auth": {
+    "tagline": {
+      "login": "おかえりなさい",
+      "register": "アカウントを作成",
+      "forgot": "パスワードをリセット",
+      "reset": "リセットコードを入力"
+    },
+    "login": "ログイン",
+    "register": "新規登録",
+    "email": "メールアドレス",
+    "emailPlaceholder": "you@example.com",
+    "password": "パスワード",
+    "confirmPassword": "パスワード（確認）",
+    "displayName": "表示名",
+    "displayNamePlaceholder": "何とお呼びしましょうか？",
+    "resetCode": "リセットコード",
+    "codePlaceholder": "メールに記載のコード",
+    "newPassword": "新しいパスワード",
+    "confirmNewPassword": "新しいパスワード（確認）",
+    "sendResetCode": "リセットコードを送信",
+    "setNewPassword": "新しいパスワードを設定",
+    "showPassword": "パスワードを表示",
+    "hidePassword": "パスワードを非表示",
+    "showConfirmPassword": "確認用パスワードを表示",
+    "hideConfirmPassword": "確認用パスワードを非表示",
+    "createAccount": "アカウントを作成",
+    "forgotPassword": "パスワードをお忘れですか？",
+    "orContinue": "または次で続ける",
+    "googleSignIn": "Googleでサインイン",
+    "googleSignUp": "Googleで登録",
+    "guest": "アカウントなしで続ける",
+    "guestHint": "メールアドレスやサインインをあとで追加するまで、習慣はこの端末に保存されます。追加しても、データは失われません。",
+    "noAccount": "アカウントをお持ちでない方は ",
+    "haveAccount": "すでにアカウントをお持ちの方は ",
+    "registerLink": "新規登録",
+    "loginLink": "ログイン",
+    "backToLogin": "ログインに戻る",
+    "providers": { "apple": "Apple", "google": "Google" },
+    "errors": {
+      "socialFailed": "%{provider}でサインインできませんでした。もう一度お試しください。",
+      "displayNameRequired": "表示名を入力してください。",
+      "emailPasswordRequired": "メールアドレスとパスワードを入力してください。",
+      "mismatch": "パスワードが一致しません。",
+      "min8": "パスワードは8文字以上にしてください。",
+      "generic": "問題が発生しました。もう一度お試しください。",
+      "enterEmail": "メールアドレスを入力してください。",
+      "sendFailed": "リセットメールを送信できませんでした。もう一度お試しください。",
+      "enterCode": "メールに記載のコードを入力してください。",
+      "enterNewPassword": "新しいパスワードを入力してください。",
+      "invalidCode": "コードが無効または期限切れです。もう一度お試しください。",
+      "appleIosOnly": "Appleでサインインは、iOSとiPadOSでのみ利用できます。",
+      "appleNoToken": "Appleから識別トークンが返されませんでした。",
+      "googleIncomplete": "Googleサインインが完了しませんでした。",
+      "googleNoSession": "Googleサインインからセッションが返されませんでした。",
+      "googleLinkIncomplete": "Googleとの連携が完了しませんでした。",
+      "googleLinkNoSession": "Googleとの連携からセッションが返されませんでした。",
+      "deleteFailed": "アカウントを削除できませんでした"
+    },
+    "success": {
+      "confirmEmail": "メールを確認してアカウントを認証し、ログインしてください。",
+      "codeSent": "リセットコードを%{email}に送信しました。メールを確認して、下にコードを入力してください。",
+      "passwordUpdated": "パスワードを更新しました。ログインできます。"
+    }
+  },
+  "linkAccount": {
+    "title": "進捗を安全に守ろう",
+    "body": "サインインを追加すると、習慣をバックアップして別の端末でもGroovを使えます。これまでの記録はそのまま残ります。",
+    "google": "Googleで続ける",
+    "orEmail": "またはメールで",
+    "namePlaceholder": "表示名（任意）",
+    "nameA11y": "表示名",
+    "emailPlaceholder": "メールアドレス",
+    "passwordPlaceholder": "パスワード（8文字以上）",
+    "create": "アカウントを作成",
+    "errors": {
+      "failed": "アカウントをリンクできませんでした。もう一度お試しください。",
+      "enterEmail": "メールアドレスを入力してください。",
+      "min8": "パスワードは8文字以上にしてください。"
+    }
+  },
+  "moodCheckIn": {
+    "title": "今日の気分はどうですか？",
+    "optional": "任意",
+    "a11y": "%{label}、5段階中%{value}"
+  },
+  "noteModal": {
+    "sub": "%{date} · このチェックのメモ",
+    "placeholder": "どうでしたか？",
+    "a11y": "メモ",
+    "removeNote": "メモを削除"
+  },
+  "notificationPrimer": {
+    "title": "ちょうどいいタイミングでお知らせ",
+    "body": "Groovは、あなたが選んだ時間にだけリマインドします。通知には「完了」ボタンも付いています。無視し続けたリマインダーは、しつこくせず静かに控えめになります。",
+    "bullets": {
+      "only": "設定したリマインダーだけ",
+      "actions": "アプリを開かずに完了やスヌーズができる",
+      "change": "設定からいつでも変更・オフにできる"
+    },
+    "bullet": "•  %{text}",
+    "allow": "リマインダーをオンにする"
+  },
+  "paywall": {
+    "title": "Groov Pro",
+    "reason": {
+      "habits": "無料プランの習慣数の上限に達しました。",
+      "reminders": "1日に複数のリマインダーを設定できるのはProの機能です。",
+      "ai": "今日の無料のAIコーチングを使い切りました。",
+      "default": "個人開発のアプリを応援して、もう少し多くの機能を使いましょう。"
+    },
+    "plans": {
+      "yearly": { "title": "年額", "price": "$11.99 / 年", "note": "7日間の無料トライアル", "badge": "いちばんお得" },
+      "lifetime": { "title": "買い切り", "price": "$29.99 （1回のみ）", "note": "一度の支払いでずっと使える" }
+    },
+    "planA11y": "%{title}、%{price}",
+    "features": {
+      "unlimited": "習慣を無制限に追加",
+      "reminders": "1日に複数のリマインダー",
+      "ai": "AIコーチングとMagic Fillをもっと",
+      "free": "そのほかはすべて無料：同期、バックアップ、ウィジェット"
+    },
+    "trial": "7日間の無料トライアルを始める",
+    "buyLifetime": "買い切りで購入",
+    "restore": "購入を復元",
+    "restoring": "復元中…",
+    "terms": "利用規約",
+    "privacy": "プライバシー",
+    "legalLive": "年額プランは、ストアのアカウント設定で解約するまで自動更新されます。表示価格はUSDで、地域によって異なる場合があります。",
+    "legalNotLive": "このビルドでは、購入はまだ有効ではありません。課金されることはありません。",
+    "errors": {
+      "incomplete": "購入が完了しませんでした。",
+      "comingSoon": "Groov Proは近日公開予定です。それまでは、無料プランのすべての機能をお使いいただけます。",
+      "failed": "購入に失敗しました。もう一度お試しください。",
+      "noPurchase": "このアカウントには過去の購入が見つかりませんでした。",
+      "restoreFailed": "復元に失敗しました。",
+      "notConfigured": "このビルドでは、購入がまだ設定されていません。",
+      "noProducts": "現在、利用できる商品がありません。"
+    }
+  },
+  "shareCards": {
+    "title": "進捗を共有",
+    "kinds": { "streak": "連続記録", "week": "今週", "year": "1年のピクセル" },
+    "kindTab": "%{emoji} %{label}",
+    "myStreak": "私の連続記録",
+    "namedStreak": "%{name}さんの連続記録",
+    "daysInRow": { "one": "日連続", "other": "日連続" },
+    "best": "最長",
+    "perfectDays": "パーフェクトな日",
+    "habits": "習慣",
+    "myWeek": "私の1週間",
+    "namedWeek": "%{name}さんの1週間",
+    "weekSummary": { "one": "の習慣を達成 · パーフェクトな日は%{count}日", "other": "の習慣を達成 · パーフェクトな日は%{count}日" },
+    "myYear": "%{year}年のピクセル",
+    "namedYear": "%{name}さんの%{year}年のピクセル",
+    "legend": { "none": "なし", "partial": "一部", "perfect": "パーフェクト" },
+    "shareImage": "画像を共有",
+    "dialogTitle": "進捗を共有"
+  },
+  "rewardModal": {
+    "title": "チャレンジ完了",
+    "page": "%{page}/%{total}",
+    "completion": "%{badge} %{tier}達成",
+    "progress": "%{days}日中%{done}日を達成（%{percent}%）",
+    "gotIt": "OK",
+    "next": "次へ →",
+    "tiers": {
+      "platinum": { "headline": "🎉 完璧です！", "body": "毎日、一日も欠かさず続けました。これはなかなかできることではありません。その自分を信じる力は、これからもあなたのものです。次のステップにも活かしていきましょう。" },
+      "gold": { "headline": "🏆 すばらしい！", "body": "ほとんどの日をやり抜きました。ゴールドは与えられるものではなく、自分でつかむもの。あなたはそれをつかみました。この勢いで続けていきましょう。" },
+      "silver": { "headline": "🥈 よくがんばりました！", "body": "半分以上を達成しました。シルバーは、大事なときに踏ん張れた証です。ここを土台にして、次はもう一歩先へ進みましょう。" },
+      "copper": { "headline": "ここからが本当のスタート", "body": "始めることは第一歩、そして本当の目標は続けることです。次は一日一日を大切に、続けると決めてみましょう。あなたの力は、今回のチャレンジで見せた以上のものがあるはずです。" },
+      "none": { "headline": "今回は惜しくも…", "body": "今回は記録できた日がありませんでしたが、大丈夫です。つまずきは、すべてヒントになります。何が邪魔をしたのか、少し振り返ってみてください。そして、また気持ちを新たに戻ってきましょう。" }
+    }
+  },
+  "trophy": {
+    "announce": "チャレンジ完了。トロフィーを獲得しました。",
+    "a11y": "チャレンジ完了、トロフィーを獲得"
+  },
+  "celebration": {
+    "a11y": "%{title}。%{subtitle}。閉じる"
+  },
+  "whatsNew": {
+    "title": "新機能",
+    "current": "現在",
+    "item": "•  %{text}"
+  },
+  "timePicker": {
+    "title": "時刻を設定",
+    "a11y": "時刻ピッカー",
+    "hour": "時",
+    "minute": "分",
+    "ampm": "午前/午後"
+  },
+  "notifications": {
+    "doneAction": "✓ 完了",
+    "snoozeAction": "1時間後に再通知",
+    "generalTitle": "🔔 %{label}",
+    "generalBody": "習慣をチェックする時間です！",
+    "habitTitle": "%{icon} %{name}の時間です",
+    "habitTitleBackoff": "%{icon} %{name}、まだリストに残っています",
+    "habitBodyBackoff": "プレッシャーはありません。今日ほんの少し進めるだけで、連続記録が再スタートします。",
+    "habitBodyIntention": "%{intention}あとで。タップして記録しましょう。",
+    "habitBody": "タップして習慣を記録しましょう！",
+    "reminderTitle": "🔔 リマインダー",
+    "eveningTitle": "🌙 習慣チェックイン",
+    "eveningBody": "今日はまだ終わっていない習慣があります。連続記録を続けましょう！",
+    "testBody": "テストのリマインダーです。「完了」をタップすると、ここから記録できます。",
+    "finishTitle": "習慣を完了"
+  },
+  "backup": {
+    "sharingUnavailable": "この端末では共有を利用できません。",
+    "dialogTitle": "Groovのバックアップを保存",
+    "invalidJson": "このファイルは有効なJSONではありません。",
+    "notBackup": "このファイルはGroovのバックアップではありません。",
+    "newerVersion": "このバックアップは、より新しいバージョンのGroovで作成されています。アプリを更新して、もう一度お試しください。",
+    "noData": "バックアップにデータ部分がありません。",
+    "empty": "バックアップが空です。",
+    "summary": "%{habits}、%{days}、%{challenges}",
+    "habits": { "one": "習慣%{count}個", "other": "習慣%{count}個" },
+    "days": { "one": "履歴%{count}日分", "other": "履歴%{count}日分" },
+    "challenges": { "one": "チャレンジ%{count}個", "other": "チャレンジ%{count}個" }
+  },
+  "widget": {
+    "title": "今日",
+    "a11y": "Groov：%{total}個中%{done}個の習慣を達成",
+    "restDay": "お休みの日です。予定はありません。",
+    "addHabit": "習慣を追加して始めましょう",
+    "rowCount": "%{name}  ·  %{count}/%{goal}",
+    "rowDone": "%{name}、完了",
+    "more": "ほか%{count}件はアプリで確認"
+  }
+}

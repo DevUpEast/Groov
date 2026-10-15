@@ -13,6 +13,8 @@ import { overallDayStatus } from '../utils/streaks';
 import { isGoalMet } from '../utils/habits';
 import ShareCards from '../components/ShareCards';
 import { Ionicons } from '@expo/vector-icons';
+import { weekdayLabels } from '../utils/schedule';
+import { t, getLocale, useLocale } from '../i18n';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CHART_H = 150;
@@ -23,9 +25,9 @@ const FROZEN_COLOR = '#7DD3FC';
 const HEAT_INNER = SCREEN_WIDTH - 90;
 
 const PERIOD_CONFIG = [
-  { label: '7d',  days: 7,   cellsPerRow: 7,  gap: 4 },
-  { label: '30d', days: 30,  cellsPerRow: 10, gap: 4 },
-  { label: '90d', days: 90,  cellsPerRow: 10, gap: 3 },
+  { key: 'd7',  days: 7,   cellsPerRow: 7,  gap: 4 },
+  { key: 'd30', days: 30,  cellsPerRow: 10, gap: 4 },
+  { key: 'd90', days: 90,  cellsPerRow: 10, gap: 3 },
 ];
 
 function cellSize(cfg) {
@@ -69,7 +71,7 @@ function BarChart({ data, labels, theme, onBarPress, futureFlags, a11yLabels }) 
                 onPress={() => !isFuture && onBarPress?.(i, val)}
                 activeOpacity={isFuture ? 1 : 0.7}
                 accessibilityRole="button"
-                accessibilityLabel={a11yLabels?.[i] ?? `${labels[i]}: ${isFuture ? 'no data yet' : `${val} percent`}`}
+                accessibilityLabel={a11yLabels?.[i] ?? (isFuture ? t('progress.bar.noData', { label: labels[i] }) : t('progress.bar.percent', { label: labels[i], value: val }))}
                 accessibilityState={{ disabled: !!isFuture }}
               >
                 {!isFuture && (
@@ -101,12 +103,12 @@ function HeatmapCell({ day, size, gap, theme, onPress }) {
   else if (!future && frozen) bg = FROZEN_COLOR;
   else if (!future && total > 0 && completed > 0) bg = PARTIAL_COLOR;
 
-  const dateLabel = new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const dateLabel = new Date(day.date + 'T00:00:00').toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
   const a11yLabel = future
-    ? `${dateLabel}: future`
+    ? t('progress.heat.future', { date: dateLabel })
     : total === 0
-      ? `${dateLabel}: rest day`
-      : `${dateLabel}: ${completed} of ${total} habits${frozen ? ', streak frozen' : ''}`;
+      ? t('progress.heat.rest', { date: dateLabel })
+      : t(frozen ? 'progress.heat.countFrozen' : 'progress.heat.count', { date: dateLabel, completed, total });
   const interactive = !future && total > 0;
 
   return (
@@ -159,7 +161,7 @@ function DayDetailModal({ visible, day, onClose, theme }) {
   if (!day) return null;
 
   const date = new Date(day.date + 'T00:00:00');
-  const dateLabel = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const dateLabel = date.toLocaleDateString(getLocale(), { weekday: 'long', month: 'long', day: 'numeric' });
   const dayHabits = day.habits || [];
   const dayCompletions = day.rawCompletions || {};
 
@@ -174,15 +176,15 @@ function DayDetailModal({ visible, day, onClose, theme }) {
             <View style={{ flex: 1 }}>
               <Text style={[styles.sheetTitle, { color: theme.text }]}>{dateLabel}</Text>
               <Text style={[styles.sheetSub, { color: theme.textMuted }]}>
-                {day.completed}/{day.total} habits completed
+                {t('progress.day.habitsCompleted', { completed: day.completed, total: day.total })}
               </Text>
             </View>
-            <TouchableOpacity onPress={doClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
+            <TouchableOpacity onPress={doClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <Text style={[styles.closeBtnTxt, { color: theme.textMuted }]}>✕</Text>
             </TouchableOpacity>
           </View>
           {day.frozen && (
-            <Text style={[styles.sheetSub, { color: '#0369A1', marginBottom: 8 }]}>❄️ Streak freeze used: this day did not break your streak.</Text>
+            <Text style={[styles.sheetSub, { color: '#0369A1', marginBottom: 8 }]}>{t('progress.day.frozen')}</Text>
           )}
 
           <View style={[styles.ratioBarBg, { backgroundColor: theme.progressBarBg }]}>
@@ -194,7 +196,7 @@ function DayDetailModal({ visible, day, onClose, theme }) {
 
           <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 16 }}>
             {dayHabits.length === 0 ? (
-              <Text style={[styles.noData, { color: theme.textMuted }]}>No habit data for this day.</Text>
+              <Text style={[styles.noData, { color: theme.textMuted }]}>{t('progress.day.noData')}</Text>
             ) : (
               dayHabits.map(h => {
                 const count = dayCompletions[h.id] || 0;
@@ -206,7 +208,7 @@ function DayDetailModal({ visible, day, onClose, theme }) {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.habitName, { color: theme.text }]}>{h.name}</Text>
                       {rest ? (
-                        <Text style={[styles.habitSub, { color: theme.textMuted }]}>{h.skipped ? 'Skipped' : day.frozen ? 'Frozen' : 'Not scheduled'}</Text>
+                        <Text style={[styles.habitSub, { color: theme.textMuted }]}>{h.skipped ? t('progress.day.skipped') : day.frozen ? t('progress.day.frozenLabel') : t('progress.day.notScheduled')}</Text>
                       ) : h.volumeGoal > 1 ? (
                         <Text style={[styles.habitSub, { color: theme.textMuted }]}>{count}/{h.volumeGoal}</Text>
                       ) : null}
@@ -233,12 +235,12 @@ function BarTooltip({ label, value, onClose, theme }) {
       onPress={onClose}
       activeOpacity={1}
       accessibilityRole="button"
-      accessibilityLabel={`${label}: ${value} percent completed. Dismiss`}
+      accessibilityLabel={t('progress.tooltip.a11y', { label, value })}
     >
       <View style={[styles.tooltip, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <Text style={[styles.tooltipLabel, { color: theme.textMuted }]}>{label}</Text>
         <Text style={[styles.tooltipValue, { color: theme.primary }]}>{value}%</Text>
-        <Text style={[styles.tooltipHint, { color: theme.textMuted }]}>completed</Text>
+        <Text style={[styles.tooltipHint, { color: theme.textMuted }]}>{t('progress.tooltip.completed')}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -248,6 +250,8 @@ function BarTooltip({ label, value, onClose, theme }) {
 
 export default function ProgressScreen() {
   const { getLastNDays, getOverallStreak, getBestStreak, freezesLeft, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode, settings, effectivePastChallenges, moods, dailySnapshot, isHabitDoneOn, isExcused, isPro, openPaywall } = useApp();
+  const { locale } = useLocale();
+  const dayLabels = weekdayLabels();
 
   // Mood insights: averages on perfect vs other days and per-habit deltas.
   const moodInsights = useMemo(() => {
@@ -259,7 +263,7 @@ export default function ProgressScreen() {
     const correlations = habitMoodCorrelations(moods, habits, (h, k) => isHabitDoneOn(h, k));
     const last7 = Array.from({ length: 7 }, (_, i) => { const k = addDays(today, -(6 - i)); return { key: k, mood: moods[k] ?? null }; });
     return { summary, correlations, last7, headline: describeCorrelation(correlations[0]) };
-  }, [moods, habits, dailySnapshot, completions, todayStr, isHabitDoneOn, isExcused]);
+  }, [moods, habits, dailySnapshot, completions, todayStr, isHabitDoneOn, isExcused, locale]); // eslint-disable-line react-hooks/exhaustive-deps
   const earned = useMemo(() => new Map((settings.milestones || []).map(m => [m.id, m])), [settings.milestones]);
   const trophies = useMemo(() => effectivePastChallenges.filter(c => c.tier && c.tier !== 'none'), [effectivePastChallenges]);
   const [heatPeriodIdx, setHeatPeriodIdx] = useState(0);
@@ -331,9 +335,9 @@ export default function ProgressScreen() {
   const chartLabels = useMemo(() =>
     last7.map(d => {
       const date = new Date(d.date + 'T00:00:00');
-      return ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][date.getDay()];
+      return dayLabels[date.getDay()];
     }),
-    [last7]
+    [last7, locale] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const chartData = useMemo(() =>
@@ -346,10 +350,10 @@ export default function ProgressScreen() {
   const chartA11yLabels = useMemo(() =>
     last7.map((d, i) => {
       const date = new Date(d.date + 'T00:00:00');
-      const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      return d.future ? `${label}: no data yet` : `${label}: ${chartData[i]} percent`;
+      const label = date.toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
+      return d.future ? t('progress.bar.noData', { label }) : t('progress.bar.percent', { label, value: chartData[i] });
     }),
-    [last7, chartData]
+    [last7, chartData, locale] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handleBarPress = (i, val) => {
@@ -357,7 +361,7 @@ export default function ProgressScreen() {
     if (d.future) return;
     lightImpact();
     const date = new Date(d.date + 'T00:00:00');
-    const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const label = date.toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
     setTooltipInfo({ label, value: val });
   };
 
@@ -373,26 +377,26 @@ export default function ProgressScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.headingRow}>
-          <Text style={[styles.heading, { color: theme.text }]}>Your Progress</Text>
+          <Text style={[styles.heading, { color: theme.text }]}>{t('progress.title')}</Text>
           <TouchableOpacity
             style={[styles.shareChip, { borderColor: theme.border, backgroundColor: theme.surface }]}
             onPress={() => { lightImpact(); setShareOpen(true); }}
             accessibilityRole="button"
-            accessibilityLabel="Share your progress"
+            accessibilityLabel={t('progress.shareA11y')}
           >
             <Ionicons name="share-social-outline" size={18} color={theme.primary} />
-            <Text style={[styles.shareChipText, { color: theme.primary }]}>Share</Text>
+            <Text style={[styles.shareChipText, { color: theme.primary }]}>{t('progress.share')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Stats row */}
         <View style={styles.statsRow}>
           {[
-            { label: 'Day Streak', value: streak, emoji: '🔥' },
-            { label: 'Best Streak', value: bestStreak, emoji: '🏅' },
-            { label: 'Perfect Days', value: totalCompleted, emoji: '⭐', hint: 'last 30' },
+            { label: t('progress.stats.streak'), value: streak, emoji: '🔥' },
+            { label: t('progress.stats.best'), value: bestStreak, emoji: '🏅' },
+            { label: t('progress.stats.perfect'), value: totalCompleted, emoji: '⭐' },
           ].map(stat => (
-            <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]} accessible accessibilityLabel={`${stat.label}: ${stat.value}`}>
+            <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]} accessible accessibilityLabel={t('progress.stats.a11y', { label: stat.label, value: stat.value })}>
               <Text style={styles.statEmoji}>{stat.emoji}</Text>
               <Text style={[styles.statValue, { color: theme.primary }]}>{stat.value}</Text>
               <Text style={[styles.statLabel, { color: theme.textMuted }]}>{stat.label}</Text>
@@ -400,24 +404,24 @@ export default function ProgressScreen() {
           ))}
         </View>
         <Text style={[styles.freezeLine, { color: theme.textMuted }]}>
-          ❄️ {freezesLeft} streak freeze{freezesLeft !== 1 ? 's' : ''} left this month · a missed day is covered automatically
+          {t('progress.freezes', { count: freezesLeft })}
         </Text>
 
         {/* Weekly bar chart — always 7 days */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>Habits Completed: Weekly</Text>
-          <Text style={[styles.cardHint, { color: theme.textMuted }]}>Tap a bar for details</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>{t('progress.weekly.title')}</Text>
+          <Text style={[styles.cardHint, { color: theme.textMuted }]}>{t('progress.weekly.hint')}</Text>
           <BarChart data={chartData} labels={chartLabels} theme={theme} onBarPress={handleBarPress} futureFlags={futureFlagsBar} a11yLabels={chartA11yLabels} />
         </View>
 
         {/* Heatmap with period toggle */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.cardHeaderRow}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>History</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>{t('progress.history')}</Text>
             <View style={styles.periodToggle}>
               {PERIOD_CONFIG.map((cfg, i) => (
                 <TouchableOpacity
-                  key={cfg.label}
+                  key={cfg.key}
                   style={[
                     styles.periodBtn,
                     { borderColor: theme.border },
@@ -425,11 +429,11 @@ export default function ProgressScreen() {
                   ]}
                   onPress={() => { lightImpact(); setHeatPeriodIdx(i); }}
                   accessibilityRole="button"
-                  accessibilityLabel={`Last ${cfg.days} days`}
+                  accessibilityLabel={t('progress.lastDaysA11y', { count: cfg.days })}
                   accessibilityState={{ selected: heatPeriodIdx === i }}
                 >
                   <Text style={[styles.periodBtnText, { color: heatPeriodIdx === i ? '#fff' : theme.textMuted }]}>
-                    {cfg.label}
+                    {t(`progress.period.${cfg.key}`)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -439,10 +443,10 @@ export default function ProgressScreen() {
           {/* Legend */}
           <View style={styles.heatLegend}>
             {[
-              { color: theme.progressBarBg, label: 'None' },
-              { color: PARTIAL_COLOR, label: 'Partial' },
-              { color: FROZEN_COLOR, label: 'Frozen' },
-              { color: theme.primary, label: 'Perfect' },
+              { color: theme.progressBarBg, label: t('progress.legend.none') },
+              { color: PARTIAL_COLOR, label: t('progress.legend.partial') },
+              { color: FROZEN_COLOR, label: t('progress.legend.frozen') },
+              { color: theme.primary, label: t('progress.legend.perfect') },
             ].map(l => (
               <View key={l.label} style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: l.color }]} />
@@ -451,7 +455,7 @@ export default function ProgressScreen() {
             ))}
           </View>
 
-          <Text style={[styles.cardHint, { color: theme.textMuted }]}>Tap a cell for details</Text>
+          <Text style={[styles.cardHint, { color: theme.textMuted }]}>{t('progress.heatHint')}</Text>
 
           {/* Grid: fixed-size cells for all periods, left-aligned so count grows from 1→N */}
           <View style={[styles.heatGrid, { marginRight: -heatCfg.gap }]}>
@@ -469,40 +473,40 @@ export default function ProgressScreen() {
         </View>
         {/* Mood insights */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>🙂 Mood & habits</Text>
-          <Text style={[styles.cardHint, { color: theme.textMuted }]}>From your daily check-ins on Today</Text>
-          <View style={styles.moodStrip} accessible accessibilityLabel={`Last 7 days mood: ${moodInsights.last7.map(d => d.mood ?? 'none').join(', ')}`}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>{t('progress.mood.title')}</Text>
+          <Text style={[styles.cardHint, { color: theme.textMuted }]}>{t('progress.mood.hint')}</Text>
+          <View style={styles.moodStrip} accessible accessibilityLabel={t('progress.mood.last7A11y', { list: moodInsights.last7.map(d => d.mood ?? t('progress.mood.none')).join(', ') })}>
             {moodInsights.last7.map(d => (
               <View key={d.key} style={styles.moodDay}>
                 <Text style={[styles.moodDayEmoji, !d.mood && { opacity: 0.25 }]}>{d.mood ? moodEmoji(d.mood) : '·'}</Text>
-                <Text style={[styles.moodDayLabel, { color: theme.textMuted }]}>{['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][new Date(d.key + 'T00:00:00').getDay()]}</Text>
+                <Text style={[styles.moodDayLabel, { color: theme.textMuted }]}>{dayLabels[new Date(d.key + 'T00:00:00').getDay()]}</Text>
               </View>
             ))}
           </View>
           {moodInsights.summary.count < MIN_SAMPLES ? (
             <Text style={[styles.cardHint, { color: theme.textMuted, marginTop: 8 }]}>
-              Rate a few more days to see how your habits and mood connect ({moodInsights.summary.count}/{MIN_SAMPLES}).
+              {t('progress.mood.rateMore', { count: moodInsights.summary.count, min: MIN_SAMPLES })}
             </Text>
           ) : (
             <>
               <View style={styles.moodStats}>
-                <View style={[styles.moodStat, { backgroundColor: theme.bg, borderColor: theme.border }]} accessible accessibilityLabel={`Average mood ${moodInsights.summary.average} of 5`}>
+                <View style={[styles.moodStat, { backgroundColor: theme.bg, borderColor: theme.border }]} accessible accessibilityLabel={t('progress.mood.avgA11y', { value: moodInsights.summary.average })}>
                   <Text style={[styles.moodStatValue, { color: theme.primary }]}>{moodInsights.summary.average}</Text>
-                  <Text style={[styles.moodStatLabel, { color: theme.textMuted }]}>avg / 5</Text>
+                  <Text style={[styles.moodStatLabel, { color: theme.textMuted }]}>{t('progress.mood.avg')}</Text>
                 </View>
-                <View style={[styles.moodStat, { backgroundColor: theme.bg, borderColor: theme.border }]} accessible accessibilityLabel={`Perfect days ${moodInsights.summary.perfectAvg ?? 'no data'}`}>
+                <View style={[styles.moodStat, { backgroundColor: theme.bg, borderColor: theme.border }]} accessible accessibilityLabel={t('progress.mood.perfectA11y', { value: moodInsights.summary.perfectAvg ?? t('progress.mood.noData') })}>
                   <Text style={[styles.moodStatValue, { color: theme.primary }]}>{moodInsights.summary.perfectAvg ?? '–'}</Text>
-                  <Text style={[styles.moodStatLabel, { color: theme.textMuted }]}>perfect days</Text>
+                  <Text style={[styles.moodStatLabel, { color: theme.textMuted }]}>{t('progress.mood.perfectDays')}</Text>
                 </View>
-                <View style={[styles.moodStat, { backgroundColor: theme.bg, borderColor: theme.border }]} accessible accessibilityLabel={`Other days ${moodInsights.summary.otherAvg ?? 'no data'}`}>
+                <View style={[styles.moodStat, { backgroundColor: theme.bg, borderColor: theme.border }]} accessible accessibilityLabel={t('progress.mood.otherA11y', { value: moodInsights.summary.otherAvg ?? t('progress.mood.noData') })}>
                   <Text style={[styles.moodStatValue, { color: theme.primary }]}>{moodInsights.summary.otherAvg ?? '–'}</Text>
-                  <Text style={[styles.moodStatLabel, { color: theme.textMuted }]}>other days</Text>
+                  <Text style={[styles.moodStatLabel, { color: theme.textMuted }]}>{t('progress.mood.otherDays')}</Text>
                 </View>
               </View>
               {moodInsights.headline ? (
                 <Text style={[styles.moodHeadline, { color: theme.text }]}>{moodInsights.headline}</Text>
               ) : (
-                <Text style={[styles.cardHint, { color: theme.textMuted, marginTop: 8 }]}>No strong link between a single habit and your mood yet.</Text>
+                <Text style={[styles.cardHint, { color: theme.textMuted, marginTop: 8 }]}>{t('progress.mood.noLink')}</Text>
               )}
               {moodInsights.correlations.slice(0, 3).map(c => (
                 <View key={c.habitId} style={styles.corrRow}>
@@ -517,15 +521,15 @@ export default function ProgressScreen() {
 
         {/* Trophy case: streak milestones + challenge medals */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>🏆 Trophy Case</Text>
-          <Text style={[styles.cardHint, { color: theme.textMuted }]}>Streak milestones and challenge medals</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>{t('progress.trophy.title')}</Text>
+          <Text style={[styles.cardHint, { color: theme.textMuted }]}>{t('progress.trophy.hint')}</Text>
           <View style={styles.trophyRow}>
             {STREAK_MILESTONES.map(m => {
               const got = earned.get(`streak-${m.days}`);
               return (
-                <View key={m.days} style={[styles.trophyTile, { backgroundColor: got ? theme.primaryLight : theme.bg, borderColor: got ? theme.primary : theme.border, opacity: got ? 1 : 0.55 }]} accessible accessibilityLabel={`${m.label} streak: ${got ? 'earned ' + got.date : 'locked'}`}>
+                <View key={m.days} style={[styles.trophyTile, { backgroundColor: got ? theme.primaryLight : theme.bg, borderColor: got ? theme.primary : theme.border, opacity: got ? 1 : 0.55 }]} accessible accessibilityLabel={got ? t('progress.trophy.earnedA11y', { label: m.label, date: got.date }) : t('progress.trophy.lockedA11y', { label: m.label })}>
                   <Text style={styles.trophyEmoji}>{got ? m.emoji : '🔒'}</Text>
-                  <Text style={[styles.trophyDays, { color: got ? theme.primary : theme.textMuted }]}>{m.days}d</Text>
+                  <Text style={[styles.trophyDays, { color: got ? theme.primary : theme.textMuted }]}>{t('common.shortDays', { count: m.days })}</Text>
                   <Text style={[styles.trophyLabel, { color: theme.textMuted }]} numberOfLines={1}>{got ? got.date.slice(5) : m.label}</Text>
                 </View>
               );
@@ -534,21 +538,21 @@ export default function ProgressScreen() {
           {trophies.length > 0 ? (
             <View style={styles.medalRow}>
               {trophies.map(c => (
-                <View key={c.id} style={[styles.medal, { backgroundColor: TIER_STYLES[c.tier].bg, borderColor: TIER_STYLES[c.tier].border }]} accessible accessibilityLabel={`${c.name}: ${c.tier}`}>
+                <View key={c.id} style={[styles.medal, { backgroundColor: TIER_STYLES[c.tier].bg, borderColor: TIER_STYLES[c.tier].border }]} accessible accessibilityLabel={t('progress.trophy.medalA11y', { name: c.name, tier: t(`tier.${c.tier}`) })}>
                   <Text style={styles.medalEmoji}>{TIER_STYLES[c.tier].badge}</Text>
                   <Text style={[styles.medalName, { color: TIER_STYLES[c.tier].text }]} numberOfLines={1}>{c.name}</Text>
                 </View>
               ))}
             </View>
           ) : (
-            <Text style={[styles.cardHint, { color: theme.textMuted, marginTop: 8 }]}>Finish a challenge to earn your first medal.</Text>
+            <Text style={[styles.cardHint, { color: theme.textMuted, marginTop: 8 }]}>{t('progress.trophy.firstMedal')}</Text>
           )}
         </View>
 
         {/* AI Reflection */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.cardHeaderRow}>
-            <Text style={[styles.cardTitle, { color: theme.text }]}>✨ AI Reflection</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>{t('progress.reflection.title')}</Text>
             <View style={styles.periodToggle}>
               {[{ label: '7d', value: 'weekly' }, { label: '30d', value: 'monthly' }].map(({ label, value }) => {
                 const locked = value === 'weekly' ? !canGenerateWeekly : !canGenerateMonthly;
@@ -569,7 +573,7 @@ export default function ProgressScreen() {
                       setReflectionError(false);
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel={`${value === 'weekly' ? 'Weekly' : 'Monthly'} reflection${locked ? ', locked' : ''}`}
+                    accessibilityLabel={(value === 'weekly' ? t('progress.reflection.weeklyA11y') : t('progress.reflection.monthlyA11y')) + (locked ? t('progress.reflection.lockedSuffix') : '')}
                     accessibilityState={{ selected: active, disabled: locked }}
                   >
                     <Text style={[styles.periodBtnText, { color: active ? '#fff' : theme.textMuted }]}>
@@ -581,28 +585,26 @@ export default function ProgressScreen() {
             </View>
           </View>
           <Text style={[styles.cardHint, { color: theme.textMuted }]}>
-            AI-generated summary of your habit patterns
+            {t('progress.reflection.hint')}
           </Text>
 
           {reflectionLocked ? (
             <View style={[styles.lockedMsg, { borderColor: theme.border }]}>
               <Text style={styles.lockedIcon}>🔒</Text>
               <Text style={[styles.lockedTitle, { color: theme.text }]}>
-                {reflectionPeriod === 'weekly'
-                  ? `Unlocks in ${daysUntilWeekly} day${daysUntilWeekly !== 1 ? 's' : ''}`
-                  : `Unlocks in ${daysUntilMonthly} day${daysUntilMonthly !== 1 ? 's' : ''}`}
+                {t('progress.reflection.unlocks', { count: reflectionPeriod === 'weekly' ? daysUntilWeekly : daysUntilMonthly })}
               </Text>
               <Text style={[styles.cardHint, { color: theme.textMuted, textAlign: 'center', marginTop: 2 }]}>
                 {reflectionPeriod === 'weekly'
-                  ? 'Track your habits for a full week to unlock your weekly summary.'
-                  : 'Track your habits for a full month to unlock your monthly summary.'}
+                  ? t('progress.reflection.unlockWeekly')
+                  : t('progress.reflection.unlockMonthly')}
               </Text>
             </View>
           ) : reflectionLoading ? (
             <View style={styles.reflectionLoading}>
               <ActivityIndicator size="small" color={theme.primary} />
               <Text style={[styles.cardHint, { color: theme.textMuted, marginTop: 8 }]}>
-                Generating your {reflectionPeriod} reflection...
+                {reflectionPeriod === 'weekly' ? t('progress.reflection.generatingWeekly') : t('progress.reflection.generatingMonthly')}
               </Text>
             </View>
           ) : reflectionMessage ? (
@@ -610,7 +612,7 @@ export default function ProgressScreen() {
               <Text style={[styles.reflectionText, { color: theme.text }]}>{reflectionMessage}</Text>
               {reflectionGeneratedAt && (
                 <Text style={[styles.cardHint, { color: theme.textMuted, marginTop: 8 }]}>
-                  Generated {new Date(reflectionGeneratedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {t('progress.reflection.generated', { date: new Date(reflectionGeneratedAt).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' }) })}
                 </Text>
               )}
             </>
@@ -618,9 +620,9 @@ export default function ProgressScreen() {
             <>
               {reflectionError && (
                 <Text style={[styles.cardHint, { color: theme.danger, marginTop: 4 }]}>
-                  {reflectionErrorMsg && /limit/i.test(reflectionErrorMsg) ? reflectionErrorMsg : 'Generation failed. Please try again.'}
+                  {reflectionErrorMsg && /limit/i.test(reflectionErrorMsg) ? reflectionErrorMsg : t('progress.reflection.failed')}
                   {reflectionErrorMsg && /limit/i.test(reflectionErrorMsg) && !isPro ? (
-                    <Text style={{ color: theme.primary, fontWeight: '700' }} onPress={() => openPaywall('ai')}>  See Groov Pro</Text>
+                    <Text style={{ color: theme.primary, fontWeight: '700' }} onPress={() => openPaywall('ai')}>{t('progress.reflection.seePro')}</Text>
                   ) : null}
                 </Text>
               )}
@@ -628,10 +630,10 @@ export default function ProgressScreen() {
                 style={[styles.generateBtn, { backgroundColor: theme.primary }]}
                 onPress={handleGenerateReflection}
                 accessibilityRole="button"
-                accessibilityLabel={`Generate ${reflectionPeriod === 'weekly' ? 'weekly' : 'monthly'} summary`}
+                accessibilityLabel={reflectionPeriod === 'weekly' ? t('progress.reflection.generateWeekly') : t('progress.reflection.generateMonthly')}
               >
                 <Text style={styles.generateBtnText}>
-                  Generate {reflectionPeriod === 'weekly' ? 'weekly' : 'monthly'} summary
+                  {reflectionPeriod === 'weekly' ? t('progress.reflection.generateWeekly') : t('progress.reflection.generateMonthly')}
                 </Text>
               </TouchableOpacity>
             </>

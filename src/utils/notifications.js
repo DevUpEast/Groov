@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { dateAt } from './dates';
 import { to24h } from './time';
+import { t } from '../i18n';
 
 const ACCENT = '#4F46E5';
 
@@ -31,11 +32,11 @@ async function setupCategories() {
   if (Platform.OS === 'web' || categoriesReady) return;
   try {
     await Notifications.setNotificationCategoryAsync(CATEGORY_HABIT, [
-      { identifier: ACTION_DONE, buttonTitle: '✓ Done', options: { opensAppToForeground: false } },
-      { identifier: ACTION_SNOOZE, buttonTitle: 'Snooze 1h', options: { opensAppToForeground: false } },
+      { identifier: ACTION_DONE, buttonTitle: t('notifications.doneAction'), options: { opensAppToForeground: false } },
+      { identifier: ACTION_SNOOZE, buttonTitle: t('notifications.snoozeAction'), options: { opensAppToForeground: false } },
     ]);
     await Notifications.setNotificationCategoryAsync(CATEGORY_GENERAL, [
-      { identifier: ACTION_SNOOZE, buttonTitle: 'Snooze 1h', options: { opensAppToForeground: false } },
+      { identifier: ACTION_SNOOZE, buttonTitle: t('notifications.snoozeAction'), options: { opensAppToForeground: false } },
     ]);
     categoriesReady = true;
   } catch {}
@@ -121,7 +122,7 @@ function desiredDailyReminders(settings, habits, missesByHabit = {}) {
   for (const r of settings.reminders || []) {
     if (!r.enabled || r.habitId) continue;
     const { hour, minute } = to24h(r.time);
-    out.push({ identifier: `${REMINDER_PREFIX}${r.id}`, hour, minute, title: `🔔 ${r.label}`, body: 'Time to check your habits!', category: CATEGORY_GENERAL, data: { kind: 'general', reminderId: r.id } });
+    out.push({ identifier: `${REMINDER_PREFIX}${r.id}`, hour, minute, title: t('notifications.generalTitle', { label: r.label }), body: t('notifications.generalBody'), category: CATEGORY_GENERAL, data: { kind: 'general', reminderId: r.id } });
   }
   for (const h of habits || []) {
     if (!h.reminder?.enabled) continue;
@@ -131,10 +132,10 @@ function desiredDailyReminders(settings, habits, missesByHabit = {}) {
     const backingOff = misses >= BACKOFF_AFTER_MISSES;
     out.push({
       identifier: `${HABIT_PREFIX}${h.id}`, hour, minute,
-      title: backingOff ? `${h.icon ?? '🔔'} ${h.name}, still on your list` : `${h.icon ?? '🔔'} Time for: ${h.name}`,
+      title: backingOff ? t('notifications.habitTitleBackoff', { icon: h.icon ?? '🔔', name: h.name }) : t('notifications.habitTitle', { icon: h.icon ?? '🔔', name: h.name }),
       body: backingOff
-        ? 'No pressure. Even a small step today restarts the streak.'
-        : h.intention ? `After you ${h.intention}. Tap to log it.` : 'Tap to log your habit!',
+        ? t('notifications.habitBodyBackoff')
+        : h.intention ? t('notifications.habitBodyIntention', { intention: h.intention }) : t('notifications.habitBody'),
       category: CATEGORY_HABIT,
       data: { kind: 'habit', habitId: h.id },
       // A backed-off reminder is a one-off for today, not a daily repeat, so the
@@ -194,7 +195,7 @@ export async function snoozeNotification(content, minutes = 60) {
     await Notifications.scheduleNotificationAsync({
       identifier: `${SNOOZE_PREFIX}${Date.now()}`,
       content: {
-        title: content?.title ?? '🔔 Reminder', body: content?.body ?? 'Time to check your habits!',
+        title: content?.title ?? t('notifications.reminderTitle'), body: content?.body ?? t('notifications.generalBody'),
         sound: true, color: ACCENT, categoryIdentifier: content?.categoryIdentifier ?? undefined, data: content?.data ?? {},
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: minutes * 60 },
@@ -248,8 +249,8 @@ export async function scheduleEveningHabitReminder(today, hour = 20, minute = 0)
     await Notifications.scheduleNotificationAsync({
       identifier,
       content: {
-        title: '🌙 Habit Check-in',
-        body: "You still have habits left to complete today. Keep that streak going!",
+        title: t('notifications.eveningTitle'),
+        body: t('notifications.eveningBody'),
         sound: true,
         color: ACCENT,
       },
@@ -273,12 +274,12 @@ export async function sendTestNotification(habit) {
   if (!granted) return;
   await Notifications.scheduleNotificationAsync({
     content: habit ? {
-      title: `${habit.icon ?? '🔔'} Time for: ${habit.name}`,
-      body: 'Test reminder. Tap Done to log it from here.',
+      title: t('notifications.habitTitle', { icon: habit.icon ?? '🔔', name: habit.name }),
+      body: t('notifications.testBody'),
       sound: true, color: ACCENT, categoryIdentifier: CATEGORY_HABIT, data: { kind: 'habit', habitId: habit.id },
     } : {
-      title: 'Finish Habits',
-      body: "You still have habits left to complete today. Keep that streak going!",
+      title: t('notifications.finishTitle'),
+      body: t('notifications.eveningBody'),
       sound: true, color: ACCENT, categoryIdentifier: CATEGORY_GENERAL, data: { kind: 'general' },
     },
     trigger: null,

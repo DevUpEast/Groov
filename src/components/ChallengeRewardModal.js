@@ -1,34 +1,12 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { getChallengeTier, TIER_STYLES } from '../context/AppContext';
-
-const TIER_MESSAGES = {
-  platinum: {
-    headline: '🎉 Absolutely Flawless!',
-    body: 'You showed up every single day without fail. That\'s rare. That\'s powerful. That discipline is yours to keep. Carry it into what comes next.',
-  },
-  gold: {
-    headline: '🏆 Outstanding Work!',
-    body: 'You pushed through nearly every day. Gold is earned, not given, and you earned it. Keep building on that momentum.',
-  },
-  silver: {
-    headline: '🥈 Solid Effort!',
-    body: 'More than halfway there. Silver means you showed up when it counted. Use this as your foundation and push harder next time.',
-  },
-  copper: {
-    headline: 'A Start Worth Building On',
-    body: 'Getting started is step one, but consistency is the real goal. Next time, pick one day at a time and commit to showing up. You have more in you than this challenge showed.',
-  },
-  none: {
-    headline: 'This One Got Away',
-    body: 'No days logged this time, and that\'s okay. Every stumble is information. Take a moment to honestly ask what got in the way, then come back focused and ready.',
-  },
-};
+import { t, useLocale } from '../i18n';
 
 function ChallengeResultCard({ challenge, theme }) {
   const tier = challenge.tier || getChallengeTier(challenge.completedDays?.length ?? 0, challenge.days);
   const ts = TIER_STYLES[tier];
-  const msg = TIER_MESSAGES[tier];
+  const msg = { headline: t(`rewardModal.tiers.${tier}.headline`), body: t(`rewardModal.tiers.${tier}.body`) };
   const bg = ts.bg || theme.surface;
   const border = ts.border || theme.border;
   const textColor = ts.text || theme.text;
@@ -43,7 +21,7 @@ function ChallengeResultCard({ challenge, theme }) {
           <Text style={[styles.challengeName, { color: textColor }]}>{challenge.name}</Text>
           {tier !== 'none' && (
             <Text style={[styles.tierLabel, { color: textColor }]}>
-              {ts.badge} {tier.charAt(0).toUpperCase() + tier.slice(1)} Completion
+              {t('rewardModal.completion', { badge: ts.badge, tier: t(`tier.${tier}`) })}
             </Text>
           )}
         </View>
@@ -53,7 +31,7 @@ function ChallengeResultCard({ challenge, theme }) {
         <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: border || theme.primary }]} />
       </View>
       <Text style={[styles.progressText, { color: textColor }]}>
-        {completedCount} of {challenge.days} days completed ({Math.round(progress * 100)}%)
+        {t('rewardModal.progress', { done: completedCount, days: challenge.days, percent: Math.round(progress * 100) })}
       </Text>
 
       <Text style={[styles.headline, { color: textColor }]}>{msg.headline}</Text>
@@ -64,6 +42,7 @@ function ChallengeResultCard({ challenge, theme }) {
 
 export default function ChallengeRewardModal({ challenges, onDismiss, theme }) {
   const [page, setPage] = useState(0);
+  useLocale();
 
   if (!challenges || challenges.length === 0) return null;
 
@@ -86,9 +65,9 @@ export default function ChallengeRewardModal({ challenges, onDismiss, theme }) {
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>Challenge Complete</Text>
+          <Text style={styles.title}>{t('rewardModal.title')}</Text>
           {isMulti && (
-            <Text style={styles.pageIndicator}>{page + 1} of {challenges.length}</Text>
+            <Text style={styles.pageIndicator}>{t('rewardModal.page', { page: page + 1, total: challenges.length })}</Text>
           )}
 
           <ChallengeResultCard challenge={current} theme={theme} />
@@ -99,7 +78,7 @@ export default function ChallengeRewardModal({ challenges, onDismiss, theme }) {
             accessibilityRole="button"
           >
             <Text style={styles.dismissBtnText}>
-              {isLast ? 'Got It' : 'Next →'}
+              {isLast ? t('rewardModal.gotIt') : t('rewardModal.next')}
             </Text>
           </TouchableOpacity>
         </ScrollView>

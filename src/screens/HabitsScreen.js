@@ -16,27 +16,23 @@ import TimePicker from '../components/TimePicker';
 import HabitDetailSheet from '../components/HabitDetailSheet';
 import HabitIcon from '../components/HabitIcon';
 import { lightImpact, mediumImpact } from '../utils/haptics';
-import { describeSchedule, WEEKDAY_LABELS, DEFAULT_SCHEDULE } from '../utils/schedule';
-import { HABIT_TYPES, describeGoal } from '../utils/habits';
+import { describeSchedule, weekdayLabels, DEFAULT_SCHEDULE } from '../utils/schedule';
+import { getHabitTypes, describeGoal } from '../utils/habits';
 import { suggestHabit } from '../services/aiCoaching';
 import { useAuth } from '../context/AuthContext';
+import { t, useLocale } from '../i18n';
 
 const ICONS = ['⭐', '🎯', '💪', '🧠', '✍️', '🎨', '🚶', '🛁', '🌿', '❤️', '💧', '🏃', '📚', '🧘', '😴', '🥗', '🍎', '☕', '🎵', '🌅'];
 const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE, color: null, timeOfDay: 'anytime', unit: '', intention: '' };
 
 // Per-habit accent colours (null = theme primary). Chosen to read on light and dark.
 const HABIT_COLORS = [null, '#EF4444', '#F97316', '#EAB308', '#22C55E', '#14B8A6', '#3B82F6', '#A855F7', '#EC4899'];
-const TIME_OPTIONS = [
-  { value: 'anytime', label: 'Anytime' },
-  { value: 'morning', label: '🌅 Morning' },
-  { value: 'afternoon', label: '☀️ Afternoon' },
-  { value: 'evening', label: '🌙 Evening' },
-];
+const TIME_OPTIONS = ['anytime', 'morning', 'afternoon', 'evening'];
 
 const SCHEDULE_OPTIONS = [
-  { type: 'daily', label: 'Every day' },
-  { type: 'weekdays', label: 'Specific days' },
-  { type: 'perWeek', label: 'Times a week' },
+  { type: 'daily', key: 'scheduleDaily' },
+  { type: 'weekdays', key: 'scheduleWeekdays' },
+  { type: 'perWeek', key: 'schedulePerWeek' },
 ];
 // Monday-first display order; values are JS weekday numbers (0 = Sunday).
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -59,9 +55,10 @@ function SchedulePicker({ schedule, onChange, theme }) {
     onChange({ type: 'weekdays', days: next });
   };
 
+  const dayLabels = weekdayLabels();
   return (
     <>
-      <Text style={[styles.label, { color: theme.textMuted }]}>Schedule</Text>
+      <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.schedule')}</Text>
       <View style={styles.typeRow}>
         {SCHEDULE_OPTIONS.map(opt => {
           const active = type === opt.type;
@@ -73,7 +70,7 @@ function SchedulePicker({ schedule, onChange, theme }) {
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.scheduleBtnText, { color: active ? theme.primary : theme.textMuted }]}>{opt.label}</Text>
+              <Text style={[styles.scheduleBtnText, { color: active ? theme.primary : theme.textMuted }]}>{t(`habits.form.${opt.key}`)}</Text>
             </TouchableOpacity>
           );
         })}
@@ -90,9 +87,9 @@ function SchedulePicker({ schedule, onChange, theme }) {
                 onPress={() => toggleDay(d)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                accessibilityLabel={WEEKDAY_LABELS[d]}
+                accessibilityLabel={dayLabels[d]}
               >
-                <Text style={[styles.dayChipText, { color: on ? '#fff' : theme.textMuted }]}>{WEEKDAY_LABELS[d]}</Text>
+                <Text style={[styles.dayChipText, { color: on ? '#fff' : theme.textMuted }]}>{dayLabels[d]}</Text>
               </TouchableOpacity>
             );
           })}
@@ -101,12 +98,12 @@ function SchedulePicker({ schedule, onChange, theme }) {
 
       {type === 'perWeek' && (
         <View style={styles.perWeekRow}>
-          <Text style={[styles.perWeekText, { color: theme.text }]}>{target} day{target !== 1 ? 's' : ''} a week, any days you like</Text>
+          <Text style={[styles.perWeekText, { color: theme.text }]}>{t('habits.form.perWeekText', { count: target })}</Text>
           <View style={styles.stepper}>
             <TouchableOpacity
               style={[styles.stepBtn, { borderColor: theme.border, opacity: target <= 1 ? 0.4 : 1 }]}
               onPress={() => target > 1 && onChange({ type: 'perWeek', target: target - 1 })}
-              accessibilityRole="button" accessibilityLabel="Fewer days per week"
+              accessibilityRole="button" accessibilityLabel={t('habits.form.fewerDays')}
             >
               <Text style={[styles.stepBtnText, { color: theme.text }]}>−</Text>
             </TouchableOpacity>
@@ -114,7 +111,7 @@ function SchedulePicker({ schedule, onChange, theme }) {
             <TouchableOpacity
               style={[styles.stepBtn, { borderColor: theme.border, opacity: target >= 6 ? 0.4 : 1 }]}
               onPress={() => target < 6 && onChange({ type: 'perWeek', target: target + 1 })}
-              accessibilityRole="button" accessibilityLabel="More days per week"
+              accessibilityRole="button" accessibilityLabel={t('habits.form.moreDays')}
             >
               <Text style={[styles.stepBtnText, { color: theme.text }]}>+</Text>
             </TouchableOpacity>
@@ -203,7 +200,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
       }));
       if (habit.type === 'volume' && habit.volumeGoal > 10) setVolMax(habit.volumeGoal > 25 ? 100 : 25);
     } catch (e) {
-      setMagicError(e.message || 'Could not fill the form.');
+      setMagicError(e.message || t('habits.form.magicError'));
     } finally {
       setMagicBusy(false);
     }
@@ -255,31 +252,32 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
     if (status !== 'granted') {
       const cam = await ImagePicker.requestCameraPermissionsAsync();
       if (cam.status !== 'granted') {
-        Alert.alert('Permission needed', 'Allow photo access to use a custom icon.');
+        Alert.alert(t('habits.permission.title'), t('habits.permission.body'));
         return;
       }
     }
 
-    Alert.alert('Custom Icon', 'Choose a source', [
+    Alert.alert(t('habits.customIcon.title'), t('habits.customIcon.body'), [
       {
-        text: 'Camera',
+        text: t('habits.customIcon.camera'),
         onPress: async () => {
           const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 });
           if (!result.canceled) setForm(f => ({ ...f, customIconUri: result.assets[0].uri, icon: null }));
         },
       },
       {
-        text: 'Photo Library',
+        text: t('habits.customIcon.library'),
         onPress: async () => {
           const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 });
           if (!result.canceled) setForm(f => ({ ...f, customIconUri: result.assets[0].uri, icon: null }));
         },
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
   const handleClose = () => animateClose(onClose);
+  const habitTypes = getHabitTypes();
 
   return (
     <BottomSheet visible={internalVisible} onClose={handleClose} translateY={translateY} backgroundColor={theme.surface} maxHeight="90%">
@@ -287,7 +285,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
 
           <View style={styles.sheetHeader}>
             <Text style={[styles.sheetTitle, { color: theme.text }]}>
-              {editingId ? 'Edit Habit' : 'New Habit'}
+              {editingId ? t('habits.form.editTitle') : t('habits.form.newTitle')}
             </Text>
             <TouchableOpacity onPress={handleClose} style={styles.sheetCloseBtn}>
               <Ionicons name="close" size={24} color={theme.textMuted} />
@@ -303,35 +301,35 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
               <View>
                 {!editingId && !!user && (
                   <View style={[styles.magicBox, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
-                    <Text style={[styles.magicTitle, { color: theme.primary }]}>✨ Describe it, we fill the rest</Text>
+                    <Text style={[styles.magicTitle, { color: theme.primary }]}>{t('habits.form.magicTitle')}</Text>
                     <View style={styles.magicRow}>
                       <TextInput
                         style={[styles.magicInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
-                        placeholder="e.g. read 20 pages before bed on weekdays"
+                        placeholder={t('habits.form.magicPlaceholder')}
                         placeholderTextColor={theme.textMuted}
                         value={magicText}
                         onChangeText={setMagicText}
                         maxLength={200}
                         returnKeyType="go"
                         onSubmitEditing={runMagic}
-                        accessibilityLabel="Describe the habit"
+                        accessibilityLabel={t('habits.form.magicA11y')}
                       />
                       <TouchableOpacity
                         style={[styles.magicBtn, { backgroundColor: theme.primary, opacity: magicBusy || magicText.trim().length < 3 ? 0.5 : 1 }]}
                         onPress={runMagic}
                         disabled={magicBusy || magicText.trim().length < 3}
                         accessibilityRole="button"
-                        accessibilityLabel="Fill the form from the description"
+                        accessibilityLabel={t('habits.form.magicFillA11y')}
                         accessibilityState={{ disabled: magicBusy, busy: magicBusy }}
                       >
-                        {magicBusy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.magicBtnText}>Fill</Text>}
+                        {magicBusy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.magicBtnText}>{t('habits.form.fill')}</Text>}
                       </TouchableOpacity>
                     </View>
                     {!!magicError && <Text style={[styles.magicError, { color: theme.danger }]}>{magicError}</Text>}
                   </View>
                 )}
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>Icon</Text>
+                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.icon')}</Text>
                 <IconPicker
                   selected={form.icon}
                   onSelect={icon => setForm(f => ({ ...f, icon, customIconUri: null }))}
@@ -340,7 +338,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   theme={theme}
                 />
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>Colour</Text>
+                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.colour')}</Text>
                 <View style={styles.colorRow}>
                   {HABIT_COLORS.map(c => {
                     const active = (form.color || null) === c;
@@ -350,7 +348,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                         style={[styles.colorDot, { backgroundColor: c || theme.primary, borderColor: active ? theme.text : 'transparent' }]}
                         onPress={() => setForm(f => ({ ...f, color: c }))}
                         accessibilityRole="button"
-                        accessibilityLabel={c ? `Colour ${c}` : 'Default colour'}
+                        accessibilityLabel={c ? t('habits.form.colourA11y', { color: c }) : t('habits.form.defaultColour')}
                         accessibilityState={{ selected: active }}
                       >
                         {active && <Text style={styles.colorCheck}>✓</Text>}
@@ -359,10 +357,10 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   })}
                 </View>
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>Name</Text>
+                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.name')}</Text>
                 <TextInput
                   style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
-                  placeholder="e.g. Walk 10,000 steps"
+                  placeholder={t('habits.form.namePlaceholder')}
                   placeholderTextColor={theme.textMuted}
                   value={form.name}
                   onChangeText={name => setForm(f => ({ ...f, name }))}
@@ -370,26 +368,26 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   onSubmitEditing={Keyboard.dismiss}
                 />
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>Plan (optional)</Text>
+                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.plan')}</Text>
                 <TextInput
                   style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
-                  placeholder="After I… (e.g. brush my teeth, in the kitchen)"
+                  placeholder={t('habits.form.planPlaceholder')}
                   placeholderTextColor={theme.textMuted}
                   value={form.intention || ''}
                   onChangeText={intention => setForm(f => ({ ...f, intention }))}
                   maxLength={80}
                   returnKeyType="done"
                   onSubmitEditing={Keyboard.dismiss}
-                  accessibilityLabel="Implementation plan"
+                  accessibilityLabel={t('habits.form.planA11y')}
                 />
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>Type</Text>
+                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.type')}</Text>
                 <View style={styles.typeRow}>
-                  {HABIT_TYPES.map(t => {
-                    const active = form.type === t.value;
+                  {habitTypes.map(ht => {
+                    const active = form.type === ht.value;
                     return (
                       <TouchableOpacity
-                        key={t.value}
+                        key={ht.value}
                         style={[
                           styles.typeChip,
                           { borderColor: active ? theme.primary : theme.border },
@@ -397,22 +395,22 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                         ]}
                         onPress={() => setForm(f => ({
                           ...f,
-                          type: t.value,
-                          volumeGoal: t.value === 'volume' ? (f.volumeGoal >= 2 ? f.volumeGoal : 3)
-                            : t.value === 'timed' ? (f.volumeGoal >= 5 ? f.volumeGoal : 20)
-                            : t.value === 'atMost' ? (f.volumeGoal >= 1 && f.volumeGoal <= 20 ? f.volumeGoal : 2)
+                          type: ht.value,
+                          volumeGoal: ht.value === 'volume' ? (f.volumeGoal >= 2 ? f.volumeGoal : 3)
+                            : ht.value === 'timed' ? (f.volumeGoal >= 5 ? f.volumeGoal : 20)
+                            : ht.value === 'atMost' ? (f.volumeGoal >= 1 && f.volumeGoal <= 20 ? f.volumeGoal : 2)
                             : 1,
                         }))}
                         accessibilityRole="button"
                         accessibilityState={{ selected: active }}
-                        accessibilityLabel={`${t.label}: ${t.hint}`}
+                        accessibilityLabel={t('habits.form.typeA11y', { label: ht.label, hint: ht.hint })}
                       >
-                        <Text style={[styles.typeBtnText, { color: active ? theme.primary : theme.textMuted }]}>{t.emoji}  {t.label}</Text>
+                        <Text style={[styles.typeBtnText, { color: active ? theme.primary : theme.textMuted }]}>{t('habits.form.typeChip', { emoji: ht.emoji, label: ht.label })}</Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
-                <Text style={[styles.typeHint, { color: theme.textMuted }]}>{HABIT_TYPES.find(t => t.value === form.type)?.hint}</Text>
+                <Text style={[styles.typeHint, { color: theme.textMuted }]}>{habitTypes.find(ht => ht.value === form.type)?.hint}</Text>
 
                 <SchedulePicker
                   schedule={form.schedule}
@@ -420,19 +418,19 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   theme={theme}
                 />
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>Time of day</Text>
+                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.timeOfDay')}</Text>
                 <View style={styles.timeRow}>
                   {TIME_OPTIONS.map(opt => {
-                    const active = (form.timeOfDay || 'anytime') === opt.value;
+                    const active = (form.timeOfDay || 'anytime') === opt;
                     return (
                       <TouchableOpacity
-                        key={opt.value}
+                        key={opt}
                         style={[styles.timeChip, { borderColor: active ? theme.primary : theme.border }, active && { backgroundColor: theme.primaryLight }]}
-                        onPress={() => setForm(f => ({ ...f, timeOfDay: opt.value }))}
+                        onPress={() => setForm(f => ({ ...f, timeOfDay: opt }))}
                         accessibilityRole="button"
                         accessibilityState={{ selected: active }}
                       >
-                        <Text style={[styles.timeChipText, { color: active ? theme.primary : theme.textMuted }]}>{opt.label}</Text>
+                        <Text style={[styles.timeChipText, { color: active ? theme.primary : theme.textMuted }]}>{t(`timeOfDay.${opt}`)}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -440,41 +438,41 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
 
                 {form.type === 'timed' && (
                   <>
-                    <Text style={[styles.label, { color: theme.textMuted }]}>Minutes per day: {form.volumeGoal}</Text>
-                    <Slider value={form.volumeGoal} min={5} max={180} onValueChange={v => setForm(f => ({ ...f, volumeGoal: Math.max(5, Math.round(v / 5) * 5) }))} theme={theme} label="Minutes per day" />
+                    <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.minutesPerDay', { count: form.volumeGoal })}</Text>
+                    <Slider value={form.volumeGoal} min={5} max={180} onValueChange={v => setForm(f => ({ ...f, volumeGoal: Math.max(5, Math.round(v / 5) * 5) }))} theme={theme} label={t('habits.form.minutesLabel')} />
                     <View style={styles.sliderLabels}>
-                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>5 min</Text>
-                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>3 h</Text>
+                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>{t('habits.form.fiveMin')}</Text>
+                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>{t('habits.form.threeHours')}</Text>
                     </View>
                   </>
                 )}
 
                 {form.type === 'atMost' && (
                   <>
-                    <Text style={[styles.label, { color: theme.textMuted }]}>At most per day: {form.volumeGoal}</Text>
-                    <Slider value={form.volumeGoal} min={0} max={20} onValueChange={v => setForm(f => ({ ...f, volumeGoal: v }))} theme={theme} label="Daily limit" />
+                    <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.atMostPerDay', { count: form.volumeGoal })}</Text>
+                    <Slider value={form.volumeGoal} min={0} max={20} onValueChange={v => setForm(f => ({ ...f, volumeGoal: v }))} theme={theme} label={t('habits.form.dailyLimit')} />
                     <View style={styles.sliderLabels}>
                       <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>0</Text>
                       <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>20</Text>
                     </View>
-                    <Text style={[styles.label, { color: theme.textMuted }]}>Unit (optional)</Text>
+                    <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.unit')}</Text>
                     <TextInput
                       style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
-                      placeholder="coffees, cigarettes, hours…"
+                      placeholder={t('habits.form.unitPlaceholderLimit')}
                       placeholderTextColor={theme.textMuted}
                       value={form.unit || ''}
                       onChangeText={unit => setForm(f => ({ ...f, unit }))}
                       maxLength={20}
                       returnKeyType="done"
                       onSubmitEditing={Keyboard.dismiss}
-                      accessibilityLabel="Unit"
+                      accessibilityLabel={t('habits.form.unitA11y')}
                     />
                   </>
                 )}
 
                 {form.type === 'volume' && (
                   <>
-                    <Text style={[styles.label, { color: theme.textMuted }]}>Times per day: {form.volumeGoal}</Text>
+                    <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.timesPerDay', { count: form.volumeGoal })}</Text>
                     <View style={styles.volMaxRow}>
                       {VOLUME_MAX_OPTIONS.map(opt => (
                         <TouchableOpacity
@@ -487,7 +485,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                           onPress={() => handleVolMaxChange(opt.max)}
                         >
                           <Text style={[styles.volMaxBtnText, { color: volMax === opt.max ? theme.primary : theme.textMuted }]}>
-                            Max {opt.label}
+                            {t('habits.form.max', { max: opt.label })}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -503,17 +501,17 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                       <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>2</Text>
                       <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>{volMax}</Text>
                     </View>
-                    <Text style={[styles.label, { color: theme.textMuted }]}>Unit (optional)</Text>
+                    <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.unit')}</Text>
                     <TextInput
                       style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
-                      placeholder="glasses, pages, minutes…"
+                      placeholder={t('habits.form.unitPlaceholderVolume')}
                       placeholderTextColor={theme.textMuted}
                       value={form.unit || ''}
                       onChangeText={unit => setForm(f => ({ ...f, unit }))}
                       maxLength={20}
                       returnKeyType="done"
                       onSubmitEditing={Keyboard.dismiss}
-                      accessibilityLabel="Unit"
+                      accessibilityLabel={t('habits.form.unitA11y')}
                     />
                   </>
                 )}
@@ -526,7 +524,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
               onPress={onSave}
               disabled={!form.name.trim()}
             >
-              <Text style={styles.saveBtnText}>{editingId ? 'Save Changes' : 'Add Habit'}</Text>
+              <Text style={styles.saveBtnText}>{editingId ? t('habits.form.saveChanges') : t('habits.form.addHabit')}</Text>
             </TouchableOpacity>
           </ScrollView>
     </BottomSheet>
@@ -542,7 +540,7 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen, reorder, onM
     <View style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       {habit.color ? <View style={[styles.rowStripe, { backgroundColor: accent }]} /> : null}
       <HabitIcon habit={habit} size={26} imageStyle={styles.rowIconImage} textStyle={styles.rowIcon} />
-      <TouchableOpacity style={styles.rowInfo} onPress={onOpen} activeOpacity={0.6} accessibilityRole="button" accessibilityLabel={`${habit.name}, show details`}>
+      <TouchableOpacity style={styles.rowInfo} onPress={onOpen} activeOpacity={0.6} accessibilityRole="button" accessibilityLabel={t('habits.row.detailsA11y', { name: habit.name })}>
         <Text style={[styles.rowName, { color: theme.text }]} numberOfLines={1}>{habit.name}</Text>
         <View style={styles.rowMeta}>
           <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
@@ -552,43 +550,43 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen, reorder, onM
           </View>
           {habit.timeOfDay && habit.timeOfDay !== 'anytime' && (
             <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
-              <Text style={[styles.typePillText, { color: theme.primary }]}>{TIME_OPTIONS.find(t => t.value === habit.timeOfDay)?.label}</Text>
+              <Text style={[styles.typePillText, { color: theme.primary }]}>{t(`timeOfDay.${habit.timeOfDay}`)}</Text>
             </View>
           )}
           {scheduleLabel && (
             <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
-              <Text style={[styles.typePillText, { color: theme.primary }]}>📅 {scheduleLabel}</Text>
+              <Text style={[styles.typePillText, { color: theme.primary }]}>{t('habits.row.schedulePill', { schedule: scheduleLabel })}</Text>
             </View>
           )}
           {reminderTime && (
             <View style={[styles.reminderPill, { backgroundColor: theme.primaryLight }]}>
-              <Text style={[styles.reminderPillText, { color: theme.primary }]}>🔔 {reminderTime}</Text>
+              <Text style={[styles.reminderPillText, { color: theme.primary }]}>{t('habits.row.reminderPill', { time: reminderTime })}</Text>
             </View>
           )}
         </View>
       </TouchableOpacity>
       {reorder ? (
         <>
-          <TouchableOpacity style={[styles.moveBtn, { borderColor: theme.border, opacity: isFirst ? 0.3 : 1 }]} onPress={() => !isFirst && onMove(-1)} accessibilityRole="button" accessibilityLabel="Move up">
+          <TouchableOpacity style={[styles.moveBtn, { borderColor: theme.border, opacity: isFirst ? 0.3 : 1 }]} onPress={() => !isFirst && onMove(-1)} accessibilityRole="button" accessibilityLabel={t('habits.row.moveUp')}>
             <Ionicons name="chevron-up" size={18} color={theme.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.moveBtn, { borderColor: theme.border, opacity: isLast ? 0.3 : 1 }]} onPress={() => !isLast && onMove(1)} accessibilityRole="button" accessibilityLabel="Move down">
+          <TouchableOpacity style={[styles.moveBtn, { borderColor: theme.border, opacity: isLast ? 0.3 : 1 }]} onPress={() => !isLast && onMove(1)} accessibilityRole="button" accessibilityLabel={t('habits.row.moveDown')}>
             <Ionicons name="chevron-down" size={18} color={theme.text} />
           </TouchableOpacity>
         </>
       ) : (
         <>
-          <TouchableOpacity style={styles.bellBtn} onPress={onBell} accessibilityRole="button" accessibilityLabel={reminderOn ? 'Turn reminder off' : 'Set reminder'}>
+          <TouchableOpacity style={styles.bellBtn} onPress={onBell} accessibilityRole="button" accessibilityLabel={reminderOn ? t('habits.row.reminderOff') : t('habits.row.setReminder')}>
             <Ionicons
               name={reminderOn ? 'notifications' : 'notifications-outline'}
               size={20}
               color={reminderOn ? theme.primary : theme.textMuted}
             />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.editBtn} onPress={onEdit} accessibilityRole="button" accessibilityLabel="Edit habit">
-            <Text style={[styles.editBtnText, { color: theme.textMuted }]}>Edit</Text>
+          <TouchableOpacity style={styles.editBtn} onPress={onEdit} accessibilityRole="button" accessibilityLabel={t('habits.row.editA11y')}>
+            <Text style={[styles.editBtnText, { color: theme.textMuted }]}>{t('common.edit')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} accessibilityRole="button" accessibilityLabel="Archive or delete habit">
+          <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} accessibilityRole="button" accessibilityLabel={t('habits.row.archiveA11y')}>
             <Ionicons name="archive-outline" size={18} color={theme.textMuted} />
           </TouchableOpacity>
         </>
@@ -604,10 +602,10 @@ function ArchivedRow({ habit, theme, onRestore, onDelete }) {
       <View style={styles.rowInfo}>
         <Text style={[styles.rowName, { color: theme.textMuted }]} numberOfLines={1}>{habit.name}</Text>
       </View>
-      <TouchableOpacity style={styles.editBtn} onPress={onRestore} accessibilityRole="button" accessibilityLabel="Restore habit">
-        <Text style={[styles.editBtnText, { color: theme.primary }]}>Restore</Text>
+      <TouchableOpacity style={styles.editBtn} onPress={onRestore} accessibilityRole="button" accessibilityLabel={t('habits.row.restoreA11y')}>
+        <Text style={[styles.editBtnText, { color: theme.primary }]}>{t('habits.row.restore')}</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} accessibilityRole="button" accessibilityLabel="Delete habit permanently">
+      <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} accessibilityRole="button" accessibilityLabel={t('habits.row.deleteForeverA11y')}>
         <Ionicons name="trash-outline" size={18} color={theme.danger} />
       </TouchableOpacity>
     </View>
@@ -621,6 +619,7 @@ export default function HabitsScreen() {
     pendingRoute, clearPendingRoute, canAddHabit,
     setModalOpen, settings,
   } = useApp();
+  useLocale();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(BLANK);
@@ -709,17 +708,17 @@ export default function HabitsScreen() {
   // Archive is the default; permanent deletion is one more step away.
   const handleDelete = (id, name) => {
     if (settings.hapticsEnabled) lightImpact();
-    Alert.alert('Archive Habit', `Archive "${name}"? It leaves Today but keeps its history, and you can restore it any time.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete forever', style: 'destructive', onPress: () => handleDeleteForever(id, name) },
-      { text: 'Archive', onPress: () => archiveHabit(id) },
+    Alert.alert(t('habits.archive.title'), t('habits.archive.body', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('habits.archive.deleteForever'), style: 'destructive', onPress: () => handleDeleteForever(id, name) },
+      { text: t('habits.archive.archive'), onPress: () => archiveHabit(id) },
     ]);
   };
 
   const handleDeleteForever = (id, name) => {
-    Alert.alert('Delete Habit', `Permanently delete "${name}" and its history? This can't be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteHabit(id) },
+    Alert.alert(t('habits.deleteHabit.title'), t('habits.deleteHabit.body', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteHabit(id) },
     ]);
   };
 
@@ -740,7 +739,7 @@ export default function HabitsScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
-          <Text style={[styles.heading, { color: theme.text }]}>My Habits</Text>
+          <Text style={[styles.heading, { color: theme.text }]}>{t('habits.title')}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {habits.length > 1 && (
               <TouchableOpacity
@@ -748,13 +747,13 @@ export default function HabitsScreen() {
                 onPress={() => { if (settings.hapticsEnabled) lightImpact(); setReorder(r => !r); }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: reorder }}
-                accessibilityLabel={reorder ? 'Finish reordering' : 'Reorder habits'}
+                accessibilityLabel={reorder ? t('habits.finishReorder') : t('habits.reorder')}
               >
                 <Ionicons name={reorder ? 'checkmark' : 'swap-vertical'} size={18} color={reorder ? theme.primary : theme.textMuted} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.primary }]} onPress={openAdd} accessibilityRole="button" accessibilityLabel="Add habit">
-              <Text style={styles.addBtnText}>+ Add</Text>
+            <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.primary }]} onPress={openAdd} accessibilityRole="button" accessibilityLabel={t('habits.addA11y')}>
+              <Text style={styles.addBtnText}>{t('habits.add')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -762,8 +761,8 @@ export default function HabitsScreen() {
         {habits.length === 0 ? (
           <EmptyCard
             emoji="📋"
-            title="No Habits Yet"
-            body="Get started"
+            title={t('habits.empty.title')}
+            body={t('habits.empty.body')}
             theme={theme}
             titleColor={theme.textMuted}
             style={{ backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }}
@@ -792,7 +791,7 @@ export default function HabitsScreen() {
 
         {archivedHabits.length > 0 && (
           <View style={{ marginTop: 20 }}>
-            <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>ARCHIVED ({archivedHabits.length})</Text>
+            <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>{t('habits.archived', { count: archivedHabits.length })}</Text>
             {archivedHabits.map(habit => (
               <ArchivedRow
                 key={habit.id}

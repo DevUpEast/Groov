@@ -30,6 +30,7 @@ import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../u
 import { mergeBackup } from '../utils/backup';
 import { initAnalytics, track, Events } from '../utils/analytics';
 import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocalUri, localIconExists } from '../services/icons';
+import { t, useLocale } from '../i18n';
 
 const AppContext = createContext(null);
 
@@ -63,11 +64,12 @@ const DEFAULT_SETTINGS = {
   milestones: [],
 };
 
+// Labels are translated on read so a locale change applies without a reload.
 export const STREAK_MILESTONES = [
-  { days: 7, emoji: '🥉', label: 'One week' },
-  { days: 30, emoji: '🥈', label: 'One month' },
-  { days: 100, emoji: '🥇', label: '100 days' },
-  { days: 365, emoji: '💎', label: 'One year' },
+  { days: 7, emoji: '🥉', get label() { return t('milestones.week'); } },
+  { days: 30, emoji: '🥈', get label() { return t('milestones.month'); } },
+  { days: 100, emoji: '🥇', get label() { return t('milestones.hundred'); } },
+  { days: 365, emoji: '💎', get label() { return t('milestones.year'); } },
 ];
 
 // The challenge promised on the last onboarding slide. An empty linkedHabitIds means
@@ -75,8 +77,8 @@ export const STREAK_MILESTONES = [
 function makeStarterChallenge(startDate) {
   return {
     id: Date.now().toString(),
-    name: '3-Day Kickstart',
-    description: 'Complete all your habits for 3 days in a row to build your foundation.',
+    name: t('app.kickstart.name'),
+    description: t('app.kickstart.description'),
     days: 3,
     icon: '🌱',
     completedDays: [],
@@ -170,6 +172,7 @@ function migrateChallenges(chs) {
 }
 
 export function AppProvider({ children }) {
+  const { locale } = useLocale();
   // Every habit, archived ones included. `habits` (below) is the active, ordered list
   // that the rest of the app works with.
   const [allHabits, setHabits] = useState([]);
@@ -384,9 +387,9 @@ export function AppProvider({ children }) {
     const state = await getPermissionState();
     if (state === 'granted') return true;
     if (state === 'denied') {
-      Alert.alert('Notifications are off', 'Turn them on for Groov in your device settings to get reminders.', [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Open Settings', onPress: () => Linking.openSettings().catch(() => {}) },
+      Alert.alert(t('app.notificationsOff.title'), t('app.notificationsOff.body'), [
+        { text: t('common.notNow'), style: 'cancel' },
+        { text: t('app.notificationsOff.openSettings'), onPress: () => Linking.openSettings().catch(() => {}) },
       ]);
       return false;
     }
@@ -458,16 +461,16 @@ export function AppProvider({ children }) {
       QuickActions.setItems([
         // Icons: SF Symbols on iOS; Android falls back to the app icon when the named
         // drawable is absent, which is fine for now.
-        { id: 'today', title: 'Today', subtitle: 'Check off your habits', icon: Platform.OS === 'ios' ? 'symbol:checkmark.circle' : undefined, params: { href: 'groov://today' } },
-        { id: 'new-habit', title: 'New habit', icon: Platform.OS === 'ios' ? 'symbol:plus' : undefined, params: { href: 'groov://habits/new' } },
-        { id: 'progress', title: 'Progress', icon: Platform.OS === 'ios' ? 'symbol:chart.bar' : undefined, params: { href: 'groov://progress' } },
+        { id: 'today', title: t('app.quickActions.today'), subtitle: t('app.quickActions.todaySubtitle'), icon: Platform.OS === 'ios' ? 'symbol:checkmark.circle' : undefined, params: { href: 'groov://today' } },
+        { id: 'new-habit', title: t('app.quickActions.newHabit'), icon: Platform.OS === 'ios' ? 'symbol:plus' : undefined, params: { href: 'groov://habits/new' } },
+        { id: 'progress', title: t('app.quickActions.progress'), icon: Platform.OS === 'ios' ? 'symbol:chart.bar' : undefined, params: { href: 'groov://progress' } },
       ]);
     } catch {}
     const onAction = (a) => { const href = a?.params?.href; if (href) { const r = parseDeepLink(href); if (r) routeRef.current?.(r); } };
     if (QuickActions.initial) onAction(QuickActions.initial);
     const sub = QuickActions.addListener(onAction);
     return () => sub.remove();
-  }, [loaded]);
+  }, [loaded, locale]);
   useEffect(() => {
     if (!loaded) return;
     return listenForNotificationResponses((evt) => actionRef.current?.(evt));

@@ -1,6 +1,8 @@
 // JSON backup format (#22). Pure helpers: building a backup object from app state,
 // validating one that came back in, and summarising it for the confirm dialog.
 
+import { t } from '../i18n';
+
 export const BACKUP_FORMAT = 'groov-backup';
 export const BACKUP_VERSION = 1;
 
@@ -32,14 +34,14 @@ const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 export function validateBackup(input) {
   let parsed = input;
   if (typeof input === 'string') {
-    try { parsed = JSON.parse(input); } catch { return { ok: false, error: 'That file is not valid JSON.' }; }
+    try { parsed = JSON.parse(input); } catch { return { ok: false, error: t('backup.invalidJson') }; }
   }
-  if (!isObj(parsed) || parsed.format !== BACKUP_FORMAT) return { ok: false, error: 'That file is not a Groov backup.' };
+  if (!isObj(parsed) || parsed.format !== BACKUP_FORMAT) return { ok: false, error: t('backup.notBackup') };
   if (typeof parsed.version !== 'number' || parsed.version > BACKUP_VERSION) {
-    return { ok: false, error: 'This backup was made by a newer version of Groov. Update the app and try again.' };
+    return { ok: false, error: t('backup.newerVersion') };
   }
   const d = parsed.data;
-  if (!isObj(d)) return { ok: false, error: 'The backup has no data section.' };
+  if (!isObj(d)) return { ok: false, error: t('backup.noData') };
 
   const habits = Array.isArray(d.habits)
     ? d.habits.filter(h => isObj(h) && typeof h.id === 'string' && typeof h.name === 'string')
@@ -72,7 +74,7 @@ export function validateBackup(input) {
   const accountCreatedAt = typeof d.accountCreatedAt === 'string' && DATE_RE.test(d.accountCreatedAt) ? d.accountCreatedAt : null;
 
   if (habits.length === 0 && Object.keys(completions).length === 0 && challenges.length === 0 && pastChallenges.length === 0) {
-    return { ok: false, error: 'The backup is empty.' };
+    return { ok: false, error: t('backup.empty') };
   }
   return {
     ok: true,
@@ -83,7 +85,12 @@ export function validateBackup(input) {
 
 export function summarizeBackup(data) {
   const days = Object.keys(data.completions || {}).length;
-  return `${data.habits.length} habit${data.habits.length !== 1 ? 's' : ''}, ${days} day${days !== 1 ? 's' : ''} of history, ${data.challenges.length + data.pastChallenges.length} challenge${data.challenges.length + data.pastChallenges.length !== 1 ? 's' : ''}`;
+  const challenges = data.challenges.length + data.pastChallenges.length;
+  return t('backup.summary', {
+    habits: t('backup.habits', { count: data.habits.length }),
+    days: t('backup.days', { count: days }),
+    challenges: t('backup.challenges', { count: challenges }),
+  });
 }
 
 // Merge a backup over current state: records by id (backup wins), day maps per

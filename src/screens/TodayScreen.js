@@ -24,15 +24,11 @@ import { fetchDailyNudge } from '../services/aiCoaching';
 import { localDateKey, parseDateKey } from '../utils/dates';
 import { maybeRequestReview } from '../services/review';
 import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
+import { t, getLocale, useLocale } from '../i18n';
 
 // Today list sections. Habits without a time of day go under "Anytime", which is
 // omitted (plain list) when no habit has a time set at all.
-const TIME_SECTIONS = [
-  { key: 'morning', label: '🌅 Morning' },
-  { key: 'afternoon', label: '☀️ Afternoon' },
-  { key: 'evening', label: '🌙 Evening' },
-  { key: 'anytime', label: '✨ Anytime' },
-];
+const TIME_SECTIONS = ['morning', 'afternoon', 'evening', 'anytime'];
 
 function SproutIcon({ size = 24 }) {
   return (
@@ -51,15 +47,15 @@ function getGreeting(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
   const h = d.getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return t('today.greeting.morning');
+  if (h < 17) return t('today.greeting.afternoon');
+  return t('today.greeting.evening');
 }
 
 function getDateString(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return d.toLocaleDateString(getLocale(), { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
 function hapticFillSequence(hapticsEnabled) {
@@ -86,6 +82,7 @@ export default function TodayScreen() {
     pendingMilestone, clearPendingMilestone,
     moods, setMood,
   } = useApp();
+  useLocale();
 
   // Big celebration only for streak milestones; a perfect day gets a light cheer.
   const [milestoneShown, setMilestoneShown] = useState(null);
@@ -108,7 +105,7 @@ export default function TodayScreen() {
     setNoteTarget({
       habitId: habit.id, habitName: habit.name, key,
       note: getNote(habit.id, key),
-      dateLabel: parseDateKey(key).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      dateLabel: parseDateKey(key).toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric' }),
     });
   }, [getNote]);
 
@@ -116,7 +113,7 @@ export default function TodayScreen() {
     const anyTimed = dueHabits.some(h => h.timeOfDay && h.timeOfDay !== 'anytime');
     if (!anyTimed) return null;
     return TIME_SECTIONS
-      .map(s => ({ ...s, habits: dueHabits.filter(h => (h.timeOfDay || 'anytime') === s.key) }))
+      .map(key => ({ key, habits: dueHabits.filter(h => (h.timeOfDay || 'anytime') === key) }))
       .filter(s => s.habits.length > 0);
   }, [dueHabits]);
   const { user } = useAuth();
@@ -227,7 +224,7 @@ export default function TodayScreen() {
     const justCompleted = incrementHabit(habit.id, amount);
     if (justCompleted === false && !usesCounter(habit) && before >= 1) return; // already checked
     const over = habit.type === 'atMost' && before + amount > habit.volumeGoal;
-    setToast({ habit, amount, message: justCompleted ? (habit.type === 'quit' ? `${habit.name}: avoided ✓` : `${habit.name} done ✓`) : over ? `${habit.name}: over your limit` : `${habit.name} +${amount}` });
+    setToast({ habit, amount, message: justCompleted ? (habit.type === 'quit' ? t('today.toast.avoided', { name: habit.name }) : t('today.toast.done', { name: habit.name })) : over ? t('today.toast.overLimit', { name: habit.name }) : t('today.toast.plus', { name: habit.name, amount }) });
     if (settings.hapticsEnabled) await mediumImpact();
     if (settings.soundEnabled) (justCompleted ? playSuccessChime : playChime)();
 
@@ -322,13 +319,13 @@ export default function TodayScreen() {
         <View style={[styles.header, { backgroundColor: theme.primary }]}>
           <View style={styles.greetingRow}>
             <Text style={styles.greeting}>
-              {getGreeting(dateOffset)}{displayName ? `, ${displayName}` : ''}
+              {displayName ? t('today.greeting.withName', { greeting: getGreeting(dateOffset), name: displayName }) : getGreeting(dateOffset)}
             </Text>
             <SproutIcon size={26} />
           </View>
           <Text style={styles.date}>{getDateString(dateOffset)}</Text>
 
-          <View style={styles.ringRow} accessible={true} accessibilityLabel={`${completed} of ${total} habits done today`}>
+          <View style={styles.ringRow} accessible={true} accessibilityLabel={t('today.ring.a11y', { completed, total })}>
             <ProgressRing
               progress={progress}
               size={110}
@@ -336,17 +333,17 @@ export default function TodayScreen() {
               color="#fff"
               bg="rgba(255,255,255,0.25)"
               label={`${completed}/${total}`}
-              sublabel="habits"
+              sublabel={t('today.ring.habits')}
               sublabelColor="rgba(255,255,255,0.85)"
             />
             <View style={styles.ringLabels}>
               <Text style={styles.ringTitle}>
-                {allDone ? '🎉 All done!' : `${total - completed} remaining`}
+                {allDone ? t('today.ring.allDone') : t('today.ring.remaining', { count: total - completed })}
               </Text>
               <Text style={styles.ringSubtitle}>
                 {allDone
-                  ? 'Amazing work today!'
-                  : `Keep going, you're at ${Math.round(progress * 100)}%`}
+                  ? t('today.ring.amazing')
+                  : t('today.ring.keepGoing', { percent: Math.round(progress * 100) })}
               </Text>
             </View>
           </View>
@@ -359,7 +356,7 @@ export default function TodayScreen() {
             <View style={[styles.nudgeCard, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
               <Text style={styles.nudgeEmoji}>✨</Text>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.nudgeLabel, { color: theme.primary }]}>AI Coach</Text>
+                <Text style={[styles.nudgeLabel, { color: theme.primary }]}>{t('today.coach')}</Text>
                 {nudgeLoading ? (
                   <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 4 }} />
                 ) : (
@@ -373,8 +370,8 @@ export default function TodayScreen() {
             <>
               <EmptyCard
                 emoji="🌱"
-                title="Get into Rhythm"
-                body="Add your first habit"
+                title={t('today.empty.title')}
+                body={t('today.empty.body')}
                 theme={theme}
                 style={{ backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }}
               >
@@ -386,7 +383,7 @@ export default function TodayScreen() {
                   }}
                   activeOpacity={0.85}
                   accessibilityRole="button"
-                  accessibilityLabel="Add your first habit"
+                  accessibilityLabel={t('today.empty.addA11y')}
                 >
                   <Ionicons name="add" size={28} color="#fff" />
                 </TouchableOpacity>
@@ -400,12 +397,12 @@ export default function TodayScreen() {
                   }}
                   activeOpacity={0.75}
                   accessibilityRole="button"
-                  accessibilityLabel="No challenges yet. Start your first challenge"
+                  accessibilityLabel={t('today.noChallenges.a11y')}
                 >
                   <Text style={styles.challengeEmptyIcon}>🏆</Text>
                   <View style={styles.challengeEmptyText}>
-                    <Text style={[styles.challengeEmptyTitle, { color: theme.text }]}>No challenges yet</Text>
-                    <Text style={[styles.challengeEmptyBody, { color: theme.textMuted }]}>Start your first challenge</Text>
+                    <Text style={[styles.challengeEmptyTitle, { color: theme.text }]}>{t('today.noChallenges.title')}</Text>
+                    <Text style={[styles.challengeEmptyBody, { color: theme.textMuted }]}>{t('today.noChallenges.body')}</Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -413,29 +410,29 @@ export default function TodayScreen() {
           ) : dueHabits.length === 0 ? (
             <EmptyCard
               emoji="🛋️"
-              title="Rest day"
-              body="None of your habits are scheduled today. Enjoy the break, your streaks are safe."
+              title={t('today.restDay.title')}
+              body={t('today.restDay.body')}
               theme={theme}
               style={{ backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, marginTop: 0 }}
             />
           ) : (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>TODAY'S HABITS</Text>
+                <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>{t('today.sectionHabits')}</Text>
                 <TouchableOpacity
                   onPress={handleSelectAll}
                   style={[styles.selectAllBtn, { borderColor: allDone ? theme.primary : theme.border }]}
                   accessibilityRole="button"
-                  accessibilityLabel={allDone ? 'Unmark all habits' : 'Mark all habits done'}
+                  accessibilityLabel={allDone ? t('today.unmarkAllA11y') : t('today.markAllA11y')}
                 >
                   <Text style={[styles.selectAllBtnText, { color: allDone ? theme.primary : theme.textMuted }]}>
-                    {allDone ? 'Unmark All' : 'Mark All'}
+                    {allDone ? t('today.unmarkAll') : t('today.markAll')}
                   </Text>
                 </TouchableOpacity>
               </View>
               {grouped ? grouped.map(section => (
                 <View key={section.key}>
-                  <Text style={[styles.timeLabel, { color: theme.textMuted }]}>{section.label}</Text>
+                  <Text style={[styles.timeLabel, { color: theme.textMuted }]}>{t(`today.sections.${section.key}`)}</Text>
                   {section.habits.map(habit => (
                     <HabitCard
                       key={habit.id}
@@ -465,7 +462,7 @@ export default function TodayScreen() {
           {/* Active Challenges */}
           {effectiveChallenges.filter(ch => !isChallengeExpired(ch, today)).length > 0 && (
             <View style={styles.challengesSection}>
-              <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>ACTIVE CHALLENGES</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>{t('today.activeChallenges')}</Text>
               {effectiveChallenges
                 .filter(ch => !isChallengeExpired(ch, today))
                 .map(ch => {
@@ -478,19 +475,19 @@ export default function TodayScreen() {
                       key={ch.id}
                       style={[styles.challengeMini, { backgroundColor: theme.surface, borderColor: theme.border }]}
                       accessible={true}
-                      accessibilityLabel={`${ch.name}, day ${currentDay} of ${ch.days}, ${todayDone ? 'done' : 'pending'}`}
+                      accessibilityLabel={t(todayDone ? 'today.challenge.a11yDone' : 'today.challenge.a11yPending', { name: ch.name, day: currentDay, days: ch.days })}
                     >
                       <View style={styles.challengeMiniRow}>
                         <Text style={styles.challengeMiniIcon}>{ch.icon || '🏆'}</Text>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.challengeMiniName, { color: theme.text }]} numberOfLines={1}>{ch.name}</Text>
                           <Text style={[styles.challengeMiniSub, { color: theme.textMuted }]}>
-                            Day {currentDay} of {ch.days} · {completedCount} logged
+                            {t('today.challenge.sub', { day: currentDay, days: ch.days, count: completedCount })}
                           </Text>
                         </View>
                         {todayDone
-                          ? <Text style={[styles.challengeMiniStatus, { color: theme.success }]}>✅ Done</Text>
-                          : <Text style={[styles.challengeMiniStatus, { color: theme.textMuted }]}>Pending</Text>
+                          ? <Text style={[styles.challengeMiniStatus, { color: theme.success }]}>{t('today.challenge.done')}</Text>
+                          : <Text style={[styles.challengeMiniStatus, { color: theme.textMuted }]}>{t('today.challenge.pending')}</Text>
                         }
                       </View>
                       <View style={[styles.challengeMiniProgressBg, { backgroundColor: theme.progressBarBg }]}>
@@ -533,8 +530,8 @@ export default function TodayScreen() {
         }}
         primaryColor={theme.primary}
         emoji={milestoneShown?.emoji ?? '🎉'}
-        title={milestoneShown ? `${milestoneShown.days}-day streak!` : 'Congrats!'}
-        subtitle={milestoneShown ? `${milestoneShown.label} of showing up. That's a real habit now.` : 'You completed all tasks for the day!'}
+        title={milestoneShown ? t('today.milestone.title', { days: milestoneShown.days }) : t('today.congrats')}
+        subtitle={milestoneShown ? t('today.milestone.subtitle', { label: milestoneShown.label }) : t('today.allTasks')}
       />
 
       <TrophyCelebration

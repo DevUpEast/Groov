@@ -4,6 +4,7 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { buildBackup, validateBackup, backupFileName } from '../utils/backup';
 import { localDateKey } from '../utils/dates';
+import { t } from '../i18n';
 
 // Write the backup JSON to the cache dir and hand it to the share sheet (native) or
 // trigger a download (web). Resolves true when the user was shown a way to save it.
@@ -22,8 +23,8 @@ export async function exportBackup(state) {
 
   const file = new File(Paths.cache, name);
   file.write(json);
-  if (!(await Sharing.isAvailableAsync())) throw new Error('Sharing is not available on this device.');
-  await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Save your Groov backup', UTI: 'public.json' });
+  if (!(await Sharing.isAvailableAsync())) throw new Error(t('backup.sharingUnavailable'));
+  await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: t('backup.dialogTitle'), UTI: 'public.json' });
   return true;
 }
 

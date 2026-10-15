@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth, AUTH_CANCELLED } from '../context/AuthContext';
 import { themes } from '../theme/colors';
+import { t, useLocale } from '../i18n';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState('login'); // 'login' | 'register' | 'forgot' | 'reset'
@@ -33,6 +34,7 @@ export default function AuthScreen() {
     signInWithApple, signInWithGoogle, appleAvailable, signInAnonymously,
   } = useAuth();
   const [socialLoading, setSocialLoading] = useState(null); // 'apple' | 'google' | null
+  useLocale();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
   const theme = themes[isDark ? 'dark' : 'light'];
@@ -49,7 +51,7 @@ export default function AuthScreen() {
       // On success onAuthStateChange swaps AuthScreen out for the app.
     } catch (e) {
       if (e?.code !== AUTH_CANCELLED) {
-        setError(e?.message || `Could not sign in with ${provider === 'apple' ? 'Apple' : 'Google'}. Please try again.`);
+        setError(e?.message || t('auth.errors.socialFailed', { provider: provider === 'apple' ? t('auth.providers.apple') : t('auth.providers.google') }));
       }
     } finally {
       setSocialLoading(null);
@@ -61,19 +63,19 @@ export default function AuthScreen() {
     setSuccessMsg('');
 
     if (mode === 'register' && !displayName.trim()) {
-      setError('Please enter a display name.');
+      setError(t('auth.errors.displayNameRequired'));
       return;
     }
     if (!email.trim() || !password.trim()) {
-      setError('Email and password are required.');
+      setError(t('auth.errors.emailPasswordRequired'));
       return;
     }
     if (mode === 'register' && password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError(t('auth.errors.mismatch'));
       return;
     }
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError(t('auth.errors.min8'));
       return;
     }
 
@@ -84,12 +86,12 @@ export default function AuthScreen() {
       } else {
         const data = await signUp(email.trim(), password, displayName.trim());
         if (data?.user && !data.session) {
-          setSuccessMsg('Check your email to confirm your account, then log in.');
+          setSuccessMsg(t('auth.success.confirmEmail'));
           setMode('login');
         }
       }
     } catch (e) {
-      setError(e.message || 'Something went wrong. Please try again.');
+      setError(e.message || t('auth.errors.generic'));
     } finally {
       setLoading(false);
     }
@@ -112,14 +114,14 @@ export default function AuthScreen() {
   const handleForgotSend = async () => {
     setError('');
     setSuccessMsg('');
-    if (!resetEmail.trim()) { setError('Enter your email address.'); return; }
+    if (!resetEmail.trim()) { setError(t('auth.errors.enterEmail')); return; }
     setLoading(true);
     try {
       await sendPasswordReset(resetEmail);
-      setSuccessMsg(`A reset code has been sent to ${resetEmail.trim()}. Check your email and enter the code below.`);
+      setSuccessMsg(t('auth.success.codeSent', { email: resetEmail.trim() }));
       setMode('reset');
     } catch (e) {
-      setError(e.message || 'Failed to send reset email. Please try again.');
+      setError(e.message || t('auth.errors.sendFailed'));
     } finally {
       setLoading(false);
     }
@@ -127,26 +129,23 @@ export default function AuthScreen() {
 
   const handleResetVerify = async () => {
     setError('');
-    if (!resetCode.trim()) { setError('Enter the code from your email.'); return; }
-    if (!newPassword) { setError('Enter a new password.'); return; }
-    if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return; }
-    if (newPassword !== confirmNewPassword) { setError('Passwords do not match.'); return; }
+    if (!resetCode.trim()) { setError(t('auth.errors.enterCode')); return; }
+    if (!newPassword) { setError(t('auth.errors.enterNewPassword')); return; }
+    if (newPassword.length < 8) { setError(t('auth.errors.min8')); return; }
+    if (newPassword !== confirmNewPassword) { setError(t('auth.errors.mismatch')); return; }
     setLoading(true);
     try {
       await verifyPasswordReset(resetEmail, resetCode, newPassword);
-      setSuccessMsg('Password updated successfully! You can now log in.');
+      setSuccessMsg(t('auth.success.passwordUpdated'));
       switchMode('login');
     } catch (e) {
-      setError(e.message || 'Invalid or expired code. Please try again.');
+      setError(e.message || t('auth.errors.invalidCode'));
     } finally {
       setLoading(false);
     }
   };
 
-  const tagline = mode === 'login' ? 'Welcome back'
-    : mode === 'register' ? 'Create your account'
-    : mode === 'forgot' ? 'Reset your password'
-    : 'Enter your reset code';
+  const tagline = t(`auth.tagline.${mode}`);
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: theme.bg }]}>
@@ -173,7 +172,7 @@ export default function AuthScreen() {
                     accessibilityState={{ selected: mode === m }}
                   >
                     <Text style={[s.tabText, { color: mode === m ? '#fff' : theme.textMuted }]}>
-                      {m === 'login' ? 'Log In' : 'Register'}
+                      {m === 'login' ? t('auth.login') : t('auth.register')}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -184,13 +183,13 @@ export default function AuthScreen() {
               {/* ── Forgot Password: enter email ── */}
               {mode === 'forgot' && (
                 <>
-                  <Text style={[s.label, { color: theme.textMuted }]}>Email</Text>
+                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.email')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={resetEmail}
                     onChangeText={setResetEmail}
-                    accessibilityLabel="Email"
-                    placeholder="you@example.com"
+                    accessibilityLabel={t('auth.email')}
+                    placeholder={t('auth.emailPlaceholder')}
                     placeholderTextColor={theme.textMuted}
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -204,10 +203,10 @@ export default function AuthScreen() {
                     disabled={loading}
                     activeOpacity={0.85}
                     accessibilityRole="button"
-                    accessibilityLabel="Send Reset Code"
+                    accessibilityLabel={t('auth.sendResetCode')}
                     accessibilityState={{ disabled: loading, busy: loading }}
                   >
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Send Reset Code</Text>}
+                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>{t('auth.sendResetCode')}</Text>}
                   </TouchableOpacity>
                 </>
               )}
@@ -216,33 +215,33 @@ export default function AuthScreen() {
               {mode === 'reset' && (
                 <>
                   {!!successMsg && <Text style={[s.msg, { color: theme.success, marginBottom: 8 }]}>{successMsg}</Text>}
-                  <Text style={[s.label, { color: theme.textMuted }]}>Reset Code</Text>
+                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.resetCode')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={resetCode}
                     onChangeText={setResetCode}
-                    accessibilityLabel="Reset code"
-                    placeholder="Code from your email"
+                    accessibilityLabel={t('auth.resetCode')}
+                    placeholder={t('auth.codePlaceholder')}
                     placeholderTextColor={theme.textMuted}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
-                  <Text style={[s.label, { color: theme.textMuted }]}>New Password</Text>
+                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.newPassword')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={newPassword}
                     onChangeText={setNewPassword}
-                    accessibilityLabel="New password"
+                    accessibilityLabel={t('auth.newPassword')}
                     placeholder="••••••••"
                     placeholderTextColor={theme.textMuted}
                     secureTextEntry
                   />
-                  <Text style={[s.label, { color: theme.textMuted }]}>Confirm New Password</Text>
+                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.confirmNewPassword')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={confirmNewPassword}
                     onChangeText={setConfirmNewPassword}
-                    accessibilityLabel="Confirm new password"
+                    accessibilityLabel={t('auth.confirmNewPassword')}
                     placeholder="••••••••"
                     placeholderTextColor={theme.textMuted}
                     secureTextEntry
@@ -254,10 +253,10 @@ export default function AuthScreen() {
                     disabled={loading}
                     activeOpacity={0.85}
                     accessibilityRole="button"
-                    accessibilityLabel="Set New Password"
+                    accessibilityLabel={t('auth.setNewPassword')}
                     accessibilityState={{ disabled: loading, busy: loading }}
                   >
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Set New Password</Text>}
+                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>{t('auth.setNewPassword')}</Text>}
                   </TouchableOpacity>
                 </>
               )}
@@ -267,13 +266,13 @@ export default function AuthScreen() {
                 <>
                   {mode === 'register' && (
                     <>
-                      <Text style={[s.label, { color: theme.textMuted }]}>Display Name</Text>
+                      <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.displayName')}</Text>
                       <TextInput
                         style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                         value={displayName}
                         onChangeText={setDisplayName}
-                        accessibilityLabel="Display name"
-                        placeholder="What should we call you?"
+                        accessibilityLabel={t('auth.displayName')}
+                        placeholder={t('auth.displayNamePlaceholder')}
                         placeholderTextColor={theme.textMuted}
                         autoCapitalize="words"
                         autoCorrect={false}
@@ -282,26 +281,26 @@ export default function AuthScreen() {
                     </>
                   )}
 
-                  <Text style={[s.label, { color: theme.textMuted }]}>Email</Text>
+                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.email')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={email}
                     onChangeText={setEmail}
-                    accessibilityLabel="Email"
-                    placeholder="you@example.com"
+                    accessibilityLabel={t('auth.email')}
+                    placeholder={t('auth.emailPlaceholder')}
                     placeholderTextColor={theme.textMuted}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
 
-                  <Text style={[s.label, { color: theme.textMuted }]}>Password</Text>
+                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.password')}</Text>
                   <View style={[s.inputWrapper, { backgroundColor: theme.bg, borderColor: theme.border }]}>
                     <TextInput
                       style={[s.inputInner, { color: theme.text }]}
                       value={password}
                       onChangeText={setPassword}
-                      accessibilityLabel="Password"
+                      accessibilityLabel={t('auth.password')}
                       placeholder="••••••••"
                       placeholderTextColor={theme.textMuted}
                       secureTextEntry={!showPassword}
@@ -311,7 +310,7 @@ export default function AuthScreen() {
                       style={s.eyeBtn}
                       activeOpacity={0.6}
                       accessibilityRole="button"
-                      accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                      accessibilityLabel={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                     >
                       <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textMuted} />
                     </TouchableOpacity>
@@ -319,13 +318,13 @@ export default function AuthScreen() {
 
                   {mode === 'register' && (
                     <>
-                      <Text style={[s.label, { color: theme.textMuted }]}>Confirm Password</Text>
+                      <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.confirmPassword')}</Text>
                       <View style={[s.inputWrapper, { backgroundColor: theme.bg, borderColor: theme.border }]}>
                         <TextInput
                           style={[s.inputInner, { color: theme.text }]}
                           value={confirmPassword}
                           onChangeText={setConfirmPassword}
-                          accessibilityLabel="Confirm password"
+                          accessibilityLabel={t('auth.confirmPassword')}
                           placeholder="••••••••"
                           placeholderTextColor={theme.textMuted}
                           secureTextEntry={!showConfirmPassword}
@@ -335,7 +334,7 @@ export default function AuthScreen() {
                           style={s.eyeBtn}
                           activeOpacity={0.6}
                           accessibilityRole="button"
-                          accessibilityLabel={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                          accessibilityLabel={showConfirmPassword ? t('auth.hideConfirmPassword') : t('auth.showConfirmPassword')}
                         >
                           <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textMuted} />
                         </TouchableOpacity>
@@ -352,12 +351,12 @@ export default function AuthScreen() {
                     disabled={loading}
                     activeOpacity={0.85}
                     accessibilityRole="button"
-                    accessibilityLabel={mode === 'login' ? 'Log In' : 'Create Account'}
+                    accessibilityLabel={mode === 'login' ? t('auth.login') : t('auth.createAccount')}
                     accessibilityState={{ disabled: loading, busy: loading }}
                   >
                     {loading
                       ? <ActivityIndicator color="#fff" />
-                      : <Text style={s.btnText}>{mode === 'login' ? 'Log In' : 'Create Account'}</Text>
+                      : <Text style={s.btnText}>{mode === 'login' ? t('auth.login') : t('auth.createAccount')}</Text>
                     }
                   </TouchableOpacity>
 
@@ -368,14 +367,14 @@ export default function AuthScreen() {
                       activeOpacity={0.7}
                       accessibilityRole="link"
                     >
-                      <Text style={[s.forgotText, { color: theme.primary }]}>Forgot password?</Text>
+                      <Text style={[s.forgotText, { color: theme.primary }]}>{t('auth.forgotPassword')}</Text>
                     </TouchableOpacity>
                   )}
 
                   {/* ── Social sign-in ── */}
                   <View style={s.dividerRow}>
                     <View style={[s.dividerLine, { backgroundColor: theme.border }]} />
-                    <Text style={[s.dividerText, { color: theme.textMuted }]}>or continue with</Text>
+                    <Text style={[s.dividerText, { color: theme.textMuted }]}>{t('auth.orContinue')}</Text>
                     <View style={[s.dividerLine, { backgroundColor: theme.border }]} />
                   </View>
 
@@ -405,7 +404,7 @@ export default function AuthScreen() {
                     disabled={loading || !!socialLoading}
                     activeOpacity={0.85}
                     accessibilityRole="button"
-                    accessibilityLabel={mode === 'register' ? 'Sign up with Google' : 'Sign in with Google'}
+                    accessibilityLabel={mode === 'register' ? t('auth.googleSignUp') : t('auth.googleSignIn')}
                   >
                     {socialLoading === 'google'
                       ? <ActivityIndicator color={theme.text} />
@@ -413,7 +412,7 @@ export default function AuthScreen() {
                         <>
                           <Ionicons name="logo-google" size={18} color={theme.text} style={s.googleIcon} />
                           <Text style={[s.googleText, { color: theme.text }]}>
-                            {mode === 'register' ? 'Sign up with Google' : 'Sign in with Google'}
+                            {mode === 'register' ? t('auth.googleSignUp') : t('auth.googleSignIn')}
                           </Text>
                         </>
                       )}
@@ -426,14 +425,14 @@ export default function AuthScreen() {
                     disabled={loading || !!socialLoading}
                     activeOpacity={0.7}
                     accessibilityRole="button"
-                    accessibilityLabel="Continue without an account"
+                    accessibilityLabel={t('auth.guest')}
                   >
                     {socialLoading === 'guest'
                       ? <ActivityIndicator color={theme.primary} />
-                      : <Text style={[s.guestText, { color: theme.primary }]}>Continue without an account</Text>}
+                      : <Text style={[s.guestText, { color: theme.primary }]}>{t('auth.guest')}</Text>}
                   </TouchableOpacity>
                   <Text style={[s.guestHint, { color: theme.textMuted }]}>
-                    Your habits stay on this device until you add an email or sign-in later. Nothing is lost when you do.
+                    {t('auth.guestHint')}
                   </Text>
                 </>
               )}
@@ -442,9 +441,9 @@ export default function AuthScreen() {
 
           {(mode === 'login' || mode === 'register') && (
             <Text style={[s.footer, { color: theme.textMuted }]}>
-              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+              {mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount')}
               <Text style={{ color: theme.primary }} onPress={() => switchMode(mode === 'login' ? 'register' : 'login')} accessibilityRole="link">
-                {mode === 'login' ? 'Register' : 'Log in'}
+                {mode === 'login' ? t('auth.registerLink') : t('auth.loginLink')}
               </Text>
             </Text>
           )}
@@ -452,7 +451,7 @@ export default function AuthScreen() {
           {(mode === 'forgot' || mode === 'reset') && (
             <Text style={[s.footer, { color: theme.textMuted }]}>
               <Text style={{ color: theme.primary }} onPress={() => switchMode('login')} accessibilityRole="link">
-                Back to Log In
+                {t('auth.backToLogin')}
               </Text>
             </Text>
           )}

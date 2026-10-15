@@ -11,9 +11,20 @@
 // Every helper takes local date keys ('YYYY-MM-DD'); see dates.js.
 
 import { parseDateKey, addDays, localDateKey } from './dates';
+import { t } from '../i18n';
 
 export const DEFAULT_SCHEDULE = { type: 'daily' };
-export const WEEKDAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const WEEKDAY_KEYS = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
+
+// Two-letter weekday labels (0 = Sunday) in the current locale.
+export function weekdayLabels() {
+  return WEEKDAY_KEYS.map(k => t(`weekday.short.${k}`));
+}
+
+// Single-letter weekday labels (0 = Sunday) for compact charts.
+export function weekdayInitials() {
+  return WEEKDAY_KEYS.map(k => t(`weekday.initial.${k}`));
+}
 
 export function normalizeSchedule(schedule) {
   if (!schedule || typeof schedule !== 'object') return DEFAULT_SCHEDULE;
@@ -50,12 +61,13 @@ export function isScheduledOn(schedule, key) {
 // Human label for the Habits list and detail screen.
 export function describeSchedule(schedule) {
   const s = normalizeSchedule(schedule);
-  if (s.type === 'daily') return 'Every day';
-  if (s.type === 'perWeek') return `${s.target}× per week`;
+  if (s.type === 'daily') return t('schedule.everyDay');
+  if (s.type === 'perWeek') return t('schedule.perWeek', { count: s.target });
   const days = s.days;
-  if (days.length === 5 && days.join() === '1,2,3,4,5') return 'Weekdays';
-  if (days.length === 2 && days.join() === '0,6') return 'Weekends';
-  return days.map(d => WEEKDAY_LABELS[d]).join(' ');
+  if (days.length === 5 && days.join() === '1,2,3,4,5') return t('schedule.weekdays');
+  if (days.length === 2 && days.join() === '0,6') return t('schedule.weekends');
+  const labels = weekdayLabels();
+  return days.map(d => labels[d]).join(' ');
 }
 
 // Count of goal-met days for this habit in the Mon-Sun week containing `key`,

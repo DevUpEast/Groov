@@ -4,6 +4,7 @@ import {
   Animated, Easing,
 } from 'react-native';
 import { lightImpact } from '../utils/haptics';
+import { t } from '../i18n';
 
 const ITEM_H = 50;
 const VISIBLE = 5;  // rows shown in wheel
@@ -162,9 +163,9 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: theme.surface }]}>
-          <Text style={[styles.title, { color: theme.text }]}>Set Time</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{t('timePicker.title')}</Text>
 
-          <View style={styles.wheelsRow} accessible={true} accessibilityLabel="Time picker">
+          <View style={styles.wheelsRow} accessible={true} accessibilityLabel={t('timePicker.a11y')}>
             {/* Hour wheel */}
             <View style={styles.wheelCol}>
               <WheelColumn
@@ -175,7 +176,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
                 theme={theme}
                 width={72}
               />
-              <Text style={[styles.colLabel, { color: theme.textMuted }]}>Hour</Text>
+              <Text style={[styles.colLabel, { color: theme.textMuted }]}>{t('timePicker.hour')}</Text>
             </View>
 
             <Text style={[styles.colon, { color: theme.text }]}>:</Text>
@@ -190,7 +191,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
                 theme={theme}
                 width={72}
               />
-              <Text style={[styles.colLabel, { color: theme.textMuted }]}>Min</Text>
+              <Text style={[styles.colLabel, { color: theme.textMuted }]}>{t('timePicker.minute')}</Text>
             </View>
 
             {/* AM/PM wheel */}
@@ -203,16 +204,16 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
                 theme={theme}
                 width={72}
               />
-              <Text style={[styles.colLabel, { color: theme.textMuted }]}>AM/PM</Text>
+              <Text style={[styles.colLabel, { color: theme.textMuted }]}>{t('timePicker.ampm')}</Text>
             </View>
           </View>
 
           <View style={styles.actions}>
             <TouchableOpacity style={[styles.cancelBtn, { borderColor: theme.border }]} onPress={onClose} accessibilityRole="button">
-              <Text style={[styles.cancelText, { color: theme.textMuted }]}>Cancel</Text>
+              <Text style={[styles.cancelText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSave} accessibilityRole="button">
-              <Text style={styles.saveText}>Save</Text>
+              <Text style={styles.saveText}>{t('common.save')}</Text>
             </TouchableOpacity>
           </View>
         </View>

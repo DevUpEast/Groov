@@ -1,16 +1,18 @@
 import React from 'react';
 import { Modal, View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { CHANGELOG } from '../data/changelog';
+import { t, useLocale } from '../i18n';
 
 export default function WhatsNewSheet({ visible, onClose, theme, currentVersion }) {
+  useLocale();
   if (!visible) return null;
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>What's new</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
+            <Text style={[styles.title, { color: theme.text }]}>{t('whatsNew.title')}</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <Text style={[styles.closeTxt, { color: theme.textMuted }]}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -21,13 +23,13 @@ export default function WhatsNewSheet({ visible, onClose, theme, currentVersion 
                   <Text style={[styles.version, { color: theme.primary }]}>v{entry.version}</Text>
                   {entry.version === currentVersion && (
                     <View style={[styles.pill, { backgroundColor: theme.primaryLight }]}>
-                      <Text style={[styles.pillText, { color: theme.primary }]}>Current</Text>
+                      <Text style={[styles.pillText, { color: theme.primary }]}>{t('whatsNew.current')}</Text>
                     </View>
                   )}
                   <Text style={[styles.date, { color: theme.textMuted }]}>{entry.date}</Text>
                 </View>
                 {entry.items.map(item => (
-                  <Text key={item} style={[styles.item, { color: theme.text }]}>•  {item}</Text>
+                  <Text key={item} style={[styles.item, { color: theme.text }]}>{t('whatsNew.item', { text: item })}</Text>
                 ))}
               </View>
             ))}

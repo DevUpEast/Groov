@@ -3,6 +3,7 @@ import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIn
 import { PLANS, PRO_FEATURES, purchasePlan, restorePurchases, purchasesConfigured } from '../services/entitlements';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { track, Events } from '../utils/analytics';
+import { t, useLocale } from '../i18n';
 
 const TERMS_URL = 'https://isaaceast.com/groov/terms';
 const PRIVACY_URL = 'https://isaaceast.com/groov/privacy-policy';
@@ -13,6 +14,7 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
   const [plan, setPlan] = useState('yearly');
   const [busy, setBusy] = useState(null); // 'buy' | 'restore'
   const [error, setError] = useState('');
+  useLocale();
 
   useEffect(() => { if (visible) { setError(''); track(Events.PAYWALL_VIEWED, { reason: reason || 'settings' }); } }, [visible, reason]);
   if (!visible) return null;
@@ -24,11 +26,11 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
       if (mediumImpact) mediumImpact();
       const res = await purchasePlan(plan);
       if (res.ok) { onUnlocked?.(); onClose(); }
-      else if (!res.cancelled) setError('The purchase did not complete.');
+      else if (!res.cancelled) setError(t('paywall.errors.incomplete'));
     } catch (e) {
       setError(e?.code === 'not_configured'
-        ? 'Groov Pro is coming soon. You can keep using everything in the free tier for now.'
-        : (e?.message || 'Purchase failed. Please try again.'));
+        ? t('paywall.errors.comingSoon')
+        : (e?.message || t('paywall.errors.failed')));
     } finally { setBusy(null); }
   };
 
@@ -37,24 +39,20 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
     setBusy('restore'); setError('');
     try {
       const ok = await restorePurchases();
-      if (ok) { onUnlocked?.(); onClose(); } else setError('No previous purchase found for this account.');
-    } catch (e) { setError(e?.message || 'Restore failed.'); }
+      if (ok) { onUnlocked?.(); onClose(); } else setError(t('paywall.errors.noPurchase'));
+    } catch (e) { setError(e?.message || t('paywall.errors.restoreFailed')); }
     finally { setBusy(null); }
   };
 
-  const reasonLine = {
-    habits: 'You have reached the free limit of habits.',
-    reminders: 'More than one daily reminder is a Pro feature.',
-    ai: 'You have used today\'s free AI coaching.',
-  }[reason] || 'Support a one-person app and unlock a little more.';
+  const reasonLine = t(`paywall.reason.${['habits', 'reminders', 'ai'].includes(reason) ? reason : 'default'}`);
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>Groov Pro</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Not now">
+            <Text style={[styles.title, { color: theme.text }]}>{t('paywall.title')}</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.notNow')}>
               <Text style={[styles.closeTxt, { color: theme.textMuted }]}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -78,7 +76,7 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
                     onPress={() => { lightImpact(); setPlan(p.id); }}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: on, checked: on }}
-                    accessibilityLabel={`${p.title}, ${p.price}`}
+                    accessibilityLabel={t('paywall.planA11y', { title: p.title, price: p.price })}
                   >
                     {p.badge ? <View style={[styles.badge, { backgroundColor: theme.primary }]}><Text style={styles.badgeText}>{p.badge}</Text></View> : null}
                     <Text style={[styles.planTitle, { color: theme.text }]}>{p.title}</Text>
@@ -90,19 +88,19 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
             </View>
             {!!error && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
             <TouchableOpacity style={[styles.cta, { backgroundColor: theme.primary, opacity: busy ? 0.6 : 1 }]} onPress={buy} disabled={!!busy} accessibilityRole="button" accessibilityState={{ busy: busy === 'buy' }}>
-              {busy === 'buy' ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>{plan === 'yearly' ? 'Start 7-day free trial' : 'Buy lifetime'}</Text>}
+              {busy === 'buy' ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>{plan === 'yearly' ? t('paywall.trial') : t('paywall.buyLifetime')}</Text>}
             </TouchableOpacity>
             <View style={styles.footer}>
-              <TouchableOpacity onPress={restore} disabled={!!busy} accessibilityRole="button"><Text style={[styles.link, { color: theme.textMuted }]}>{busy === 'restore' ? 'Restoring…' : 'Restore purchases'}</Text></TouchableOpacity>
+              <TouchableOpacity onPress={restore} disabled={!!busy} accessibilityRole="button"><Text style={[styles.link, { color: theme.textMuted }]}>{busy === 'restore' ? t('paywall.restoring') : t('paywall.restore')}</Text></TouchableOpacity>
               <Text style={[styles.dot, { color: theme.textMuted }]}>·</Text>
-              <TouchableOpacity onPress={() => Linking.openURL(TERMS_URL).catch(() => {})} accessibilityRole="link"><Text style={[styles.link, { color: theme.textMuted }]}>Terms</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => Linking.openURL(TERMS_URL).catch(() => {})} accessibilityRole="link"><Text style={[styles.link, { color: theme.textMuted }]}>{t('paywall.terms')}</Text></TouchableOpacity>
               <Text style={[styles.dot, { color: theme.textMuted }]}>·</Text>
-              <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} accessibilityRole="link"><Text style={[styles.link, { color: theme.textMuted }]}>Privacy</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} accessibilityRole="link"><Text style={[styles.link, { color: theme.textMuted }]}>{t('paywall.privacy')}</Text></TouchableOpacity>
             </View>
             <Text style={[styles.legal, { color: theme.textMuted }]}>
               {purchasesConfigured
-                ? 'Yearly renews automatically until cancelled in your store account settings. Prices shown are in USD and may vary by region.'
-                : 'Purchases are not live in this build yet. Nothing will be charged.'}
+                ? t('paywall.legalLive')
+                : t('paywall.legalNotLive')}
             </Text>
           </ScrollView>
         </View>
