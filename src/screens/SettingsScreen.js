@@ -121,6 +121,7 @@ export default function SettingsScreen() {
   const {
     settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, devMode, setDevMode,
     allHabits, completions, notes, challenges, pastChallenges, dailySnapshot, accountCreatedAt, lastBackupAt, markBackedUp, importBackup,
+    ensureNotificationPermission,
   } = useApp();
 
   // ── Backup / restore ─────────────────────────────────────────────────────────
@@ -359,8 +360,9 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const addReminder = () => {
+  const addReminder = async () => {
     if (settings.hapticsEnabled) lightImpact();
+    if (!(await ensureNotificationPermission())) return;
     updateReminders([
       ...reminders,
       { id: `r-${Date.now()}`, label: 'Reminder', time: { hour12: 12, minute: 0, ampm: 'PM' }, enabled: true },
@@ -469,7 +471,10 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={settings.notificationsEnabled}
-                onValueChange={v => updateSettings({ notificationsEnabled: v })}
+                onValueChange={async v => {
+                  if (v && !(await ensureNotificationPermission())) return;
+                  updateSettings({ notificationsEnabled: v });
+                }}
                 trackColor={{ false: theme.border, true: theme.primary }}
                 thumbColor="#fff"
               />
@@ -484,7 +489,10 @@ export default function SettingsScreen() {
             enabled={!!settings.eveningReminderEnabled}
             masterOn={masterOn}
             time={eveningTime}
-            onToggle={() => updateSettings({ eveningReminderEnabled: !settings.eveningReminderEnabled })}
+            onToggle={async () => {
+              if (!settings.eveningReminderEnabled && !(await ensureNotificationPermission())) return;
+              updateSettings({ eveningReminderEnabled: !settings.eveningReminderEnabled });
+            }}
             onTime={() => setTimeModal({ kind: 'evening' })}
           />
 
@@ -600,14 +608,14 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: theme.border }]}
               onPress={async () => {
-                await sendTestNotification();
+                await sendTestNotification(habits[0]);
                 Alert.alert('Sent', 'Test notification fired. Check your notification tray.');
               }}
               activeOpacity={0.7}
             >
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: theme.text }]}>Send Test Notification</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>Fires the evening reminder immediately</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>Fires a reminder for your first habit, with Done / Snooze</Text>
               </View>
               <Ionicons name="notifications-outline" size={20} color={theme.primary} />
             </TouchableOpacity>

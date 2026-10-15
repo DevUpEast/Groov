@@ -510,7 +510,7 @@ function ArchivedRow({ habit, theme, onRestore, onDelete }) {
 export default function HabitsScreen() {
   const {
     habits, archivedHabits, addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit, theme,
-    pendingHabitLinkChallenge, setPendingHabitLinkChallenge, linkHabitToChallenge,
+    pendingHabitLinkChallenge, setPendingHabitLinkChallenge, linkHabitToChallenge, ensureNotificationPermission,
     setModalOpen, settings,
   } = useApp();
   const [modalVisible, setModalVisible] = useState(false);
@@ -650,7 +650,11 @@ export default function HabitsScreen() {
               onEdit={() => openEdit(habit)}
               onOpen={() => { if (settings.hapticsEnabled) lightImpact(); setDetailHabit(habit); }}
               onDelete={() => handleDelete(habit.id, habit.name)}
-              onBell={() => { lightImpact(); habit.reminder?.enabled ? handleReminderToggleOff(habit) : setReminderTarget(habit.id); }}
+              onBell={async () => {
+                lightImpact();
+                if (habit.reminder?.enabled) { handleReminderToggleOff(habit); return; }
+                if (await ensureNotificationPermission()) setReminderTarget(habit.id);
+              }}
             />
           ))
         )}

@@ -51,7 +51,7 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 - No file-based routing; no React Navigation library (custom pager in `App.js`)
 - **Supabase** for auth and cloud sync (`@supabase/supabase-js`), AsyncStorage as the local-first store
 - expo-audio (native) + Web Audio API in `src/utils/sounds.js`; chimes play on habit/challenge completion when `settings.soundEnabled`
-- expo-notifications for local per-habit and global reminders
+- expo-notifications for local per-habit and global reminders. Categories give reminders Done / Snooze 1h buttons (handled in AppContext via `listenForNotificationResponses`); per-habit reminders back off after 3 consecutive missed days (`reminderDueWithBackoff`); the OS permission dialog is always preceded by `NotificationPrimer` via `ensureNotificationPermission()`; the app badge shows habits left today
 - react-native-svg for the progress ring; charts and heatmap are hand-built (no chart library installed)
 - expo-apple-authentication, expo-web-browser, expo-linking, expo-crypto for social sign-in
 

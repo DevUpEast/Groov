@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { AppState, useColorScheme } from 'react-native';
+import { AppState, useColorScheme, Linking, Alert } from 'react-native';
 import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage';
 import { themes } from '../theme/colors';
 import { useAuth } from './AuthContext';
@@ -10,7 +10,11 @@ import {
   syncChallenge, deleteChallengeSync, syncPastChallenge,
   syncSettings,
 } from '../services/sync';
-import { applyReminderSchedule, scheduleEveningHabitReminder, cancelEveningHabitReminder } from '../utils/notifications';
+import {
+  applyReminderSchedule, scheduleEveningHabitReminder, cancelEveningHabitReminder,
+  getPermissionState, requestOsPermission, listenForNotificationResponses, snoozeNotification, setBadge,
+  ACTION_DONE, ACTION_SNOOZE, BACKOFF_AFTER_MISSES,
+} from '../utils/notifications';
 import { localDateKey, todayKey, addDays } from '../utils/dates';
 import { overallStreak, bestOverallStreak, overallDayStatus, reconcileFreezes, freezesLeftInMonth } from '../utils/streaks';
 import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak, dayStatus } from '../utils/schedule';
@@ -325,14 +329,91 @@ export function AppProvider({ children }) {
   // whenever either changes (including the master toggle). Keyed on the reminder
   // fields only so a completion tap does not reschedule anything.
   const habitReminderKey = JSON.stringify(habits.map(h => [h.id, h.name, h.icon, h.intention ?? null, h.reminder ?? null]));
+
+  // Reminder back-off input: consecutive real days (before today) on which a habit
+  // with a reminder was scheduled but not done. Capped so the key stays small.
+  const missesByHabit = useMemo(() => {
+    const realToday = localDateKey();
+    const out = {};
+    for (const h of habits) {
+      if (!h.reminder?.enabled) continue;
+      let misses = 0;
+      let key = addDays(realToday, -1);
+      for (let i = 0; i < 30; i++) {
+        if (h.createdAt && key < h.createdAt) break;
+        if (!isScheduledOn(h.schedule, key)) { key = addDays(key, -1); continue; }
+        if (((completions[key] || {})[h.id] || 0) >= h.volumeGoal) break;
+        misses++;
+        key = addDays(key, -1);
+      }
+      if (misses >= BACKOFF_AFTER_MISSES) out[h.id] = misses;
+    }
+    return out;
+  }, [habits, completions, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  const backoffKey = JSON.stringify(missesByHabit);
+
   const remindersAppliedOnce = useRef(false);
   useEffect(() => {
     if (!loaded) return;
     // Never show the OS permission dialog from the launch pass; only after the user
     // changes a reminder (which is what the later runs of this effect represent).
-    applyReminderSchedule(settings, habits, { prompt: remindersAppliedOnce.current });
+    applyReminderSchedule(settings, habits, { prompt: false, missesByHabit, today: localDateKey() });
     remindersAppliedOnce.current = true;
-  }, [loaded, settings.notificationsEnabled, settings.reminders, habitReminderKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded, settings.notificationsEnabled, settings.reminders, habitReminderKey, backoffKey, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Notification permission priming ──────────────────────────────────────────
+  // Screens call ensureNotificationPermission() before turning a reminder on. If the
+  // OS has never been asked we show our own explainer first (the OS dialog can only
+  // be shown once); if the user already said no we point them at system settings.
+  const [primerVisible, setPrimerVisible] = useState(false);
+  const primerResolve = useRef(null);
+  const ensureNotificationPermission = useCallback(async () => {
+    const state = await getPermissionState();
+    if (state === 'granted') return true;
+    if (state === 'denied') {
+      Alert.alert('Notifications are off', 'Turn them on for Groov in your device settings to get reminders.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Open Settings', onPress: () => Linking.openSettings().catch(() => {}) },
+      ]);
+      return false;
+    }
+    const allow = await new Promise((resolve) => { primerResolve.current = resolve; setPrimerVisible(true); });
+    setPrimerVisible(false);
+    if (!allow) return false;
+    return requestOsPermission();
+  }, []);
+  const answerPrimer = useCallback((allow) => { primerResolve.current?.(allow); primerResolve.current = null; }, []);
+
+  // ── Notification actions (Done / Snooze / tap) ───────────────────────────────
+  const actionRef = useRef(null);
+  useEffect(() => {
+    actionRef.current = ({ action, data, content }) => {
+      if (action === ACTION_SNOOZE) { snoozeNotification(content, 60); return; }
+      if (action === ACTION_DONE && data?.kind === 'habit') {
+        const h = allHabits.find(x => x.id === data.habitId && !x.archived);
+        if (!h) return;
+        const key = localDateKey();
+        setCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
+        setDailySnapshot(prev => (prev[key] ? prev : { ...prev, [key]: snapshotOf(habits) }));
+        if (userId) syncCompletion(userId, key, h.id, h.volumeGoal);
+        return;
+      }
+      if (action === 'open') setRequestedTab(0);
+    };
+  }, [allHabits, habits, userId]);
+  useEffect(() => {
+    if (!loaded) return;
+    return listenForNotificationResponses((evt) => actionRef.current?.(evt));
+  }, [loaded]);
+
+  // ── App icon badge: habits still to do today ─────────────────────────────────
+  useEffect(() => {
+    if (!loaded) return;
+    const realToday = localDateKey();
+    const left = habits.filter(h => isScheduledOn(h.schedule, realToday)
+      && !isSatisfiedOn(h.schedule, realToday, (k) => ((completions[k] || {})[h.id] || 0) >= h.volumeGoal)).length;
+    setBadge(settings.notificationsEnabled ? left : 0);
+  }, [loaded, habits, completions, settings.notificationsEnabled, clockTick]);
 
   // ── Smart check-in (evening) scheduling ──────────────────────────────────────
   // Reschedule (or cancel) the evening habit reminder whenever completions or
@@ -1102,6 +1183,7 @@ export function AppProvider({ children }) {
       linkHabitToChallenge, unlinkHabitFromChallenge, linkAllHabitsToChallenge,
       completeOnboarding, resetAll, pushAllData, seedRandomHistory,
       lastBackupAt, markBackedUp, importBackup,
+      ensureNotificationPermission, notificationPrimer: { visible: primerVisible, answer: answerPrimer },
       getStreakForHabit, getOverallStreak, getBestStreak, getLast30Days, getLastNDays,
       todayStr,
     }}>
