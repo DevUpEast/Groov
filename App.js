@@ -80,6 +80,7 @@ import HabitsScreen from './src/screens/HabitsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import NotificationPrimer from './src/components/NotificationPrimer';
+import PaywallSheet from './src/components/PaywallSheet';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const NUM_TABS = 5;
@@ -96,7 +97,7 @@ const TABS = [
 const SCREENS = [TodayScreen, ProgressScreen, ChallengeScreen, HabitsScreen, SettingsScreen];
 
 function AppNavigator() {
-  const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen, notificationPrimer } = useApp();
+  const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen, notificationPrimer, paywall, closePaywall, refreshPro } = useApp();
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -210,6 +211,13 @@ function AppNavigator() {
         theme={theme}
         onAllow={() => notificationPrimer.answer(true)}
         onLater={() => notificationPrimer.answer(false)}
+      />
+      <PaywallSheet
+        visible={!!paywall}
+        reason={paywall?.reason}
+        theme={theme}
+        onClose={closePaywall}
+        onUnlocked={refreshPro}
       />
 
       <Animated.View

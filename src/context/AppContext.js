@@ -5,6 +5,7 @@ import * as QuickActions from 'expo-quick-actions';
 import { parseDeepLink } from '../utils/links';
 import { isGoalMet, justMetGoal } from '../utils/habits';
 import { refreshWidget } from '../widgets/refreshWidget';
+import { configurePurchases, checkPro, FREE_LIMITS } from '../services/entitlements';
 import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage';
 import { themes } from '../theme/colors';
 import { useAuth } from './AuthContext';
@@ -471,6 +472,36 @@ export function AppProvider({ children }) {
     if (!loaded) return;
     return listenForNotificationResponses((evt) => actionRef.current?.(evt));
   }, [loaded]);
+
+  // ── Groov Pro ────────────────────────────────────────────────────────────────
+  // `isPro` comes from profiles.is_pro (set by the RevenueCat webhook) or a live
+  // RevenueCat entitlement. `paywall` is the sheet request screens consume.
+  const [isPro, setIsPro] = useState(false);
+  const [paywall, setPaywall] = useState(null); // { reason } | null
+  const openPaywall = useCallback((reason) => setPaywall({ reason }), []);
+  const closePaywall = useCallback(() => setPaywall(null), []);
+  const refreshPro = useCallback(async () => {
+    if (!userId) { setIsPro(false); return false; }
+    const v = await checkPro(userId).catch(() => false);
+    setIsPro(v);
+    return v;
+  }, [userId]);
+  useEffect(() => {
+    if (!loaded || !userId) return;
+    configurePurchases(userId).finally(refreshPro);
+  }, [loaded, userId, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Free-tier checks. Each returns true when the action may proceed, otherwise opens
+  // the paywall with the matching reason.
+  const canAddHabit = useCallback(() => {
+    if (isPro || habits.length < FREE_LIMITS.habits) return true;
+    openPaywall('habits');
+    return false;
+  }, [isPro, habits.length, openPaywall]);
+  const canAddReminder = useCallback(() => {
+    if (isPro || (settings.reminders || []).length < FREE_LIMITS.reminders) return true;
+    openPaywall('reminders');
+    return false;
+  }, [isPro, settings.reminders, openPaywall]);
 
   // ── Home-screen widget ───────────────────────────────────────────────────────
   // Re-render the Android widget when today's data changes, and absorb check-offs
@@ -1353,6 +1384,7 @@ export function AppProvider({ children }) {
       completeOnboarding, resetAll, pushAllData, seedRandomHistory,
       lastBackupAt, markBackedUp, importBackup,
       ensureNotificationPermission, notificationPrimer: { visible: primerVisible, answer: answerPrimer },
+      isPro, refreshPro, paywall, openPaywall, closePaywall, canAddHabit, canAddReminder,
       getStreakForHabit, getOverallStreak, getBestStreak, getLast30Days, getLastNDays,
       todayStr,
     }}>
