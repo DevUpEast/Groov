@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, Alert, Animated,
+  Modal, TextInput, Alert, Animated, ActivityIndicator,
   PanResponder, TouchableWithoutFeedback, Keyboard, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,8 @@ import HabitIcon from '../components/HabitIcon';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { describeSchedule, WEEKDAY_LABELS, DEFAULT_SCHEDULE } from '../utils/schedule';
 import { HABIT_TYPES, describeGoal } from '../utils/habits';
+import { suggestHabit } from '../services/aiCoaching';
+import { useAuth } from '../context/AuthContext';
 
 const ICONS = ['⭐', '🎯', '💪', '🧠', '✍️', '🎨', '🚶', '🛁', '🌿', '❤️', '💧', '🏃', '📚', '🧘', '😴', '🥗', '🍎', '☕', '🎵', '🌅'];
 const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE, color: null, timeOfDay: 'anytime', unit: '', intention: '' };
@@ -175,6 +177,37 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
   const translateY = useRef(new Animated.Value(700)).current;
   const [internalVisible, setInternalVisible] = useState(false);
   const [volMax, setVolMax] = useState(10);
+  const { user } = useAuth();
+  const { todayStr } = useApp();
+  // Magic Fill: describe the habit in words, the AI fills the form.
+  const [magicText, setMagicText] = useState('');
+  const [magicBusy, setMagicBusy] = useState(false);
+  const [magicError, setMagicError] = useState('');
+  const runMagic = async () => {
+    if (magicBusy || magicText.trim().length < 3) return;
+    setMagicBusy(true); setMagicError('');
+    try {
+      const { habit } = await suggestHabit(magicText.trim(), todayStr());
+      setForm(f => ({
+        ...f,
+        name: habit.name || f.name,
+        icon: habit.icon || f.icon,
+        customIconUri: null,
+        type: habit.type || 'daily',
+        volumeGoal: habit.volumeGoal ?? f.volumeGoal,
+        unit: habit.unit || '',
+        schedule: habit.schedule || DEFAULT_SCHEDULE,
+        timeOfDay: habit.timeOfDay || 'anytime',
+        color: habit.color || null,
+        intention: habit.intention || '',
+      }));
+      if (habit.type === 'volume' && habit.volumeGoal > 10) setVolMax(habit.volumeGoal > 25 ? 100 : 25);
+    } catch (e) {
+      setMagicError(e.message || 'Could not fill the form.');
+    } finally {
+      setMagicBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (visible) {
@@ -268,6 +301,36 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
           >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
               <View>
+                {!editingId && !!user && (
+                  <View style={[styles.magicBox, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
+                    <Text style={[styles.magicTitle, { color: theme.primary }]}>✨ Describe it, we fill the rest</Text>
+                    <View style={styles.magicRow}>
+                      <TextInput
+                        style={[styles.magicInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
+                        placeholder="e.g. read 20 pages before bed on weekdays"
+                        placeholderTextColor={theme.textMuted}
+                        value={magicText}
+                        onChangeText={setMagicText}
+                        maxLength={200}
+                        returnKeyType="go"
+                        onSubmitEditing={runMagic}
+                        accessibilityLabel="Describe the habit"
+                      />
+                      <TouchableOpacity
+                        style={[styles.magicBtn, { backgroundColor: theme.primary, opacity: magicBusy || magicText.trim().length < 3 ? 0.5 : 1 }]}
+                        onPress={runMagic}
+                        disabled={magicBusy || magicText.trim().length < 3}
+                        accessibilityRole="button"
+                        accessibilityLabel="Fill the form from the description"
+                        accessibilityState={{ disabled: magicBusy, busy: magicBusy }}
+                      >
+                        {magicBusy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.magicBtnText}>Fill</Text>}
+                      </TouchableOpacity>
+                    </View>
+                    {!!magicError && <Text style={[styles.magicError, { color: theme.danger }]}>{magicError}</Text>}
+                  </View>
+                )}
+
                 <Text style={[styles.label, { color: theme.textMuted }]}>Icon</Text>
                 <IconPicker
                   selected={form.icon}
@@ -848,6 +911,13 @@ const styles = StyleSheet.create({
   sheetTitle: { fontSize: 20, fontWeight: 'bold' },
   sheetCloseBtn: { padding: 4 },
   label: { fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 },
+  magicBox: { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 20 },
+  magicTitle: { fontSize: 12, fontWeight: '700', marginBottom: 8 },
+  magicRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  magicInput: { flex: 1, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
+  magicBtn: { paddingHorizontal: 16, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', minWidth: 60 },
+  magicBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  magicError: { fontSize: 12, marginTop: 6 },
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   iconBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   iconBtnText: { fontSize: 22 },

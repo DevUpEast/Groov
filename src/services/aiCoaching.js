@@ -44,6 +44,23 @@ export async function fetchDailyNudge(accountCreatedAt, displayName, today) {
   return data;
 }
 
+// Natural-language habit creation: returns { habit, remaining } or throws with a
+// user-facing message (quota errors carry `code === 'quota_exceeded'`).
+export async function suggestHabit(text, today) {
+  const { data, error } = await supabase.functions.invoke('suggest-habit', {
+    body: { text, today: today ?? localDateKey() },
+    headers: await authHeaders(),
+  });
+  if (error) {
+    let body = null;
+    try { body = await error.context?.json?.(); } catch {}
+    const err = new Error(body?.error || error.message || 'Could not suggest a habit.');
+    err.code = body?.code;
+    throw err;
+  }
+  return data;
+}
+
 export async function fetchReflection(period = 'weekly', accountCreatedAt, displayName, today) {
   const { data, error } = await supabase.functions.invoke('generate-reflection', {
     body: {

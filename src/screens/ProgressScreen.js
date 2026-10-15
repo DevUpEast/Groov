@@ -268,6 +268,7 @@ export default function ProgressScreen() {
   const [reflectionMessage, setReflectionMessage] = useState(null);
   const [reflectionLoading, setReflectionLoading] = useState(false);
   const [reflectionError, setReflectionError] = useState(false);
+  const [reflectionErrorMsg, setReflectionErrorMsg] = useState('');
   const [reflectionGeneratedAt, setReflectionGeneratedAt] = useState(null);
 
   // Days since account creation (0 = creation day).
@@ -304,8 +305,9 @@ export default function ProgressScreen() {
         setReflectionMessage(data.message);
         setReflectionGeneratedAt(data.generatedAt ?? new Date().toISOString());
       }
-    } catch {
+    } catch (e) {
       setReflectionError(true);
+      setReflectionErrorMsg(e?.message || '');
     } finally {
       setReflectionLoading(false);
     }
@@ -602,7 +604,7 @@ export default function ProgressScreen() {
             <>
               {reflectionError && (
                 <Text style={[styles.cardHint, { color: theme.danger, marginTop: 4 }]}>
-                  Generation failed. Please try again.
+                  {reflectionErrorMsg && /limit/i.test(reflectionErrorMsg) ? reflectionErrorMsg : 'Generation failed. Please try again.'}
                 </Text>
               )}
               <TouchableOpacity

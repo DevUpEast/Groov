@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
 import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn, goalMet } from '../_shared/schedule.ts'
+import { AI_MODEL, COACH_SYSTEM, cachedSystem, consumeQuota, quotaExceeded } from '../_shared/ai.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -237,7 +238,7 @@ Deno.serve(async (req: Request) => {
 
     const namePrefix = displayName ? `The user's name is ${displayName}. ` : ''
 
-    const prompt = `You are a warm, encouraging habit coach. ${namePrefix}Based on the user's data below, write a concise daily nudge (2-3 sentences). Acknowledge what they are doing well using specific numbers, then give ONE actionable tip for the habit they struggle with most. Avoid generic openers like "Great job" or "Keep it up". Never use em dashes (the long dash) or en dashes in your response - use commas, hyphens, or separate sentences instead.
+    const prompt = `${namePrefix}Based on the user's data below, write a concise daily nudge (2-3 sentences). Acknowledge what they are doing well using specific numbers, then give ONE actionable tip for the habit they struggle with most.
 
 ${timeSpanRule}
 IMPORTANT: Each habit shows its own expected days since it was created, based on its schedule (some habits are only due on certain days or N times a week). Use each habit's own denominator for its completion rate and never call an unscheduled day a miss.
@@ -252,14 +253,20 @@ ${habitStats.map((h) => `  * ${h.icon} ${h.name} [${h.schedule}]: ${h.streak}-da
 
 Write the nudge:`
 
+    // Per-user daily quota (free vs Pro) is consumed only when we actually generate.
+    const quota = await consumeQuota(supabase, user.id, 'nudges', todayStr)
+    if (!quota.ok) return quotaExceeded(corsHeaders, 'nudges', quota.limit, quota.pro)
+
     const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! })
     const aiResponse = await anthropic.messages.create({
-      model: 'claude-opus-4-8',
+      model: AI_MODEL,
+      system: cachedSystem(COACH_SYSTEM),
       max_tokens: 250,
       messages: [{ role: 'user', content: prompt }],
     })
 
-    const raw = aiResponse.content[0].type === 'text' ? aiResponse.content[0].text.trim() : ''
+    const textBlock = aiResponse.content.find((b) => b.type === 'text')
+    const raw = textBlock && textBlock.type === 'text' ? textBlock.text.trim() : ''
     const message = stripEmDashes(raw)
 
     await supabase.from('ai_nudges').upsert({ user_id: user.id, date: todayStr, message })
