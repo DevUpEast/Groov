@@ -11,6 +11,8 @@ import { localDateKey, addDays } from '../utils/dates';
 import { moodSummary, habitMoodCorrelations, describeCorrelation, moodEmoji, MIN_SAMPLES } from '../utils/mood';
 import { overallDayStatus } from '../utils/streaks';
 import { isGoalMet } from '../utils/habits';
+import ShareCards from '../components/ShareCards';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CHART_H = 150;
@@ -261,6 +263,7 @@ export default function ProgressScreen() {
   const earned = useMemo(() => new Map((settings.milestones || []).map(m => [m.id, m])), [settings.milestones]);
   const trophies = useMemo(() => effectivePastChallenges.filter(c => c.tier && c.tier !== 'none'), [effectivePastChallenges]);
   const [heatPeriodIdx, setHeatPeriodIdx] = useState(0);
+  const [shareOpen, setShareOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [tooltipInfo, setTooltipInfo] = useState(null);
 
@@ -369,7 +372,18 @@ export default function ProgressScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.heading, { color: theme.text }]}>Your Progress</Text>
+        <View style={styles.headingRow}>
+          <Text style={[styles.heading, { color: theme.text }]}>Your Progress</Text>
+          <TouchableOpacity
+            style={[styles.shareChip, { borderColor: theme.border, backgroundColor: theme.surface }]}
+            onPress={() => { lightImpact(); setShareOpen(true); }}
+            accessibilityRole="button"
+            accessibilityLabel="Share your progress"
+          >
+            <Ionicons name="share-social-outline" size={18} color={theme.primary} />
+            <Text style={[styles.shareChipText, { color: theme.primary }]}>Share</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Stats row */}
         <View style={styles.statsRow}>
@@ -632,6 +646,8 @@ export default function ProgressScreen() {
         />
       )}
 
+      <ShareCards visible={shareOpen} onClose={() => setShareOpen(false)} />
+
       {/* Day detail sheet */}
       <DayDetailModal
         visible={!!selectedDay}
@@ -646,7 +662,10 @@ export default function ProgressScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: 24, paddingBottom: 48 },
-  heading: { fontSize: 28, fontWeight: 'bold', marginBottom: 24 },
+  headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+  heading: { fontSize: 28, fontWeight: 'bold' },
+  shareChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
+  shareChipText: { fontSize: 13, fontWeight: '700' },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   freezeLine: { fontSize: 12, textAlign: 'center', marginBottom: 24, lineHeight: 17 },
   statCard: {
