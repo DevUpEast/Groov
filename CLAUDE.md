@@ -78,7 +78,7 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 - `SettingsScreen` — theme, notifications, haptics, account, data, hidden dev tools (date offset, seed history)
 - `OnboardingScreen` — first-run flow: 2 intro slides, starter-habit picker (`STARTER_HABITS`), per-habit time-of-day + implementation intention (`habit.intention`, "After I …"), then `completeOnboarding(habits)` creates them plus the 3-Day Kickstart (rendered outside the navigator)
 
-**Components** (`src/components/`): `HabitCard`, `HabitDetailSheet` (per-habit grid/stats, opened from the Habits list), `ProgressRing` (SVG), `TimePicker` (wheel-only modal), `BottomSheet`, `SheetHeader`, `EmptyCard`, `Slider`, `TrophyCelebration`, `CelebrationOverlay`, `CompletionCelebration`, `ChallengeRewardModal`
+**Components** (`src/components/`): `HabitCard`, `HabitDetailSheet` (per-habit grid/stats, opened from the Habits list), `ShareCards` (Progress → Share: streak / week / year-in-pixels cards captured with react-native-view-shot and handed to expo-sharing), `ProgressRing` (SVG), `TimePicker` (wheel-only modal), `BottomSheet`, `SheetHeader`, `EmptyCard`, `Slider`, `TrophyCelebration`, `CelebrationOverlay`, `CompletionCelebration`, `ChallengeRewardModal`
 
 **Utilities** (`src/utils/`): `storage.js` (AsyncStorage wrappers), `backup.js` (JSON backup build/validate/merge; `src/services/backup.js` does the share sheet / document picker, Settings → Backup), `supabase.js` (client, PKCE), `sounds.js`, `haptics.js`, `notifications.js`
 

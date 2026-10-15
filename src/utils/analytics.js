@@ -34,5 +34,6 @@ export const Events = {
   MILESTONE: 'milestone',                 // { days }
   BACKUP_EXPORTED: 'backup_exported',
   BACKUP_RESTORED: 'backup_restored',     // { mode }
+  SHARE_CARD: 'share_card',               // { kind }
   PAYWALL_VIEWED: 'paywall_viewed',       // reserved for #40
 };
