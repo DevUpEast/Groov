@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Platform, TextInput, Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '../components/SafeAreaView';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as Application from 'expo-application';

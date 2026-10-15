@@ -4,7 +4,7 @@ import {
   Modal, TextInput, Alert, Platform,
   PanResponder, Keyboard, Animated, Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '../components/SafeAreaView';
 import { useApp, getChallengeTier, TIER_STYLES } from '../context/AppContext';
 import Slider from '../components/Slider';
 import BottomSheet from '../components/BottomSheet';

@@ -17,6 +17,11 @@ describe('parseDeepLink', () => {
     expect(parseDeepLink('exp://192.168.1.2:8081/--/habit/9')).toEqual({ tab: 3, habitId: '9', action: 'open' });
     expect(parseDeepLink('https://isaaceast.com/today')).toEqual({ tab: 0 });
   });
+  it('prefers a route= query param (mockup host / sub-path hosting)', () => {
+    expect(parseDeepLink('https://devupeast.github.io/Groov/apps/groov/index.html?theme=dark&route=progress')).toEqual({ tab: 1 });
+    expect(parseDeepLink('https://x.y/app/?route=habit%2F42')).toEqual({ tab: 3, habitId: '42', action: 'open' });
+    expect(parseDeepLink('https://x.y/app/?route=')).toBeNull();
+  });
   it('ignores auth callbacks and junk', () => {
     expect(parseDeepLink('groov://auth/callback?code=abc')).toBeNull();
     expect(parseDeepLink('groov://')).toBeNull();

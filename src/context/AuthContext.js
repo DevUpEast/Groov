@@ -6,6 +6,7 @@ import * as Linking from 'expo-linking';
 import * as Crypto from 'expo-crypto';
 import { supabase } from '../utils/supabase';
 import { t } from '../i18n';
+import { mockupParams } from '../utils/mockup';
 import { syncProfile, deleteAllUserData } from '../services/sync';
 import { clearAll, saveData } from '../utils/storage';
 import { clearDevMode } from '../utils/devMode';
@@ -92,7 +93,11 @@ export function AuthProvider({ children }) {
 
     // Restore session from local storage immediately — no network needed.
     // This keeps the user logged in when offline and avoids a loading screen on every launch.
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      // iOS mockup host (web, `?guest=1`): start a guest session so reviewers land in the app.
+      if (!session && mockupParams.guest) {
+        try { session = (await supabase.auth.signInAnonymously()).data?.session ?? null; } catch {}
+      }
       if (isMounted) {
         setSession(session);
         setLoading(false);

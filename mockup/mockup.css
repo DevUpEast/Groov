@@ -1,0 +1,60 @@
+:root {
+  --bg: #0b0d12;
+  --panel: #151925;
+  --text: #e8eaf0;
+  --muted: #8b93a7;
+  --accent: #6c63ff;
+  --border: #262b3a;
+  --bezel: #0a0a0c;
+  --bezel-edge: #2a2a2e;
+  --status: #ffffff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 -apple-system, "SF Pro Text", Inter, system-ui, Segoe UI, Roboto, sans-serif; }
+body { display: flex; flex-direction: column; }
+
+#bar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--border); }
+#bar .brand { font-weight: 700; letter-spacing: 0.2px; display: flex; align-items: center; gap: 8px; margin-right: 6px; }
+#bar .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(108,99,255,0.25); }
+#bar label { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+#bar label.grow { flex: 1 1 220px; }
+#bar select, #bar input, #bar button, #bar a { font: inherit; color: var(--text); background: #1d2231; border: 1px solid var(--border); border-radius: 8px; padding: 6px 9px; }
+#bar input { width: 100%; min-width: 140px; }
+#bar button, #bar a { cursor: pointer; text-decoration: none; }
+#bar button:hover, #bar a:hover { border-color: var(--accent); }
+body.nochrome #bar, body.nochrome #hint { display: none; }
+
+#stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; overflow: auto; gap: 12px; }
+.hint { color: var(--muted); font-size: 12px; margin: 0; text-align: center; max-width: 720px; }
+
+/* Phone geometry is driven by CSS variables set from JS. */
+.phone { --w: 402px; --h: 874px; --r: 55px; --bz: 12px; --top: 59px; --bottom: 34px; --island-w: 126px; --island-h: 37px;
+  transform-origin: top center; position: relative; }
+.phone .bezel { width: calc(var(--w) + var(--bz) * 2); height: calc(var(--h) + var(--bz) * 2); padding: var(--bz); border-radius: calc(var(--r) + var(--bz)); background: var(--bezel);
+  box-shadow: 0 0 0 2px var(--bezel-edge), 0 30px 80px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.05); position: relative; }
+.phone .bezel::before, .phone .bezel::after { content: ""; position: absolute; background: #1c1c20; border-radius: 2px; }
+.phone .bezel::before { left: -4px; top: 180px; width: 3px; height: 64px; box-shadow: 0 92px 0 #1c1c20; }
+.phone .bezel::after { right: -4px; top: 230px; width: 3px; height: 100px; }
+.phone .screen { width: var(--w); height: var(--h); border-radius: var(--r); overflow: hidden; background: #000; position: relative; }
+.phone iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+
+.phone.noframe { --bz: 0px; }
+.phone.noframe .bezel { padding: 0; background: transparent; box-shadow: none; }
+.phone.noframe .bezel::before, .phone.noframe .bezel::after { display: none; }
+.phone.noframe .screen { border-radius: 0; }
+
+.statusbar { position: absolute; left: 0; right: 0; top: 0; height: var(--top); pointer-events: none; color: var(--status); display: flex; align-items: flex-start; justify-content: space-between; padding: 14px 28px 0 32px; font-weight: 600; font-size: 16px; letter-spacing: -0.2px; }
+.statusbar .island { position: absolute; left: 50%; top: 11px; width: var(--island-w); height: var(--island-h); transform: translateX(-50%); background: #000; border-radius: 24px; }
+.statusbar .right { display: flex; align-items: center; gap: 6px; }
+.statusbar svg { height: 12px; width: auto; fill: currentColor; }
+.statusbar .battery { width: 27px; height: 13px; border: 1.5px solid currentColor; border-radius: 4px; position: relative; display: inline-block; opacity: 0.95; }
+.statusbar .battery::after { content: ""; position: absolute; right: -4px; top: 3px; width: 2px; height: 5px; background: currentColor; border-radius: 0 2px 2px 0; opacity: 0.5; }
+.statusbar .battery i { position: absolute; left: 2px; top: 2px; bottom: 2px; width: 18px; background: currentColor; border-radius: 2px; }
+.phone.notchless .statusbar { height: 20px; padding: 2px 12px 0; font-size: 12px; }
+.phone.notchless .island { display: none; }
+.phone.notchless .statusbar svg { height: 10px; }
+
+.homebar { position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; border-radius: 3px; background: var(--status); opacity: 0.9; transform: translateX(-50%); pointer-events: none; }
+.phone.notchless .homebar { display: none; }
+.phone.status-dark { --status: #000000; }
+.phone.status-light { --status: #ffffff; }

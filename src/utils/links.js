@@ -17,6 +17,9 @@ export const TAB_INDEX = { today: 0, progress: 1, challenges: 2, challenge: 2, h
 export function parseDeepLink(url) {
   if (!url || typeof url !== 'string') return null;
   let path = url;
+  // A `route=` query param (web / the iOS mockup host) names the path directly.
+  const rq = /[?&]route=([^&#]*)/.exec(url);
+  if (rq) path = 'groov://' + decodeURIComponent(rq[1]).replace(/^\/+/, '');
   // Strip scheme/host for custom schemes, http(s) and exp:// (Expo Go adds "--/").
   path = path.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
   path = path.replace(/^[^/]*\/--\//, '');          // exp://host/--/path

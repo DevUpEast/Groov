@@ -3,10 +3,11 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Keyboard,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '../components/SafeAreaView';
 import { useApp } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { t, useLocale } from '../i18n';
+import { STARTER_HABITS } from '../utils/habits';
 
 // First-run flow: two intro slides, pick starter habits, then an implementation
 // intention ("after X, I will Y") per habit. Finishing creates the habits and the
@@ -17,32 +18,7 @@ const INTRO = [
   { emoji: '🔥', key: 'streaks' },
 ];
 
-// Names and units are translated on read (via `getStarterHabits`) so the picker
-// follows the active locale; the stored habit keeps the name as created.
-const STARTER_HABIT_DEFS = [
-  { key: 'water', icon: '💧', type: 'volume', volumeGoal: 8, unitKey: 'unitGlasses', timeOfDay: 'anytime', color: '#3B82F6' },
-  { key: 'move', icon: '🏃', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#F97316' },
-  { key: 'read', icon: '📚', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#A855F7' },
-  { key: 'meditate', icon: '🧘', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#14B8A6' },
-  { key: 'walk', icon: '🚶', type: 'daily', volumeGoal: 1, timeOfDay: 'afternoon', color: '#22C55E' },
-  { key: 'sleep', icon: '😴', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#6366F1' },
-  { key: 'journal', icon: '✍️', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#EC4899' },
-  { key: 'stretch', icon: '🤸', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#EAB308' },
-];
-
-export function getStarterHabits() {
-  return STARTER_HABIT_DEFS.map(({ unitKey, ...d }) => ({
-    ...d,
-    name: t(`onboarding.starter.${d.key}`),
-    ...(unitKey ? { unit: t(`onboarding.starter.${unitKey}`) } : {}),
-  }));
-}
-
-export const STARTER_HABITS = STARTER_HABIT_DEFS.map(({ unitKey, ...d }) => ({
-  ...d,
-  get name() { return t(`onboarding.starter.${d.key}`); },
-  ...(unitKey ? { get unit() { return t(`onboarding.starter.${unitKey}`); } } : {}),
-}));
+export { STARTER_HABITS };
 const DEFAULT_PICK = ['water', 'move', 'read'];
 const MAX_PICK = 5;
 

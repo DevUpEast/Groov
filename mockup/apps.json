@@ -1,0 +1,13 @@
+{
+  "apps": [
+    {
+      "id": "groov",
+      "name": "Groov",
+      "url": "apps/groov/index.html",
+      "defaultRoute": "today",
+      "routes": ["today", "progress", "challenges", "habits", "habits/new", "settings"],
+      "params": { "guest": "1", "demo": "1" },
+      "contract": "mockup-v1"
+    }
+  ]
+}

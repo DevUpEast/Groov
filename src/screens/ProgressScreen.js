@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, Dimensions,
   TouchableOpacity, Modal, Animated, PanResponder, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '../components/SafeAreaView';
 import { useApp, STREAK_MILESTONES, TIER_STYLES } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { fetchReflection } from '../services/aiCoaching';
