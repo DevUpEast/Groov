@@ -5,6 +5,7 @@ import { completionsInWeek } from '../utils/schedule';
 import { addDays } from '../utils/dates';
 import { lightImpact } from '../utils/haptics';
 import { announce } from '../utils/a11y';
+import HabitIcon from './HabitIcon';
 
 export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   const {
@@ -70,10 +71,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
       accessibilityHint="Double tap to log. Long press for skip, yesterday and note options."
     >
       {habit.color ? <View style={[styles.stripe, { backgroundColor: habit.color }]} /> : null}
-      {habit.customIconUri
-        ? <Image source={{ uri: habit.customIconUri }} style={styles.iconImage} />
-        : <Text style={styles.icon}>{habit.icon}</Text>
-      }
+      <HabitIcon habit={habit} size={26} imageStyle={styles.iconImage} textStyle={styles.icon} />
 
       <View style={styles.info}>
         <Text style={[styles.name, { color: theme.text }, done && { color: theme.textMuted }]}
