@@ -22,6 +22,7 @@ import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
 import { mergeBackup } from '../utils/backup';
+import { initAnalytics, track, Events } from '../utils/analytics';
 
 const AppContext = createContext(null);
 
@@ -243,7 +244,7 @@ export function AppProvider({ children }) {
     return pastChallenges.filter(ch => !ch.archivedAt || ch.archivedAt <= today);
   }, [pastChallenges, todayStr]);
 
-  useEffect(() => { loadPersistedData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { initAnalytics(); loadPersistedData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadPersistedData() {
     // NOTE: userId is always null here (auth resolves asynchronously after mount).
@@ -620,6 +621,7 @@ export function AppProvider({ children }) {
       return { ...prev, [today]: snapshotOf(habits) };
     });
     if (userId) syncCompletion(userId, today, habitId, next);
+    if (next >= habit.volumeGoal) track(Events.COMPLETION, { type: habit.type });
     return next >= habit.volumeGoal;
   }, [completions, habits, todayStr, userId]);
 
@@ -664,6 +666,7 @@ export function AppProvider({ children }) {
     const newHabit = { ...habit, schedule: normalizeSchedule(habit.schedule), sortOrder, id: Date.now().toString(), createdAt: todayStr() };
     setHabits(prev => [...prev, newHabit]);
     if (userId) syncHabit(userId, newHabit);
+    track(Events.HABIT_CREATED, { type: newHabit.type, schedule: newHabit.schedule.type, timeOfDay: newHabit.timeOfDay || 'anytime' });
     return newHabit.id;
   }, [habits, todayStr, userId]);
 
@@ -809,6 +812,7 @@ export function AppProvider({ children }) {
     };
     setChallenges(prev => [...prev, newCh]);
     if (userId) syncChallenge(userId, newCh);
+    track(Events.CHALLENGE_CREATED, { days, linked: linkedHabitIds.length });
     return newCh.id;
   }, [challenges, todayStr, userId]);
 
@@ -835,6 +839,7 @@ export function AppProvider({ children }) {
       : [...ch.completedDays, today];
     const tier = getChallengeTier(updatedDays.length, ch.days);
     const archived = { ...ch, completedDays: updatedDays, archivedAt: today, tier, completed: true };
+    track(Events.CHALLENGE_COMPLETED, { tier });
     setPastChallenges(prev => {
       if (prev.some(pc => pc.id === ch.id)) return prev;
       return [archived, ...prev];
@@ -958,6 +963,7 @@ export function AppProvider({ children }) {
       setHabits(prev => [...prev, ...created]);
       if (userId) created.forEach(h => syncHabit(userId, h));
     }
+    track(Events.ONBOARDING_COMPLETED, { starters: starterHabits.length });
     if (challenges.length === 0 && pastChallenges.length === 0) {
       const starter = makeStarterChallenge(today);
       setChallenges([starter]);
@@ -986,6 +992,7 @@ export function AppProvider({ children }) {
     const now = new Date().toISOString();
     setLastBackupAt(now);
     saveData('lastBackupAt', now);
+    track(Events.BACKUP_EXPORTED);
   }, []);
 
   // Apply a validated backup ('replace' wipes current data first; 'merge' layers it
@@ -1013,6 +1020,7 @@ export function AppProvider({ children }) {
       if (mode === 'replace') await deleteAllUserData(userId).catch(() => {});
       await pushAllLocalData(userId, stateRef.current);
     }
+    track(Events.BACKUP_RESTORED, { mode });
   }, [allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt, userId]);
 
   // Flush all current state to Supabase — call before sign-out to avoid data loss
@@ -1099,6 +1107,7 @@ export function AppProvider({ children }) {
     const added = earned.map(m => ({ id: `streak-${m.days}`, days: m.days, date: today }));
     updateSettings({ milestones: [...(settings.milestones || []), ...added] });
     setPendingMilestone(earned[earned.length - 1]);
+    track(Events.MILESTONE, { days: earned[earned.length - 1].days });
   }, [loaded, getOverallStreak, settings.milestones]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto streak freezes: once the data is loaded and whenever the date or history

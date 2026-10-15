@@ -104,7 +104,7 @@
 
   <section id="information">
     <h2><span class="section-num">1</span> Information We Collect</h2>
-    <p>Groov collects only what it needs to keep your habits in sync across your devices and to coach you. We do not sell your data, we show no advertising, and we use no advertising identifiers or third-party analytics.</p>
+    <p>Groov collects only what it needs to keep your habits in sync across your devices and to coach you. We do not sell your data, we show no advertising, and we use no advertising identifiers. The only usage analytics are a few anonymous, aggregated event counts (for example &ldquo;a habit was created&rdquo;) with no account id, habit names or free text, so they cannot be tied to you.</p>
 
     <table class="data-table">
       <thead>
@@ -184,6 +184,7 @@
         <tr><td><strong>Anthropic</strong></td><td>Generating coaching messages</td><td>Habit names, completion statistics, display name</td></tr>
         <tr><td><strong>Apple / Google</strong></td><td>Optional sign-in</td><td>Identity token, name, email</td></tr>
         <tr><td><strong>Sentry</strong></td><td>Crash reporting</td><td>Crash details, device and app version, account id</td></tr>
+        <tr><td><strong>Aptabase</strong></td><td>Anonymous usage counts</td><td>Event name (e.g. habit_created), app version, OS, country derived from IP and then discarded. No account id, names or habit data</td></tr>
       </tbody>
     </table>
     <p>We may also disclose data if required by law or to protect the rights and safety of users, and if Groov is ever transferred to a new owner your data would move with it under protections equivalent to this policy.</p>
@@ -216,7 +217,7 @@
     <div class="callout"><strong>Clear All Data:</strong> Settings → Clear All Data removes every habit, completion, challenge and setting from your device and our servers but keeps your account.</div>
     <div class="callout"><strong>Delete Account:</strong> Settings → Delete Account permanently removes your account, all habit data and any cached coaching messages from our servers immediately.</div>
     <p>If you can no longer sign in, contact us (section 12) with the email address on the account and we will delete it for you within 30 days.</p>
-    <p>Deletion is irreversible. Crash reports are retained by Sentry for 90 days and contain no habit data.</p>
+    <p>Deletion is irreversible. Crash reports are retained by Sentry for 90 days and contain no habit data. Aptabase usage counts are anonymous and cannot be linked to an account, so there is nothing to delete.</p>
   </section>
 
   <section id="ccpa">
