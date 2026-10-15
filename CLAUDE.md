@@ -67,7 +67,7 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 
 **Global state:** `src/context/AppContext.js` — single React Context + `useState` hooks wrapping the entire app. All business logic (habits, completions, challenges, settings, streaks) lives here. Each state key is persisted to its own AsyncStorage key and mirrored to Supabase with fire-and-forget upserts in `src/services/sync.js` (last-write-wins, no conflict resolution). On login, cloud data replaces local if the cloud has habits; otherwise local is pushed.
 
-**AI coaching:** `src/services/aiCoaching.js` calls Supabase Edge Functions `generate-nudge` (daily, cached in `ai_nudges`) and `generate-reflection` (weekly/monthly, cached in `ai_reflections`). The Anthropic key lives only in edge function secrets.
+**AI coaching:** `src/services/aiCoaching.js` calls Supabase Edge Functions `generate-nudge` (daily, cached in `ai_nudges`), `generate-reflection` (weekly/monthly, cached in `ai_reflections`) and `suggest-habit` (Magic Fill in the habit form). All use `supabase/functions/_shared/ai.ts`: Haiku-class `AI_MODEL`, a cached `COACH_SYSTEM` block, and per-user daily quotas (`ai_usage` table + `ai_consume()` RPC, free vs Pro limits from `profiles.is_pro`; 429 `quota_exceeded`). Always pick the text block by type (`content.find(b => b.type === 'text')`): Haiku 5.5 may emit a thinking block first. The Anthropic key lives only in edge function secrets.
 
 **Screens** (`src/screens/`):
 - `AuthScreen` — login / register / forgot / reset modes plus Apple and Google buttons

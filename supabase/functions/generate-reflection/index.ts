@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
 import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn, goalMet } from '../_shared/schedule.ts'
+import { AI_MODEL, COACH_SYSTEM, cachedSystem, consumeQuota, quotaExceeded } from '../_shared/ai.ts'
 
 // Wildcard origin is intentional: CORS is a browser mechanism and does not apply to
 // native mobile clients. Supabase edge functions require this header for the OPTIONS
@@ -240,7 +241,7 @@ Deno.serve(async (req: Request) => {
         ? `DATA WINDOW: ${accountActiveDays} days of data. Weekly trends are appropriate; do not reference monthly patterns.`
         : `DATA WINDOW: ${accountActiveDays} days of data. Weekly and multi-week trends are appropriate.`
 
-    const prompt = `You are a warm, insightful habit coach. Write a ${period} reflection summary (3-5 sentences) for a user based on the data below. Be specific and data-driven. Highlight the standout habit, address the one that needs attention, and give one concrete actionable tip. End on an encouraging note. Never use em dashes (the long dash) or en dashes in your response - use commas, hyphens, or separate sentences instead.
+    const prompt = `Write a ${period} reflection summary (3-5 sentences) for a user based on the data below. Be specific and data-driven. Highlight the standout habit, address the one that needs attention, and give one concrete actionable tip. End on an encouraging note.
 
 ${timeSpanRule}
 IMPORTANT: Each habit shows its own expected days since it was created, based on its schedule (some habits are only due on certain days or N times a week). Use each habit's own denominator - never compare completedDays against the full ${days}-day period if the habit was created more recently or is not due every day. Do not reference days before the account or any habit was created.
@@ -260,14 +261,20 @@ Needs attention: ${worst.icon} ${worst.name} at ${worst.rate}% (${worst.complete
 
 Write the reflection:`
 
+    // Per-user daily quota (free vs Pro) is consumed only when we actually generate.
+    const quota = await consumeQuota(supabase, user.id, 'reflections', todayStr)
+    if (!quota.ok) return quotaExceeded(corsHeaders, 'reflections', quota.limit, quota.pro)
+
     const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! })
     const aiResponse = await anthropic.messages.create({
-      model: 'claude-opus-4-8',
+      model: AI_MODEL,
+      system: cachedSystem(COACH_SYSTEM),
       max_tokens: 400,
       messages: [{ role: 'user', content: prompt }],
     })
 
-    const raw = aiResponse.content[0].type === 'text' ? aiResponse.content[0].text.trim() : ''
+    const textBlock = aiResponse.content.find((b) => b.type === 'text')
+    const raw = textBlock && textBlock.type === 'text' ? textBlock.text.trim() : ''
     const message = stripEmDashes(raw)
     const generatedAt = new Date().toISOString()
 
