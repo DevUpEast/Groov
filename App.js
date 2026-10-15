@@ -4,7 +4,7 @@ import {
   Dimensions, Platform, StyleSheet, Easing, useColorScheme, ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { initSentry, captureException, wrapRoot } from './src/utils/sentry';
 
@@ -69,6 +69,7 @@ function ThemedErrorBoundary({ children }) {
 }
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { mockupParams, postToMockupHost } from './src/utils/mockup';
 import { supabaseConfigError } from './src/utils/supabase';
 import { AppProvider, useApp } from './src/context/AppContext';
 import { themes } from './src/theme/colors';
@@ -197,15 +198,24 @@ function AppNavigator() {
   ).current;
 
   // Conditional return AFTER all hooks
+  // Mirror the status-bar style to the iOS mockup host (web only).
+  const statusStyle = !hasOnboarded
+    ? (themeName === 'dark' ? 'light' : 'dark')
+    : (activeIndex === 0 ? 'light' : (themeName === 'dark' ? 'light' : 'dark'));
+  useEffect(() => {
+    if (mockupParams.active) postToMockupHost({ type: 'mockup:statusbar', style: statusStyle });
+  }, [statusStyle]);
+
   if (!hasOnboarded) {
     return <OnboardingScreen />;
   }
 
-  const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 49 + insets.bottom : 56;
+  // The iOS mockup (web) lays out like iOS so the preview matches a real iPhone.
+  const TAB_BAR_HEIGHT = (Platform.OS === 'ios' || mockupParams.active) ? 49 + insets.bottom : 56;
 
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
-      <StatusBar style={activeIndex === 0 ? 'light' : (themeName === 'dark' ? 'light' : 'dark')} />
+      <StatusBar style={statusStyle} />
       <NotificationPrimer
         visible={notificationPrimer.visible}
         theme={theme}
@@ -302,13 +312,25 @@ function AuthGate() {
   );
 }
 
+// On the web the iOS mockup host passes the device's safe-area insets (`?insets=top,right,bottom,left`)
+// so the layout matches a real phone; everywhere else the native provider measures them.
+// (The web provider measures CSS env() insets, which are zero in an iframe, so the
+// mockup's insets are injected through the context rather than `initialMetrics`.)
+const mockupInsets = mockupParams.insets;
+function MockupInsets({ children }) {
+  if (!mockupInsets) return children;
+  return <SafeAreaInsetsContext.Provider value={mockupInsets}>{children}</SafeAreaInsetsContext.Provider>;
+}
+
 function App() {
   return (
     <ThemedErrorBoundary>
       <SafeAreaProvider>
-        <AuthProvider>
-          <AuthGate />
-        </AuthProvider>
+        <MockupInsets>
+          <AuthProvider>
+            <AuthGate />
+          </AuthProvider>
+        </MockupInsets>
       </SafeAreaProvider>
     </ThemedErrorBoundary>
   );

@@ -4,7 +4,7 @@ import {
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
   useColorScheme,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '../components/SafeAreaView';
 import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth, AUTH_CANCELLED } from '../context/AuthContext';

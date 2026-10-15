@@ -3,7 +3,7 @@ import { AppState, useColorScheme, Linking, Alert, Platform } from 'react-native
 import * as ExpoLinking from 'expo-linking';
 import * as QuickActions from 'expo-quick-actions';
 import { parseDeepLink } from '../utils/links';
-import { isGoalMet, justMetGoal } from '../utils/habits';
+import { isGoalMet, justMetGoal, STARTER_HABITS } from '../utils/habits';
 import { refreshWidget } from '../widgets/refreshWidget';
 import { configurePurchases, checkPro, FREE_LIMITS } from '../services/entitlements';
 import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage';
@@ -29,6 +29,7 @@ import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
 import { mergeBackup } from '../utils/backup';
 import { initAnalytics, track, Events } from '../utils/analytics';
+import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup';
 import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocalUri, localIconExists } from '../services/icons';
 
 const AppContext = createContext(null);
@@ -448,8 +449,35 @@ export function AppProvider({ children }) {
     const handle = (url) => { const r = parseDeepLink(url); if (r) routeRef.current?.(r); };
     ExpoLinking.getInitialURL().then(handle).catch(() => {});
     const sub = ExpoLinking.addEventListener('url', ({ url }) => handle(url));
-    return () => sub.remove();
+    // The iOS mockup host (mockup/) navigates the embedded web build via postMessage.
+    const unsubMockup = onMockupMessage((m) => {
+      if (m.type === 'mockup:navigate') handle('groov://' + String(m.route || '').replace(/^\/+/, ''));
+    });
+    return () => { sub.remove(); unsubMockup(); };
   }, [loaded]);
+
+  // Mockup host: `theme=` query param / `mockup:theme` message override the saved theme (web only).
+  const [mockupTheme, setMockupTheme] = useState(() => mockupParams.theme);
+  useEffect(() => onMockupMessage((m) => {
+    if (m.type === 'mockup:theme') setMockupTheme(m.theme === 'light' || m.theme === 'dark' ? m.theme : null);
+  }), []);
+  // Mockup host: `demo=1` seeds starter habits and a month of history for review screenshots.
+  const demoSeeded = useRef(false);
+  const completeOnboardingRef = useRef(null);
+  const seedRandomHistoryRef = useRef(null);
+  const [cloudSynced, setCloudSynced] = useState(false); // initial cloud pull/push finished
+  useEffect(() => {
+    // Seed only after the initial cloud sync: habits created before it can be dropped by the pull.
+    if (!loaded || !cloudSynced || !mockupParams.demo || demoSeeded.current) return;
+    if (!hasOnboarded && habits.length === 0) {
+      completeOnboardingRef.current?.(STARTER_HABITS.slice(0, 4).map(({ key, ...h }) => h));
+    } else if (hasOnboarded && habits.length > 0) {
+      demoSeeded.current = true;
+      if (Object.keys(completions).length < 5) seedRandomHistoryRef.current?.();
+      // Finishing onboarding resets the pager to Today; re-apply the requested route.
+      ExpoLinking.getInitialURL().then((url) => { const r = parseDeepLink(url); if (r) routeRef.current?.(r); }).catch(() => {});
+    }
+  }, [loaded, cloudSynced, hasOnboarded, habits.length, completions]);
 
   // Home-screen quick actions (long-press the app icon).
   useEffect(() => {
@@ -638,6 +666,8 @@ export function AppProvider({ children }) {
         lastPulledAtRef.current = pulledAt;
       } catch (e) {
         if (__DEV__) console.warn('Cloud sync error:', e.message);
+      } finally {
+        setCloudSynced(true);
       }
     };
     sync();
@@ -1155,6 +1185,7 @@ export function AppProvider({ children }) {
       if (userId) syncChallenge(userId, starter);
     }
   }, [challenges.length, pastChallenges.length, habits.length, todayStr, userId]);
+  completeOnboardingRef.current = completeOnboarding;
 
   const resetAll = useCallback(async () => {
     const today = localDateKey();
@@ -1253,6 +1284,7 @@ export function AppProvider({ children }) {
       await pushAllLocalData(userId, { ...stateRef.current, completions: newCompletions, dailySnapshot: newSnapshot });
     }
   }, [habits, completions, dailySnapshot, accountCreatedAt, userId]);
+  seedRandomHistoryRef.current = seedRandomHistory;
 
   // ── Streak / progress helpers ────────────────────────────────────────────────
 
@@ -1350,10 +1382,13 @@ export function AppProvider({ children }) {
 
   // 'system' follows the OS appearance; 'light' / 'dark' are explicit overrides.
   const systemScheme = useColorScheme();
-  const themeName = settings.theme === 'system'
+  const themeName = mockupTheme || (settings.theme === 'system'
     ? (systemScheme === 'dark' ? 'dark' : 'light')
-    : (settings.theme === 'dark' ? 'dark' : 'light');
+    : (settings.theme === 'dark' ? 'dark' : 'light'));
   const theme = themes[themeName];
+  useEffect(() => {
+    if (mockupParams.active && loaded) postToMockupHost({ type: 'mockup:ready' });
+  }, [loaded]);
 
   if (!loaded) return null;
 

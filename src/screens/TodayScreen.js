@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '../components/SafeAreaView';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';

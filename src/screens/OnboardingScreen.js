@@ -3,9 +3,10 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Keyboard,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '../components/SafeAreaView';
 import { useApp } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
+import { STARTER_HABITS } from '../utils/habits';
 
 // First-run flow: two intro slides, pick starter habits, then an implementation
 // intention ("after X, I will Y") per habit. Finishing creates the habits and the
@@ -24,16 +25,7 @@ const INTRO = [
   },
 ];
 
-export const STARTER_HABITS = [
-  { key: 'water', name: 'Drink water', icon: '💧', type: 'volume', volumeGoal: 8, unit: 'glasses', timeOfDay: 'anytime', color: '#3B82F6' },
-  { key: 'move', name: 'Move for 20 minutes', icon: '🏃', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#F97316' },
-  { key: 'read', name: 'Read 10 pages', icon: '📚', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#A855F7' },
-  { key: 'meditate', name: 'Meditate', icon: '🧘', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#14B8A6' },
-  { key: 'walk', name: 'Take a walk', icon: '🚶', type: 'daily', volumeGoal: 1, timeOfDay: 'afternoon', color: '#22C55E' },
-  { key: 'sleep', name: 'In bed by 11', icon: '😴', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#6366F1' },
-  { key: 'journal', name: 'Journal', icon: '✍️', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#EC4899' },
-  { key: 'stretch', name: 'Stretch', icon: '🤸', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#EAB308' },
-];
+export { STARTER_HABITS };
 const DEFAULT_PICK = ['water', 'move', 'read'];
 const MAX_PICK = 5;
 
