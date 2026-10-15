@@ -164,7 +164,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
         <View style={[styles.card, { backgroundColor: theme.surface }]}>
           <Text style={[styles.title, { color: theme.text }]}>Set Time</Text>
 
-          <View style={styles.wheelsRow}>
+          <View style={styles.wheelsRow} accessible={true} accessibilityLabel="Time picker">
             {/* Hour wheel */}
             <View style={styles.wheelCol}>
               <WheelColumn
@@ -208,10 +208,10 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
           </View>
 
           <View style={styles.actions}>
-            <TouchableOpacity style={[styles.cancelBtn, { borderColor: theme.border }]} onPress={onClose}>
+            <TouchableOpacity style={[styles.cancelBtn, { borderColor: theme.border }]} onPress={onClose} accessibilityRole="button">
               <Text style={[styles.cancelText, { color: theme.textMuted }]}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSave}>
+            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSave} accessibilityRole="button">
               <Text style={styles.saveText}>Save</Text>
             </TouchableOpacity>
           </View>

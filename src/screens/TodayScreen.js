@@ -323,7 +323,7 @@ export default function TodayScreen() {
           </View>
           <Text style={styles.date}>{getDateString(dateOffset)}</Text>
 
-          <View style={styles.ringRow}>
+          <View style={styles.ringRow} accessible={true} accessibilityLabel={`${completed} of ${total} habits done today`}>
             <ProgressRing
               progress={progress}
               size={110}
@@ -380,6 +380,8 @@ export default function TodayScreen() {
                     setRequestedTab(3);
                   }}
                   activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add your first habit"
                 >
                   <Ionicons name="add" size={28} color="#fff" />
                 </TouchableOpacity>
@@ -392,6 +394,8 @@ export default function TodayScreen() {
                     setRequestedTab(2);
                   }}
                   activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityLabel="No challenges yet. Start your first challenge"
                 >
                   <Text style={styles.challengeEmptyIcon}>🏆</Text>
                   <View style={styles.challengeEmptyText}>
@@ -416,6 +420,8 @@ export default function TodayScreen() {
                 <TouchableOpacity
                   onPress={handleSelectAll}
                   style={[styles.selectAllBtn, { borderColor: allDone ? theme.primary : theme.border }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={allDone ? 'Unmark all habits' : 'Mark all habits done'}
                 >
                   <Text style={[styles.selectAllBtnText, { color: allDone ? theme.primary : theme.textMuted }]}>
                     {allDone ? 'Unmark All' : 'Mark All'}
@@ -459,7 +465,12 @@ export default function TodayScreen() {
                   const progress = ch.days > 0 ? completedCount / ch.days : 0;
                   const currentDay = currentChallengeDay(ch, today);
                   return (
-                    <View key={ch.id} style={[styles.challengeMini, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                    <View
+                      key={ch.id}
+                      style={[styles.challengeMini, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                      accessible={true}
+                      accessibilityLabel={`${ch.name}, day ${currentDay} of ${ch.days}, ${todayDone ? 'done' : 'pending'}`}
+                    >
                       <View style={styles.challengeMiniRow}>
                         <Text style={styles.challengeMiniIcon}>{ch.icon || '🏆'}</Text>
                         <View style={{ flex: 1 }}>

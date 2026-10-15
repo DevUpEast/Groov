@@ -96,6 +96,7 @@ export default function ChallengeRewardModal({ challenges, onDismiss, theme }) {
           <TouchableOpacity
             style={[styles.dismissBtn, { backgroundColor: theme.primary }]}
             onPress={handleNext}
+            accessibilityRole="button"
           >
             <Text style={styles.dismissBtnText}>
               {isLast ? 'Got It' : 'Next →'}

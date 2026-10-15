@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { completionsInWeek } from '../utils/schedule';
 import { addDays } from '../utils/dates';
 import { lightImpact } from '../utils/haptics';
+import { announce } from '../utils/a11y';
 
 export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   const {
@@ -48,8 +49,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   //   daily  → toggle done/undone
   //   volume → add 1 (ignored when already maxed)
   const handleCardPress = isVolume
-    ? () => { if (!done) onIncrement(); }
-    : () => { if (done) onDecrement(); else onIncrement(); };
+    ? () => { if (!done) { onIncrement(); announce(`${habit.name}, ${count + 1} of ${habit.volumeGoal}`); } }
+    : () => { if (done) { onDecrement(); announce(`${habit.name} unchecked`); } else { onIncrement(); announce(`${habit.name} done`); } };
 
   return (
     <TouchableOpacity
@@ -63,8 +64,9 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
       onLongPress={handleLongPress}
       delayLongPress={350}
       activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel={`${habit.name}${isVolume ? `, ${count} of ${habit.volumeGoal}` : ''}${done ? ', done' : skipped ? ', skipped today' : ''}`}
+      accessibilityRole={isVolume ? 'button' : 'checkbox'}
+      accessibilityState={isVolume ? undefined : { checked: done }}
+      accessibilityLabel={`${habit.name}${isVolume ? `, ${count} of ${habit.volumeGoal}${habit.unit ? ` ${habit.unit}` : ''}` : ''}${done ? ', done' : skipped ? ', skipped today' : ', not done'}${streak >= 2 ? `, ${streak} day streak` : ''}`}
       accessibilityHint="Double tap to log. Long press for skip, yesterday and note options."
     >
       {habit.color ? <View style={[styles.stripe, { backgroundColor: habit.color }]} /> : null}
@@ -89,6 +91,9 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
           <TouchableOpacity
             style={[styles.counterBtn, { borderColor: theme.border }]}
             onPress={onDecrement}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove one ${habit.unit || ''}`.trim()}
+            accessibilityState={{ disabled: count <= 0 }}
           >
             <Text style={[styles.counterBtnText, { color: theme.textMuted }]}>−</Text>
           </TouchableOpacity>
@@ -105,6 +110,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
             <TouchableOpacity
               style={[styles.counterBtn, { borderColor: theme.border }]}
               onPress={onIncrement}
+              accessibilityRole="button"
+              accessibilityLabel={`Add one ${habit.unit || ''}`.trim()}
             >
               <Text style={[styles.counterBtnText, { color: theme.textMuted }]}>+</Text>
             </TouchableOpacity>

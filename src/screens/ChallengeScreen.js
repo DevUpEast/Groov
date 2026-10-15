@@ -157,6 +157,9 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
                 icon === ic && { backgroundColor: theme.primaryLight },
               ]}
               onPress={() => setIcon(ic)}
+              accessibilityRole="button"
+              accessibilityLabel={`Icon ${ic}`}
+              accessibilityState={{ selected: icon === ic }}
             >
               <Text style={styles.iconPickerEmoji}>{ic}</Text>
             </TouchableOpacity>
@@ -168,6 +171,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
           style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
           value={name}
           onChangeText={setName}
+          accessibilityLabel="Challenge name"
           placeholder="e.g. 7-Day Strong"
           placeholderTextColor={theme.textMuted}
           returnKeyType="done"
@@ -179,6 +183,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
           style={[styles.input, styles.inputMulti, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
           value={description}
           onChangeText={setDescription}
+          accessibilityLabel="Challenge description"
           placeholder="What's the goal?"
           placeholderTextColor={theme.textMuted}
           multiline
@@ -199,6 +204,9 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
                 rangeMax === opt.max && { backgroundColor: theme.primaryLight },
               ]}
               onPress={() => handleRangeChange(opt.max)}
+              accessibilityRole="button"
+              accessibilityLabel={`${opt.label}, up to ${opt.max} days`}
+              accessibilityState={{ selected: rangeMax === opt.max }}
             >
               <Text style={[styles.rangeBtnText, { color: rangeMax === opt.max ? theme.primary : theme.textMuted }]}>
                 {opt.label}
@@ -207,7 +215,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
           ))}
         </View>
 
-        <Slider value={days} min={1} max={rangeMax} onValueChange={setDays} theme={theme} />
+        <Slider value={days} min={1} max={rangeMax} onValueChange={setDays} theme={theme} label="Challenge duration in days" />
 
         <View style={styles.sliderLabels}>
           <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>1</Text>
@@ -226,6 +234,8 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
             <TouchableOpacity
               style={[styles.linkAllBtn, { borderColor: theme.primary, backgroundColor: theme.primaryLight }]}
               onPress={() => setSelectedHabitIds(habits.map(h => h.id))}
+              accessibilityRole="button"
+              accessibilityLabel="Link all habits"
             >
               <Text style={[styles.linkAllBtnText, { color: theme.primary }]}>⚡ Link All Habits</Text>
             </TouchableOpacity>
@@ -244,6 +254,9 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
                   ]}
                   onPress={() => toggleHabit(habit.id)}
                   activeOpacity={0.7}
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={habit.name}
+                  accessibilityState={{ checked: isLinked }}
                 >
                   <Text style={styles.habitLinkIcon}>{habit.icon || '⭐'}</Text>
                   <Text style={[styles.habitLinkName, { color: theme.text }]} numberOfLines={1}>
@@ -270,6 +283,8 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
         <TouchableOpacity
           style={[styles.addHabitInModalBtn, { borderColor: theme.border }]}
           onPress={() => { doClose(); onAddHabit?.(); }}
+          accessibilityRole="button"
+          accessibilityLabel="Add new habit"
         >
           <Text style={[styles.addHabitInModalText, { color: theme.primary }]}>+ Add New Habit</Text>
         </TouchableOpacity>
@@ -278,6 +293,9 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
           style={[styles.saveBtn, { backgroundColor: canSave ? theme.primary : theme.border, marginTop: 8 }]}
           onPress={handleSave}
           disabled={!canSave}
+          accessibilityRole="button"
+          accessibilityLabel={initial ? 'Save changes' : 'Create challenge'}
+          accessibilityState={{ disabled: !canSave }}
         >
           <Text style={styles.saveBtnText}>{initial ? 'Save Changes' : 'Create Challenge'}</Text>
         </TouchableOpacity>
@@ -318,7 +336,7 @@ function PastChallengeDetailModal({ challenge, onClose, theme }) {
             <Text style={[styles.sheetTitle, { color: textColor }]}>
               {ts.trophy} {challenge.name}
             </Text>
-            <TouchableOpacity onPress={doClose} style={styles.sheetCloseBtn}>
+            <TouchableOpacity onPress={doClose} style={styles.sheetCloseBtn} accessibilityRole="button" accessibilityLabel="Close">
               <Text style={[styles.sheetCloseTxt, { color: subColor }]}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -388,10 +406,10 @@ function ChallengeCard({ challenge, habits, today, onEdit, onDelete, theme }) {
             Day {currentDay} of {challenge.days} · {completedCount} completed
           </Text>
         </View>
-        <TouchableOpacity onPress={onEdit} style={styles.editBtn}>
+        <TouchableOpacity onPress={onEdit} style={styles.editBtn} accessibilityRole="button" accessibilityLabel={`Edit ${challenge.name}`}>
           <Text style={[styles.editBtnText, { color: theme.textMuted }]}>Edit</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onDelete} style={styles.deleteBtn}>
+        <TouchableOpacity onPress={onDelete} style={styles.deleteBtn} accessibilityRole="button" accessibilityLabel="Delete challenge">
           <Text style={[styles.deleteBtnText, { color: theme.danger }]}>✕</Text>
         </TouchableOpacity>
       </View>
@@ -433,6 +451,9 @@ function ChallengeCard({ challenge, habits, today, onEdit, onDelete, theme }) {
           style={styles.linkedTitleArea}
           onPress={() => linkedHabits.length > 0 && setShowLinked(v => !v)}
           activeOpacity={linkedHabits.length > 0 ? 0.7 : 1}
+          accessibilityRole="button"
+          accessibilityLabel={linked.length > 0 ? `Linked habits, ${linked.length}` : 'No habits linked'}
+          accessibilityState={{ expanded: showLinked, disabled: linkedHabits.length === 0 }}
         >
           <Text style={[styles.linkedTitle, { color: theme.textMuted }]}>
             {linked.length > 0 ? `Linked Habits (${linked.length})` : 'No habits linked'}
@@ -538,7 +559,7 @@ export default function ChallengeScreen() {
         <View style={styles.headingRow}>
           <Text style={[styles.heading, { color: theme.text }]}>Challenges</Text>
           {canAddMore && (
-            <TouchableOpacity style={[styles.newBtn, { backgroundColor: theme.primary }]} onPress={openNew}>
+            <TouchableOpacity style={[styles.newBtn, { backgroundColor: theme.primary }]} onPress={openNew} accessibilityRole="button" accessibilityLabel="New challenge">
               <Text style={styles.newBtnText}>+ New</Text>
             </TouchableOpacity>
           )}
@@ -552,7 +573,7 @@ export default function ChallengeScreen() {
             theme={theme}
             style={{ backgroundColor: theme.surface, borderWidth: 1, marginTop: 0 }}
           >
-            <TouchableOpacity style={[styles.emptyBtn, { backgroundColor: theme.primary }]} onPress={openNew}>
+            <TouchableOpacity style={[styles.emptyBtn, { backgroundColor: theme.primary }]} onPress={openNew} accessibilityRole="button">
               <Text style={styles.emptyBtnText}>Create a Challenge</Text>
             </TouchableOpacity>
           </EmptyCard>
@@ -603,6 +624,10 @@ export default function ChallengeScreen() {
                   style={[styles.pastRow, { backgroundColor: cardBg, borderColor: cardBorder }]}
                   onPress={() => setSelectedPast(ch)}
                   activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityLabel={tier !== 'none'
+                    ? `${ch.name}, ${tier} completion, ${ch.completedDays?.length ?? 0} of ${ch.days} days`
+                    : `${ch.name}, ended, ${ch.completedDays?.length ?? 0} of ${ch.days} days`}
                 >
                   <Text style={styles.pastEmoji}>{ts.trophy}</Text>
                   <View style={{ flex: 1 }}>

@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, PanResponder } from 'react-native';
 
-export default function Slider({ value, min = 1, max, onValueChange, theme }) {
+export default function Slider({ value, min = 1, max, onValueChange, theme, label }) {
   const layoutRef = useRef({ x: 0, width: 1 });
   const maxRef = useRef(max);
   const minRef = useRef(min);
@@ -34,6 +34,12 @@ export default function Slider({ value, min = 1, max, onValueChange, theme }) {
 
   const fillRatio = max <= min ? 0 : Math.max(0, Math.min(1, (value - min) / (max - min)));
 
+  const onAccessibilityAction = (e) => {
+    const name = e?.nativeEvent?.actionName;
+    if (name === 'increment') onValueChange(Math.min(max, value + 1));
+    else if (name === 'decrement') onValueChange(Math.max(min, value - 1));
+  };
+
   return (
     <View
       ref={ref}
@@ -42,6 +48,12 @@ export default function Slider({ value, min = 1, max, onValueChange, theme }) {
       })}
       {...panResponder.panHandlers}
       style={styles.trackArea}
+      accessible={true}
+      accessibilityRole="adjustable"
+      accessibilityLabel={label || 'Slider'}
+      accessibilityValue={{ min, max, now: value }}
+      accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+      onAccessibilityAction={onAccessibilityAction}
     >
       <View style={[styles.track, { backgroundColor: theme.border }]}>
         <View style={[styles.fill, { width: `${fillRatio * 100}%`, backgroundColor: theme.primary }]} />
