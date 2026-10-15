@@ -4,7 +4,7 @@ import {
   Modal, TextInput, Alert, Animated, ActivityIndicator,
   PanResponder, TouchableWithoutFeedback, Keyboard, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import SafeAreaView from '../components/SafeAreaView';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useApp } from '../context/AppContext';
@@ -209,6 +209,13 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
     }
   };
 
+  const animateClose = useCallback((cb) => {
+    Animated.timing(translateY, { toValue: 700, duration: 220, useNativeDriver: true }).start(() => {
+      setInternalVisible(false);
+      cb?.();
+    });
+  }, [translateY]);
+
   useEffect(() => {
     if (visible) {
       setInternalVisible(true);
@@ -218,13 +225,6 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
       animateClose(null);
     }
   }, [visible, animateClose]);
-
-  const animateClose = useCallback((cb) => {
-    Animated.timing(translateY, { toValue: 700, duration: 220, useNativeDriver: true }).start(() => {
-      setInternalVisible(false);
-      cb?.();
-    });
-  }, [translateY]);
 
   const handleVolMaxChange = (newMax) => {
     setVolMax(newMax);

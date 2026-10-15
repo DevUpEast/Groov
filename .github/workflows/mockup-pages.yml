@@ -1,0 +1,54 @@
+name: Deploy iOS mockup to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'mockup/**'
+      - 'src/**'
+      - 'App.js'
+      - 'index.js'
+      - 'app.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/build-mockup.sh'
+      - '.github/workflows/mockup-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Public values (the same ones inlined in eas.json); the anon key is safe to ship.
+      EXPO_PUBLIC_SUPABASE_URL: https://fdplqvebauivtlywornw.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_SENTRY_DSN: ${{ vars.EXPO_PUBLIC_SENTRY_DSN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: bash scripts/build-mockup.sh /Groov
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: mockup-dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

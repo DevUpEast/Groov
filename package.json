@@ -53,12 +53,18 @@
   "devDependencies": {
     "@types/react": "~19.1.10",
     "fallow": "^2.88.2",
+    "puppeteer-core": "^25.14.0",
     "typescript": "~5.9.2"
   },
   "jest": {
     "preset": "jest-expo",
     "testMatch": [
       "**/__tests__/**/*.test.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/.claude/",
+      "<rootDir>/mockup-dist/"
     ]
   }
 }

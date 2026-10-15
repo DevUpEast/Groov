@@ -54,3 +54,4 @@ reports/
 
 # per-machine Claude Code settings
 .claude/settings.local.json
+mockup-dist/
