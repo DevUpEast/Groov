@@ -14,6 +14,8 @@ import { lightImpact } from '../utils/haptics';
 import { playSuccessChime } from '../utils/sounds';
 import { to12h, to24h, formatTime12 as formatTime } from '../utils/time';
 import { exportBackup, pickBackup } from '../services/backup';
+import { openRateApp } from '../services/review';
+import WhatsNewSheet from '../components/WhatsNewSheet';
 import { summarizeBackup } from '../utils/backup';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
@@ -28,6 +30,15 @@ const VERSION_LABEL = `Groov v${APP_VERSION}${BUILD_NUMBER ? ` (${BUILD_NUMBER})
 const SITE_URL = 'https://isaaceast.com/groov';
 const PRIVACY_URL = `${SITE_URL}/privacy-policy`;
 const TERMS_URL = `${SITE_URL}/terms`;
+const SUPPORT_URL = `${SITE_URL}/support`;
+// Public issue tracker doubles as the feedback channel until a support mailbox exists.
+const FEEDBACK_URL = 'https://github.com/DevUpEast/Groov/issues/new?labels=feedback&title=Feedback%3A%20';
+const SUPPORT_EMAIL = null; // e.g. 'support@example.com' — when set, Feedback opens mail instead
+
+function feedbackMailto() {
+  const subject = encodeURIComponent(`Groov feedback (${VERSION_LABEL}, ${Platform.OS})`);
+  return `mailto:${SUPPORT_EMAIL}?subject=${subject}`;
+}
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light' },
@@ -123,6 +134,17 @@ export default function SettingsScreen() {
     allHabits, completions, notes, challenges, pastChallenges, dailySnapshot, accountCreatedAt, lastBackupAt, markBackedUp, importBackup,
     ensureNotificationPermission,
   } = useApp();
+
+  const [whatsNew, setWhatsNew] = useState(false);
+  const handleRate = async () => {
+    if (settings.hapticsEnabled) lightImpact();
+    const ok = await openRateApp();
+    if (!ok) Alert.alert('Thank you!', 'Ratings open once Groov is live on the App Store and Google Play. For now, feedback is just as welcome.');
+  };
+  const handleFeedback = () => {
+    if (settings.hapticsEnabled) lightImpact();
+    Linking.openURL(SUPPORT_EMAIL ? feedbackMailto() : FEEDBACK_URL).catch(() => {});
+  };
 
   // ── Backup / restore ─────────────────────────────────────────────────────────
   const [backupBusy, setBackupBusy] = useState(false);
@@ -769,6 +791,33 @@ export default function SettingsScreen() {
         {/* About */}
         <Section title="ABOUT" theme={theme}>
           <Row
+            label="Rate Groov"
+            sublabel="A quick rating helps a solo-built app a lot"
+            theme={theme}
+            onPress={handleRate}
+            right={<Ionicons name="star-outline" size={18} color={theme.warning} />}
+          />
+          <Row
+            label="Send feedback"
+            sublabel={SUPPORT_EMAIL ? 'Email the developer' : 'Report a bug or suggest a feature'}
+            theme={theme}
+            onPress={handleFeedback}
+            right={<Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.textMuted} />}
+          />
+          <Row
+            label="What's new"
+            sublabel={`Changes in ${VERSION_LABEL}`}
+            theme={theme}
+            onPress={() => { if (settings.hapticsEnabled) lightImpact(); setWhatsNew(true); }}
+            right={<Ionicons name="sparkles-outline" size={18} color={theme.textMuted} />}
+          />
+          <Row
+            label="Help & support"
+            theme={theme}
+            onPress={() => Linking.openURL(SUPPORT_URL).catch(() => {})}
+            right={<Ionicons name="open-outline" size={18} color={theme.textMuted} />}
+          />
+          <Row
             label="Privacy Policy"
             sublabel="What Groov collects and why"
             theme={theme}
@@ -792,6 +841,8 @@ export default function SettingsScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      <WhatsNewSheet visible={whatsNew} onClose={() => setWhatsNew(false)} theme={theme} currentVersion={APP_VERSION} />
 
       {/* Password Reset Modal */}
       {resetStep === 'verify' && (
