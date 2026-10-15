@@ -3,6 +3,7 @@ import { AppState, useColorScheme, Linking, Alert, Platform } from 'react-native
 import * as ExpoLinking from 'expo-linking';
 import * as QuickActions from 'expo-quick-actions';
 import { parseDeepLink } from '../utils/links';
+import { isGoalMet, justMetGoal } from '../utils/habits';
 import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage';
 import { themes } from '../theme/colors';
 import { useAuth } from './AuthContext';
@@ -152,7 +153,7 @@ function migrateHabits(hs) {
 }
 
 const snapshotOf = (habits) => habits.map(h => ({
-  id: h.id, name: h.name, icon: h.icon, volumeGoal: h.volumeGoal, schedule: normalizeSchedule(h.schedule),
+  id: h.id, name: h.name, icon: h.icon, type: h.type, volumeGoal: h.volumeGoal, schedule: normalizeSchedule(h.schedule),
 }));
 
 function migrateChallenges(chs) {
@@ -352,7 +353,7 @@ export function AppProvider({ children }) {
       for (let i = 0; i < 30; i++) {
         if (h.createdAt && key < h.createdAt) break;
         if (!isScheduledOn(h.schedule, key)) { key = addDays(key, -1); continue; }
-        if (((completions[key] || {})[h.id] || 0) >= h.volumeGoal) break;
+        if (isGoalMet(h, (completions[key] || {})[h.id])) break;
         misses++;
         key = addDays(key, -1);
       }
@@ -475,7 +476,7 @@ export function AppProvider({ children }) {
     if (!loaded) return;
     const realToday = localDateKey();
     const left = habits.filter(h => isScheduledOn(h.schedule, realToday)
-      && !isSatisfiedOn(h.schedule, realToday, (k) => ((completions[k] || {})[h.id] || 0) >= h.volumeGoal)).length;
+      && !isSatisfiedOn(h.schedule, realToday, (k) => isGoalMet(h, (completions[k] || {})[h.id]))).length;
     setBadge(settings.notificationsEnabled ? left : 0);
   }, [loaded, habits, completions, settings.notificationsEnabled, clockTick]);
 
@@ -492,7 +493,7 @@ export function AppProvider({ children }) {
     }
     const due = habits.filter(h => isScheduledOn(h.schedule, realToday));
     const allDone = due.length > 0 && due.every(h =>
-      isSatisfiedOn(h.schedule, realToday, (k) => ((completions[k] || {})[h.id] || 0) >= h.volumeGoal));
+      isSatisfiedOn(h.schedule, realToday, (k) => isGoalMet(h, (completions[k] || {})[h.id])));
     if (allDone) {
       cancelEveningHabitReminder(realToday);
     } else {
@@ -639,12 +640,14 @@ export function AppProvider({ children }) {
   }, [completions, todayStr]);
 
   const isHabitDone = useCallback((habit) => {
-    return getHabitCount(habit.id) >= habit.volumeGoal;
+    return isGoalMet(habit, getHabitCount(habit.id));
   }, [getHabitCount]);
 
-  // Goal met on `key` (any date) for a habit.
+  // Goal met on `key` (any date) for a habit. Days before the habit existed never
+  // count (matters for 'atMost', where an untouched day is otherwise a success).
   const isHabitDoneOn = useCallback((habit, key) => {
-    return ((completions[key] || {})[habit.id] || 0) >= habit.volumeGoal;
+    if (habit.createdAt && key < habit.createdAt) return false;
+    return isGoalMet(habit, (completions[key] || {})[habit.id]);
   }, [completions]);
 
   // Habits the Today screen shows: everything scheduled today. perWeek habits are
@@ -676,13 +679,16 @@ export function AppProvider({ children }) {
 
   // ── Habit mutations ──────────────────────────────────────────────────────────
 
-  const incrementHabit = useCallback((habitId) => {
+  // Add `amount` (default 1; timed habits add minutes). Daily/quit habits cap at 1;
+  // counters may exceed their goal. Returns true when this call met the goal.
+  const incrementHabit = useCallback((habitId, amount = 1) => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return false;
     const today = todayStr();
     const current = (completions[today] || {})[habitId] || 0;
-    if (current >= habit.volumeGoal) return false;
-    const next = current + 1;
+    const capped = habit.type === 'daily' || habit.type === 'quit' || !habit.type;
+    if (capped && current >= 1) return false;
+    const next = capped ? 1 : current + Math.max(1, Math.round(amount));
     setCompletions(prev => ({
       ...prev,
       [today]: { ...(prev[today] || {}), [habitId]: next },
@@ -692,19 +698,21 @@ export function AppProvider({ children }) {
       return { ...prev, [today]: snapshotOf(habits) };
     });
     if (userId) syncCompletion(userId, today, habitId, next);
-    if (next >= habit.volumeGoal) track(Events.COMPLETION, { type: habit.type });
-    return next >= habit.volumeGoal;
+    const met = justMetGoal(habit, current, next);
+    if (met) track(Events.COMPLETION, { type: habit.type });
+    return met;
   }, [completions, habits, todayStr, userId]);
 
-  const decrementHabit = useCallback((habitId) => {
+  const decrementHabit = useCallback((habitId, amount = 1) => {
     const today = todayStr();
     const current = (completions[today] || {})[habitId] || 0;
     if (current <= 0) return;
+    const next = Math.max(0, current - Math.max(1, Math.round(amount)));
     setCompletions(prev => ({
       ...prev,
-      [today]: { ...(prev[today] || {}), [habitId]: current - 1 },
+      [today]: { ...(prev[today] || {}), [habitId]: next },
     }));
-    if (userId) syncCompletion(userId, today, habitId, current - 1);
+    if (userId) syncCompletion(userId, today, habitId, next);
   }, [completions, todayStr, userId]);
 
   // Set a habit's count on any past day (edit yesterday, habit detail calendar).
@@ -713,7 +721,7 @@ export function AppProvider({ children }) {
   const setHabitCountOn = useCallback((habitId, key, count) => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit || key > todayStr()) return;
-    const next = Math.max(0, Math.min(habit.volumeGoal, Math.round(count)));
+    const next = Math.max(0, Math.round(count));
     setCompletions(prev => {
       const day = { ...(prev[key] || {}) };
       if (next > 0) day[habitId] = next; else delete day[habitId];
@@ -728,8 +736,10 @@ export function AppProvider({ children }) {
   const toggleHabitDoneOn = useCallback((habitId, key) => {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return;
-    const done = ((completions[key] || {})[habitId] || 0) >= habit.volumeGoal;
-    setHabitCountOn(habitId, key, done ? 0 : habit.volumeGoal);
+    const done = isGoalMet(habit, (completions[key] || {})[habitId]);
+    // For a limit habit "toggle" means clear vs go over; otherwise clear vs meet the goal.
+    const doneValue = habit.type === 'atMost' ? habit.volumeGoal + 1 : (habit.type === 'volume' || habit.type === 'timed' ? habit.volumeGoal : 1);
+    setHabitCountOn(habitId, key, done ? (habit.type === 'atMost' ? doneValue : 0) : (habit.type === 'atMost' ? 0 : doneValue));
   }, [habits, completions, setHabitCountOn]);
 
   // Make a freshly picked icon durable: copy it next to the app data and upload it to
@@ -1200,8 +1210,11 @@ export function AppProvider({ children }) {
 
   const isSnapshotHabitDone = useCallback((k, id) => {
     const h = habitsOnDay(k).find(x => x.id === id);
-    return !!h && ((completions[k] || {})[id] || 0) >= h.volumeGoal;
-  }, [habitsOnDay, completions]);
+    if (!h) return false;
+    const live = allHabits.find(x => x.id === id);
+    if (live?.createdAt && k < live.createdAt) return false;
+    return isGoalMet(h, (completions[k] || {})[id]);
+  }, [habitsOnDay, completions, allHabits]);
 
   const getStreakForHabit = useCallback((habitId) => {
     const habit = habits.find(h => h.id === habitId);
@@ -1271,7 +1284,7 @@ export function AppProvider({ children }) {
         // totals so an unscheduled habit never makes a day look "partial".
         const dayHabits = (snapshot || snapshotOf(habits)).map(h => ({
           ...h,
-          status: dayStatus(h.schedule, dateStr, todayLocal, (k) => ((completions[k] || {})[h.id] || 0) >= h.volumeGoal, (k) => isExcused(k, h.id)),
+          status: dayStatus(h.schedule, dateStr, todayLocal, (k) => isGoalMet(h, (completions[k] || {})[h.id]), (k) => isExcused(k, h.id)),
           skipped: isHabitSkippedOn(h.id, dateStr),
         }));
         const counted = dayHabits.filter(h => h.status !== 'rest');

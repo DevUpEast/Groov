@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
-import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn } from '../_shared/schedule.ts'
+import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn, goalMet } from '../_shared/schedule.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -136,7 +136,7 @@ Deno.serve(async (req: Request) => {
     const accountActiveDays = Math.round((today2.getTime() - accountCreatedDate.getTime()) / msPerDay) + 1
 
     const [{ data: habits }, { data: completionRows }] = await Promise.all([
-      supabase.from('habits').select('id, name, icon, volume_goal, created_at, schedule').eq('user_id', user.id).eq('archived', false),
+      supabase.from('habits').select('id, name, icon, type, volume_goal, created_at, schedule').eq('user_id', user.id).eq('archived', false),
       supabase
         .from('completions')
         .select('date, habit_id, count')
@@ -171,7 +171,7 @@ Deno.serve(async (req: Request) => {
       for (let guard = 0; guard < 400; guard++) {
         const dateStr = dateKey(d)
         if (d < habitStartDate) break
-        const done = ((completions[dateStr] ?? {})[h.id] ?? 0) >= h.volume_goal
+        const done = goalMet(h.type, (completions[dateStr] ?? {})[h.id], h.volume_goal)
         if (done) streak++
         else if (schedule.type === 'daily' || (schedule.type === 'weekdays' && isScheduledOn(schedule, d))) break
         d.setDate(d.getDate() - 1)
@@ -179,7 +179,7 @@ Deno.serve(async (req: Request) => {
 
       const completedDays = Object.entries(completions)
         .filter(([date]) => date >= habitStartStr)
-        .filter(([, day]) => (day[h.id] ?? 0) >= h.volume_goal)
+        .filter(([, day]) => goalMet(h.type, day[h.id], h.volume_goal))
         .length
 
       return {
@@ -211,7 +211,7 @@ Deno.serve(async (req: Request) => {
         if (dateStr <= accountCreatedStr) break
         continue
       }
-      if (dueToday.every((h) => (day[h.id] ?? 0) >= h.volume_goal)) {
+      if (dueToday.every((h) => goalMet(h.type, day[h.id], h.volume_goal))) {
         overallStreak++
         od.setDate(od.getDate() - 1)
       } else break

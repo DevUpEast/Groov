@@ -14,6 +14,7 @@ import CelebrationOverlay from '../components/CelebrationOverlay';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { addDays } from '../utils/dates';
 import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
+import { CHALLENGE_TEMPLATES } from '../utils/habits';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -146,6 +147,36 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 20 }}
       >
+        {!initial && (
+          <>
+            <Text style={[styles.label, { color: theme.textMuted }]}>Start from a template</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
+              {CHALLENGE_TEMPLATES.map(t => {
+                const active = days === t.days && name === t.name;
+                return (
+                  <TouchableOpacity
+                    key={t.key}
+                    style={[styles.templateChip, { borderColor: active ? theme.primary : theme.border, backgroundColor: active ? theme.primaryLight : theme.bg }]}
+                    onPress={() => {
+                      if (settings.hapticsEnabled) lightImpact();
+                      setName(t.name); setDescription(t.description); setIcon(t.icon);
+                      setDays(t.days); setRangeMax(t.days <= 7 ? 7 : t.days <= 30 ? 30 : 365);
+                      if (selectedHabitIds.length === 0) setSelectedHabitIds(habits.map(h => h.id));
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${t.name} template`}
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text style={styles.templateEmoji}>{t.icon}</Text>
+                    <Text style={[styles.templateDays, { color: active ? theme.primary : theme.text }]}>{t.days}d</Text>
+                    <Text style={[styles.templateName, { color: theme.textMuted }]} numberOfLines={1}>{t.name.replace(/^\d+-Day /, '')}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </>
+        )}
+
         <Text style={[styles.label, { color: theme.textMuted }]}>Icon</Text>
         <View style={styles.iconPickerRow}>
           {CHALLENGE_ICONS.map(ic => (
@@ -732,6 +763,10 @@ const styles = StyleSheet.create({
   linkWarning: { fontSize: 13, marginBottom: 10, fontStyle: 'italic' },
   addHabitInModalBtn: { borderWidth: 1.5, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 4, marginBottom: 16, borderStyle: 'dashed' },
   addHabitInModalText: { fontSize: 15, fontWeight: '700' },
+  templateChip: { width: 96, borderWidth: 1.5, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center' },
+  templateEmoji: { fontSize: 22 },
+  templateDays: { fontSize: 15, fontWeight: '800', marginTop: 2 },
+  templateName: { fontSize: 10, marginTop: 2 },
   // Icon picker
   iconPickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   iconPickerBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },

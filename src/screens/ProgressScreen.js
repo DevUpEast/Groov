@@ -10,6 +10,7 @@ import { fetchReflection } from '../services/aiCoaching';
 import { localDateKey, addDays } from '../utils/dates';
 import { moodSummary, habitMoodCorrelations, describeCorrelation, moodEmoji, MIN_SAMPLES } from '../utils/mood';
 import { overallDayStatus } from '../utils/streaks';
+import { isGoalMet } from '../utils/habits';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CHART_H = 150;
@@ -195,7 +196,7 @@ function DayDetailModal({ visible, day, onClose, theme }) {
             ) : (
               dayHabits.map(h => {
                 const count = dayCompletions[h.id] || 0;
-                const done = count >= h.volumeGoal;
+                const done = isGoalMet(h, count);
                 const rest = !done && h.status === 'rest';
                 return (
                   <View key={h.id} style={[styles.habitRow, { borderBottomColor: theme.border, opacity: rest ? 0.55 : 1 }]}>
@@ -250,7 +251,7 @@ export default function ProgressScreen() {
   const moodInsights = useMemo(() => {
     const today = todayStr();
     const habitsOn = (k) => dailySnapshot[k] || habits;
-    const isDone = (k, id) => { const h = habitsOn(k).find(x => x.id === id); return !!h && ((completions[k] || {})[id] || 0) >= h.volumeGoal; };
+    const isDone = (k, id) => { const h = habitsOn(k).find(x => x.id === id); return !!h && isGoalMet(h, (completions[k] || {})[id]); };
     const isPerfect = (k) => overallDayStatus(k, today, habitsOn, isDone, isExcused) === 'done';
     const summary = moodSummary(moods, isPerfect);
     const correlations = habitMoodCorrelations(moods, habits, (h, k) => isHabitDoneOn(h, k));
