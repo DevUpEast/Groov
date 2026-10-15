@@ -29,7 +29,7 @@ function cellSize(cfg) {
 
 // ─── Bar chart (always 7 days) ────────────────────────────────────────────────
 
-function BarChart({ data, labels, theme, onBarPress, futureFlags }) {
+function BarChart({ data, labels, theme, onBarPress, futureFlags, a11yLabels }) {
   return (
     <View style={{ marginTop: 8 }}>
       <View style={{ flexDirection: 'row', height: CHART_H }}>
@@ -63,6 +63,9 @@ function BarChart({ data, labels, theme, onBarPress, futureFlags }) {
                 style={{ flex: 1, height: CHART_H, justifyContent: 'flex-end', alignItems: 'center' }}
                 onPress={() => !isFuture && onBarPress?.(i, val)}
                 activeOpacity={isFuture ? 1 : 0.7}
+                accessibilityRole="button"
+                accessibilityLabel={a11yLabels?.[i] ?? `${labels[i]}: ${isFuture ? 'no data yet' : `${val} percent`}`}
+                accessibilityState={{ disabled: !!isFuture }}
               >
                 {!isFuture && (
                   <View style={{ width: '70%', height: barH, backgroundColor: theme.primary, borderRadius: 4 }} />
@@ -93,11 +96,22 @@ function HeatmapCell({ day, size, gap, theme, onPress }) {
   else if (!future && frozen) bg = FROZEN_COLOR;
   else if (!future && total > 0 && completed > 0) bg = PARTIAL_COLOR;
 
+  const dateLabel = new Date(day.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const a11yLabel = future
+    ? `${dateLabel}: future`
+    : total === 0
+      ? `${dateLabel}: rest day`
+      : `${dateLabel}: ${completed} of ${total} habits${frozen ? ', streak frozen' : ''}`;
+  const interactive = !future && total > 0;
+
   return (
     <TouchableOpacity
-      onPress={() => !future && total > 0 && onPress?.(day)}
-      activeOpacity={!future && total > 0 ? 0.7 : 1}
+      onPress={() => interactive && onPress?.(day)}
+      activeOpacity={interactive ? 0.7 : 1}
       style={{ marginRight: gap, marginBottom: gap }}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityState={{ disabled: !interactive }}
     >
       <View style={{ width: size, height: size, borderRadius: Math.max(3, size * 0.18), backgroundColor: bg, opacity: future ? 0.3 : 1 }} />
     </TouchableOpacity>
@@ -209,7 +223,13 @@ function DayDetailModal({ visible, day, onClose, theme }) {
 
 function BarTooltip({ label, value, onClose, theme }) {
   return (
-    <TouchableOpacity style={styles.tooltipOverlay} onPress={onClose} activeOpacity={1}>
+    <TouchableOpacity
+      style={styles.tooltipOverlay}
+      onPress={onClose}
+      activeOpacity={1}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value} percent completed. Dismiss`}
+    >
       <View style={[styles.tooltip, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <Text style={[styles.tooltipLabel, { color: theme.textMuted }]}>{label}</Text>
         <Text style={[styles.tooltipValue, { color: theme.primary }]}>{value}%</Text>
@@ -303,6 +323,15 @@ export default function ProgressScreen() {
 
   const futureFlagsBar = useMemo(() => last7.map(d => !!d.future), [last7]);
 
+  const chartA11yLabels = useMemo(() =>
+    last7.map((d, i) => {
+      const date = new Date(d.date + 'T00:00:00');
+      const label = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return d.future ? `${label}: no data yet` : `${label}: ${chartData[i]} percent`;
+    }),
+    [last7, chartData]
+  );
+
   const handleBarPress = (i, val) => {
     const d = last7[i];
     if (d.future) return;
@@ -347,7 +376,7 @@ export default function ProgressScreen() {
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>Habits Completed: Weekly</Text>
           <Text style={[styles.cardHint, { color: theme.textMuted }]}>Tap a bar for details</Text>
-          <BarChart data={chartData} labels={chartLabels} theme={theme} onBarPress={handleBarPress} futureFlags={futureFlagsBar} />
+          <BarChart data={chartData} labels={chartLabels} theme={theme} onBarPress={handleBarPress} futureFlags={futureFlagsBar} a11yLabels={chartA11yLabels} />
         </View>
 
         {/* Heatmap with period toggle */}
@@ -364,6 +393,9 @@ export default function ProgressScreen() {
                     heatPeriodIdx === i && { backgroundColor: theme.primary, borderColor: theme.primary },
                   ]}
                   onPress={() => { lightImpact(); setHeatPeriodIdx(i); }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Last ${cfg.days} days`}
+                  accessibilityState={{ selected: heatPeriodIdx === i }}
                 >
                   <Text style={[styles.periodBtnText, { color: heatPeriodIdx === i ? '#fff' : theme.textMuted }]}>
                     {cfg.label}
@@ -457,6 +489,9 @@ export default function ProgressScreen() {
                       setReflectionMessage(null);
                       setReflectionError(false);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${value === 'weekly' ? 'Weekly' : 'Monthly'} reflection${locked ? ', locked' : ''}`}
+                    accessibilityState={{ selected: active, disabled: locked }}
                   >
                     <Text style={[styles.periodBtnText, { color: active ? '#fff' : theme.textMuted }]}>
                       {locked ? '🔒' : label}
@@ -510,6 +545,8 @@ export default function ProgressScreen() {
               <TouchableOpacity
                 style={[styles.generateBtn, { backgroundColor: theme.primary }]}
                 onPress={handleGenerateReflection}
+                accessibilityRole="button"
+                accessibilityLabel={`Generate ${reflectionPeriod === 'weekly' ? 'weekly' : 'monthly'} summary`}
               >
                 <Text style={styles.generateBtnText}>
                   Generate {reflectionPeriod === 'weekly' ? 'weekly' : 'monthly'} summary

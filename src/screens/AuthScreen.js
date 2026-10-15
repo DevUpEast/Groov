@@ -168,6 +168,8 @@ export default function AuthScreen() {
                     style={[s.tab, mode === m && { backgroundColor: theme.primary }]}
                     onPress={() => switchMode(m)}
                     activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: mode === m }}
                   >
                     <Text style={[s.tabText, { color: mode === m ? '#fff' : theme.textMuted }]}>
                       {m === 'login' ? 'Log In' : 'Register'}
@@ -186,6 +188,7 @@ export default function AuthScreen() {
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={resetEmail}
                     onChangeText={setResetEmail}
+                    accessibilityLabel="Email"
                     placeholder="you@example.com"
                     placeholderTextColor={theme.textMuted}
                     keyboardType="email-address"
@@ -199,6 +202,9 @@ export default function AuthScreen() {
                     onPress={handleForgotSend}
                     disabled={loading}
                     activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel="Send Reset Code"
+                    accessibilityState={{ disabled: loading, busy: loading }}
                   >
                     {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Send Reset Code</Text>}
                   </TouchableOpacity>
@@ -214,6 +220,7 @@ export default function AuthScreen() {
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={resetCode}
                     onChangeText={setResetCode}
+                    accessibilityLabel="Reset code"
                     placeholder="Code from your email"
                     placeholderTextColor={theme.textMuted}
                     autoCapitalize="none"
@@ -224,6 +231,7 @@ export default function AuthScreen() {
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={newPassword}
                     onChangeText={setNewPassword}
+                    accessibilityLabel="New password"
                     placeholder="••••••••"
                     placeholderTextColor={theme.textMuted}
                     secureTextEntry
@@ -233,6 +241,7 @@ export default function AuthScreen() {
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={confirmNewPassword}
                     onChangeText={setConfirmNewPassword}
+                    accessibilityLabel="Confirm new password"
                     placeholder="••••••••"
                     placeholderTextColor={theme.textMuted}
                     secureTextEntry
@@ -243,6 +252,9 @@ export default function AuthScreen() {
                     onPress={handleResetVerify}
                     disabled={loading}
                     activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel="Set New Password"
+                    accessibilityState={{ disabled: loading, busy: loading }}
                   >
                     {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Set New Password</Text>}
                   </TouchableOpacity>
@@ -259,6 +271,7 @@ export default function AuthScreen() {
                         style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                         value={displayName}
                         onChangeText={setDisplayName}
+                        accessibilityLabel="Display name"
                         placeholder="What should we call you?"
                         placeholderTextColor={theme.textMuted}
                         autoCapitalize="words"
@@ -273,6 +286,7 @@ export default function AuthScreen() {
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={email}
                     onChangeText={setEmail}
+                    accessibilityLabel="Email"
                     placeholder="you@example.com"
                     placeholderTextColor={theme.textMuted}
                     keyboardType="email-address"
@@ -286,11 +300,18 @@ export default function AuthScreen() {
                       style={[s.inputInner, { color: theme.text }]}
                       value={password}
                       onChangeText={setPassword}
+                      accessibilityLabel="Password"
                       placeholder="••••••••"
                       placeholderTextColor={theme.textMuted}
                       secureTextEntry={!showPassword}
                     />
-                    <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={s.eyeBtn} activeOpacity={0.6}>
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(v => !v)}
+                      style={s.eyeBtn}
+                      activeOpacity={0.6}
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                    >
                       <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textMuted} />
                     </TouchableOpacity>
                   </View>
@@ -303,11 +324,18 @@ export default function AuthScreen() {
                           style={[s.inputInner, { color: theme.text }]}
                           value={confirmPassword}
                           onChangeText={setConfirmPassword}
+                          accessibilityLabel="Confirm password"
                           placeholder="••••••••"
                           placeholderTextColor={theme.textMuted}
                           secureTextEntry={!showConfirmPassword}
                         />
-                        <TouchableOpacity onPress={() => setShowConfirmPassword(v => !v)} style={s.eyeBtn} activeOpacity={0.6}>
+                        <TouchableOpacity
+                          onPress={() => setShowConfirmPassword(v => !v)}
+                          style={s.eyeBtn}
+                          activeOpacity={0.6}
+                          accessibilityRole="button"
+                          accessibilityLabel={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                        >
                           <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textMuted} />
                         </TouchableOpacity>
                       </View>
@@ -322,6 +350,9 @@ export default function AuthScreen() {
                     onPress={handleSubmit}
                     disabled={loading}
                     activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={mode === 'login' ? 'Log In' : 'Create Account'}
+                    accessibilityState={{ disabled: loading, busy: loading }}
                   >
                     {loading
                       ? <ActivityIndicator color="#fff" />
@@ -334,6 +365,7 @@ export default function AuthScreen() {
                       style={s.forgotBtn}
                       onPress={() => { switchMode('forgot'); setResetEmail(email); }}
                       activeOpacity={0.7}
+                      accessibilityRole="link"
                     >
                       <Text style={[s.forgotText, { color: theme.primary }]}>Forgot password?</Text>
                     </TouchableOpacity>
@@ -393,7 +425,7 @@ export default function AuthScreen() {
           {(mode === 'login' || mode === 'register') && (
             <Text style={[s.footer, { color: theme.textMuted }]}>
               {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-              <Text style={{ color: theme.primary }} onPress={() => switchMode(mode === 'login' ? 'register' : 'login')}>
+              <Text style={{ color: theme.primary }} onPress={() => switchMode(mode === 'login' ? 'register' : 'login')} accessibilityRole="link">
                 {mode === 'login' ? 'Register' : 'Log in'}
               </Text>
             </Text>
@@ -401,7 +433,7 @@ export default function AuthScreen() {
 
           {(mode === 'forgot' || mode === 'reset') && (
             <Text style={[s.footer, { color: theme.textMuted }]}>
-              <Text style={{ color: theme.primary }} onPress={() => switchMode('login')}>
+              <Text style={{ color: theme.primary }} onPress={() => switchMode('login')} accessibilityRole="link">
                 Back to Log In
               </Text>
             </Text>

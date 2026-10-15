@@ -2,11 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Animated, StyleSheet, Text } from 'react-native';
 import CelebrationOverlay from './CelebrationOverlay';
 import { heavyImpact, mediumImpact } from '../utils/haptics';
+import { useReducedMotion, announce } from '../utils/a11y';
 
 export default function TrophyCelebration({ visible, onDone, settings, theme }) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const orbitAnim = useRef(new Animated.Value(0)).current;
   const [showConfetti, setShowConfetti] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (!visible) {
@@ -14,6 +16,13 @@ export default function TrophyCelebration({ visible, onDone, settings, theme }) 
       orbitAnim.setValue(0);
       setShowConfetti(false);
       return;
+    }
+    announce('Challenge complete. Trophy earned.');
+    if (reducedMotion) {
+      scaleAnim.setValue(1);
+      if (settings?.hapticsEnabled) heavyImpact();
+      const t = setTimeout(onDone, 2000);
+      return () => clearTimeout(t);
     }
 
     Animated.spring(scaleAnim, {
@@ -48,12 +57,12 @@ export default function TrophyCelebration({ visible, onDone, settings, theme }) 
   });
 
   return (
-    <View style={[StyleSheet.absoluteFill, styles.overlay]}>
+    <View style={[StyleSheet.absoluteFill, styles.overlay]} accessible accessibilityLabel="Challenge complete, trophy earned">
       <View style={styles.center}>
-        <Animated.View style={[
+        {!reducedMotion && <Animated.View style={[
           styles.orbitDot,
           { backgroundColor: theme.primary, transform: [{ translateX: orbitX }, { translateY: orbitY }] },
-        ]} />
+        ]} />}
         <Animated.Text style={[styles.emoji, { transform: [{ scale: scaleAnim }] }]}>🏆</Animated.Text>
       </View>
       {showConfetti && <CelebrationOverlay visible={true} onDone={() => {}} />}

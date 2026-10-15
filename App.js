@@ -41,7 +41,7 @@ class ErrorBoundary extends React.Component {
             Groov hit an unexpected error. Your habits are saved. Tap below to try again, and if it
             keeps happening, restart the app.
           </Text>
-          <TouchableOpacity style={[crashStyles.btn, { backgroundColor: scheme.primary }]} onPress={this.retry} activeOpacity={0.8}>
+          <TouchableOpacity style={[crashStyles.btn, { backgroundColor: scheme.primary }]} onPress={this.retry} activeOpacity={0.8} accessibilityRole="button">
             <Text style={crashStyles.btnText}>Try again</Text>
           </TouchableOpacity>
           {__DEV__ && (
@@ -244,6 +244,9 @@ function AppNavigator() {
               style={styles.tabBtn}
               onPress={() => goToTab(i)}
               activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: focused }}
+              accessibilityLabel={tab.name}
             >
               <Ionicons
                 name={tab.icon}

@@ -58,7 +58,16 @@ function Row({ label, sublabel, right, theme, onPress }) {
     </View>
   );
   if (onPress) {
-    return <TouchableOpacity onPress={onPress} activeOpacity={0.7}>{content}</TouchableOpacity>;
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={sublabel ? `${label}, ${sublabel}` : label}
+      >
+        {content}
+      </TouchableOpacity>
+    );
   }
   return content;
 }
@@ -77,9 +86,16 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
             onSubmitEditing={onLabelSave}
             autoFocus
             returnKeyType="done"
+            accessibilityLabel="Reminder label"
           />
         ) : (
-          <TouchableOpacity onPress={onStartEdit} style={{ flex: 1 }} activeOpacity={onStartEdit ? 0.7 : 1}>
+          <TouchableOpacity
+            onPress={onStartEdit}
+            style={{ flex: 1 }}
+            activeOpacity={onStartEdit ? 0.7 : 1}
+            accessibilityRole={onStartEdit ? 'button' : undefined}
+            accessibilityLabel={onStartEdit ? `Edit reminder label, ${label}` : undefined}
+          >
             <View style={styles.reminderLabelInner}>
               {!!icon && <Text style={styles.habitReminderIcon}>{icon}</Text>}
               <Text style={[styles.reminderLabel, { color: theme.text }]}>{label}</Text>
@@ -100,17 +116,22 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
           trackColor={{ false: theme.border, true: theme.primary }}
           thumbColor="#fff"
           style={{ opacity: masterOn ? 1 : 0.4 }}
+          accessibilityLabel={label}
+          accessibilityState={{ disabled: !masterOn }}
         />
       </View>
       <View style={styles.reminderActionsRow}>
         <TouchableOpacity
           style={[styles.timeBtn, { borderColor: theme.border, opacity: masterOn && enabled ? 1 : 0.4 }]}
           onPress={() => masterOn && enabled && onTime()}
+          accessibilityRole="button"
+          accessibilityLabel={`Change time, currently ${formatTime(time)}`}
+          accessibilityState={{ disabled: !(masterOn && enabled) }}
         >
           <Text style={[styles.timeBtnText, { color: theme.primary }]}>{formatTime(time)}</Text>
         </TouchableOpacity>
         {onRemove && (
-          <TouchableOpacity style={styles.deleteReminderBtn} onPress={onRemove}>
+          <TouchableOpacity style={styles.deleteReminderBtn} onPress={onRemove} accessibilityRole="button" accessibilityLabel="Remove reminder">
             <Ionicons name="trash-outline" size={18} color={theme.danger} />
           </TouchableOpacity>
         )}
@@ -475,6 +496,9 @@ export default function SettingsScreen() {
                     style={[styles.segmentBtn, active && { backgroundColor: theme.primary }]}
                     onPress={() => updateSettings({ theme: opt.value })}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${opt.label} theme`}
+                    accessibilityState={{ selected: active }}
                   >
                     <Text style={[styles.segmentText, { color: active ? '#fff' : theme.textMuted }]}>{opt.label}</Text>
                   </TouchableOpacity>
@@ -499,6 +523,7 @@ export default function SettingsScreen() {
                 }}
                 trackColor={{ false: theme.border, true: theme.primary }}
                 thumbColor="#fff"
+                accessibilityLabel="Enable Notifications"
               />
             }
           />
@@ -557,6 +582,9 @@ export default function SettingsScreen() {
             style={[styles.addReminderBtn, { borderColor: theme.border, opacity: masterOn ? 1 : 0.4 }]}
             onPress={() => masterOn && addReminder()}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Add Reminder"
+            accessibilityState={{ disabled: !masterOn }}
           >
             <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
             <Text style={[styles.addReminderText, { color: theme.primary }]}>Add Reminder</Text>
@@ -578,6 +606,7 @@ export default function SettingsScreen() {
                 }}
                 trackColor={{ false: theme.border, true: theme.primary }}
                 thumbColor="#fff"
+                accessibilityLabel="Sounds"
               />
             }
           />
@@ -591,6 +620,7 @@ export default function SettingsScreen() {
                 onValueChange={v => updateSettings({ hapticsEnabled: v })}
                 trackColor={{ false: theme.border, true: theme.primary }}
                 thumbColor="#fff"
+                accessibilityLabel="Haptic Feedback"
               />
             }
           />
@@ -611,16 +641,18 @@ export default function SettingsScreen() {
                 )}
               </View>
               <View style={styles.devDayControls}>
-                <TouchableOpacity style={[styles.devBtn, { borderColor: theme.border }]} onPress={() => adjustDay(-1)}>
+                <TouchableOpacity style={[styles.devBtn, { borderColor: theme.border }]} onPress={() => adjustDay(-1)} accessibilityRole="button" accessibilityLabel="Previous day">
                   <Text style={[styles.devBtnText, { color: theme.text }]}>−</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.devBtn, { borderColor: theme.border }]}
                   onPress={() => setDateOffset(0)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Reset simulated date to now"
                 >
                   <Text style={[styles.devBtnText, { color: theme.textMuted, fontSize: 10 }]}>NOW</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.devBtn, { borderColor: theme.border }]} onPress={() => adjustDay(1)}>
+                <TouchableOpacity style={[styles.devBtn, { borderColor: theme.border }]} onPress={() => adjustDay(1)} accessibilityRole="button" accessibilityLabel="Next day">
                   <Text style={[styles.devBtnText, { color: theme.text }]}>+</Text>
                 </TouchableOpacity>
               </View>
@@ -634,6 +666,8 @@ export default function SettingsScreen() {
                 Alert.alert('Sent', 'Test notification fired. Check your notification tray.');
               }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Send Test Notification"
             >
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: theme.text }]}>Send Test Notification</Text>
@@ -661,6 +695,8 @@ export default function SettingsScreen() {
                 );
               }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Generate 30-Day History"
             >
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: theme.text }]}>Generate 30-Day History</Text>
@@ -679,6 +715,8 @@ export default function SettingsScreen() {
                 ]);
               }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Test Crash"
             >
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: theme.text }]}>Test Crash</Text>
@@ -703,6 +741,8 @@ export default function SettingsScreen() {
                 );
               }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Disable Dev Tools"
             >
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: theme.danger }]}>Disable Dev Tools</Text>
@@ -731,6 +771,8 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={[styles.dangerRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
             onPress={handleSignOut}
+            accessibilityRole="button"
+            accessibilityLabel="Sign Out"
           >
             <Text style={styles.dangerText}>Sign Out</Text>
           </TouchableOpacity>
@@ -764,6 +806,9 @@ export default function SettingsScreen() {
               style={[styles.dangerRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
               onPress={handleResetPassword}
               disabled={resetLoading}
+              accessibilityRole="button"
+              accessibilityLabel="Reset Password, send a reset code to your email"
+              accessibilityState={{ disabled: resetLoading }}
             >
               <Text style={[styles.dangerText, { color: theme.primary }]}>Reset Password</Text>
               <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
@@ -774,13 +819,20 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={[styles.dangerRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
             onPress={handleClearData}
+            accessibilityRole="button"
+            accessibilityLabel="Clear All Data, permanently removes all habits, progress, and settings"
           >
             <Text style={styles.dangerText}>Clear All Data</Text>
             <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
               Permanently removes all habits, progress, and settings
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.dangerRow} onPress={handleDeleteAccount}>
+          <TouchableOpacity
+            style={styles.dangerRow}
+            onPress={handleDeleteAccount}
+            accessibilityRole="button"
+            accessibilityLabel="Delete Account, permanently removes your account and all data"
+          >
             <Text style={styles.dangerText}>Delete Account</Text>
             <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
               Permanently removes your account and all data
@@ -832,7 +884,7 @@ export default function SettingsScreen() {
           />
         </Section>
 
-        <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7} style={styles.versionBtn}>
+        <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7} style={styles.versionBtn} accessibilityRole="button" accessibilityLabel={VERSION_LABEL}>
           <Text style={[styles.version, { color: theme.textMuted }]}>{VERSION_LABEL}</Text>
           {devTapCount > 2 && !showDevTools && (
             <Text style={[styles.devHint, { color: theme.textMuted }]}>
@@ -856,6 +908,7 @@ export default function SettingsScreen() {
               style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
               value={resetCode}
               onChangeText={setResetCode}
+              accessibilityLabel="Reset code from email"
               placeholder="Reset code from email"
               placeholderTextColor={theme.textMuted}
               autoCapitalize="none"
@@ -865,6 +918,7 @@ export default function SettingsScreen() {
               style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
               value={resetNewPassword}
               onChangeText={setResetNewPassword}
+              accessibilityLabel="New password"
               placeholder="New password"
               placeholderTextColor={theme.textMuted}
               secureTextEntry
@@ -873,6 +927,7 @@ export default function SettingsScreen() {
               style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text, marginBottom: 4 }]}
               value={resetConfirmPassword}
               onChangeText={setResetConfirmPassword}
+              accessibilityLabel="Confirm new password"
               placeholder="Confirm new password"
               placeholderTextColor={theme.textMuted}
               secureTextEntry
@@ -885,6 +940,8 @@ export default function SettingsScreen() {
                 style={[styles.devModalBtn, { borderColor: theme.border }]}
                 onPress={() => { setResetStep(null); setResetError(''); }}
                 disabled={resetLoading}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: resetLoading }}
               >
                 <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>Cancel</Text>
               </TouchableOpacity>
@@ -892,6 +949,9 @@ export default function SettingsScreen() {
                 style={[styles.devModalBtn, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: resetLoading ? 0.6 : 1 }]}
                 onPress={handleVerifyReset}
                 disabled={resetLoading}
+                accessibilityRole="button"
+                accessibilityLabel="Set Password"
+                accessibilityState={{ disabled: resetLoading, busy: resetLoading }}
               >
                 <Text style={[styles.devModalBtnText, { color: '#fff' }]}>
                   {resetLoading ? 'Saving…' : 'Set Password'}
@@ -912,6 +972,7 @@ export default function SettingsScreen() {
               style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
               value={nameDraft}
               onChangeText={setNameDraft}
+              accessibilityLabel="Your name"
               placeholder="Your name"
               placeholderTextColor={theme.textMuted}
               autoFocus
@@ -924,6 +985,8 @@ export default function SettingsScreen() {
                 style={[styles.devModalBtn, { borderColor: theme.border }]}
                 onPress={() => setNameModal(false)}
                 disabled={nameSaving}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: nameSaving }}
               >
                 <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>Cancel</Text>
               </TouchableOpacity>
@@ -931,6 +994,9 @@ export default function SettingsScreen() {
                 style={[styles.devModalBtn, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: nameSaving ? 0.6 : 1 }]}
                 onPress={saveName}
                 disabled={nameSaving}
+                accessibilityRole="button"
+                accessibilityLabel="Save"
+                accessibilityState={{ disabled: nameSaving, busy: nameSaving }}
               >
                 <Text style={[styles.devModalBtnText, { color: '#fff' }]}>{nameSaving ? 'Saving…' : 'Save'}</Text>
               </TouchableOpacity>
@@ -949,6 +1015,7 @@ export default function SettingsScreen() {
               style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
               value={devCodeDraft}
               onChangeText={setDevCodeDraft}
+              accessibilityLabel="Developer code"
               placeholder="Enter code"
               placeholderTextColor={theme.textMuted}
               secureTextEntry
@@ -960,12 +1027,14 @@ export default function SettingsScreen() {
               <TouchableOpacity
                 style={[styles.devModalBtn, { borderColor: theme.border }]}
                 onPress={() => { setShowDevInput(false); setDevCodeDraft(''); }}
+                accessibilityRole="button"
               >
                 <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.devModalBtn, { backgroundColor: theme.primary, borderColor: theme.primary }]}
                 onPress={handleDevCodeSubmit}
+                accessibilityRole="button"
               >
                 <Text style={[styles.devModalBtnText, { color: '#fff' }]}>Unlock</Text>
               </TouchableOpacity>

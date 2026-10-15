@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity,
 } from 'react-native';
+import { useReducedMotion, announce } from '../utils/a11y';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -64,9 +65,16 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
   const circleScale = useRef(new Animated.Value(0.06)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
   const textScale = useRef(new Animated.Value(0.8)).current;
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (!visible) return;
+    announce(`${title} ${subtitle}`);
+    if (reducedMotion) {
+      // Static card instead of the expanding circle and confetti.
+      const t = setTimeout(onDone, 2500);
+      return () => clearTimeout(t);
+    }
 
     // Expand the circle
     Animated.timing(circleScale, {
@@ -101,8 +109,20 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
 
   if (!visible) return null;
 
+  if (reducedMotion) {
+    return (
+      <TouchableOpacity style={[StyleSheet.absoluteFill, styles.staticWrap]} onPress={onDone} activeOpacity={1} accessibilityRole="button" accessibilityLabel={`${title}. ${subtitle}. Dismiss`}>
+        <View style={[styles.staticCard, { backgroundColor: primaryColor }]}>
+          <Text style={styles.emoji}>{emoji}</Text>
+          <Text style={styles.congrats}>{title}</Text>
+          <Text style={styles.subText}>{subtitle}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {/* Expanding circle */}
       <Animated.View
         pointerEvents="none"
@@ -157,6 +177,8 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
 }
 
 const styles = StyleSheet.create({
+  staticWrap: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
+  staticCard: { borderRadius: 24, paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center', width: '85%' },
   expandCircle: {
     position: 'absolute',
     width: CIRCLE_D,

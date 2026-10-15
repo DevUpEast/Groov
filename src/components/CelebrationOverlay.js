@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Dimensions } from 'react-native';
+import { useReducedMotion } from '../utils/a11y';
 
 const { width, height } = Dimensions.get('window');
 const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
@@ -58,14 +59,16 @@ function Particle({ delay, color }) {
 }
 
 export default function CelebrationOverlay({ visible, onDone }) {
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
     if (visible) {
-      const t = setTimeout(onDone, 3000);
+      const t = setTimeout(onDone, reducedMotion ? 300 : 3000);
       return () => clearTimeout(t);
     }
-  }, [visible]);
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!visible) return null;
+  // Reduce motion: no particles at all; the haptic/sound already marks the moment.
+  if (!visible || reducedMotion) return null;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
