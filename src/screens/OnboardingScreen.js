@@ -7,7 +7,7 @@ import SafeAreaView from '../components/SafeAreaView';
 import { useApp } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { t, useLocale } from '../i18n';
-import { STARTER_HABITS } from '../utils/habits';
+import { STARTER_HABITS, getStarterHabits } from '../utils/habits';
 
 // First-run flow: two intro slides, pick starter habits, then an implementation
 // intention ("after X, I will Y") per habit. Finishing creates the habits and the
