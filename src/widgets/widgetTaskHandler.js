@@ -2,9 +2,12 @@ import React from 'react';
 import { Appearance } from 'react-native';
 import { TodayWidget } from './TodayWidget';
 import { loadTodayForWidget, applyWidgetToggle, WIDGET_NAME, rowsForHeight } from './widgetData';
+import { initLocale } from '../i18n';
 
 // Headless task invoked by the OS for widget lifecycle events and taps.
 async function render(props) {
+  // Headless: the app's locale choice is not applied yet, so load it here.
+  await initLocale();
   const model = await loadTodayForWidget();
   const maxRows = rowsForHeight(props.widgetInfo?.height);
   const dark = model.theme === 'dark' || (model.theme === 'system' && Appearance.getColorScheme() === 'dark');

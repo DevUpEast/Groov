@@ -1,0 +1,914 @@
+{
+  "common": {
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "saving": "Salvando…",
+    "close": "Fechar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "remove": "Remover",
+    "next": "Avançar",
+    "back": "Voltar",
+    "skip": "Pular",
+    "done": "Concluir",
+    "error": "Erro",
+    "notNow": "Agora não",
+    "undo": "Desfazer",
+    "slider": "Controle deslizante",
+    "shortDays": "%{count}d"
+  },
+  "app": {
+    "tabs": {
+      "today": "Hoje",
+      "progress": "Progresso",
+      "challenge": "Desafios",
+      "habits": "Hábitos",
+      "settings": "Ajustes"
+    },
+    "crash": {
+      "title": "Algo deu errado",
+      "body": "O Groov encontrou um erro inesperado. Seus hábitos estão salvos. Toque abaixo para tentar de novo e, se continuar acontecendo, reinicie o app.",
+      "retry": "Tentar de novo"
+    },
+    "quickActions": {
+      "today": "Hoje",
+      "todaySubtitle": "Marque seus hábitos",
+      "newHabit": "Novo hábito",
+      "progress": "Progresso"
+    },
+    "notificationsOff": {
+      "title": "As notificações estão desativadas",
+      "body": "Ative-as para o Groov nos ajustes do seu dispositivo para receber lembretes.",
+      "openSettings": "Abrir Ajustes"
+    },
+    "kickstart": {
+      "name": "Pontapé Inicial de 3 Dias",
+      "description": "Complete todos os seus hábitos por 3 dias seguidos para construir sua base."
+    }
+  },
+  "timeOfDay": {
+    "morning": "🌅 Manhã",
+    "afternoon": "☀️ Tarde",
+    "evening": "🌙 Noite",
+    "anytime": "Qualquer hora"
+  },
+  "weekday": {
+    "short": { "su": "Do", "mo": "Sg", "tu": "Te", "we": "Qa", "th": "Qi", "fr": "Sx", "sa": "Sá" },
+    "initial": { "su": "D", "mo": "S", "tu": "T", "we": "Q", "th": "Q", "fr": "S", "sa": "S" }
+  },
+  "schedule": {
+    "everyDay": "Todos os dias",
+    "perWeek": "%{count}× por semana",
+    "weekdays": "Dias úteis",
+    "weekends": "Fins de semana"
+  },
+  "habitTypes": {
+    "daily": { "label": "Uma vez por dia", "hint": "Marque uma vez" },
+    "volume": { "label": "Meta de quantidade", "hint": "Conte até a meta" },
+    "timed": { "label": "Com tempo", "hint": "Minutos por dia" },
+    "quit": { "label": "Largar um hábito", "hint": "Fique limpo todo dia" },
+    "atMost": { "label": "Limite", "hint": "Fique dentro do máximo" }
+  },
+  "goal": {
+    "minutes": "min",
+    "times": "×",
+    "volume": "%{goal} %{unit} / dia",
+    "timed": "%{goal} min / dia",
+    "quit": "Evitar diariamente",
+    "atMost": "≤ %{goal} %{unit} / dia",
+    "daily": "Diário"
+  },
+  "progressText": {
+    "volume": "%{count}/%{goal} %{unit}",
+    "volumeNoUnit": "%{count}/%{goal} hoje",
+    "timed": "%{count}/%{goal} min",
+    "atMost": "%{count}/%{goal} %{unit}",
+    "atMostNoUnit": "%{count}/%{goal} máx.",
+    "atMostOver": "%{count}/%{goal} %{unit} · acima do limite",
+    "atMostOverNoUnit": "%{count}/%{goal} · acima do limite",
+    "quit": "Evitado hoje"
+  },
+  "templates": {
+    "reset7": { "name": "Reinício de 7 Dias", "short": "Reinício", "description": "Uma semana aparecendo todos os dias. Pequeno, rápido, possível." },
+    "builder21": { "name": "Construtor de Hábito de 21 Dias", "short": "Construtor", "description": "Três semanas para fazer parecer natural." },
+    "challenge30": { "name": "Desafio de 30 Dias", "short": "Desafio", "description": "Um mês inteiro. Perdeu um dia? Continue." },
+    "automatic66": { "name": "Automático em 66 Dias", "short": "Automático", "description": "O tempo médio para um comportamento se tornar automático." },
+    "streak100": { "name": "Sequência de 100 Dias", "short": "Sequência", "description": "O grande desafio. Três dígitos." }
+  },
+  "mood": {
+    "rough": "Péssimo",
+    "meh": "Meio ruim",
+    "okay": "Ok",
+    "good": "Bom",
+    "great": "Ótimo",
+    "correlationBetter": "Você costuma se sentir melhor nos dias em que faz %{name} (%{done} contra %{missed} de 5).",
+    "correlationWorse": "Você costuma se sentir pior nos dias em que faz %{name} (%{done} contra %{missed} de 5)."
+  },
+  "milestones": {
+    "week": "Uma semana",
+    "month": "Um mês",
+    "hundred": "100 dias",
+    "year": "Um ano"
+  },
+  "tier": {
+    "platinum": "Platina",
+    "gold": "Ouro",
+    "silver": "Prata",
+    "copper": "Cobre",
+    "none": "Encerrado"
+  },
+  "today": {
+    "sections": {
+      "morning": "🌅 Manhã",
+      "afternoon": "☀️ Tarde",
+      "evening": "🌙 Noite",
+      "anytime": "✨ Qualquer hora"
+    },
+    "greeting": {
+      "morning": "Bom dia",
+      "afternoon": "Boa tarde",
+      "evening": "Boa noite",
+      "withName": "%{greeting}, %{name}"
+    },
+    "ring": {
+      "habits": "hábitos",
+      "a11y": "%{completed} de %{total} hábitos concluídos hoje",
+      "allDone": "🎉 Tudo feito!",
+      "remaining": "%{count} restantes",
+      "amazing": "Que trabalho incrível hoje!",
+      "keepGoing": "Continue assim, você está em %{percent}%"
+    },
+    "coach": "Coach de IA",
+    "empty": {
+      "title": "Entre no Ritmo",
+      "body": "Adicione seu primeiro hábito",
+      "addA11y": "Adicionar seu primeiro hábito"
+    },
+    "noChallenges": {
+      "title": "Nenhum desafio ainda",
+      "body": "Comece seu primeiro desafio",
+      "a11y": "Nenhum desafio ainda. Comece seu primeiro desafio"
+    },
+    "restDay": {
+      "title": "Dia de descanso",
+      "body": "Nenhum dos seus hábitos está programado para hoje. Aproveite a pausa, suas sequências estão seguras."
+    },
+    "sectionHabits": "HÁBITOS DE HOJE",
+    "markAll": "Marcar tudo",
+    "unmarkAll": "Desmarcar tudo",
+    "markAllA11y": "Marcar todos os hábitos como concluídos",
+    "unmarkAllA11y": "Desmarcar todos os hábitos",
+    "activeChallenges": "DESAFIOS ATIVOS",
+    "challenge": {
+      "sub": "Dia %{day} de %{days} · %{count} registrados",
+      "done": "✅ Feito",
+      "pending": "Pendente",
+      "a11yDone": "%{name}, dia %{day} de %{days}, concluído",
+      "a11yPending": "%{name}, dia %{day} de %{days}, pendente"
+    },
+    "toast": {
+      "done": "%{name} concluído ✓",
+      "avoided": "%{name}: evitado ✓",
+      "overLimit": "%{name}: acima do seu limite",
+      "plus": "%{name} +%{amount}"
+    },
+    "milestone": {
+      "title": "Sequência de %{days} dias!",
+      "subtitle": "%{label} aparecendo todo dia. Isso já é um hábito de verdade."
+    },
+    "congrats": "Parabéns!",
+    "allTasks": "Você concluiu todas as tarefas do dia!"
+  },
+  "onboarding": {
+    "intro": {
+      "stick": {
+        "title": "Crie hábitos que pegam",
+        "body": "Acompanhe hábitos diários e metas de quantidade. Cada check-in te aproxima da vida que você quer."
+      },
+      "streaks": {
+        "title": "Sequências que perdoam",
+        "body": "Complete seus hábitos para aumentar sua sequência. Dias de descanso, pulos e duas pausas por mês evitam que um dia ruim apague tudo."
+      }
+    },
+    "starter": {
+      "water": "Beber água",
+      "move": "Me mexer por 20 minutos",
+      "read": "Ler 10 páginas",
+      "meditate": "Meditar",
+      "walk": "Fazer uma caminhada",
+      "sleep": "Na cama até as 23h",
+      "journal": "Escrever no diário",
+      "stretch": "Alongar",
+      "unitGlasses": "copos"
+    },
+    "stepA11y": "Passo %{step} de %{total}",
+    "skipA11y": "Pular a introdução",
+    "pick": {
+      "title": "Escolha seus primeiros hábitos",
+      "body": "Comece pequeno. Dois ou três já bastam, você pode adicionar mais quando quiser.",
+      "perDay": "%{goal} %{unit} por dia",
+      "onceADay": "Uma vez por dia",
+      "selected": "%{count} de %{max} selecionados",
+      "startEmpty": "Começar vazio"
+    },
+    "plan": {
+      "title": "Quando e onde?",
+      "body": "Hábitos com um plano têm 2 a 3× mais chances de pegar. Complete a frase para cada um.",
+      "placeholder": "Depois que eu… (ex.: fizer café, na cozinha)",
+      "a11y": "Plano para %{name}",
+      "start": "Começar meu Pontapé Inicial de 3 Dias 🚀"
+    }
+  },
+  "habits": {
+    "title": "Meus Hábitos",
+    "add": "+ Novo",
+    "addA11y": "Adicionar hábito",
+    "reorder": "Reordenar hábitos",
+    "finishReorder": "Concluir reordenação",
+    "empty": { "title": "Nenhum hábito ainda", "body": "Comece agora" },
+    "archived": "ARQUIVADOS (%{count})",
+    "row": {
+      "detailsA11y": "%{name}, ver detalhes",
+      "schedulePill": "📅 %{schedule}",
+      "reminderPill": "🔔 %{time}",
+      "moveUp": "Mover para cima",
+      "moveDown": "Mover para baixo",
+      "reminderOff": "Desativar lembrete",
+      "setReminder": "Definir lembrete",
+      "editA11y": "Editar hábito",
+      "archiveA11y": "Arquivar ou excluir hábito",
+      "restore": "Restaurar",
+      "restoreA11y": "Restaurar hábito",
+      "deleteForeverA11y": "Excluir hábito permanentemente"
+    },
+    "archive": {
+      "title": "Arquivar Hábito",
+      "body": "Arquivar \"%{name}\"? Ele sai de Hoje, mas mantém o histórico, e você pode restaurá-lo quando quiser.",
+      "deleteForever": "Excluir para sempre",
+      "archive": "Arquivar"
+    },
+    "deleteHabit": {
+      "title": "Excluir Hábito",
+      "body": "Excluir \"%{name}\" e seu histórico permanentemente? Isso não pode ser desfeito."
+    },
+    "form": {
+      "editTitle": "Editar Hábito",
+      "newTitle": "Novo Hábito",
+      "magicTitle": "✨ Descreva, a gente preenche o resto",
+      "magicPlaceholder": "ex.: ler 20 páginas antes de dormir nos dias úteis",
+      "magicA11y": "Descreva o hábito",
+      "magicFillA11y": "Preencher o formulário a partir da descrição",
+      "fill": "Preencher",
+      "magicError": "Não foi possível preencher o formulário.",
+      "icon": "Ícone",
+      "colour": "Cor",
+      "colourA11y": "Cor %{color}",
+      "defaultColour": "Cor padrão",
+      "name": "Nome",
+      "namePlaceholder": "ex.: Caminhar 10.000 passos",
+      "plan": "Plano (opcional)",
+      "planPlaceholder": "Depois que eu… (ex.: escovar os dentes, na cozinha)",
+      "planA11y": "Plano de implementação",
+      "type": "Tipo",
+      "typeA11y": "%{label}: %{hint}",
+      "typeChip": "%{emoji}  %{label}",
+      "schedule": "Frequência",
+      "scheduleDaily": "Todos os dias",
+      "scheduleWeekdays": "Dias específicos",
+      "schedulePerWeek": "Vezes por semana",
+      "perWeekText": { "one": "%{count} dia por semana, nos dias que você quiser", "other": "%{count} dias por semana, nos dias que você quiser" },
+      "fewerDays": "Menos dias por semana",
+      "moreDays": "Mais dias por semana",
+      "timeOfDay": "Período do dia",
+      "minutesPerDay": "Minutos por dia: %{count}",
+      "minutesLabel": "Minutos por dia",
+      "fiveMin": "5 min",
+      "threeHours": "3 h",
+      "atMostPerDay": "No máximo por dia: %{count}",
+      "dailyLimit": "Limite diário",
+      "unit": "Unidade (opcional)",
+      "unitA11y": "Unidade",
+      "unitPlaceholderLimit": "cafés, cigarros, horas…",
+      "unitPlaceholderVolume": "copos, páginas, minutos…",
+      "timesPerDay": "Vezes por dia: %{count}",
+      "max": "Máx. %{max}",
+      "saveChanges": "Salvar Alterações",
+      "addHabit": "Adicionar Hábito"
+    },
+    "permission": {
+      "title": "Permissão necessária",
+      "body": "Permita o acesso às fotos para usar um ícone personalizado."
+    },
+    "customIcon": {
+      "title": "Ícone Personalizado",
+      "body": "Escolha uma origem",
+      "camera": "Câmera",
+      "library": "Galeria de Fotos"
+    }
+  },
+  "habitCard": {
+    "streakClean": "🔥 %{count} dias limpo",
+    "streak": "🔥 Sequência de %{count} dias",
+    "weekDone": "✓ %{done}/%{target} esta semana",
+    "week": "%{done}/%{target} esta semana",
+    "skippedToday": "💤 Pulado hoje",
+    "timer": "⏱ %{time}",
+    "longPress": {
+      "body": "A vida acontece. Escolha uma opção:",
+      "unskip": "Não pular hoje",
+      "skip": "Pular hoje (mantém a sequência)",
+      "undoYesterday": "Desfazer o check de ontem",
+      "markYesterday": "Marcar como feito ontem",
+      "editNote": "Editar nota",
+      "addNote": "Adicionar uma nota"
+    },
+    "announce": {
+      "countMax": "%{name}, %{count} de %{goal} no máximo",
+      "count": "%{name}, %{count} de %{goal}",
+      "unchecked": "%{name} desmarcado",
+      "avoided": "%{name} evitado hoje",
+      "done": "%{name} concluído"
+    },
+    "a11y": {
+      "count": ", %{count} de %{goal}",
+      "countUnit": ", %{count} de %{goal} %{unit}",
+      "maximum": " no máximo",
+      "overLimit": ", acima do limite",
+      "avoided": ", evitado hoje",
+      "done": ", concluído",
+      "skipped": ", pulado hoje",
+      "notDone": ", não concluído",
+      "streak": ", sequência de %{count} dias",
+      "hint": "Toque duas vezes para registrar. Pressione e segure para as opções de pular, ontem e nota.",
+      "startTimer": "Iniciar cronômetro",
+      "stopTimer": "Parar cronômetro e registrar os minutos",
+      "removeOne": "Remover um %{unit}",
+      "removeMany": "Remover %{count} %{unit}",
+      "addOne": "Adicionar um %{unit}",
+      "addMany": "Adicionar %{count} %{unit}"
+    }
+  },
+  "habitDetail": {
+    "meta": "%{schedule} · %{goal}",
+    "afterI": "Depois que eu %{intention}",
+    "editA11y": "Editar hábito",
+    "stats": { "current": "Atual", "best": "Melhor", "done": "Feitos", "total": "Total", "a11y": "%{label}: %{value}" },
+    "history": "Histórico",
+    "hint": "Toque em qualquer dia passado para corrigi-lo",
+    "cellA11y": "%{date}: %{status}",
+    "status": { "future": "futuro", "done": "concluído", "rest": "descanso", "missed": "perdido", "none": "nenhum" },
+    "legend": { "done": "Feito", "partial": "Parcial", "missed": "Perdido", "skippedFrozen": "Pulado / congelado", "rest": "Descanso" },
+    "byWeekday": "Por dia da semana",
+    "since": "Taxa de conclusão desde %{date}",
+    "weekdayA11y": "%{day}: %{percent} por cento",
+    "fix": {
+      "body": "%{name}: %{count}/%{goal}",
+      "bodyMax": "%{name}: %{count}/%{goal} máx.",
+      "clear": "Limpar",
+      "setOver": "Definir %{value} (acima do limite)",
+      "setDone": "Definir %{value} (concluído)"
+    }
+  },
+  "challenges": {
+    "title": "Desafios",
+    "new": "+ Novo",
+    "newA11y": "Novo desafio",
+    "empty": {
+      "title": "Nenhum desafio ainda",
+      "body": "Toque em \"+ Novo\" para criar seu primeiro desafio.",
+      "create": "Criar um Desafio"
+    },
+    "tip": {
+      "title": "💡 Dica",
+      "body": "Você pode ter até 3 desafios ao mesmo tempo. Vincule hábitos específicos a cada desafio."
+    },
+    "past": "DESAFIOS ANTERIORES",
+    "pastEmpty": "Desafios concluídos ou excluídos aparecerão aqui.",
+    "pastSubTier": "%{done}/%{days} dias · %{tier} ✓",
+    "pastSubEnded": "%{done}/%{days} dias · Encerrado",
+    "pastA11yTier": "%{name}, conclusão %{tier}, %{done} de %{days} dias",
+    "pastA11yEnded": "%{name}, encerrado, %{done} de %{days} dias",
+    "card": {
+      "sub": "Dia %{day} de %{days} · %{count} concluídos",
+      "editA11y": "Editar %{name}",
+      "deleteA11y": "Excluir desafio",
+      "percentComplete": "%{percent}% concluído",
+      "linkedHabits": "Hábitos Vinculados (%{count})",
+      "linkedA11y": "Hábitos vinculados, %{count}",
+      "noneLinked": "Nenhum hábito vinculado",
+      "todayLogged": "✅ Hoje já foi registrado!",
+      "tapEdit": "Toque em Editar para vincular hábitos a este desafio.",
+      "completeLinked": "Complete seus hábitos vinculados para garantir o dia de hoje automaticamente."
+    },
+    "form": {
+      "editTitle": "Editar Desafio",
+      "newTitle": "Novo Desafio",
+      "template": "Começar por um modelo",
+      "templateA11y": "Modelo %{name}",
+      "templateDays": "%{count}d",
+      "icon": "Ícone",
+      "iconA11y": "Ícone %{icon}",
+      "name": "Nome",
+      "nameA11y": "Nome do desafio",
+      "namePlaceholder": "ex.: 7 Dias de Força",
+      "description": "Descrição",
+      "descriptionA11y": "Descrição do desafio",
+      "descriptionPlaceholder": "Qual é o objetivo?",
+      "duration": { "one": "Duração: %{count} dia", "other": "Duração: %{count} dias" },
+      "range": { "week": "Semana", "month": "Mês", "year": "Ano" },
+      "rangeA11y": "%{label}, até %{max} dias",
+      "durationA11y": "Duração do desafio em dias",
+      "linked": "Hábitos Vinculados",
+      "noHabits": "Nenhum hábito ainda. Vá até a aba Hábitos para criar alguns.",
+      "linkAll": "⚡ Vincular Todos os Hábitos",
+      "linkAllA11y": "Vincular todos os hábitos",
+      "selectOne": "Selecione pelo menos um hábito para salvar este desafio.",
+      "addNew": "+ Adicionar Novo Hábito",
+      "addNewA11y": "Adicionar novo hábito",
+      "saveChanges": "Salvar Alterações",
+      "saveA11y": "Salvar alterações",
+      "create": "Criar Desafio",
+      "createA11y": "Criar desafio"
+    },
+    "detail": {
+      "completion": "%{badge} Conclusão %{tier}!",
+      "noDescription": "Sem descrição",
+      "progress": "Progresso: %{done}/%{days} dias",
+      "started": "Início: %{date}"
+    },
+    "delete": {
+      "title": "Excluir Desafio",
+      "body": "Remover \"%{name}\"? Ele será movido para Desafios Anteriores."
+    }
+  },
+  "progress": {
+    "title": "Seu Progresso",
+    "share": "Compartilhar",
+    "shareA11y": "Compartilhar seu progresso",
+    "stats": { "streak": "Dias Seguidos", "best": "Melhor Sequência", "perfect": "Dias Perfeitos", "a11y": "%{label}: %{value}" },
+    "freezes": { "one": "❄️ %{count} pausa de sequência restante neste mês · um dia perdido é coberto automaticamente", "other": "❄️ %{count} pausas de sequência restantes neste mês · um dia perdido é coberto automaticamente" },
+    "weekly": { "title": "Hábitos Concluídos: Semanal", "hint": "Toque em uma barra para ver detalhes" },
+    "history": "Histórico",
+    "period": { "d7": "7d", "d30": "30d", "d90": "90d" },
+    "lastDaysA11y": "Últimos %{count} dias",
+    "legend": { "none": "Nenhum", "partial": "Parcial", "frozen": "Congelado", "perfect": "Perfeito" },
+    "heatHint": "Toque em uma célula para ver detalhes",
+    "heat": {
+      "future": "%{date}: futuro",
+      "rest": "%{date}: dia de descanso",
+      "count": "%{date}: %{completed} de %{total} hábitos",
+      "countFrozen": "%{date}: %{completed} de %{total} hábitos, sequência congelada"
+    },
+    "bar": { "noData": "%{label}: ainda sem dados", "percent": "%{label}: %{value} por cento" },
+    "tooltip": { "a11y": "%{label}: %{value} por cento concluído. Dispensar", "completed": "concluído" },
+    "mood": {
+      "title": "🙂 Humor & hábitos",
+      "hint": "Dos seus check-ins diários em Hoje",
+      "last7A11y": "Humor dos últimos 7 dias: %{list}",
+      "none": "nenhum",
+      "rateMore": "Avalie mais alguns dias para ver como seus hábitos e seu humor se conectam (%{count}/%{min}).",
+      "avg": "média / 5",
+      "avgA11y": "Humor médio %{value} de 5",
+      "perfectDays": "dias perfeitos",
+      "perfectA11y": "Dias perfeitos %{value}",
+      "otherDays": "outros dias",
+      "otherA11y": "Outros dias %{value}",
+      "noData": "sem dados",
+      "noLink": "Ainda não há uma ligação forte entre um único hábito e o seu humor."
+    },
+    "trophy": {
+      "title": "🏆 Sala de Troféus",
+      "hint": "Marcos de sequência e medalhas de desafios",
+      "earnedA11y": "Sequência de %{label}: conquistada em %{date}",
+      "lockedA11y": "Sequência de %{label}: bloqueada",
+      "firstMedal": "Conclua um desafio para ganhar sua primeira medalha.",
+      "medalA11y": "%{name}: %{tier}"
+    },
+    "reflection": {
+      "title": "✨ Reflexão de IA",
+      "hint": "Resumo gerado por IA dos seus padrões de hábitos",
+      "weeklyA11y": "Reflexão semanal",
+      "monthlyA11y": "Reflexão mensal",
+      "lockedSuffix": ", bloqueada",
+      "unlocks": { "one": "Desbloqueia em %{count} dia", "other": "Desbloqueia em %{count} dias" },
+      "unlockWeekly": "Acompanhe seus hábitos por uma semana inteira para desbloquear o resumo semanal.",
+      "unlockMonthly": "Acompanhe seus hábitos por um mês inteiro para desbloquear o resumo mensal.",
+      "generatingWeekly": "Gerando sua reflexão semanal...",
+      "generatingMonthly": "Gerando sua reflexão mensal...",
+      "generated": "Gerada em %{date}",
+      "failed": "Falha ao gerar. Tente novamente.",
+      "seePro": "  Conheça o Groov Pro",
+      "generateWeekly": "Gerar resumo semanal",
+      "generateMonthly": "Gerar resumo mensal"
+    },
+    "day": {
+      "habitsCompleted": "%{completed}/%{total} hábitos concluídos",
+      "frozen": "❄️ Pausa de sequência usada: este dia não quebrou sua sequência.",
+      "noData": "Sem dados de hábitos para este dia.",
+      "skipped": "Pulado",
+      "frozenLabel": "Congelado",
+      "notScheduled": "Não programado"
+    }
+  },
+  "settings": {
+    "title": "Ajustes",
+    "appearance": "APARÊNCIA",
+    "theme": "Tema",
+    "themeFollows": "Segue a configuração do seu dispositivo",
+    "themeAlwaysLight": "Sempre claro",
+    "themeAlwaysDark": "Sempre escuro",
+    "themeOptions": { "light": "Claro", "dark": "Escuro", "system": "Auto" },
+    "themeA11y": "Tema %{label}",
+    "language": "Idioma",
+    "languageSystem": "Padrão do sistema",
+    "languageSystemSub": "Padrão do sistema (%{label})",
+    "languageTitle": "Idioma",
+    "languageBody": "Escolha o idioma que o Groov usa.",
+    "notifications": "NOTIFICAÇÕES",
+    "enableNotifications": "Ativar Notificações",
+    "enableSubWeb": "Notificações push apenas no dispositivo",
+    "enableSub": "Chave geral para todos os lembretes",
+    "smartCheckin": "Check-in Inteligente",
+    "smartSub": "Dispara às %{time} apenas se ainda houver hábitos pendentes",
+    "firesAt": "Dispara às %{time}",
+    "notificationsDisabled": "Notificações desativadas",
+    "reminderLabelA11y": "Nome do lembrete",
+    "editLabelA11y": "Editar nome do lembrete, %{label}",
+    "changeTimeA11y": "Alterar horário, atualmente %{time}",
+    "removeReminderA11y": "Remover lembrete",
+    "habitBadge": "Hábito",
+    "addReminder": "Adicionar Lembrete",
+    "newReminderLabel": "Lembrete",
+    "removeReminder": { "title": "Remover Lembrete", "body": "Excluir este lembrete?", "habitBody": "Desativar o lembrete de \"%{name}\"?" },
+    "feedback": "FEEDBACK",
+    "sounds": "Sons",
+    "soundsSub": "Sons ao concluir hábitos e desafios",
+    "haptics": "Resposta Tátil",
+    "hapticsSub": "Vibração ao marcar (apenas no dispositivo)",
+    "dev": {
+      "title": "FERRAMENTAS DE DEV",
+      "simulatedDate": "Data Simulada",
+      "offset": { "one": "Deslocamento: %{offset} dia", "other": "Deslocamento: %{offset} dias" },
+      "prevDay": "Dia anterior",
+      "resetDate": "Redefinir a data simulada para agora",
+      "now": "AGORA",
+      "nextDay": "Próximo dia",
+      "sendTest": "Enviar Notificação de Teste",
+      "sendTestSub": "Dispara um lembrete para o seu primeiro hábito, com Concluir / Adiar",
+      "sent": { "title": "Enviada", "body": "Notificação de teste disparada. Confira a bandeja de notificações." },
+      "seed": { "title": "Gerar Histórico de 30 Dias", "body": "Isso vai preencher os últimos 30 dias com conclusões aleatórias. O histórico existente será sobrescrito.", "generate": "Gerar", "done": "Histórico aleatório de 30 dias adicionado.", "sub": "Conclusões aleatórias dos últimos 30 dias" },
+      "crash": { "title": "Testar Falha", "body": "Isso gera um erro de renderização para você conferir a tela de falha e o Sentry.", "crash": "Falhar", "sub": "Gera um erro para testar a tela de falha" },
+      "disable": { "title": "Desativar Ferramentas de Dev", "body": "Isso vai bloquear as ferramentas de dev novamente neste dispositivo. Para desbloquear de novo, você precisará tocar no rótulo da versão 7 vezes e digitar o código.", "disable": "Desativar", "sub": "Bloqueia as ferramentas de dev novamente neste dispositivo" },
+      "access": { "title": "Acesso de Desenvolvedor", "body": "Digite o código de desenvolvedor", "a11y": "Código de desenvolvedor", "placeholder": "Digite o código", "unlock": "Desbloquear" },
+      "unlocked": { "title": "Modo Desenvolvedor", "body": "Ferramentas de dev desbloqueadas permanentemente neste dispositivo." },
+      "invalid": { "title": "Código Inválido", "body": "Esse código está incorreto." },
+      "moreTaps": { "one": "Mais %{count} toque para desbloquear as ferramentas de dev", "other": "Mais %{count} toques para desbloquear as ferramentas de dev" }
+    },
+    "pro": {
+      "title": "GROOV PRO",
+      "have": "Você tem o Groov Pro",
+      "upgrade": "Assine o Groov Pro",
+      "haveSub": "Obrigado por apoiar um app feito por uma pessoa só",
+      "upgradeSub": "Hábitos ilimitados, mais lembretes e coaching de IA"
+    },
+    "account": {
+      "title": "CONTA",
+      "displayName": "Nome de Exibição",
+      "displayNameSub": "Adicione um nome para saudações e coaching",
+      "guest": "Conta de convidado",
+      "guestSub": "Seus dados ficam apenas neste dispositivo. Adicione um login para fazer backup e sincronizar.",
+      "addSignIn": "Adicionar login",
+      "signedInAs": "Conectado como",
+      "appleId": "ID Apple",
+      "googleAccount": "Conta Google",
+      "signOut": "Sair",
+      "signOutBody": "Tem certeza de que quer sair?",
+      "signOutGuest": {
+        "title": "Sair da conta de convidado?",
+        "body": "Você está usando o Groov sem uma conta. Sair agora faria você perder seus hábitos e seu histórico. Adicione um e-mail ou login antes para mantê-los.",
+        "add": "Adicionar um login",
+        "anyway": "Sair mesmo assim"
+      },
+      "deleteAccount": {
+        "title": "Excluir Conta",
+        "body": "Isso vai excluir permanentemente sua conta e todos os dados associados, incluindo hábitos, progresso, desafios e ajustes. Isso não pode ser desfeito.",
+        "sure": "Você tem certeza absoluta?",
+        "sureBody": "Sua conta será excluída permanentemente. Você não poderá recuperá-la.",
+        "yes": "Sim, Excluir Tudo",
+        "failed": "Falha ao excluir a conta. Tente novamente."
+      },
+      "linked": { "title": "Tudo pronto", "body": "Sua conta está vinculada e seus hábitos agora são sincronizados." },
+      "nameModal": {
+        "title": "Nome de Exibição",
+        "sub": "Usado nas saudações e pelo coach de IA.",
+        "placeholder": "Seu nome",
+        "failed": "Não foi possível atualizar seu nome. Tente novamente."
+      }
+    },
+    "backup": {
+      "title": "BACKUP",
+      "export": "Exportar backup",
+      "exportSub": "%{last} · Arquivo JSON com todos os hábitos, check-ins e ajustes",
+      "lastBackup": "Último backup em %{date} às %{time}",
+      "never": "Nunca foi feito backup",
+      "restore": "Restaurar de um backup",
+      "restoreSub": "Escolha um arquivo de backup do Groov para mesclar ou substituir",
+      "hint": "⚠️ Seus dados são sincronizados com sua conta, mas um arquivo de backup é a única cópia que você controla totalmente.",
+      "exportFailed": { "title": "Falha na exportação", "body": "Não foi possível criar o arquivo de backup." },
+      "cannotImport": { "title": "Não foi possível importar", "body": "Não foi possível ler esse arquivo." },
+      "restoreDialog": {
+        "title": "Restaurar backup",
+        "body": "Backup de %{when}: %{summary}.\n\nMesclar mantém o que você tem e adiciona o backup por cima. Substituir apaga seus dados atuais primeiro.",
+        "unknownDate": "data desconhecida",
+        "replace": "Substituir",
+        "merge": "Mesclar"
+      },
+      "restored": { "title": "Restaurado", "replaced": "Seus dados foram substituídos pelo backup.", "merged": "O backup foi mesclado aos seus dados." },
+      "importFailed": { "title": "Falha na importação", "body": "Algo deu errado durante a restauração." }
+    },
+    "data": {
+      "title": "DADOS",
+      "resetPassword": "Redefinir Senha",
+      "resetPasswordSub": "Enviar um código de redefinição para o seu e-mail",
+      "resetPasswordA11y": "Redefinir senha, enviar um código de redefinição para o seu e-mail",
+      "resetDialogBody": "Um código de redefinição de senha será enviado para %{email}. Continuar?",
+      "yourEmail": "seu e-mail",
+      "sendCode": "Enviar Código",
+      "sendFailed": "Falha ao enviar o e-mail de redefinição.",
+      "clear": "Apagar Todos os Dados",
+      "clearSub": "Remove permanentemente todos os hábitos, progresso e ajustes",
+      "clearA11y": "Apagar todos os dados, remove permanentemente todos os hábitos, progresso e ajustes",
+      "clearBody": "Isso vai excluir permanentemente todos os hábitos, progresso, desafios e ajustes. O app será totalmente redefinido.",
+      "clearEverything": "Apagar Tudo",
+      "cleared": "Todos os dados foram apagados. O app foi redefinido.",
+      "deleteAccount": "Excluir Conta",
+      "deleteSub": "Remove permanentemente sua conta e todos os dados",
+      "deleteA11y": "Excluir conta, remove permanentemente sua conta e todos os dados"
+    },
+    "resetModal": {
+      "title": "Redefinir Senha",
+      "body": "Um código de redefinição foi enviado para %{email}. Digite-o abaixo junto com sua nova senha.",
+      "codePlaceholder": "Código de redefinição do e-mail",
+      "newPassword": "Nova senha",
+      "confirmPassword": "Confirmar nova senha",
+      "setPassword": "Definir Senha",
+      "success": { "title": "Sucesso", "body": "Sua senha foi atualizada." },
+      "errors": {
+        "enterCode": "Digite o código que você recebeu por e-mail.",
+        "enterPassword": "Digite uma nova senha.",
+        "min8": "A senha deve ter pelo menos 8 caracteres.",
+        "mismatch": "As senhas não coincidem.",
+        "invalidCode": "Código inválido ou expirado. Tente novamente."
+      }
+    },
+    "about": {
+      "title": "SOBRE",
+      "widget": "Adicionar widget à tela inicial",
+      "widgetSub": "Hábitos de hoje com check-off em um toque",
+      "widgetUnsupported": { "title": "Não compatível", "body": "Seu launcher não permite adicionar widgets a partir de apps. Pressione e segure a tela inicial e escolha o Groov na lista de widgets." },
+      "widgetFailed": { "title": "Não foi possível adicionar o widget", "body": "Pressione e segure a tela inicial e escolha o Groov na lista de widgets." },
+      "rate": "Avaliar o Groov",
+      "rateSub": "Uma avaliação rápida ajuda muito um app feito por uma pessoa só",
+      "rateThanks": { "title": "Obrigado!", "body": "As avaliações abrem quando o Groov estiver disponível na App Store e no Google Play. Por enquanto, seu feedback é igualmente bem-vindo." },
+      "feedback": "Enviar feedback",
+      "feedbackEmail": "Enviar e-mail ao desenvolvedor",
+      "feedbackSub": "Relate um bug ou sugira um recurso",
+      "whatsNew": "Novidades",
+      "whatsNewSub": "Mudanças na versão %{version}",
+      "help": "Ajuda e suporte",
+      "privacy": "Política de Privacidade",
+      "privacySub": "O que o Groov coleta e por quê",
+      "terms": "Termos de Uso"
+    }
+  },
+  "auth": {
+    "tagline": {
+      "login": "Bem-vindo de volta",
+      "register": "Crie sua conta",
+      "forgot": "Redefina sua senha",
+      "reset": "Digite seu código de redefinição"
+    },
+    "login": "Entrar",
+    "register": "Cadastrar",
+    "email": "E-mail",
+    "emailPlaceholder": "voce@exemplo.com",
+    "password": "Senha",
+    "confirmPassword": "Confirmar Senha",
+    "displayName": "Nome de Exibição",
+    "displayNamePlaceholder": "Como devemos te chamar?",
+    "resetCode": "Código de Redefinição",
+    "codePlaceholder": "Código do seu e-mail",
+    "newPassword": "Nova Senha",
+    "confirmNewPassword": "Confirmar Nova Senha",
+    "sendResetCode": "Enviar Código de Redefinição",
+    "setNewPassword": "Definir Nova Senha",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha",
+    "showConfirmPassword": "Mostrar confirmação de senha",
+    "hideConfirmPassword": "Ocultar confirmação de senha",
+    "createAccount": "Criar Conta",
+    "forgotPassword": "Esqueceu a senha?",
+    "orContinue": "ou continue com",
+    "googleSignIn": "Entrar com o Google",
+    "googleSignUp": "Cadastrar com o Google",
+    "guest": "Continuar sem conta",
+    "guestHint": "Seus hábitos ficam neste dispositivo até você adicionar um e-mail ou login depois. Nada se perde quando você fizer isso.",
+    "noAccount": "Não tem uma conta? ",
+    "haveAccount": "Já tem uma conta? ",
+    "registerLink": "Cadastre-se",
+    "loginLink": "Entre",
+    "backToLogin": "Voltar para Entrar",
+    "providers": { "apple": "Apple", "google": "Google" },
+    "errors": {
+      "socialFailed": "Não foi possível entrar com %{provider}. Tente novamente.",
+      "displayNameRequired": "Digite um nome de exibição.",
+      "emailPasswordRequired": "E-mail e senha são obrigatórios.",
+      "mismatch": "As senhas não coincidem.",
+      "min8": "A senha deve ter pelo menos 8 caracteres.",
+      "generic": "Algo deu errado. Tente novamente.",
+      "enterEmail": "Digite seu endereço de e-mail.",
+      "sendFailed": "Falha ao enviar o e-mail de redefinição. Tente novamente.",
+      "enterCode": "Digite o código que você recebeu por e-mail.",
+      "enterNewPassword": "Digite uma nova senha.",
+      "invalidCode": "Código inválido ou expirado. Tente novamente.",
+      "appleIosOnly": "Entrar com a Apple está disponível apenas no iOS e no iPadOS.",
+      "appleNoToken": "A Apple não retornou um token de identidade.",
+      "googleIncomplete": "O login com o Google não foi concluído.",
+      "googleNoSession": "O login com o Google não retornou uma sessão.",
+      "googleLinkIncomplete": "A vinculação com o Google não foi concluída.",
+      "googleLinkNoSession": "A vinculação com o Google não retornou uma sessão.",
+      "deleteFailed": "Falha ao excluir a conta"
+    },
+    "success": {
+      "confirmEmail": "Verifique seu e-mail para confirmar sua conta e depois entre.",
+      "codeSent": "Um código de redefinição foi enviado para %{email}. Verifique seu e-mail e digite o código abaixo.",
+      "passwordUpdated": "Senha atualizada com sucesso! Agora você já pode entrar."
+    }
+  },
+  "linkAccount": {
+    "title": "Mantenha seu progresso seguro",
+    "body": "Adicione um login para fazer backup dos seus hábitos e usar o Groov em outro dispositivo. Tudo o que você registrou continua exatamente como está.",
+    "google": "Continuar com o Google",
+    "orEmail": "ou com e-mail",
+    "namePlaceholder": "Nome de exibição (opcional)",
+    "nameA11y": "Nome de exibição",
+    "emailPlaceholder": "E-mail",
+    "passwordPlaceholder": "Senha (8+ caracteres)",
+    "create": "Criar minha conta",
+    "errors": {
+      "failed": "Não foi possível vincular a conta. Tente novamente.",
+      "enterEmail": "Digite um endereço de e-mail.",
+      "min8": "A senha deve ter pelo menos 8 caracteres."
+    }
+  },
+  "moodCheckIn": {
+    "title": "Como você está se sentindo hoje?",
+    "optional": "Opcional",
+    "a11y": "%{label}, %{value} de 5"
+  },
+  "noteModal": {
+    "sub": "%{date} · uma nota para este check-in",
+    "placeholder": "Como foi?",
+    "a11y": "Nota",
+    "removeNote": "Remover nota"
+  },
+  "notificationPrimer": {
+    "title": "Um lembrete na hora certa",
+    "body": "O Groov vai te lembrar apenas nos horários que você escolher, com um botão Concluir direto na notificação. Se você continuar ignorando um lembrete, ele discretamente diminui em vez de insistir.",
+    "bullets": {
+      "only": "Apenas os lembretes que você definir",
+      "actions": "Marque como feito ou adie sem abrir o app",
+      "change": "Altere ou desative quando quiser nos Ajustes"
+    },
+    "bullet": "•  %{text}",
+    "allow": "Ativar lembretes"
+  },
+  "paywall": {
+    "title": "Groov Pro",
+    "reason": {
+      "habits": "Você atingiu o limite gratuito de hábitos.",
+      "reminders": "Mais de um lembrete diário é um recurso Pro.",
+      "ai": "Você usou o coaching de IA gratuito de hoje.",
+      "default": "Apoie um app feito por uma pessoa só e desbloqueie um pouco mais."
+    },
+    "plans": {
+      "yearly": { "title": "Anual", "price": "$11.99 / ano", "note": "7 dias de teste grátis", "badge": "Melhor custo-benefício" },
+      "lifetime": { "title": "Vitalício", "price": "$29.99 único", "note": "Pague uma vez, use para sempre" }
+    },
+    "planA11y": "%{title}, %{price}",
+    "features": {
+      "unlimited": "Hábitos ilimitados",
+      "reminders": "Vários lembretes por dia",
+      "ai": "Mais coaching de IA e Magic Fill",
+      "free": "Todo o resto continua grátis: sincronização, backup, widgets"
+    },
+    "trial": "Começar teste grátis de 7 dias",
+    "buyLifetime": "Comprar vitalício",
+    "restore": "Restaurar compras",
+    "restoring": "Restaurando…",
+    "terms": "Termos",
+    "privacy": "Privacidade",
+    "legalLive": "O plano anual renova automaticamente até ser cancelado nos ajustes da sua conta da loja. Os preços exibidos são em USD e podem variar por região.",
+    "legalNotLive": "As compras ainda não estão ativas nesta versão. Nada será cobrado.",
+    "errors": {
+      "incomplete": "A compra não foi concluída.",
+      "comingSoon": "O Groov Pro chega em breve. Por enquanto, você pode continuar usando tudo no plano gratuito.",
+      "failed": "A compra falhou. Tente novamente.",
+      "noPurchase": "Nenhuma compra anterior encontrada para esta conta.",
+      "restoreFailed": "A restauração falhou.",
+      "notConfigured": "As compras ainda não estão configuradas nesta versão.",
+      "noProducts": "Nenhum produto disponível no momento."
+    }
+  },
+  "shareCards": {
+    "title": "Compartilhe seu progresso",
+    "kinds": { "streak": "Sequência", "week": "Esta semana", "year": "Ano em pixels" },
+    "kindTab": "%{emoji} %{label}",
+    "myStreak": "Minha sequência",
+    "namedStreak": "Sequência de %{name}",
+    "daysInRow": { "one": "dia seguido", "other": "dias seguidos" },
+    "best": "melhor",
+    "perfectDays": "dias perfeitos",
+    "habits": "hábitos",
+    "myWeek": "Minha semana",
+    "namedWeek": "Semana de %{name}",
+    "weekSummary": { "one": "dos hábitos feitos · %{count} dia perfeito", "other": "dos hábitos feitos · %{count} dias perfeitos" },
+    "myYear": "%{year} em pixels",
+    "namedYear": "%{year} em pixels de %{name}",
+    "legend": { "none": "nenhum", "partial": "parcial", "perfect": "perfeito" },
+    "shareImage": "Compartilhar imagem",
+    "dialogTitle": "Compartilhe seu progresso"
+  },
+  "rewardModal": {
+    "title": "Desafio Concluído",
+    "page": "%{page} de %{total}",
+    "completion": "%{badge} Conclusão %{tier}",
+    "progress": "%{done} de %{days} dias concluídos (%{percent}%)",
+    "gotIt": "Entendi",
+    "next": "Próximo →",
+    "tiers": {
+      "platinum": { "headline": "🎉 Absolutamente Impecável!", "body": "Você apareceu todos os dias, sem falhar. Isso é raro. Isso é poderoso. Essa disciplina é sua para manter. Leve-a para o que vem pela frente." },
+      "gold": { "headline": "🏆 Trabalho Excepcional!", "body": "Você foi firme em quase todos os dias. Ouro se conquista, não se ganha, e você conquistou. Continue construindo em cima desse impulso." },
+      "silver": { "headline": "🥈 Bom Esforço!", "body": "Mais da metade do caminho. Prata significa que você apareceu quando importava. Use isso como base e se esforce mais na próxima vez." },
+      "copper": { "headline": "Um Começo que Vale Construir", "body": "Começar é o primeiro passo, mas a constância é o verdadeiro objetivo. Da próxima vez, vá um dia de cada vez e se comprometa a aparecer. Você tem mais dentro de você do que este desafio mostrou." },
+      "none": { "headline": "Esse Escapou", "body": "Nenhum dia registrado desta vez, e tudo bem. Cada tropeço é uma informação. Reserve um momento para se perguntar com sinceridade o que atrapalhou e volte focado e pronto." }
+    }
+  },
+  "trophy": {
+    "announce": "Desafio concluído. Troféu conquistado.",
+    "a11y": "Desafio concluído, troféu conquistado"
+  },
+  "celebration": {
+    "a11y": "%{title}. %{subtitle}. Dispensar"
+  },
+  "whatsNew": {
+    "title": "Novidades",
+    "current": "Atual",
+    "item": "•  %{text}"
+  },
+  "timePicker": {
+    "title": "Definir Horário",
+    "a11y": "Seletor de horário",
+    "hour": "Hora",
+    "minute": "Min",
+    "ampm": "AM/PM"
+  },
+  "notifications": {
+    "doneAction": "✓ Concluir",
+    "snoozeAction": "Adiar 1h",
+    "generalTitle": "🔔 %{label}",
+    "generalBody": "Hora de conferir seus hábitos!",
+    "habitTitle": "%{icon} Hora de: %{name}",
+    "habitTitleBackoff": "%{icon} %{name}, ainda na sua lista",
+    "habitBodyBackoff": "Sem pressão. Até um pequeno passo hoje reinicia a sequência.",
+    "habitBodyIntention": "Depois que você %{intention}. Toque para registrar.",
+    "habitBody": "Toque para registrar seu hábito!",
+    "reminderTitle": "🔔 Lembrete",
+    "eveningTitle": "🌙 Check-in de Hábitos",
+    "eveningBody": "Você ainda tem hábitos para concluir hoje. Mantenha essa sequência!",
+    "testBody": "Lembrete de teste. Toque em Concluir para registrar daqui.",
+    "finishTitle": "Concluir Hábitos"
+  },
+  "backup": {
+    "sharingUnavailable": "O compartilhamento não está disponível neste dispositivo.",
+    "dialogTitle": "Salve seu backup do Groov",
+    "invalidJson": "Esse arquivo não é um JSON válido.",
+    "notBackup": "Esse arquivo não é um backup do Groov.",
+    "newerVersion": "Este backup foi feito por uma versão mais recente do Groov. Atualize o app e tente novamente.",
+    "noData": "O backup não tem uma seção de dados.",
+    "empty": "O backup está vazio.",
+    "summary": "%{habits}, %{days}, %{challenges}",
+    "habits": { "one": "%{count} hábito", "other": "%{count} hábitos" },
+    "days": { "one": "%{count} dia de histórico", "other": "%{count} dias de histórico" },
+    "challenges": { "one": "%{count} desafio", "other": "%{count} desafios" }
+  },
+  "widget": {
+    "title": "Hoje",
+    "a11y": "Groov: %{done} de %{total} hábitos concluídos",
+    "restDay": "Dia de descanso. Nada programado.",
+    "addHabit": "Adicione um hábito para começar",
+    "rowCount": "%{name}  ·  %{count}/%{goal}",
+    "rowDone": "%{name}, concluído",
+    "more": "+%{count} mais no app"
+  }
+}

@@ -1,13 +1,21 @@
 // Mood check-in (#32): one optional 1-5 rating per day, kept separately from
 // completions. Insights are simple averages, no AI.
 
-export const MOODS = [
-  { value: 1, emoji: '😞', label: 'Rough' },
-  { value: 2, emoji: '😕', label: 'Meh' },
-  { value: 3, emoji: '😐', label: 'Okay' },
-  { value: 4, emoji: '🙂', label: 'Good' },
-  { value: 5, emoji: '😄', label: 'Great' },
+import { t } from '../i18n';
+
+const MOOD_DEFS = [
+  { value: 1, emoji: '😞', key: 'rough' },
+  { value: 2, emoji: '😕', key: 'meh' },
+  { value: 3, emoji: '😐', key: 'okay' },
+  { value: 4, emoji: '🙂', key: 'good' },
+  { value: 5, emoji: '😄', key: 'great' },
 ];
+
+// Labels are translated on read so a locale change applies without a reload.
+export const MOODS = MOOD_DEFS.map(d => ({
+  value: d.value, emoji: d.emoji,
+  get label() { return t(`mood.${d.key}`); },
+}));
 
 export const MIN_SAMPLES = 3;
 
@@ -53,6 +61,5 @@ export function habitMoodCorrelations(moods, habits, isDoneOn, { minSamples = MI
 // Human sentence for the strongest correlation, or null when nothing is significant.
 export function describeCorrelation(c) {
   if (!c || Math.abs(c.delta) < 0.3) return null;
-  const dir = c.delta > 0 ? 'better' : 'worse';
-  return `You tend to feel ${dir} on days you do ${c.name} (${c.doneAvg} vs ${c.missedAvg} out of 5).`;
+  return t(c.delta > 0 ? 'mood.correlationBetter' : 'mood.correlationWorse', { name: c.name, done: c.doneAvg, missed: c.missedAvg });
 }

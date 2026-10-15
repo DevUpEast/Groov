@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity,
 } from 'react-native';
 import { useReducedMotion, announce } from '../utils/a11y';
+import { t } from '../i18n';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -61,7 +62,7 @@ function ConfettiPiece({ index, color }) {
   );
 }
 
-export default function CompletionCelebration({ visible, onDone, primaryColor, emoji = '🎉', title = 'Congrats!', subtitle = 'You completed all tasks for the day!' }) {
+export default function CompletionCelebration({ visible, onDone, primaryColor, emoji = '🎉', title = t('today.congrats'), subtitle = t('today.allTasks') }) {
   const circleScale = useRef(new Animated.Value(0.06)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
   const textScale = useRef(new Animated.Value(0.8)).current;
@@ -111,7 +112,7 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
 
   if (reducedMotion) {
     return (
-      <TouchableOpacity style={[StyleSheet.absoluteFill, styles.staticWrap]} onPress={onDone} activeOpacity={1} accessibilityRole="button" accessibilityLabel={`${title}. ${subtitle}. Dismiss`}>
+      <TouchableOpacity style={[StyleSheet.absoluteFill, styles.staticWrap]} onPress={onDone} activeOpacity={1} accessibilityRole="button" accessibilityLabel={t('celebration.a11y', { title, subtitle })}>
         <View style={[styles.staticCard, { backgroundColor: primaryColor }]}>
           <Text style={styles.emoji}>{emoji}</Text>
           <Text style={styles.congrats}>{title}</Text>

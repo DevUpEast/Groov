@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { supabase } from '../utils/supabase';
+import { t } from '../i18n';
 
 // Groov Pro (#40). Source of truth for entitlement is `profiles.is_pro`, which the
 // RevenueCat webhook (supabase/functions/revenuecat-webhook) flips on purchase,
@@ -9,9 +10,10 @@ import { supabase } from '../utils/supabase';
 // Everything degrades gracefully without keys: purchases show a "coming soon"
 // message and the app behaves as free tier.
 
+// Plan copy is translated on read so the paywall follows the active locale.
 export const PLANS = [
-  { id: 'yearly', title: 'Yearly', price: '$11.99 / year', note: '7-day free trial', badge: 'Best value', rcPackage: '$rc_annual' },
-  { id: 'lifetime', title: 'Lifetime', price: '$29.99 once', note: 'Pay once, keep forever', badge: null, rcPackage: '$rc_lifetime' },
+  { id: 'yearly', rcPackage: '$rc_annual', get title() { return t('paywall.plans.yearly.title'); }, get price() { return t('paywall.plans.yearly.price'); }, get note() { return t('paywall.plans.yearly.note'); }, get badge() { return t('paywall.plans.yearly.badge'); } },
+  { id: 'lifetime', rcPackage: '$rc_lifetime', get title() { return t('paywall.plans.lifetime.title'); }, get price() { return t('paywall.plans.lifetime.price'); }, get note() { return t('paywall.plans.lifetime.note'); }, badge: null },
 ];
 
 export const FREE_LIMITS = {
@@ -20,10 +22,10 @@ export const FREE_LIMITS = {
 };
 
 export const PRO_FEATURES = [
-  { emoji: '♾️', text: 'Unlimited habits' },
-  { emoji: '🔔', text: 'Multiple daily reminders' },
-  { emoji: '✨', text: 'More AI coaching and Magic Fill' },
-  { emoji: '🎨', text: 'Everything else stays free: sync, backup, widgets' },
+  { emoji: '♾️', key: 'unlimited', get text() { return t('paywall.features.unlimited'); } },
+  { emoji: '🔔', key: 'reminders', get text() { return t('paywall.features.reminders'); } },
+  { emoji: '✨', key: 'ai', get text() { return t('paywall.features.ai'); } },
+  { emoji: '🎨', key: 'free', get text() { return t('paywall.features.free'); } },
 ];
 
 const ENTITLEMENT_ID = 'pro';
@@ -81,7 +83,7 @@ export async function checkPro(userId) {
 export async function purchasePlan(planId) {
   const P = sdk();
   if (!P || !configuredFor) {
-    const e = new Error('Purchases are not set up on this build yet.');
+    const e = new Error(t('paywall.errors.notConfigured'));
     e.code = 'not_configured';
     throw e;
   }
@@ -89,7 +91,7 @@ export async function purchasePlan(planId) {
   const offerings = await P.getOfferings();
   const pkg = offerings?.current?.availablePackages?.find(p => p.identifier === plan?.rcPackage)
     || offerings?.current?.availablePackages?.[0];
-  if (!pkg) throw new Error('No products are available right now.');
+  if (!pkg) throw new Error(t('paywall.errors.noProducts'));
   try {
     const { customerInfo } = await P.purchasePackage(pkg);
     return { ok: !!customerInfo?.entitlements?.active?.[ENTITLEMENT_ID] };

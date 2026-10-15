@@ -5,6 +5,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth, AUTH_CANCELLED } from '../context/AuthContext';
+import { t, useLocale } from '../i18n';
 
 // Turns a guest (anonymous) account into a permanent one. Shown from Settings.
 // Linking keeps the same user id, so nothing has to be migrated.
@@ -15,6 +16,7 @@ export default function LinkAccountSheet({ visible, onClose, onLinked, theme }) 
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(null); // 'email' | 'google' | 'apple'
   const [error, setError] = useState('');
+  useLocale();
 
   if (!visible) return null;
 
@@ -26,15 +28,15 @@ export default function LinkAccountSheet({ visible, onClose, onLinked, theme }) 
       await fn();
       onLinked?.(kind);
     } catch (e) {
-      if (e?.code !== AUTH_CANCELLED) setError(e?.message || 'Could not link the account. Please try again.');
+      if (e?.code !== AUTH_CANCELLED) setError(e?.message || t('linkAccount.errors.failed'));
     } finally {
       setBusy(null);
     }
   };
 
   const submitEmail = () => {
-    if (!email.trim()) return setError('Enter an email address.');
-    if (password.length < 8) return setError('Password must be at least 8 characters.');
+    if (!email.trim()) return setError(t('linkAccount.errors.enterEmail'));
+    if (password.length < 8) return setError(t('linkAccount.errors.min8'));
     run('email', () => linkEmail(email, password, name));
   };
 
@@ -43,13 +45,13 @@ export default function LinkAccountSheet({ visible, onClose, onLinked, theme }) 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
         <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>Keep your progress safe</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
+            <Text style={[styles.title, { color: theme.text }]}>{t('linkAccount.title')}</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <Text style={[styles.closeTxt, { color: theme.textMuted }]}>✕</Text>
             </TouchableOpacity>
           </View>
           <Text style={[styles.body, { color: theme.textMuted }]}>
-            Add a sign-in to back up your habits and use Groov on another device. Everything you have logged stays exactly as it is.
+            {t('linkAccount.body')}
           </Text>
 
           {Platform.OS === 'ios' && appleAvailable && (
@@ -70,22 +72,22 @@ export default function LinkAccountSheet({ visible, onClose, onLinked, theme }) 
             onPress={() => run('google', linkWithGoogle)}
             disabled={!!busy}
             accessibilityRole="button"
-            accessibilityLabel="Continue with Google"
+            accessibilityLabel={t('linkAccount.google')}
           >
             {busy === 'google'
               ? <ActivityIndicator color={theme.text} />
-              : <><Ionicons name="logo-google" size={18} color={theme.text} /><Text style={[styles.googleText, { color: theme.text }]}>Continue with Google</Text></>}
+              : <><Ionicons name="logo-google" size={18} color={theme.text} /><Text style={[styles.googleText, { color: theme.text }]}>{t('linkAccount.google')}</Text></>}
           </TouchableOpacity>
 
           <View style={styles.dividerRow}>
             <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-            <Text style={[styles.dividerText, { color: theme.textMuted }]}>or with email</Text>
+            <Text style={[styles.dividerText, { color: theme.textMuted }]}>{t('linkAccount.orEmail')}</Text>
             <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
           </View>
 
-          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder="Display name (optional)" placeholderTextColor={theme.textMuted} value={name} onChangeText={setName} maxLength={40} accessibilityLabel="Display name" />
-          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder="Email" placeholderTextColor={theme.textMuted} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} accessibilityLabel="Email" />
-          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder="Password (8+ characters)" placeholderTextColor={theme.textMuted} value={password} onChangeText={setPassword} secureTextEntry accessibilityLabel="Password" />
+          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder={t('linkAccount.namePlaceholder')} placeholderTextColor={theme.textMuted} value={name} onChangeText={setName} maxLength={40} accessibilityLabel={t('linkAccount.nameA11y')} />
+          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder={t('linkAccount.emailPlaceholder')} placeholderTextColor={theme.textMuted} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} accessibilityLabel={t('linkAccount.emailPlaceholder')} />
+          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder={t('linkAccount.passwordPlaceholder')} placeholderTextColor={theme.textMuted} value={password} onChangeText={setPassword} secureTextEntry accessibilityLabel={t('auth.password')} />
           {!!error && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
           <TouchableOpacity
             style={[styles.btn, { backgroundColor: theme.primary, opacity: busy ? 0.6 : 1 }]}
@@ -94,7 +96,7 @@ export default function LinkAccountSheet({ visible, onClose, onLinked, theme }) 
             accessibilityRole="button"
             accessibilityState={{ disabled: !!busy, busy: busy === 'email' }}
           >
-            {busy === 'email' ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Create my account</Text>}
+            {busy === 'email' ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t('linkAccount.create')}</Text>}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

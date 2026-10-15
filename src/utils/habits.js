@@ -6,13 +6,28 @@
 //   quit    avoid something                 done when the user marks the day avoided (count >= 1)
 //   atMost  stay at or under a limit        done when count <= volumeGoal (an untouched day counts)
 
-export const HABIT_TYPES = [
-  { value: 'daily', label: 'Once a day', emoji: '✓', hint: 'Tick it off once' },
-  { value: 'volume', label: 'Volume goal', emoji: '🔢', hint: 'Count up to a target' },
-  { value: 'timed', label: 'Timed', emoji: '⏱️', hint: 'Minutes per day' },
-  { value: 'quit', label: 'Quit habit', emoji: '🚫', hint: 'Stay clean each day' },
-  { value: 'atMost', label: 'Limit', emoji: '📉', hint: 'Stay at or under a max' },
+import { t } from '../i18n';
+
+// Labels and hints are translated at call time so a locale change applies.
+const HABIT_TYPE_DEFS = [
+  { value: 'daily', emoji: '✓' },
+  { value: 'volume', emoji: '🔢' },
+  { value: 'timed', emoji: '⏱️' },
+  { value: 'quit', emoji: '🚫' },
+  { value: 'atMost', emoji: '📉' },
 ];
+
+export function getHabitTypes() {
+  return HABIT_TYPE_DEFS.map(d => ({ ...d, label: t(`habitTypes.${d.value}.label`), hint: t(`habitTypes.${d.value}.hint`) }));
+}
+
+// Static view for callers that only need values/emoji; labels reflect the locale at
+// the time of the call.
+export const HABIT_TYPES = HABIT_TYPE_DEFS.map(d => ({
+  ...d,
+  get label() { return t(`habitTypes.${d.value}.label`); },
+  get hint() { return t(`habitTypes.${d.value}.hint`); },
+}));
 
 export function isGoalMet(habit, count) {
   const c = count || 0;
@@ -41,7 +56,7 @@ export function usesCounter(habit) {
 }
 
 export function unitLabel(habit) {
-  if (habit?.type === 'timed') return 'min';
+  if (habit?.type === 'timed') return t('goal.minutes');
   return habit?.unit || '';
 }
 
@@ -49,11 +64,11 @@ export function unitLabel(habit) {
 export function describeGoal(habit) {
   const u = unitLabel(habit);
   switch (habit?.type) {
-    case 'volume': return `${habit.volumeGoal} ${u || '×'} / day`;
-    case 'timed': return `${habit.volumeGoal} min / day`;
-    case 'quit': return 'Avoid daily';
-    case 'atMost': return `≤ ${habit.volumeGoal} ${u || '×'} / day`;
-    default: return 'Daily';
+    case 'volume': return t('goal.volume', { goal: habit.volumeGoal, unit: u || t('goal.times') });
+    case 'timed': return t('goal.timed', { goal: habit.volumeGoal });
+    case 'quit': return t('goal.quit');
+    case 'atMost': return t('goal.atMost', { goal: habit.volumeGoal, unit: u || t('goal.times') });
+    default: return t('goal.daily');
   }
 }
 
@@ -61,31 +76,66 @@ export function describeGoal(habit) {
 export function describeProgress(habit, count) {
   const u = unitLabel(habit);
   switch (habit?.type) {
-    case 'volume': return `${count}/${habit.volumeGoal} ${u || 'today'}`;
-    case 'timed': return `${count}/${habit.volumeGoal} min`;
-    case 'atMost': return count > habit.volumeGoal ? `${count}/${habit.volumeGoal} ${u} · over limit`.replace('  ', ' ') : `${count}/${habit.volumeGoal} ${u || 'max'}`.replace('  ', ' ');
-    case 'quit': return count >= 1 ? 'Avoided today' : null;
+    case 'volume': return u ? t('progressText.volume', { count, goal: habit.volumeGoal, unit: u }) : t('progressText.volumeNoUnit', { count, goal: habit.volumeGoal });
+    case 'timed': return t('progressText.timed', { count, goal: habit.volumeGoal });
+    case 'atMost':
+      if (count > habit.volumeGoal) return u ? t('progressText.atMostOver', { count, goal: habit.volumeGoal, unit: u }) : t('progressText.atMostOverNoUnit', { count, goal: habit.volumeGoal });
+      return u ? t('progressText.atMost', { count, goal: habit.volumeGoal, unit: u }) : t('progressText.atMostNoUnit', { count, goal: habit.volumeGoal });
+    case 'quit': return count >= 1 ? t('progressText.quit') : null;
     default: return null;
   }
 }
 
-// Challenge templates (#38): quick presets for the challenge form.
-export const CHALLENGE_TEMPLATES = [
-  { key: '7', name: '7-Day Reset', days: 7, icon: '🔥', description: 'One week of showing up every day. Small, fast, doable.' },
-  { key: '21', name: '21-Day Habit Builder', days: 21, icon: '🌱', description: 'Three weeks to make it feel normal.' },
-  { key: '30', name: '30-Day Challenge', days: 30, icon: '🎯', description: 'A full month. Miss a day, keep going.' },
-  { key: '66', name: '66-Day Automatic', days: 66, icon: '🧠', description: 'The average time for a behaviour to become automatic.' },
-  { key: '100', name: '100-Day Streak', days: 100, icon: '💎', description: 'The big one. Triple digits.' },
+// Challenge templates (#38): quick presets for the challenge form. Names and
+// descriptions are translated when read so a locale change applies.
+const CHALLENGE_TEMPLATE_DEFS = [
+  { key: '7', i18nKey: 'reset7', days: 7, icon: '🔥' },
+  { key: '21', i18nKey: 'builder21', days: 21, icon: '🌱' },
+  { key: '30', i18nKey: 'challenge30', days: 30, icon: '🎯' },
+  { key: '66', i18nKey: 'automatic66', days: 66, icon: '🧠' },
+  { key: '100', i18nKey: 'streak100', days: 100, icon: '💎' },
 ];
 
+export function getChallengeTemplates() {
+  return CHALLENGE_TEMPLATE_DEFS.map(d => ({
+    key: d.key, days: d.days, icon: d.icon,
+    name: t(`templates.${d.i18nKey}.name`),
+    shortName: t(`templates.${d.i18nKey}.short`),
+    description: t(`templates.${d.i18nKey}.description`),
+  }));
+}
+
+export const CHALLENGE_TEMPLATES = CHALLENGE_TEMPLATE_DEFS.map(d => ({
+  key: d.key, days: d.days, icon: d.icon,
+  get name() { return t(`templates.${d.i18nKey}.name`); },
+  get shortName() { return t(`templates.${d.i18nKey}.short`); },
+  get description() { return t(`templates.${d.i18nKey}.description`); },
+}));
+
 // Starter habits offered during onboarding (also used by the web mockup's demo seed).
-export const STARTER_HABITS = [
-  { key: 'water', name: 'Drink water', icon: '💧', type: 'volume', volumeGoal: 8, unit: 'glasses', timeOfDay: 'anytime', color: '#3B82F6' },
-  { key: 'move', name: 'Move for 20 minutes', icon: '🏃', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#F97316' },
-  { key: 'read', name: 'Read 10 pages', icon: '📚', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#A855F7' },
-  { key: 'meditate', name: 'Meditate', icon: '🧘', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#14B8A6' },
-  { key: 'walk', name: 'Take a walk', icon: '🚶', type: 'daily', volumeGoal: 1, timeOfDay: 'afternoon', color: '#22C55E' },
-  { key: 'sleep', name: 'In bed by 11', icon: '😴', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#6366F1' },
-  { key: 'journal', name: 'Journal', icon: '✍️', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#EC4899' },
-  { key: 'stretch', name: 'Stretch', icon: '🤸', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#EAB308' },
+// Names and units are translated on read so the picker follows the active locale;
+// the stored habit keeps the name as created.
+const STARTER_HABIT_DEFS = [
+  { key: 'water', icon: '💧', type: 'volume', volumeGoal: 8, unitKey: 'unitGlasses', timeOfDay: 'anytime', color: '#3B82F6' },
+  { key: 'move', icon: '🏃', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#F97316' },
+  { key: 'read', icon: '📚', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#A855F7' },
+  { key: 'meditate', icon: '🧘', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#14B8A6' },
+  { key: 'walk', icon: '🚶', type: 'daily', volumeGoal: 1, timeOfDay: 'afternoon', color: '#22C55E' },
+  { key: 'sleep', icon: '😴', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#6366F1' },
+  { key: 'journal', icon: '✍️', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#EC4899' },
+  { key: 'stretch', icon: '🤸', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#EAB308' },
 ];
+
+export function getStarterHabits() {
+  return STARTER_HABIT_DEFS.map(({ unitKey, ...d }) => ({
+    ...d,
+    name: t(`onboarding.starter.${d.key}`),
+    ...(unitKey ? { unit: t(`onboarding.starter.${unitKey}`) } : {}),
+  }));
+}
+
+export const STARTER_HABITS = STARTER_HABIT_DEFS.map(({ unitKey, ...d }) => ({
+  ...d,
+  get name() { return t(`onboarding.starter.${d.key}`); },
+  ...(unitKey ? { get unit() { return t(`onboarding.starter.${unitKey}`); } } : {}),
+}));

@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import * as Crypto from 'expo-crypto';
 import { supabase } from '../utils/supabase';
+import { t } from '../i18n';
 import { mockupParams } from '../utils/mockup';
 import { syncProfile, deleteAllUserData } from '../services/sync';
 import { clearAll, saveData } from '../utils/storage';
@@ -172,7 +173,7 @@ export function AuthProvider({ children }) {
 
   // ── Sign in with Apple (iOS / iPadOS only, native sheet) ──────────────────
   const signInWithApple = async () => {
-    if (Platform.OS !== 'ios') throw new Error('Sign in with Apple is only available on iOS and iPadOS.');
+    if (Platform.OS !== 'ios') throw new Error(t('auth.errors.appleIosOnly'));
 
     // Nonce binds the Apple identity token to this request. Apple receives the SHA-256
     // hash; Supabase receives the raw value and verifies it against the token's claim.
@@ -192,7 +193,7 @@ export function AuthProvider({ children }) {
       if (e?.code === 'ERR_REQUEST_CANCELED' || e?.code === 'ERR_CANCELED') throw cancelledError();
       throw e;
     }
-    if (!credential?.identityToken) throw new Error('Apple did not return an identity token.');
+    if (!credential?.identityToken) throw new Error(t('auth.errors.appleNoToken'));
 
     const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'apple',
@@ -234,10 +235,10 @@ export function AuthProvider({ children }) {
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, { showInRecents: true });
     if (result.type === 'cancel' || result.type === 'dismiss') throw cancelledError();
-    if (result.type !== 'success' || !result.url) throw new Error('Google sign-in did not complete.');
+    if (result.type !== 'success' || !result.url) throw new Error(t('auth.errors.googleIncomplete'));
 
     const newSession = await createSessionFromUrl(result.url);
-    if (!newSession) throw new Error('Google sign-in did not return a session.');
+    if (!newSession) throw new Error(t('auth.errors.googleNoSession'));
     return newSession;
   };
 
@@ -286,14 +287,14 @@ export function AuthProvider({ children }) {
     if (error) throw error;
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, { showInRecents: true });
     if (result.type === 'cancel' || result.type === 'dismiss') throw cancelledError();
-    if (result.type !== 'success' || !result.url) throw new Error('Google linking did not complete.');
+    if (result.type !== 'success' || !result.url) throw new Error(t('auth.errors.googleLinkIncomplete'));
     const linked = await createSessionFromUrl(result.url);
-    if (!linked) throw new Error('Google linking did not return a session.');
+    if (!linked) throw new Error(t('auth.errors.googleLinkNoSession'));
     return linked;
   };
 
   const linkWithApple = async () => {
-    if (Platform.OS !== 'ios') throw new Error('Sign in with Apple is only available on iOS and iPadOS.');
+    if (Platform.OS !== 'ios') throw new Error(t('auth.errors.appleIosOnly'));
     const rawNonce = Crypto.randomUUID();
     const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
     let credential;
@@ -306,7 +307,7 @@ export function AuthProvider({ children }) {
       if (e?.code === 'ERR_REQUEST_CANCELED' || e?.code === 'ERR_CANCELED') throw cancelledError();
       throw e;
     }
-    if (!credential?.identityToken) throw new Error('Apple did not return an identity token.');
+    if (!credential?.identityToken) throw new Error(t('auth.errors.appleNoToken'));
     const { data, error } = await supabase.auth.linkIdentity({ provider: 'apple', token: credential.identityToken, nonce: rawNonce });
     if (error) throw error;
     const given = credential.fullName?.givenName?.trim() ?? '';
@@ -350,7 +351,7 @@ export function AuthProvider({ children }) {
       }
     );
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json.error || 'Failed to delete account');
+    if (!res.ok) throw new Error(json.error || t('auth.errors.deleteFailed'));
     // Belt and braces: the client's own RLS-scoped delete, in case the server missed a table.
     await deleteAllUserData(userId).catch(() => {});
     // Wipe local storage so any re-registration starts completely clean.

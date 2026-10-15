@@ -6,38 +6,27 @@ import {
 import SafeAreaView from '../components/SafeAreaView';
 import { useApp } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
-import { STARTER_HABITS } from '../utils/habits';
+import { t, useLocale } from '../i18n';
+import { STARTER_HABITS, getStarterHabits } from '../utils/habits';
 
 // First-run flow: two intro slides, pick starter habits, then an implementation
 // intention ("after X, I will Y") per habit. Finishing creates the habits and the
 // 3-Day Kickstart challenge the last slide promises.
 
 const INTRO = [
-  {
-    emoji: '🌱',
-    title: 'Build habits that stick',
-    body: 'Track daily habits and volume goals. Every check-in brings you closer to the life you want.',
-  },
-  {
-    emoji: '🔥',
-    title: 'Streaks that forgive',
-    body: 'Complete your habits to grow a streak. Rest days, skips and two monthly freezes keep one bad day from wiping it out.',
-  },
+  { emoji: '🌱', key: 'stick' },
+  { emoji: '🔥', key: 'streaks' },
 ];
 
 export { STARTER_HABITS };
 const DEFAULT_PICK = ['water', 'move', 'read'];
 const MAX_PICK = 5;
 
-const TIME_CHIPS = [
-  { value: 'morning', label: '🌅 Morning' },
-  { value: 'afternoon', label: '☀️ Afternoon' },
-  { value: 'evening', label: '🌙 Evening' },
-  { value: 'anytime', label: 'Anytime' },
-];
+const TIME_CHIPS = ['morning', 'afternoon', 'evening', 'anytime'];
 
 export default function OnboardingScreen() {
   const { completeOnboarding, theme, settings } = useApp();
+  const { locale } = useLocale();
   const [step, setStep] = useState(0); // 0,1 intro · 2 pick · 3 intentions
   const [picked, setPicked] = useState(DEFAULT_PICK);
   const [plans, setPlans] = useState({}); // key -> { timeOfDay, intention }
@@ -49,7 +38,8 @@ export default function OnboardingScreen() {
     setPicked(p => (p.includes(key) ? p.filter(k => k !== key) : p.length >= MAX_PICK ? p : [...p, key]));
   };
 
-  const chosen = useMemo(() => STARTER_HABITS.filter(h => picked.includes(h.key)), [picked]);
+  const starters = useMemo(() => getStarterHabits(), [locale]);
+  const chosen = useMemo(() => starters.filter(h => picked.includes(h.key)), [picked, starters]);
 
   const finish = (withHabits) => {
     if (settings?.hapticsEnabled !== false) mediumImpact();
@@ -65,7 +55,7 @@ export default function OnboardingScreen() {
 
   const totalSteps = 4;
   const dots = (
-    <View style={styles.dots} accessibilityLabel={`Step ${step + 1} of ${totalSteps}`}>
+    <View style={styles.dots} accessibilityLabel={t('onboarding.stepA11y', { step: step + 1, total: totalSteps })}>
       {Array.from({ length: totalSteps }).map((_, i) => (
         <View key={i} style={[styles.dot, { backgroundColor: i === step ? '#fff' : 'rgba(255,255,255,0.4)' }, i === step && styles.dotActive]} />
       ))}
@@ -81,14 +71,14 @@ export default function OnboardingScreen() {
           {dots}
           <View style={[styles.card, { backgroundColor: theme.surface }]}>
             <Text style={styles.emoji}>{s.emoji}</Text>
-            <Text style={[styles.title, { color: theme.text }]}>{s.title}</Text>
-            <Text style={[styles.body, { color: theme.textMuted }]}>{s.body}</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t(`onboarding.intro.${s.key}.title`)}</Text>
+            <Text style={[styles.body, { color: theme.textMuted }]}>{t(`onboarding.intro.${s.key}.body`)}</Text>
           </View>
           <TouchableOpacity style={styles.btn} onPress={() => { haptic(); setStep(step + 1); }} accessibilityRole="button">
-            <Text style={[styles.btnText, { color: theme.primary }]}>Next</Text>
+            <Text style={[styles.btnText, { color: theme.primary }]}>{t('common.next')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => finish(false)} style={styles.skipBtn} accessibilityRole="button" accessibilityLabel="Skip onboarding">
-            <Text style={styles.skipText}>Skip</Text>
+          <TouchableOpacity onPress={() => finish(false)} style={styles.skipBtn} accessibilityRole="button" accessibilityLabel={t('onboarding.skipA11y')}>
+            <Text style={styles.skipText}>{t('common.skip')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -102,12 +92,12 @@ export default function OnboardingScreen() {
         <View style={styles.container}>
           {dots}
           <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.title, { color: theme.text }]}>Pick your first habits</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.pick.title')}</Text>
             <Text style={[styles.body, { color: theme.textMuted, marginBottom: 16 }]}>
-              Start small. Two or three is plenty, you can add more any time.
+              {t('onboarding.pick.body')}
             </Text>
             <ScrollView style={{ alignSelf: 'stretch', maxHeight: 340 }} showsVerticalScrollIndicator={false}>
-              {STARTER_HABITS.map(h => {
+              {starters.map(h => {
                 const on = picked.includes(h.key);
                 return (
                   <TouchableOpacity
@@ -122,7 +112,7 @@ export default function OnboardingScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.pickName, { color: theme.text }]}>{h.name}</Text>
                       <Text style={[styles.pickSub, { color: theme.textMuted }]}>
-                        {h.type === 'volume' ? `${h.volumeGoal} ${h.unit} a day` : 'Once a day'}
+                        {h.type === 'volume' ? t('onboarding.pick.perDay', { goal: h.volumeGoal, unit: h.unit }) : t('onboarding.pick.onceADay')}
                       </Text>
                     </View>
                     <View style={[styles.check, { borderColor: on ? theme.primary : theme.border, backgroundColor: on ? theme.primary : 'transparent' }]}>
@@ -132,17 +122,17 @@ export default function OnboardingScreen() {
                 );
               })}
             </ScrollView>
-            <Text style={[styles.counter, { color: theme.textMuted }]}>{picked.length} of {MAX_PICK} selected</Text>
+            <Text style={[styles.counter, { color: theme.textMuted }]}>{t('onboarding.pick.selected', { count: picked.length, max: MAX_PICK })}</Text>
           </View>
           <TouchableOpacity
             style={[styles.btn, { opacity: picked.length === 0 ? 0.6 : 1 }]}
             onPress={() => { haptic(); picked.length === 0 ? finish(false) : setStep(3); }}
             accessibilityRole="button"
           >
-            <Text style={[styles.btnText, { color: theme.primary }]}>{picked.length === 0 ? 'Start empty' : 'Next'}</Text>
+            <Text style={[styles.btnText, { color: theme.primary }]}>{picked.length === 0 ? t('onboarding.pick.startEmpty') : t('common.next')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { haptic(); setStep(1); }} style={styles.skipBtn} accessibilityRole="button">
-            <Text style={styles.skipText}>Back</Text>
+            <Text style={styles.skipText}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -156,9 +146,9 @@ export default function OnboardingScreen() {
         <View style={styles.container}>
           {dots}
           <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.title, { color: theme.text }]}>When and where?</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.plan.title')}</Text>
             <Text style={[styles.body, { color: theme.textMuted, marginBottom: 12 }]}>
-              Habits with a plan are 2-3× more likely to stick. Finish the sentence for each one.
+              {t('onboarding.plan.body')}
             </Text>
             <ScrollView style={{ alignSelf: 'stretch', maxHeight: 360 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {chosen.map(h => {
@@ -169,30 +159,30 @@ export default function OnboardingScreen() {
                     <Text style={[styles.planName, { color: theme.text }]}>{h.icon} {h.name}</Text>
                     <View style={styles.chipRow}>
                       {TIME_CHIPS.map(c => {
-                        const on = tod === c.value;
+                        const on = tod === c;
                         return (
                           <TouchableOpacity
-                            key={c.value}
+                            key={c}
                             style={[styles.chip, { borderColor: on ? theme.primary : theme.border, backgroundColor: on ? theme.primaryLight : 'transparent' }]}
-                            onPress={() => { haptic(); setPlans(p => ({ ...p, [h.key]: { ...p[h.key], timeOfDay: c.value } })); }}
+                            onPress={() => { haptic(); setPlans(p => ({ ...p, [h.key]: { ...p[h.key], timeOfDay: c } })); }}
                             accessibilityRole="button"
                             accessibilityState={{ selected: on }}
                           >
-                            <Text style={[styles.chipText, { color: on ? theme.primary : theme.textMuted }]}>{c.label}</Text>
+                            <Text style={[styles.chipText, { color: on ? theme.primary : theme.textMuted }]}>{t(`timeOfDay.${c}`)}</Text>
                           </TouchableOpacity>
                         );
                       })}
                     </View>
                     <TextInput
                       style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
-                      placeholder="After I… (e.g. make coffee, in the kitchen)"
+                      placeholder={t('onboarding.plan.placeholder')}
                       placeholderTextColor={theme.textMuted}
                       value={plan.intention ?? ''}
-                      onChangeText={t => setPlans(p => ({ ...p, [h.key]: { ...p[h.key], intention: t } }))}
+                      onChangeText={text => setPlans(p => ({ ...p, [h.key]: { ...p[h.key], intention: text } }))}
                       maxLength={80}
                       returnKeyType="done"
                       onSubmitEditing={Keyboard.dismiss}
-                      accessibilityLabel={`Plan for ${h.name}`}
+                      accessibilityLabel={t('onboarding.plan.a11y', { name: h.name })}
                     />
                   </View>
                 );
@@ -200,10 +190,10 @@ export default function OnboardingScreen() {
             </ScrollView>
           </View>
           <TouchableOpacity style={styles.btn} onPress={() => finish(true)} accessibilityRole="button">
-            <Text style={[styles.btnText, { color: theme.primary }]}>Start my 3-Day Kickstart 🚀</Text>
+            <Text style={[styles.btnText, { color: theme.primary }]}>{t('onboarding.plan.start')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { haptic(); setStep(2); }} style={styles.skipBtn} accessibilityRole="button">
-            <Text style={styles.skipText}>Back</Text>
+            <Text style={styles.skipText}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

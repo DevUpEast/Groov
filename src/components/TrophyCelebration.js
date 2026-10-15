@@ -3,6 +3,7 @@ import { View, Animated, StyleSheet, Text } from 'react-native';
 import CelebrationOverlay from './CelebrationOverlay';
 import { heavyImpact, mediumImpact } from '../utils/haptics';
 import { useReducedMotion, announce } from '../utils/a11y';
+import { t } from '../i18n';
 
 export default function TrophyCelebration({ visible, onDone, settings, theme }) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -17,7 +18,7 @@ export default function TrophyCelebration({ visible, onDone, settings, theme }) 
       setShowConfetti(false);
       return;
     }
-    announce('Challenge complete. Trophy earned.');
+    announce(t('trophy.announce'));
     if (reducedMotion) {
       scaleAnim.setValue(1);
       if (settings?.hapticsEnabled) heavyImpact();
@@ -57,7 +58,7 @@ export default function TrophyCelebration({ visible, onDone, settings, theme }) 
   });
 
   return (
-    <View style={[StyleSheet.absoluteFill, styles.overlay]} accessible accessibilityLabel="Challenge complete, trophy earned">
+    <View style={[StyleSheet.absoluteFill, styles.overlay]} accessible accessibilityLabel={t('trophy.a11y')}>
       <View style={styles.center}>
         {!reducedMotion && <Animated.View style={[
           styles.orbitDot,

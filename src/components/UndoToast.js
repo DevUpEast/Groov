@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Text, TouchableOpacity, StyleSheet, View } from 'react-native';
+import { t } from '../i18n';
 
 // Bottom toast shown after a check-in: "<habit> logged · Undo". Auto-hides.
 export default function UndoToast({ toast, onUndo, onHide, theme, bottom = 16, duration = 4000 }) {
@@ -26,8 +27,8 @@ export default function UndoToast({ toast, onUndo, onHide, theme, bottom = 16, d
     >
       <View style={[styles.toast, { backgroundColor: theme.text }]}>
         <Text style={[styles.msg, { color: theme.bg }]} numberOfLines={1}>{toast.message}</Text>
-        <TouchableOpacity onPress={onUndo} style={styles.undoBtn} accessibilityRole="button" accessibilityLabel="Undo">
-          <Text style={[styles.undo, { color: '#A5B4FC' }]}>Undo</Text>
+        <TouchableOpacity onPress={onUndo} style={styles.undoBtn} accessibilityRole="button" accessibilityLabel={t('common.undo')}>
+          <Text style={[styles.undo, { color: '#A5B4FC' }]}>{t('common.undo')}</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>

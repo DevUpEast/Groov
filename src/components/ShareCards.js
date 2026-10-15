@@ -8,6 +8,8 @@ import { useApp } from '../context/AppContext';
 import { addDays, parseDateKey } from '../utils/dates';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { track, Events } from '../utils/analytics';
+import { weekdayInitials } from '../utils/schedule';
+import { t, getLocale, useLocale } from '../i18n';
 
 // Shareable cards (#31): streak card, weekly recap and a year-in-pixels grid.
 // Each card is rendered off-screen-sized, captured with react-native-view-shot and
@@ -18,21 +20,21 @@ const BRAND = '#4F46E5';
 const BRAND_DARK = '#3730A3';
 
 export const CARD_KINDS = [
-  { key: 'streak', label: 'Streak', emoji: '🔥' },
-  { key: 'week', label: 'This week', emoji: '📅' },
-  { key: 'year', label: 'Year in pixels', emoji: '🟪' },
+  { key: 'streak', emoji: '🔥', get label() { return t('shareCards.kinds.streak'); } },
+  { key: 'week', emoji: '📅', get label() { return t('shareCards.kinds.week'); } },
+  { key: 'year', emoji: '🟪', get label() { return t('shareCards.kinds.year'); } },
 ];
 
 function StreakCard({ streak, best, perfectDays, habits, displayName, today }) {
   return (
     <View style={[styles.card, { backgroundColor: BRAND }]}>
-      <Text style={styles.cardKicker}>{displayName ? `${displayName}'s` : 'My'} streak</Text>
+      <Text style={styles.cardKicker}>{displayName ? t('shareCards.namedStreak', { name: displayName }) : t('shareCards.myStreak')}</Text>
       <Text style={styles.bigNumber}>{streak}</Text>
-      <Text style={styles.bigLabel}>day{streak === 1 ? '' : 's'} in a row</Text>
+      <Text style={styles.bigLabel}>{t('shareCards.daysInRow', { count: streak })}</Text>
       <View style={styles.statRow}>
-        <View style={styles.stat}><Text style={styles.statValue}>{best}</Text><Text style={styles.statLabel}>best</Text></View>
-        <View style={styles.stat}><Text style={styles.statValue}>{perfectDays}</Text><Text style={styles.statLabel}>perfect days</Text></View>
-        <View style={styles.stat}><Text style={styles.statValue}>{habits}</Text><Text style={styles.statLabel}>habits</Text></View>
+        <View style={styles.stat}><Text style={styles.statValue}>{best}</Text><Text style={styles.statLabel}>{t('shareCards.best')}</Text></View>
+        <View style={styles.stat}><Text style={styles.statValue}>{perfectDays}</Text><Text style={styles.statLabel}>{t('shareCards.perfectDays')}</Text></View>
+        <View style={styles.stat}><Text style={styles.statValue}>{habits}</Text><Text style={styles.statLabel}>{t('shareCards.habits')}</Text></View>
       </View>
       <Footer date={today} />
     </View>
@@ -44,9 +46,9 @@ function WeekCard({ days, displayName, today }) {
   const pct = days.length ? Math.round((days.reduce((a, d) => a + (d.total ? d.completed / d.total : 0), 0) / days.length) * 100) : 0;
   return (
     <View style={[styles.card, { backgroundColor: BRAND_DARK }]}>
-      <Text style={styles.cardKicker}>{displayName ? `${displayName}'s week` : 'My week'}</Text>
+      <Text style={styles.cardKicker}>{displayName ? t('shareCards.namedWeek', { name: displayName }) : t('shareCards.myWeek')}</Text>
       <Text style={styles.bigNumber}>{pct}%</Text>
-      <Text style={styles.bigLabel}>of habits done · {done} perfect day{done === 1 ? '' : 's'}</Text>
+      <Text style={styles.bigLabel}>{t('shareCards.weekSummary', { count: done })}</Text>
       <View style={styles.weekRow}>
         {days.map(d => {
           const r = d.total ? d.completed / d.total : 0;
@@ -55,7 +57,7 @@ function WeekCard({ days, displayName, today }) {
               <View style={styles.weekBarTrack}>
                 <View style={[styles.weekBarFill, { height: `${Math.max(6, r * 100)}%`, opacity: d.future ? 0.2 : 1 }]} />
               </View>
-              <Text style={styles.weekLabel}>{['S', 'M', 'T', 'W', 'T', 'F', 'S'][parseDateKey(d.date).getDay()]}</Text>
+              <Text style={styles.weekLabel}>{weekdayInitials()[parseDateKey(d.date).getDay()]}</Text>
             </View>
           );
         })}
@@ -74,7 +76,7 @@ function YearCard({ year, cells, displayName, today }) {
   // 53 columns must fit the card width; cells are square with a 2px gap.
   return (
     <View style={[styles.card, { backgroundColor: '#0F172A' }]}>
-      <Text style={styles.cardKicker}>{displayName ? `${displayName}'s ${year}` : `${year}`} in pixels</Text>
+      <Text style={styles.cardKicker}>{displayName ? t('shareCards.namedYear', { name: displayName, year }) : t('shareCards.myYear', { year })}</Text>
       {rows.map((rowCols, r) => (
         <View key={r} style={{ flexDirection: 'row', marginTop: r === 0 ? 14 : 10 }}>
           {rowCols.map((col, i) => (
@@ -88,7 +90,7 @@ function YearCard({ year, cells, displayName, today }) {
       ))}
       <View style={[styles.legendRow, { marginTop: 12 }]}>
         {[['#1E293B', 'none'], ['#F59E0B', 'partial'], ['#818CF8', 'perfect']].map(([c, l]) => (
-          <View key={l} style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: c }]} /><Text style={styles.legendText}>{l}</Text></View>
+          <View key={l} style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: c }]} /><Text style={styles.legendText}>{t(`shareCards.legend.${l}`)}</Text></View>
         ))}
       </View>
       <Footer date={today} />
@@ -100,13 +102,14 @@ function Footer({ date }) {
   return (
     <View style={styles.footer}>
       <Text style={styles.footerBrand}>Groov</Text>
-      <Text style={styles.footerDate}>{parseDateKey(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
+      <Text style={styles.footerDate}>{parseDateKey(date).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
     </View>
   );
 }
 
 export default function ShareCards({ visible, onClose, initialKind = 'streak' }) {
   const { theme, settings, getOverallStreak, getBestStreak, getLastNDays, habits, displayName, todayStr, completions, dailySnapshot } = useApp();
+  useLocale();
   const [kind, setKind] = useState(initialKind);
   const [busy, setBusy] = useState(false);
   const ref = useRef(null);
@@ -154,7 +157,7 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
       if (Platform.OS === 'web') {
         const a = document.createElement('a'); a.href = uri; a.download = `groov-${kind}.png`; a.click();
       } else if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your progress' });
+        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: t('shareCards.dialogTitle') });
       }
     } catch (e) {
       if (__DEV__) console.warn('share failed:', e?.message);
@@ -169,8 +172,8 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
       <View style={styles.overlay}>
         <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text }]}>Share your progress</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
+            <Text style={[styles.title, { color: theme.text }]}>{t('shareCards.title')}</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <Text style={[styles.closeTxt, { color: theme.textMuted }]}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -179,7 +182,7 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
               const on = kind === k.key;
               return (
                 <TouchableOpacity key={k.key} style={[styles.tab, { borderColor: on ? theme.primary : theme.border, backgroundColor: on ? theme.primaryLight : 'transparent' }]} onPress={() => { if (settings.hapticsEnabled) lightImpact(); setKind(k.key); }} accessibilityRole="button" accessibilityState={{ selected: on }}>
-                  <Text style={[styles.tabText, { color: on ? theme.primary : theme.textMuted }]}>{k.emoji} {k.label}</Text>
+                  <Text style={[styles.tabText, { color: on ? theme.primary : theme.textMuted }]}>{t('shareCards.kindTab', { emoji: k.emoji, label: k.label })}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -191,8 +194,8 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
               {kind === 'year' && <YearCard year={yearCells.year} cells={yearCells.cols} displayName={displayName} today={today} />}
             </View>
           </ScrollView>
-          <TouchableOpacity style={[styles.shareBtn, { backgroundColor: theme.primary, opacity: busy ? 0.6 : 1 }]} onPress={share} disabled={busy} accessibilityRole="button" accessibilityLabel="Share image">
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.shareBtnText}>Share image</Text>}
+          <TouchableOpacity style={[styles.shareBtn, { backgroundColor: theme.primary, opacity: busy ? 0.6 : 1 }]} onPress={share} disabled={busy} accessibilityRole="button" accessibilityLabel={t('shareCards.shareImage')}>
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.shareBtnText}>{t('shareCards.shareImage')}</Text>}
           </TouchableOpacity>
         </View>
       </View>

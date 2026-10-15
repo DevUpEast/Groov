@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { initSentry, captureException, wrapRoot } from './src/utils/sentry';
+import { t, useLocale, initLocale } from './src/i18n';
 
 // Crash reporting is a no-op until EXPO_PUBLIC_SENTRY_DSN is set (see src/utils/sentry.js).
 initSentry();
@@ -36,13 +37,12 @@ class ErrorBoundary extends React.Component {
       return (
         <View style={[crashStyles.root, { backgroundColor: scheme.bg }]}>
           <Text style={crashStyles.emoji}>😵</Text>
-          <Text style={[crashStyles.title, { color: scheme.text }]}>Something went wrong</Text>
+          <Text style={[crashStyles.title, { color: scheme.text }]}>{t('app.crash.title')}</Text>
           <Text style={[crashStyles.body, { color: scheme.textMuted }]}>
-            Groov hit an unexpected error. Your habits are saved. Tap below to try again, and if it
-            keeps happening, restart the app.
+            {t('app.crash.body')}
           </Text>
           <TouchableOpacity style={[crashStyles.btn, { backgroundColor: scheme.primary }]} onPress={this.retry} activeOpacity={0.8} accessibilityRole="button">
-            <Text style={crashStyles.btnText}>Try again</Text>
+            <Text style={crashStyles.btnText}>{t('app.crash.retry')}</Text>
           </TouchableOpacity>
           {__DEV__ && (
             <ScrollView style={crashStyles.devBox}>
@@ -88,17 +88,18 @@ const NUM_TABS = 5;
 const SLIDE_DURATION = 180;
 
 const TABS = [
-  { name: 'Today',     icon: 'home-outline' },
-  { name: 'Progress',  icon: 'bar-chart-outline' },
-  { name: 'Challenge', icon: 'trophy-outline' },
-  { name: 'Habits',    icon: 'clipboard-outline' },
-  { name: 'Settings',  icon: 'settings-outline' },
+  { key: 'today',     icon: 'home-outline' },
+  { key: 'progress',  icon: 'bar-chart-outline' },
+  { key: 'challenge', icon: 'trophy-outline' },
+  { key: 'habits',    icon: 'clipboard-outline' },
+  { key: 'settings',  icon: 'settings-outline' },
 ];
 
 const SCREENS = [TodayScreen, ProgressScreen, ChallengeScreen, HabitsScreen, SettingsScreen];
 
 function AppNavigator() {
   const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen, notificationPrimer, paywall, closePaywall, refreshPro } = useApp();
+  useLocale();
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -256,15 +257,16 @@ function AppNavigator() {
       ]}>
         {TABS.map((tab, i) => {
           const focused = activeIndex === i;
+          const label = t(`app.tabs.${tab.key}`);
           return (
             <TouchableOpacity
-              key={tab.name}
+              key={tab.key}
               style={styles.tabBtn}
               onPress={() => goToTab(i)}
               activeOpacity={0.7}
               accessibilityRole="tab"
               accessibilityState={{ selected: focused }}
-              accessibilityLabel={tab.name}
+              accessibilityLabel={label}
             >
               <Ionicons
                 name={tab.icon}
@@ -276,7 +278,7 @@ function AppNavigator() {
                 { color: focused ? theme.tabIconActive : theme.tabIconInactive },
                 focused && styles.tabLabelFocused,
               ]}>
-                {tab.name}
+                {label}
               </Text>
             </TouchableOpacity>
           );
@@ -292,12 +294,16 @@ function AuthGate() {
   const { session, loading } = useAuth();
   const scheme = useColorScheme();
   const theme = themes[scheme === 'dark' ? 'dark' : 'light'];
+  useLocale();
+  // The persisted language choice is applied before anything localized is painted.
+  const [localeReady, setLocaleReady] = useState(false);
+  useEffect(() => { let on = true; initLocale().finally(() => { if (on) setLocaleReady(true); }); return () => { on = false; }; }, []);
 
   if (supabaseConfigError) {
     throw new Error(supabaseConfigError);
   }
 
-  if (loading) {
+  if (loading || !localeReady) {
     return <View style={{ flex: 1, backgroundColor: theme.bg }} />;
   }
 

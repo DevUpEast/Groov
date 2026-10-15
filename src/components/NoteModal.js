@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { t, useLocale } from '../i18n';
 
 // Small centred dialog to write a note for one habit on one day.
 export default function NoteModal({ target, onSave, onClose, theme }) {
   const [text, setText] = useState('');
+  useLocale();
   useEffect(() => { setText(target?.note ?? ''); }, [target]);
   if (!target) return null;
   return (
@@ -11,24 +13,24 @@ export default function NoteModal({ target, onSave, onClose, theme }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.title, { color: theme.text }]}>{target.habitName}</Text>
-          <Text style={[styles.sub, { color: theme.textMuted }]}>{target.dateLabel} · a note for this check-in</Text>
+          <Text style={[styles.sub, { color: theme.textMuted }]}>{t('noteModal.sub', { date: target.dateLabel })}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
             value={text}
             onChangeText={setText}
-            placeholder="How did it go?"
+            placeholder={t('noteModal.placeholder')}
             placeholderTextColor={theme.textMuted}
             multiline
             maxLength={280}
             autoFocus
-            accessibilityLabel="Note"
+            accessibilityLabel={t('noteModal.a11y')}
           />
           <View style={styles.btns}>
             <TouchableOpacity style={[styles.btn, { borderColor: theme.border }]} onPress={onClose} accessibilityRole="button">
-              <Text style={[styles.btnText, { color: theme.textMuted }]}>Cancel</Text>
+              <Text style={[styles.btnText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.btn, { backgroundColor: theme.primary, borderColor: theme.primary }]} onPress={() => onSave(text)} accessibilityRole="button">
-              <Text style={[styles.btnText, { color: '#fff' }]}>{target.note && !text.trim() ? 'Remove note' : 'Save'}</Text>
+              <Text style={[styles.btnText, { color: '#fff' }]}>{target.note && !text.trim() ? t('noteModal.removeNote') : t('common.save')}</Text>
             </TouchableOpacity>
           </View>
         </View>

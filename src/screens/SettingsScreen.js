@@ -19,6 +19,7 @@ import WhatsNewSheet from '../components/WhatsNewSheet';
 import LinkAccountSheet from '../components/LinkAccountSheet';
 import { WIDGET_NAME } from '../widgets/widgetData';
 import { summarizeBackup } from '../utils/backup';
+import { t, getLocale, useLocale, setLocale, SUPPORTED_LOCALES } from '../i18n';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
 const DEV_CODE = 'devmode';
@@ -42,11 +43,7 @@ function feedbackMailto() {
   return `mailto:${SUPPORT_EMAIL}?subject=${subject}`;
 }
 
-const THEME_OPTIONS = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'Auto' },
-];
+const THEME_OPTIONS = ['light', 'dark', 'system'];
 
 
 function Row({ label, sublabel, right, theme, onPress }) {
@@ -88,7 +85,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
             onSubmitEditing={onLabelSave}
             autoFocus
             returnKeyType="done"
-            accessibilityLabel="Reminder label"
+            accessibilityLabel={t('settings.reminderLabelA11y')}
           />
         ) : (
           <TouchableOpacity
@@ -96,7 +93,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
             style={{ flex: 1 }}
             activeOpacity={onStartEdit ? 0.7 : 1}
             accessibilityRole={onStartEdit ? 'button' : undefined}
-            accessibilityLabel={onStartEdit ? `Edit reminder label, ${label}` : undefined}
+            accessibilityLabel={onStartEdit ? t('settings.editLabelA11y', { label }) : undefined}
           >
             <View style={styles.reminderLabelInner}>
               {!!icon && <Text style={styles.habitReminderIcon}>{icon}</Text>}
@@ -108,7 +105,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
               )}
             </View>
             <Text style={[styles.reminderSublabel, { color: theme.textMuted }]}>
-              {!masterOn ? 'Notifications disabled' : sublabel ?? `Fires at ${formatTime(time)}`}
+              {!masterOn ? t('settings.notificationsDisabled') : sublabel ?? t('settings.firesAt', { time: formatTime(time) })}
             </Text>
           </TouchableOpacity>
         )}
@@ -127,13 +124,13 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
           style={[styles.timeBtn, { borderColor: theme.border, opacity: masterOn && enabled ? 1 : 0.4 }]}
           onPress={() => masterOn && enabled && onTime()}
           accessibilityRole="button"
-          accessibilityLabel={`Change time, currently ${formatTime(time)}`}
+          accessibilityLabel={t('settings.changeTimeA11y', { time: formatTime(time) })}
           accessibilityState={{ disabled: !(masterOn && enabled) }}
         >
           <Text style={[styles.timeBtnText, { color: theme.primary }]}>{formatTime(time)}</Text>
         </TouchableOpacity>
         {onRemove && (
-          <TouchableOpacity style={styles.deleteReminderBtn} onPress={onRemove} accessibilityRole="button" accessibilityLabel="Remove reminder">
+          <TouchableOpacity style={styles.deleteReminderBtn} onPress={onRemove} accessibilityRole="button" accessibilityLabel={t('settings.removeReminderA11y')}>
             <Ionicons name="trash-outline" size={18} color={theme.danger} />
           </TouchableOpacity>
         )}
@@ -157,12 +154,21 @@ export default function SettingsScreen() {
     allHabits, completions, notes, moods, challenges, pastChallenges, dailySnapshot, accountCreatedAt, lastBackupAt, markBackedUp, importBackup,
     ensureNotificationPermission, isPro, openPaywall, canAddReminder,
   } = useApp();
+  const { locale, preference: localePreference } = useLocale();
+  const [langModal, setLangModal] = useState(false);
+  const localeLabel = SUPPORTED_LOCALES.find(l => l.code === locale)?.label ?? locale;
+  const languageSub = localePreference ? localeLabel : t('settings.languageSystemSub', { label: localeLabel });
+  const chooseLocale = (code) => {
+    if (settings.hapticsEnabled) lightImpact();
+    setLocale(code);
+    setLangModal(false);
+  };
 
   const [whatsNew, setWhatsNew] = useState(false);
   const handleRate = async () => {
     if (settings.hapticsEnabled) lightImpact();
     const ok = await openRateApp();
-    if (!ok) Alert.alert('Thank you!', 'Ratings open once Groov is live on the App Store and Google Play. For now, feedback is just as welcome.');
+    if (!ok) Alert.alert(t('settings.about.rateThanks.title'), t('settings.about.rateThanks.body'));
   };
   const handleFeedback = () => {
     if (settings.hapticsEnabled) lightImpact();
@@ -172,8 +178,11 @@ export default function SettingsScreen() {
   // ── Backup / restore ─────────────────────────────────────────────────────────
   const [backupBusy, setBackupBusy] = useState(false);
   const lastBackupLabel = lastBackupAt
-    ? `Last backup ${new Date(lastBackupAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${new Date(lastBackupAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-    : 'Never backed up';
+    ? t('settings.backup.lastBackup', {
+      date: new Date(lastBackupAt).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' }),
+      time: new Date(lastBackupAt).toLocaleTimeString(getLocale(), { hour: 'numeric', minute: '2-digit' }),
+    })
+    : t('settings.backup.never');
 
   const handleExport = async () => {
     if (settings.hapticsEnabled) lightImpact();
@@ -182,7 +191,7 @@ export default function SettingsScreen() {
       await exportBackup({ habits: allHabits, completions, notes, moods, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt });
       markBackedUp();
     } catch (e) {
-      Alert.alert('Export failed', e.message || 'Could not create the backup file.');
+      Alert.alert(t('settings.backup.exportFailed.title'), e.message || t('settings.backup.exportFailed.body'));
     } finally {
       setBackupBusy(false);
     }
@@ -194,18 +203,18 @@ export default function SettingsScreen() {
     try {
       picked = await pickBackup();
     } catch (e) {
-      Alert.alert('Cannot import', e.message || 'That file could not be read.');
+      Alert.alert(t('settings.backup.cannotImport.title'), e.message || t('settings.backup.cannotImport.body'));
       return;
     }
     if (!picked) return;
-    const when = picked.exportedAt ? new Date(picked.exportedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'unknown date';
+    const when = picked.exportedAt ? new Date(picked.exportedAt).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', year: 'numeric' }) : t('settings.backup.restoreDialog.unknownDate');
     Alert.alert(
-      'Restore backup',
-      `Backup from ${when}: ${summarizeBackup(picked.data)}.\n\nMerge keeps what you have and adds the backup on top. Replace wipes your current data first.`,
+      t('settings.backup.restoreDialog.title'),
+      t('settings.backup.restoreDialog.body', { when, summary: summarizeBackup(picked.data) }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Replace', style: 'destructive', onPress: () => runImport(picked.data, 'replace') },
-        { text: 'Merge', onPress: () => runImport(picked.data, 'merge') },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('settings.backup.restoreDialog.replace'), style: 'destructive', onPress: () => runImport(picked.data, 'replace') },
+        { text: t('settings.backup.restoreDialog.merge'), onPress: () => runImport(picked.data, 'merge') },
       ],
     );
   };
@@ -214,9 +223,9 @@ export default function SettingsScreen() {
     setBackupBusy(true);
     try {
       await importBackup(data, mode);
-      Alert.alert('Restored', mode === 'replace' ? 'Your data was replaced with the backup.' : 'The backup was merged into your data.');
+      Alert.alert(t('settings.backup.restored.title'), mode === 'replace' ? t('settings.backup.restored.replaced') : t('settings.backup.restored.merged'));
     } catch (e) {
-      Alert.alert('Import failed', e.message || 'Something went wrong while restoring.');
+      Alert.alert(t('settings.backup.importFailed.title'), e.message || t('settings.backup.importFailed.body'));
     } finally {
       setBackupBusy(false);
     }
@@ -230,20 +239,20 @@ export default function SettingsScreen() {
     if (isAnonymous) {
       // A guest has no way back in: signing out orphans the account and its data.
       Alert.alert(
-        'Sign out of guest account?',
-        'You are using Groov without an account. Signing out now would lose your habits and history. Add an email or sign-in first to keep them.',
+        t('settings.account.signOutGuest.title'),
+        t('settings.account.signOutGuest.body'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Add a sign-in', onPress: () => setLinkSheet(true) },
-          { text: 'Sign out anyway', style: 'destructive', onPress: () => signOut() },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('settings.account.signOutGuest.add'), onPress: () => setLinkSheet(true) },
+          { text: t('settings.account.signOutGuest.anyway'), style: 'destructive', onPress: () => signOut() },
         ],
       );
       return;
     }
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('settings.account.signOut'), t('settings.account.signOutBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Sign Out', style: 'destructive', onPress: async () => {
+        text: t('settings.account.signOut'), style: 'destructive', onPress: async () => {
           try { await pushAllData(); } catch (e) {}
           signOut();
         },
@@ -253,27 +262,27 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account and all associated data including habits, progress, challenges, and settings. This cannot be undone.',
+      t('settings.account.deleteAccount.title'),
+      t('settings.account.deleteAccount.body'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete Account',
+          text: t('settings.account.deleteAccount.title'),
           style: 'destructive',
           onPress: () => {
             Alert.alert(
-              'Are you absolutely sure?',
-              'Your account will be permanently deleted. You will not be able to recover it.',
+              t('settings.account.deleteAccount.sure'),
+              t('settings.account.deleteAccount.sureBody'),
               [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
                 {
-                  text: 'Yes, Delete Everything',
+                  text: t('settings.account.deleteAccount.yes'),
                   style: 'destructive',
                   onPress: async () => {
                     try {
                       await deleteAccount();
                     } catch (e) {
-                      Alert.alert('Error', e.message || 'Failed to delete account. Please try again.');
+                      Alert.alert(t('common.error'), e.message || t('settings.account.deleteAccount.failed'));
                     }
                   },
                 },
@@ -295,12 +304,12 @@ export default function SettingsScreen() {
 
   const handleResetPassword = () => {
     Alert.alert(
-      'Reset Password',
-      `A password reset code will be sent to ${user?.email ?? 'your email'}. Continue?`,
+      t('settings.data.resetPassword'),
+      t('settings.data.resetDialogBody', { email: user?.email ?? t('settings.data.yourEmail') }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Send Code',
+          text: t('settings.data.sendCode'),
           onPress: async () => {
             setResetLoading(true);
             setResetError('');
@@ -311,7 +320,7 @@ export default function SettingsScreen() {
               setResetNewPassword('');
               setResetConfirmPassword('');
             } catch (e) {
-              Alert.alert('Error', e.message || 'Failed to send reset email.');
+              Alert.alert(t('common.error'), e.message || t('settings.data.sendFailed'));
             } finally {
               setResetLoading(false);
             }
@@ -322,18 +331,18 @@ export default function SettingsScreen() {
   };
 
   const handleVerifyReset = async () => {
-    if (!resetCode.trim()) { setResetError('Enter the code from your email.'); return; }
-    if (!resetNewPassword) { setResetError('Enter a new password.'); return; }
-    if (resetNewPassword.length < 8) { setResetError('Password must be at least 8 characters.'); return; }
-    if (resetNewPassword !== resetConfirmPassword) { setResetError('Passwords do not match.'); return; }
+    if (!resetCode.trim()) { setResetError(t('settings.resetModal.errors.enterCode')); return; }
+    if (!resetNewPassword) { setResetError(t('settings.resetModal.errors.enterPassword')); return; }
+    if (resetNewPassword.length < 8) { setResetError(t('settings.resetModal.errors.min8')); return; }
+    if (resetNewPassword !== resetConfirmPassword) { setResetError(t('settings.resetModal.errors.mismatch')); return; }
     setResetLoading(true);
     setResetError('');
     try {
       await verifyPasswordReset(user?.email ?? '', resetCode, resetNewPassword);
       setResetStep(null);
-      Alert.alert('Success', 'Your password has been updated.');
+      Alert.alert(t('settings.resetModal.success.title'), t('settings.resetModal.success.body'));
     } catch (e) {
-      setResetError(e.message || 'Invalid or expired code. Please try again.');
+      setResetError(e.message || t('settings.resetModal.errors.invalidCode'));
     } finally {
       setResetLoading(false);
     }
@@ -356,7 +365,7 @@ export default function SettingsScreen() {
       await updateDisplayName(next);
       setNameModal(false);
     } catch (e) {
-      Alert.alert('Error', e.message || 'Could not update your name. Please try again.');
+      Alert.alert(t('common.error'), e.message || t('settings.account.nameModal.failed'));
     } finally {
       setNameSaving(false);
     }
@@ -390,9 +399,9 @@ export default function SettingsScreen() {
       setShowDevInput(false);
       setDevCodeDraft('');
       lightImpact();
-      Alert.alert('Developer Mode', 'Dev tools unlocked on this device permanently.');
+      Alert.alert(t('settings.dev.unlocked.title'), t('settings.dev.unlocked.body'));
     } else {
-      Alert.alert('Invalid Code', 'That code is incorrect.');
+      Alert.alert(t('settings.dev.invalid.title'), t('settings.dev.invalid.body'));
       setDevCodeDraft('');
     }
   };
@@ -413,9 +422,9 @@ export default function SettingsScreen() {
 
   const removeReminder = (idx) => {
     if (settings.hapticsEnabled) lightImpact();
-    Alert.alert('Remove Reminder', 'Delete this reminder?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => updateReminders(reminders.filter((_, i) => i !== idx)) },
+    Alert.alert(t('settings.removeReminder.title'), t('settings.removeReminder.body'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.remove'), style: 'destructive', onPress: () => updateReminders(reminders.filter((_, i) => i !== idx)) },
     ]);
   };
 
@@ -425,7 +434,7 @@ export default function SettingsScreen() {
     if (!(await ensureNotificationPermission())) return;
     updateReminders([
       ...reminders,
-      { id: `r-${Date.now()}`, label: 'Reminder', time: { hour12: 12, minute: 0, ampm: 'PM' }, enabled: true },
+      { id: `r-${Date.now()}`, label: t('settings.newReminderLabel'), time: { hour12: 12, minute: 0, ampm: 'PM' }, enabled: true },
     ]);
   };
 
@@ -437,9 +446,9 @@ export default function SettingsScreen() {
 
   const removeHabitReminder = (habit) => {
     if (settings.hapticsEnabled) lightImpact();
-    Alert.alert('Remove Reminder', `Turn off the reminder for "${habit.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => updateHabit(habit.id, { reminder: { ...habit.reminder, enabled: false } }) },
+    Alert.alert(t('settings.removeReminder.title'), t('settings.removeReminder.habitBody', { name: habit.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.remove'), style: 'destructive', onPress: () => updateHabit(habit.id, { reminder: { ...habit.reminder, enabled: false } }) },
     ]);
   };
 
@@ -464,16 +473,16 @@ export default function SettingsScreen() {
 
   const handleClearData = () => {
     Alert.alert(
-      'Clear All Data',
-      'This will permanently delete all habits, progress, challenges, and settings. The app will reset completely.',
+      t('settings.data.clear'),
+      t('settings.data.clearBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Clear Everything',
+          text: t('settings.data.clearEverything'),
           style: 'destructive',
           onPress: async () => {
             await resetAll();
-            Alert.alert('Done', 'All data cleared. The app has been reset.');
+            Alert.alert(t('common.done'), t('settings.data.cleared'));
           },
         },
       ]
@@ -487,49 +496,63 @@ export default function SettingsScreen() {
   const formattedDevDate = (() => {
     const d = new Date();
     d.setDate(d.getDate() + dateOffset);
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    return d.toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   })();
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.heading, { color: theme.text }]}>Settings</Text>
+        <Text style={[styles.heading, { color: theme.text }]}>{t('settings.title')}</Text>
 
         {/* Appearance */}
-        <Section title="APPEARANCE" theme={theme}>
-          <View style={[styles.row, { borderBottomColor: 'transparent' }]}>
+        <Section title={t('settings.appearance')} theme={theme}>
+          <View style={[styles.row, { borderBottomColor: theme.border }]}>
             <View style={styles.rowLeft}>
-              <Text style={[styles.rowLabel, { color: theme.text }]}>Theme</Text>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.theme')}</Text>
               <Text style={[styles.rowSub, { color: theme.textMuted }]}>
-                {settings.theme === 'system' ? 'Follows your device setting' : `Always ${settings.theme}`}
+                {settings.theme === 'system' ? t('settings.themeFollows') : settings.theme === 'dark' ? t('settings.themeAlwaysDark') : t('settings.themeAlwaysLight')}
               </Text>
             </View>
             <View style={[styles.segment, { borderColor: theme.border }]}>
               {THEME_OPTIONS.map(opt => {
-                const active = (settings.theme ?? 'system') === opt.value;
+                const active = (settings.theme ?? 'system') === opt;
+                const label = t(`settings.themeOptions.${opt}`);
                 return (
                   <TouchableOpacity
-                    key={opt.value}
+                    key={opt}
                     style={[styles.segmentBtn, active && { backgroundColor: theme.primary }]}
-                    onPress={() => updateSettings({ theme: opt.value })}
+                    onPress={() => updateSettings({ theme: opt })}
                     activeOpacity={0.7}
                     accessibilityRole="button"
-                    accessibilityLabel={`${opt.label} theme`}
+                    accessibilityLabel={t('settings.themeA11y', { label })}
                     accessibilityState={{ selected: active }}
                   >
-                    <Text style={[styles.segmentText, { color: active ? '#fff' : theme.textMuted }]}>{opt.label}</Text>
+                    <Text style={[styles.segmentText, { color: active ? '#fff' : theme.textMuted }]}>{label}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
           </View>
+          <TouchableOpacity
+            style={[styles.row, { borderBottomColor: 'transparent' }]}
+            onPress={() => { if (settings.hapticsEnabled) lightImpact(); setLangModal(true); }}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('settings.language')}, ${languageSub}`}
+          >
+            <View style={styles.rowLeft}>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.language')}</Text>
+              <Text style={[styles.rowSub, { color: theme.textMuted }]}>{languageSub}</Text>
+            </View>
+            <Ionicons name="language-outline" size={18} color={theme.textMuted} />
+          </TouchableOpacity>
         </Section>
 
         {/* Notifications */}
-        <Section title="NOTIFICATIONS" theme={theme}>
+        <Section title={t('settings.notifications')} theme={theme}>
           <Row
-            label="Enable Notifications"
-            sublabel={Platform.OS === 'web' ? 'Push notifications on device only' : 'Master toggle for all reminders'}
+            label={t('settings.enableNotifications')}
+            sublabel={Platform.OS === 'web' ? t('settings.enableSubWeb') : t('settings.enableSub')}
             theme={theme}
             right={
               <Switch
@@ -540,7 +563,7 @@ export default function SettingsScreen() {
                 }}
                 trackColor={{ false: theme.border, true: theme.primary }}
                 thumbColor="#fff"
-                accessibilityLabel="Enable Notifications"
+                accessibilityLabel={t('settings.enableNotifications')}
               />
             }
           />
@@ -548,8 +571,8 @@ export default function SettingsScreen() {
           <ReminderBlock
             theme={theme}
             icon="🌙"
-            label="Smart Check-in"
-            sublabel={masterOn ? `Fires at ${formatTime(eveningTime)} only if habits are still unfinished` : undefined}
+            label={t('settings.smartCheckin')}
+            sublabel={masterOn ? t('settings.smartSub', { time: formatTime(eveningTime) }) : undefined}
             enabled={!!settings.eveningReminderEnabled}
             masterOn={masterOn}
             time={eveningTime}
@@ -585,7 +608,7 @@ export default function SettingsScreen() {
               theme={theme}
               icon={h.icon ?? '🔔'}
               label={h.name}
-              badge="Habit"
+              badge={t('settings.habitBadge')}
               enabled={!!h.reminder.enabled}
               masterOn={masterOn}
               time={h.reminder}
@@ -600,19 +623,19 @@ export default function SettingsScreen() {
             onPress={() => masterOn && addReminder()}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel="Add Reminder"
+            accessibilityLabel={t('settings.addReminder')}
             accessibilityState={{ disabled: !masterOn }}
           >
             <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
-            <Text style={[styles.addReminderText, { color: theme.primary }]}>Add Reminder</Text>
+            <Text style={[styles.addReminderText, { color: theme.primary }]}>{t('settings.addReminder')}</Text>
           </TouchableOpacity>
         </Section>
 
         {/* Feedback */}
-        <Section title="FEEDBACK" theme={theme}>
+        <Section title={t('settings.feedback')} theme={theme}>
           <Row
-            label="Sounds"
-            sublabel="Chimes when you complete habits and challenges"
+            label={t('settings.sounds')}
+            sublabel={t('settings.soundsSub')}
             theme={theme}
             right={
               <Switch
@@ -623,13 +646,13 @@ export default function SettingsScreen() {
                 }}
                 trackColor={{ false: theme.border, true: theme.primary }}
                 thumbColor="#fff"
-                accessibilityLabel="Sounds"
+                accessibilityLabel={t('settings.sounds')}
               />
             }
           />
           <Row
-            label="Haptic Feedback"
-            sublabel="Vibration on check-off (device only)"
+            label={t('settings.haptics')}
+            sublabel={t('settings.hapticsSub')}
             theme={theme}
             right={
               <Switch
@@ -637,7 +660,7 @@ export default function SettingsScreen() {
                 onValueChange={v => updateSettings({ hapticsEnabled: v })}
                 trackColor={{ false: theme.border, true: theme.primary }}
                 thumbColor="#fff"
-                accessibilityLabel="Haptic Feedback"
+                accessibilityLabel={t('settings.haptics')}
               />
             }
           />
@@ -645,31 +668,31 @@ export default function SettingsScreen() {
 
         {/* Dev Tools — only visible in development builds after entering the code */}
         {showDevTools && (
-          <Section title="DEV TOOLS" theme={theme}>
+          <Section title={t('settings.dev.title')} theme={theme}>
             {/* Date offset */}
             <View style={[styles.row, { borderBottomColor: theme.border }]}>
               <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: theme.text }]}>Simulated Date</Text>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.simulatedDate')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textMuted }]}>{formattedDevDate}</Text>
                 {dateOffset !== 0 && (
                   <Text style={[styles.rowSub, { color: theme.warning }]}>
-                    Offset: {dateOffset > 0 ? '+' : ''}{dateOffset} day{Math.abs(dateOffset) !== 1 ? 's' : ''}
+                    {t('settings.dev.offset', { count: Math.abs(dateOffset), offset: `${dateOffset > 0 ? '+' : ''}${dateOffset}` })}
                   </Text>
                 )}
               </View>
               <View style={styles.devDayControls}>
-                <TouchableOpacity style={[styles.devBtn, { borderColor: theme.border }]} onPress={() => adjustDay(-1)} accessibilityRole="button" accessibilityLabel="Previous day">
+                <TouchableOpacity style={[styles.devBtn, { borderColor: theme.border }]} onPress={() => adjustDay(-1)} accessibilityRole="button" accessibilityLabel={t('settings.dev.prevDay')}>
                   <Text style={[styles.devBtnText, { color: theme.text }]}>−</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.devBtn, { borderColor: theme.border }]}
                   onPress={() => setDateOffset(0)}
                   accessibilityRole="button"
-                  accessibilityLabel="Reset simulated date to now"
+                  accessibilityLabel={t('settings.dev.resetDate')}
                 >
-                  <Text style={[styles.devBtnText, { color: theme.textMuted, fontSize: 10 }]}>NOW</Text>
+                  <Text style={[styles.devBtnText, { color: theme.textMuted, fontSize: 10 }]}>{t('settings.dev.now')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.devBtn, { borderColor: theme.border }]} onPress={() => adjustDay(1)} accessibilityRole="button" accessibilityLabel="Next day">
+                <TouchableOpacity style={[styles.devBtn, { borderColor: theme.border }]} onPress={() => adjustDay(1)} accessibilityRole="button" accessibilityLabel={t('settings.dev.nextDay')}>
                   <Text style={[styles.devBtnText, { color: theme.text }]}>+</Text>
                 </TouchableOpacity>
               </View>
@@ -680,15 +703,15 @@ export default function SettingsScreen() {
               style={[styles.row, { borderBottomColor: theme.border }]}
               onPress={async () => {
                 await sendTestNotification(habits[0]);
-                Alert.alert('Sent', 'Test notification fired. Check your notification tray.');
+                Alert.alert(t('settings.dev.sent.title'), t('settings.dev.sent.body'));
               }}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel="Send Test Notification"
+              accessibilityLabel={t('settings.dev.sendTest')}
             >
               <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: theme.text }]}>Send Test Notification</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>Fires a reminder for your first habit, with Done / Snooze</Text>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.sendTest')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>{t('settings.dev.sendTestSub')}</Text>
               </View>
               <Ionicons name="notifications-outline" size={20} color={theme.primary} />
             </TouchableOpacity>
@@ -698,14 +721,14 @@ export default function SettingsScreen() {
               style={[styles.row, { borderBottomColor: theme.border }]}
               onPress={() => {
                 Alert.alert(
-                  'Generate 30-Day History',
-                  'This will fill the last 30 days with random completions. Existing history will be overwritten.',
+                  t('settings.dev.seed.title'),
+                  t('settings.dev.seed.body'),
                   [
-                    { text: 'Cancel', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                      text: 'Generate', onPress: async () => {
+                      text: t('settings.dev.seed.generate'), onPress: async () => {
                         await seedRandomHistory();
-                        Alert.alert('Done', '30 days of random history added.');
+                        Alert.alert(t('common.done'), t('settings.dev.seed.done'));
                       },
                     },
                   ]
@@ -713,11 +736,11 @@ export default function SettingsScreen() {
               }}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel="Generate 30-Day History"
+              accessibilityLabel={t('settings.dev.seed.title')}
             >
               <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: theme.text }]}>Generate 30-Day History</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>Random completions for the past 30 days</Text>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.seed.title')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>{t('settings.dev.seed.sub')}</Text>
               </View>
               <Ionicons name="calendar-outline" size={20} color={theme.primary} />
             </TouchableOpacity>
@@ -726,18 +749,18 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: theme.border }]}
               onPress={() => {
-                Alert.alert('Test Crash', 'This throws a render error so you can check the crash screen and Sentry.', [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Crash', style: 'destructive', onPress: () => setCrashTest(true) },
+                Alert.alert(t('settings.dev.crash.title'), t('settings.dev.crash.body'), [
+                  { text: t('common.cancel'), style: 'cancel' },
+                  { text: t('settings.dev.crash.crash'), style: 'destructive', onPress: () => setCrashTest(true) },
                 ]);
               }}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel="Test Crash"
+              accessibilityLabel={t('settings.dev.crash.title')}
             >
               <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: theme.text }]}>Test Crash</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>Throws an error to exercise the crash screen</Text>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.crash.title')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>{t('settings.dev.crash.sub')}</Text>
               </View>
               <Ionicons name="warning-outline" size={20} color={theme.warning} />
             </TouchableOpacity>
@@ -747,23 +770,23 @@ export default function SettingsScreen() {
               style={[styles.row, { borderBottomColor: 'transparent' }]}
               onPress={() => {
                 Alert.alert(
-                  'Disable Dev Tools',
-                  'This will re-lock dev tools on this device. You\'ll need to tap the version label 7 times and enter the code to unlock again.',
+                  t('settings.dev.disable.title'),
+                  t('settings.dev.disable.body'),
                   [
-                    { text: 'Cancel', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                      text: 'Disable', style: 'destructive', onPress: () => setDevMode(false),
+                      text: t('settings.dev.disable.disable'), style: 'destructive', onPress: () => setDevMode(false),
                     },
                   ]
                 );
               }}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel="Disable Dev Tools"
+              accessibilityLabel={t('settings.dev.disable.title')}
             >
               <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: theme.danger }]}>Disable Dev Tools</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>Re-locks dev tools on this device</Text>
+                <Text style={[styles.rowLabel, { color: theme.danger }]}>{t('settings.dev.disable.title')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textMuted }]}>{t('settings.dev.disable.sub')}</Text>
               </View>
               <Ionicons name="lock-closed-outline" size={20} color={theme.danger} />
             </TouchableOpacity>
@@ -771,10 +794,10 @@ export default function SettingsScreen() {
         )}
 
         {/* Pro */}
-        <Section title="GROOV PRO" theme={theme}>
+        <Section title={t('settings.pro.title')} theme={theme}>
           <Row
-            label={isPro ? 'You have Groov Pro' : 'Upgrade to Groov Pro'}
-            sublabel={isPro ? 'Thank you for supporting a one-person app' : 'Unlimited habits, more reminders and AI coaching'}
+            label={isPro ? t('settings.pro.have') : t('settings.pro.upgrade')}
+            sublabel={isPro ? t('settings.pro.haveSub') : t('settings.pro.upgradeSub')}
             theme={theme}
             onPress={isPro ? undefined : () => { if (settings.hapticsEnabled) lightImpact(); openPaywall('settings'); }}
             right={<Ionicons name={isPro ? 'checkmark-circle' : 'sparkles-outline'} size={20} color={theme.primary} />}
@@ -782,26 +805,26 @@ export default function SettingsScreen() {
         </Section>
 
         {/* Account */}
-        <Section title="ACCOUNT" theme={theme}>
+        <Section title={t('settings.account.title')} theme={theme}>
           <Row
-            label="Display Name"
-            sublabel={displayName || 'Add a name for greetings and coaching'}
+            label={t('settings.account.displayName')}
+            sublabel={displayName || t('settings.account.displayNameSub')}
             theme={theme}
             onPress={openNameEditor}
             right={<Ionicons name="create-outline" size={18} color={theme.textMuted} />}
           />
           {isAnonymous ? (
             <Row
-              label="Guest account"
-              sublabel="Your data lives only on this device. Add a sign-in to back it up and sync."
+              label={t('settings.account.guest')}
+              sublabel={t('settings.account.guestSub')}
               theme={theme}
               onPress={() => { if (settings.hapticsEnabled) lightImpact(); setLinkSheet(true); }}
-              right={<View style={[styles.linkPill, { backgroundColor: theme.primary }]}><Text style={styles.linkPillText}>Add sign-in</Text></View>}
+              right={<View style={[styles.linkPill, { backgroundColor: theme.primary }]}><Text style={styles.linkPillText}>{t('settings.account.addSignIn')}</Text></View>}
             />
           ) : (
             <Row
-              label="Signed in as"
-              sublabel={user?.email ?? (authProvider === 'apple' ? 'Apple ID' : authProvider === 'google' ? 'Google account' : '')}
+              label={t('settings.account.signedInAs')}
+              sublabel={user?.email ?? (authProvider === 'apple' ? t('settings.account.appleId') : authProvider === 'google' ? t('settings.account.googleAccount') : '')}
               theme={theme}
               right={null}
             />
@@ -810,47 +833,47 @@ export default function SettingsScreen() {
             style={[styles.dangerRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
             onPress={handleSignOut}
             accessibilityRole="button"
-            accessibilityLabel="Sign Out"
+            accessibilityLabel={t('settings.account.signOut')}
           >
-            <Text style={styles.dangerText}>Sign Out</Text>
+            <Text style={styles.dangerText}>{t('settings.account.signOut')}</Text>
           </TouchableOpacity>
         </Section>
 
         {/* Backup */}
-        <Section title="BACKUP" theme={theme}>
+        <Section title={t('settings.backup.title')} theme={theme}>
           <Row
-            label="Export backup"
-            sublabel={`${lastBackupLabel} · JSON file with every habit, check-in and setting`}
+            label={t('settings.backup.export')}
+            sublabel={t('settings.backup.exportSub', { last: lastBackupLabel })}
             theme={theme}
             onPress={backupBusy ? undefined : handleExport}
             right={<Ionicons name="share-outline" size={20} color={theme.primary} />}
           />
           <Row
-            label="Restore from backup"
-            sublabel="Pick a Groov backup file to merge or replace"
+            label={t('settings.backup.restore')}
+            sublabel={t('settings.backup.restoreSub')}
             theme={theme}
             onPress={backupBusy ? undefined : handleImport}
             right={<Ionicons name="download-outline" size={20} color={theme.primary} />}
           />
           {!lastBackupAt && (
-            <Text style={[styles.backupHint, { color: theme.warning }]}>⚠️ Your data syncs to your account, but a file backup is the only copy you fully control.</Text>
+            <Text style={[styles.backupHint, { color: theme.warning }]}>{t('settings.backup.hint')}</Text>
           )}
         </Section>
 
         {/* Data */}
-        <Section title="DATA" theme={theme}>
+        <Section title={t('settings.data.title')} theme={theme}>
           {canResetPassword && (
             <TouchableOpacity
               style={[styles.dangerRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
               onPress={handleResetPassword}
               disabled={resetLoading}
               accessibilityRole="button"
-              accessibilityLabel="Reset Password, send a reset code to your email"
+              accessibilityLabel={t('settings.data.resetPasswordA11y')}
               accessibilityState={{ disabled: resetLoading }}
             >
-              <Text style={[styles.dangerText, { color: theme.primary }]}>Reset Password</Text>
+              <Text style={[styles.dangerText, { color: theme.primary }]}>{t('settings.data.resetPassword')}</Text>
               <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
-                Send a reset code to your email
+                {t('settings.data.resetPasswordSub')}
               </Text>
             </TouchableOpacity>
           )}
@@ -858,82 +881,82 @@ export default function SettingsScreen() {
             style={[styles.dangerRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
             onPress={handleClearData}
             accessibilityRole="button"
-            accessibilityLabel="Clear All Data, permanently removes all habits, progress, and settings"
+            accessibilityLabel={t('settings.data.clearA11y')}
           >
-            <Text style={styles.dangerText}>Clear All Data</Text>
+            <Text style={styles.dangerText}>{t('settings.data.clear')}</Text>
             <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
-              Permanently removes all habits, progress, and settings
+              {t('settings.data.clearSub')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.dangerRow}
             onPress={handleDeleteAccount}
             accessibilityRole="button"
-            accessibilityLabel="Delete Account, permanently removes your account and all data"
+            accessibilityLabel={t('settings.data.deleteA11y')}
           >
-            <Text style={styles.dangerText}>Delete Account</Text>
+            <Text style={styles.dangerText}>{t('settings.data.deleteAccount')}</Text>
             <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
-              Permanently removes your account and all data
+              {t('settings.data.deleteSub')}
             </Text>
           </TouchableOpacity>
         </Section>
 
         {/* About */}
-        <Section title="ABOUT" theme={theme}>
+        <Section title={t('settings.about.title')} theme={theme}>
           {Platform.OS === 'android' && (
             <Row
-              label="Add home-screen widget"
-              sublabel="Today's habits with one-tap check-off"
+              label={t('settings.about.widget')}
+              sublabel={t('settings.about.widgetSub')}
               theme={theme}
               onPress={async () => {
                 if (settings.hapticsEnabled) lightImpact();
                 try {
                   const { requestPinWidget } = require('react-native-android-widget');
                   const ok = await requestPinWidget({ widgetName: WIDGET_NAME });
-                  if (!ok) Alert.alert('Not supported', 'Your launcher does not support adding widgets from apps. Long-press your home screen and pick Groov from the widget list instead.');
+                  if (!ok) Alert.alert(t('settings.about.widgetUnsupported.title'), t('settings.about.widgetUnsupported.body'));
                 } catch (e) {
-                  Alert.alert('Could not add widget', e?.message || 'Long-press your home screen and pick Groov from the widget list.');
+                  Alert.alert(t('settings.about.widgetFailed.title'), e?.message || t('settings.about.widgetFailed.body'));
                 }
               }}
               right={<Ionicons name="grid-outline" size={18} color={theme.primary} />}
             />
           )}
           <Row
-            label="Rate Groov"
-            sublabel="A quick rating helps a solo-built app a lot"
+            label={t('settings.about.rate')}
+            sublabel={t('settings.about.rateSub')}
             theme={theme}
             onPress={handleRate}
             right={<Ionicons name="star-outline" size={18} color={theme.warning} />}
           />
           <Row
-            label="Send feedback"
-            sublabel={SUPPORT_EMAIL ? 'Email the developer' : 'Report a bug or suggest a feature'}
+            label={t('settings.about.feedback')}
+            sublabel={SUPPORT_EMAIL ? t('settings.about.feedbackEmail') : t('settings.about.feedbackSub')}
             theme={theme}
             onPress={handleFeedback}
             right={<Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.textMuted} />}
           />
           <Row
-            label="What's new"
-            sublabel={`Changes in ${VERSION_LABEL}`}
+            label={t('settings.about.whatsNew')}
+            sublabel={t('settings.about.whatsNewSub', { version: VERSION_LABEL })}
             theme={theme}
             onPress={() => { if (settings.hapticsEnabled) lightImpact(); setWhatsNew(true); }}
             right={<Ionicons name="sparkles-outline" size={18} color={theme.textMuted} />}
           />
           <Row
-            label="Help & support"
+            label={t('settings.about.help')}
             theme={theme}
             onPress={() => Linking.openURL(SUPPORT_URL).catch(() => {})}
             right={<Ionicons name="open-outline" size={18} color={theme.textMuted} />}
           />
           <Row
-            label="Privacy Policy"
-            sublabel="What Groov collects and why"
+            label={t('settings.about.privacy')}
+            sublabel={t('settings.about.privacySub')}
             theme={theme}
             onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
             right={<Ionicons name="open-outline" size={18} color={theme.textMuted} />}
           />
           <Row
-            label="Terms of Use"
+            label={t('settings.about.terms')}
             theme={theme}
             onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}
             right={<Ionicons name="open-outline" size={18} color={theme.textMuted} />}
@@ -944,7 +967,7 @@ export default function SettingsScreen() {
           <Text style={[styles.version, { color: theme.textMuted }]}>{VERSION_LABEL}</Text>
           {devTapCount > 2 && !showDevTools && (
             <Text style={[styles.devHint, { color: theme.textMuted }]}>
-              {7 - devTapCount} more tap{7 - devTapCount !== 1 ? 's' : ''} to unlock dev tools
+              {t('settings.dev.moreTaps', { count: 7 - devTapCount })}
             </Text>
           )}
         </TouchableOpacity>
@@ -955,23 +978,23 @@ export default function SettingsScreen() {
         visible={linkSheet}
         theme={theme}
         onClose={() => setLinkSheet(false)}
-        onLinked={() => { setLinkSheet(false); Alert.alert('You\'re all set', 'Your account is linked and your habits now sync.'); }}
+        onLinked={() => { setLinkSheet(false); Alert.alert(t('settings.account.linked.title'), t('settings.account.linked.body')); }}
       />
 
       {/* Password Reset Modal */}
       {resetStep === 'verify' && (
         <View style={styles.devModal}>
           <View style={[styles.devModalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.devModalTitle, { color: theme.text }]}>Reset Password</Text>
+            <Text style={[styles.devModalTitle, { color: theme.text }]}>{t('settings.resetModal.title')}</Text>
             <Text style={[styles.devModalSub, { color: theme.textMuted }]}>
-              A reset code was sent to {user?.email}. Enter it below along with your new password.
+              {t('settings.resetModal.body', { email: user?.email ?? '' })}
             </Text>
             <TextInput
               style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
               value={resetCode}
               onChangeText={setResetCode}
-              accessibilityLabel="Reset code from email"
-              placeholder="Reset code from email"
+              accessibilityLabel={t('settings.resetModal.codePlaceholder')}
+              placeholder={t('settings.resetModal.codePlaceholder')}
               placeholderTextColor={theme.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
@@ -980,8 +1003,8 @@ export default function SettingsScreen() {
               style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
               value={resetNewPassword}
               onChangeText={setResetNewPassword}
-              accessibilityLabel="New password"
-              placeholder="New password"
+              accessibilityLabel={t('settings.resetModal.newPassword')}
+              placeholder={t('settings.resetModal.newPassword')}
               placeholderTextColor={theme.textMuted}
               secureTextEntry
             />
@@ -989,8 +1012,8 @@ export default function SettingsScreen() {
               style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text, marginBottom: 4 }]}
               value={resetConfirmPassword}
               onChangeText={setResetConfirmPassword}
-              accessibilityLabel="Confirm new password"
-              placeholder="Confirm new password"
+              accessibilityLabel={t('settings.resetModal.confirmPassword')}
+              placeholder={t('settings.resetModal.confirmPassword')}
               placeholderTextColor={theme.textMuted}
               secureTextEntry
             />
@@ -1005,18 +1028,18 @@ export default function SettingsScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ disabled: resetLoading }}
               >
-                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>Cancel</Text>
+                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.devModalBtn, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: resetLoading ? 0.6 : 1 }]}
                 onPress={handleVerifyReset}
                 disabled={resetLoading}
                 accessibilityRole="button"
-                accessibilityLabel="Set Password"
+                accessibilityLabel={t('settings.resetModal.setPassword')}
                 accessibilityState={{ disabled: resetLoading, busy: resetLoading }}
               >
                 <Text style={[styles.devModalBtnText, { color: '#fff' }]}>
-                  {resetLoading ? 'Saving…' : 'Set Password'}
+                  {resetLoading ? t('common.saving') : t('settings.resetModal.setPassword')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1028,14 +1051,14 @@ export default function SettingsScreen() {
       {nameModal && (
         <View style={styles.devModal}>
           <View style={[styles.devModalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.devModalTitle, { color: theme.text }]}>Display Name</Text>
-            <Text style={[styles.devModalSub, { color: theme.textMuted }]}>Used in greetings and by the AI coach.</Text>
+            <Text style={[styles.devModalTitle, { color: theme.text }]}>{t('settings.account.nameModal.title')}</Text>
+            <Text style={[styles.devModalSub, { color: theme.textMuted }]}>{t('settings.account.nameModal.sub')}</Text>
             <TextInput
               style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
               value={nameDraft}
               onChangeText={setNameDraft}
-              accessibilityLabel="Your name"
-              placeholder="Your name"
+              accessibilityLabel={t('settings.account.nameModal.placeholder')}
+              placeholder={t('settings.account.nameModal.placeholder')}
               placeholderTextColor={theme.textMuted}
               autoFocus
               maxLength={40}
@@ -1050,17 +1073,17 @@ export default function SettingsScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ disabled: nameSaving }}
               >
-                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>Cancel</Text>
+                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.devModalBtn, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: nameSaving ? 0.6 : 1 }]}
                 onPress={saveName}
                 disabled={nameSaving}
                 accessibilityRole="button"
-                accessibilityLabel="Save"
+                accessibilityLabel={t('common.save')}
                 accessibilityState={{ disabled: nameSaving, busy: nameSaving }}
               >
-                <Text style={[styles.devModalBtnText, { color: '#fff' }]}>{nameSaving ? 'Saving…' : 'Save'}</Text>
+                <Text style={[styles.devModalBtnText, { color: '#fff' }]}>{nameSaving ? t('common.saving') : t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1071,14 +1094,14 @@ export default function SettingsScreen() {
       {showDevInput && (
         <View style={styles.devModal}>
           <View style={[styles.devModalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.devModalTitle, { color: theme.text }]}>Developer Access</Text>
-            <Text style={[styles.devModalSub, { color: theme.textMuted }]}>Enter the developer code</Text>
+            <Text style={[styles.devModalTitle, { color: theme.text }]}>{t('settings.dev.access.title')}</Text>
+            <Text style={[styles.devModalSub, { color: theme.textMuted }]}>{t('settings.dev.access.body')}</Text>
             <TextInput
               style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
               value={devCodeDraft}
               onChangeText={setDevCodeDraft}
-              accessibilityLabel="Developer code"
-              placeholder="Enter code"
+              accessibilityLabel={t('settings.dev.access.a11y')}
+              placeholder={t('settings.dev.access.placeholder')}
               placeholderTextColor={theme.textMuted}
               secureTextEntry
               autoFocus
@@ -1091,14 +1114,50 @@ export default function SettingsScreen() {
                 onPress={() => { setShowDevInput(false); setDevCodeDraft(''); }}
                 accessibilityRole="button"
               >
-                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>Cancel</Text>
+                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.devModalBtn, { backgroundColor: theme.primary, borderColor: theme.primary }]}
                 onPress={handleDevCodeSubmit}
                 accessibilityRole="button"
               >
-                <Text style={[styles.devModalBtnText, { color: '#fff' }]}>Unlock</Text>
+                <Text style={[styles.devModalBtnText, { color: '#fff' }]}>{t('settings.dev.access.unlock')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Language picker */}
+      {langModal && (
+        <View style={styles.devModal}>
+          <View style={[styles.devModalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.devModalTitle, { color: theme.text }]}>{t('settings.languageTitle')}</Text>
+            <Text style={[styles.devModalSub, { color: theme.textMuted }]}>{t('settings.languageBody')}</Text>
+            {[{ code: null, label: t('settings.languageSystem') }, ...SUPPORTED_LOCALES].map(opt => {
+              const selected = (localePreference ?? null) === opt.code;
+              return (
+                <TouchableOpacity
+                  key={opt.code ?? 'system'}
+                  style={[styles.langOption, { borderBottomColor: theme.border }]}
+                  onPress={() => chooseLocale(opt.code)}
+                  activeOpacity={0.7}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected, checked: selected }}
+                  accessibilityLabel={opt.label}
+                >
+                  <Text style={[styles.langOptionText, { color: selected ? theme.primary : theme.text }]}>{opt.label}</Text>
+                  {selected && <Ionicons name="checkmark" size={18} color={theme.primary} />}
+                </TouchableOpacity>
+              );
+            })}
+            <View style={[styles.devModalBtns, { marginTop: 16 }]}>
+              <TouchableOpacity
+                style={[styles.devModalBtn, { borderColor: theme.border }]}
+                onPress={() => setLangModal(false)}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>{t('common.close')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1223,4 +1282,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   devModalBtnText: { fontSize: 14, fontWeight: '600' },
+  langOption: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 12, borderBottomWidth: 1,
+  },
+  langOptionText: { fontSize: 15, fontWeight: '500' },
 });

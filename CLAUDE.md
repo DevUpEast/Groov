@@ -87,6 +87,8 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 
 **Android widget** (`src/widgets/`): `react-native-android-widget` provider `GroovToday` (app.json plugin). `widgetData.js` builds today's model from AsyncStorage (pure, tested) and `applyWidgetToggle` writes check-offs back plus a `widgetPendingSync` queue the app flushes to Supabase; `TodayWidget.js` is the Flex/TextWidget tree; `widgetTaskHandler.js` is registered in `index.js` (headless, so Metro reload does not update it, cold-start the app); `refreshWidget.js` is called from AppContext on data changes. Settings → About has "Add home-screen widget" (`requestPinWidget`).
 
+**Localization** (`src/i18n/`): `i18n-js` + `expo-localization`. `t(key, params)` with `%{name}` interpolation and `{ one, other }` plurals via `count`; locales en, es, de, fr, pt-BR, ja in `src/i18n/locales/*.json` (every file must have exactly the key set of `en.json`, a test enforces it). `initLocale()` is awaited before first paint (`App.js`, and in the widget task handler); `setLocale(code|null)` persists the Settings → Language choice (null = follow the device via `matchSupportedLocale`); components that render text call `useLocale()` to re-render on change. Data-like strings (`STARTER_HABITS`, `CHALLENGE_TEMPLATES`) expose translated getters / `getStarterHabits()` / `getChallengeTemplates()`; stored habit names are copied at creation and never re-translated. Dates use `toLocaleDateString(getLocale(), …)`.
+
 **Theme:** `src/theme/colors.js` exports light and dark token objects; the in-app theme is a manual toggle in settings (does not follow the system yet).
 
 ## Data Models
