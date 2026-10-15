@@ -20,6 +20,7 @@ import { successNotification, mediumImpact } from '../utils/haptics';
 import { playChime, playSuccessChime, playChallengeChime, playHornFanfare } from '../utils/sounds';
 import { fetchDailyNudge } from '../services/aiCoaching';
 import { localDateKey, parseDateKey } from '../utils/dates';
+import { maybeRequestReview } from '../services/review';
 import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
 
 // Today list sections. Habits without a time of day go under "Anytime", which is
@@ -504,7 +505,12 @@ export default function TodayScreen() {
 
       <CompletionCelebration
         visible={fullCelebration}
-        onDone={() => { setFullCelebration(false); setMilestoneShown(null); }}
+        onDone={() => {
+          setFullCelebration(false);
+          // A milestone is a signature moment: the one time we may ask for a rating.
+          if (milestoneShown) setTimeout(() => maybeRequestReview(`milestone-${milestoneShown.days}`), 800);
+          setMilestoneShown(null);
+        }}
         primaryColor={theme.primary}
         emoji={milestoneShown?.emoji ?? '🎉'}
         title={milestoneShown ? `${milestoneShown.days}-day streak!` : 'Congrats!'}
@@ -513,7 +519,7 @@ export default function TodayScreen() {
 
       <TrophyCelebration
         visible={trophyCelebrating}
-        onDone={() => setTrophyCelebrating(false)}
+        onDone={() => { setTrophyCelebrating(false); setTimeout(() => maybeRequestReview('challenge-complete'), 800); }}
         settings={settings}
         theme={theme}
       />

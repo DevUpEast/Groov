@@ -1,0 +1,55 @@
+import React from 'react';
+import { Modal, View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { CHANGELOG } from '../data/changelog';
+
+export default function WhatsNewSheet({ visible, onClose, theme, currentVersion }) {
+  if (!visible) return null;
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: theme.text }]}>What's new</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
+              <Text style={[styles.closeTxt, { color: theme.textMuted }]}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+            {CHANGELOG.map(entry => (
+              <View key={entry.version} style={[styles.entry, { borderColor: theme.border }]}>
+                <View style={styles.entryHeader}>
+                  <Text style={[styles.version, { color: theme.primary }]}>v{entry.version}</Text>
+                  {entry.version === currentVersion && (
+                    <View style={[styles.pill, { backgroundColor: theme.primaryLight }]}>
+                      <Text style={[styles.pillText, { color: theme.primary }]}>Current</Text>
+                    </View>
+                  )}
+                  <Text style={[styles.date, { color: theme.textMuted }]}>{entry.date}</Text>
+                </View>
+                {entry.items.map(item => (
+                  <Text key={item} style={[styles.item, { color: theme.text }]}>•  {item}</Text>
+                ))}
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8, maxHeight: '85%' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  title: { fontSize: 20, fontWeight: 'bold' },
+  closeBtn: { padding: 4 },
+  closeTxt: { fontSize: 20, fontWeight: 'bold' },
+  entry: { borderTopWidth: 1, paddingVertical: 14 },
+  entryHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  version: { fontSize: 16, fontWeight: '800' },
+  pill: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  pillText: { fontSize: 11, fontWeight: '700' },
+  date: { fontSize: 12, marginLeft: 'auto' },
+  item: { fontSize: 14, lineHeight: 22 },
+});
