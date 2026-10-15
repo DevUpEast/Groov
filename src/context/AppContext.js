@@ -462,6 +462,7 @@ export function AppProvider({ children }) {
           setHabits([]);
           setCompletions({});
           setNotes({});
+          setHasOnboarded(false);
           setChallenges([]);
           setPastChallenges([]);
           setDailySnapshot({});
@@ -472,6 +473,9 @@ export function AppProvider({ children }) {
           setHabits([]);
           setCompletions({});
           setNotes({});
+          // A brand-new user (e.g. a guest) on this device gets the onboarding flow;
+          // a returning user is flipped back to true below when the cloud has data.
+          setHasOnboarded(false);
           setChallenges([]);
           setPastChallenges([]);
           setDailySnapshot({});

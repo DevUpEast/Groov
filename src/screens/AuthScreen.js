@@ -30,7 +30,7 @@ export default function AuthScreen() {
 
   const {
     signIn, signUp, sendPasswordReset, verifyPasswordReset,
-    signInWithApple, signInWithGoogle, appleAvailable,
+    signInWithApple, signInWithGoogle, appleAvailable, signInAnonymously,
   } = useAuth();
   const [socialLoading, setSocialLoading] = useState(null); // 'apple' | 'google' | null
   const scheme = useColorScheme();
@@ -44,6 +44,7 @@ export default function AuthScreen() {
     setSocialLoading(provider);
     try {
       if (provider === 'apple') await signInWithApple();
+      else if (provider === 'guest') await signInAnonymously();
       else await signInWithGoogle();
       // On success onAuthStateChange swaps AuthScreen out for the app.
     } catch (e) {
@@ -417,6 +418,23 @@ export default function AuthScreen() {
                         </>
                       )}
                   </TouchableOpacity>
+
+                  {/* Guest: start now, create the account later from Settings */}
+                  <TouchableOpacity
+                    style={s.guestBtn}
+                    onPress={() => handleSocial('guest')}
+                    disabled={loading || !!socialLoading}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel="Continue without an account"
+                  >
+                    {socialLoading === 'guest'
+                      ? <ActivityIndicator color={theme.primary} />
+                      : <Text style={[s.guestText, { color: theme.primary }]}>Continue without an account</Text>}
+                  </TouchableOpacity>
+                  <Text style={[s.guestHint, { color: theme.textMuted }]}>
+                    Your habits stay on this device until you add an email or sign-in later. Nothing is lost when you do.
+                  </Text>
                 </>
               )}
             </View>
@@ -519,6 +537,9 @@ const s = StyleSheet.create({
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
   dividerText: { fontSize: 12, marginHorizontal: 10 },
   socialBtn: { height: 48, borderRadius: 12, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
+  guestBtn: { marginTop: 18, alignItems: 'center', paddingVertical: 10 },
+  guestText: { fontSize: 15, fontWeight: '700' },
+  guestHint: { fontSize: 12, textAlign: 'center', lineHeight: 17, paddingHorizontal: 12 },
   googleBtn: { flexDirection: 'row', borderWidth: 1 },
   googleIcon: { marginRight: 8 },
   googleText: { fontSize: 15, fontWeight: '600' },

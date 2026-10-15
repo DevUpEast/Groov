@@ -241,6 +241,79 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   };
 
+  // ── Guest (anonymous) accounts ─────────────────────────────────────────────
+  // Lets people use Groov before creating an account. The anonymous user has a real
+  // id, so RLS and sync work unchanged; linking an email / Google / Apple identity
+  // later keeps the same id and therefore all the data.
+  const signInAnonymously = async () => {
+    const { error } = await supabase.auth.signInAnonymously();
+    if (error) throw error;
+  };
+
+  const linkEmail = async (email, password, name = '') => {
+    const trimmedName = name.trim();
+    const { data, error } = await supabase.auth.updateUser({
+      email: email.trim(),
+      password,
+      data: trimmedName ? { display_name: trimmedName } : undefined,
+    });
+    if (error) throw error;
+    if (data?.user && trimmedName) syncProfile(data.user.id, trimmedName).catch(() => {});
+    // With email confirmation off the session already carries the new email; the
+    // refreshed user object arrives through onAuthStateChange (USER_UPDATED).
+    return data;
+  };
+
+  const linkWithGoogle = async () => {
+    if (Platform.OS === 'web') {
+      const { error } = await supabase.auth.linkIdentity({
+        provider: 'google',
+        options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined },
+      });
+      if (error) throw error;
+      return null;
+    }
+    const redirectTo = Linking.createURL('auth/callback');
+    const { data, error } = await supabase.auth.linkIdentity({
+      provider: 'google',
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error) throw error;
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, { showInRecents: true });
+    if (result.type === 'cancel' || result.type === 'dismiss') throw cancelledError();
+    if (result.type !== 'success' || !result.url) throw new Error('Google linking did not complete.');
+    const linked = await createSessionFromUrl(result.url);
+    if (!linked) throw new Error('Google linking did not return a session.');
+    return linked;
+  };
+
+  const linkWithApple = async () => {
+    if (Platform.OS !== 'ios') throw new Error('Sign in with Apple is only available on iOS and iPadOS.');
+    const rawNonce = Crypto.randomUUID();
+    const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+    let credential;
+    try {
+      credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+        nonce: hashedNonce,
+      });
+    } catch (e) {
+      if (e?.code === 'ERR_REQUEST_CANCELED' || e?.code === 'ERR_CANCELED') throw cancelledError();
+      throw e;
+    }
+    if (!credential?.identityToken) throw new Error('Apple did not return an identity token.');
+    const { data, error } = await supabase.auth.linkIdentity({ provider: 'apple', token: credential.identityToken, nonce: rawNonce });
+    if (error) throw error;
+    const given = credential.fullName?.givenName?.trim() ?? '';
+    const family = credential.fullName?.familyName?.trim() ?? '';
+    const appleName = [given, family].filter(Boolean).join(' ');
+    if (appleName && data?.user && !nameFromUser(data.user)) {
+      await supabase.auth.updateUser({ data: { display_name: appleName } }).catch(() => {});
+      syncProfile(data.user.id, appleName).catch(() => {});
+    }
+    return data;
+  };
+
   const updateDisplayName = async (newName) => {
     const trimmed = newName.trim();
     const { error } = await supabase.auth.updateUser({ data: { display_name: trimmed } });
@@ -301,8 +374,9 @@ export function AuthProvider({ children }) {
   };
 
   const displayName = nameFromUser(session?.user);
-  // 'email' | 'apple' | 'google' — handy for Settings (e.g. hide "Reset Password" for social accounts)
-  const authProvider = session?.user?.app_metadata?.provider ?? 'email';
+  // 'email' | 'apple' | 'google' | 'anonymous' — handy for Settings (e.g. hide "Reset Password" for social accounts)
+  const isAnonymous = !!session?.user?.is_anonymous;
+  const authProvider = isAnonymous ? 'anonymous' : (session?.user?.app_metadata?.provider ?? 'email');
 
   return (
     <AuthContext.Provider value={{
@@ -311,7 +385,12 @@ export function AuthProvider({ children }) {
       user: session?.user ?? null,
       displayName,
       authProvider,
+      isAnonymous,
       appleAvailable,
+      signInAnonymously,
+      linkEmail,
+      linkWithGoogle,
+      linkWithApple,
       signIn,
       signUp,
       signInWithApple,
