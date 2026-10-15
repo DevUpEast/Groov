@@ -4,6 +4,7 @@ import * as ExpoLinking from 'expo-linking';
 import * as QuickActions from 'expo-quick-actions';
 import { parseDeepLink } from '../utils/links';
 import { isGoalMet, justMetGoal } from '../utils/habits';
+import { refreshWidget } from '../widgets/refreshWidget';
 import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage';
 import { themes } from '../theme/colors';
 import { useAuth } from './AuthContext';
@@ -470,6 +471,25 @@ export function AppProvider({ children }) {
     if (!loaded) return;
     return listenForNotificationResponses((evt) => actionRef.current?.(evt));
   }, [loaded]);
+
+  // ── Home-screen widget ───────────────────────────────────────────────────────
+  // Re-render the Android widget when today's data changes, and absorb check-offs
+  // the widget wrote while the app was closed (widgetPendingSync) into the cloud.
+  useEffect(() => {
+    if (!loaded) return;
+    refreshWidget({ habits: allHabits, completions, settings, today: localDateKey() });
+  }, [loaded, allHabits, completions, settings.theme, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!loaded || !userId) return;
+    (async () => {
+      const pending = await loadData('widgetPendingSync');
+      if (!Array.isArray(pending) || pending.length === 0) return;
+      await saveData('widgetPendingSync', []);
+      // Completions were already written to AsyncStorage by the widget; our state was
+      // loaded from that same storage, so only the cloud needs the rows.
+      for (const p of pending) syncCompletion(userId, p.date, p.habitId, p.count);
+    })();
+  }, [loaded, userId, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── App icon badge: habits still to do today ─────────────────────────────────
   useEffect(() => {
