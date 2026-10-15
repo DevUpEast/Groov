@@ -72,7 +72,8 @@
           "organization": "isaac-23",
           "project": "groov"
         }
-      ]
+      ],
+      "expo-quick-actions"
     ],
     "extra": {
       "eas": {

@@ -508,6 +508,7 @@ export default function HabitsScreen() {
   const {
     habits, archivedHabits, addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit, theme,
     pendingHabitLinkChallenge, setPendingHabitLinkChallenge, linkHabitToChallenge, ensureNotificationPermission,
+    pendingRoute, clearPendingRoute,
     setModalOpen, settings,
   } = useApp();
   const [modalVisible, setModalVisible] = useState(false);
@@ -519,6 +520,26 @@ export default function HabitsScreen() {
 
   // Track modal open for swipe lock
   useEffect(() => { setModalOpen(modalVisible || !!reminderTarget || !!detailHabit); }, [modalVisible, reminderTarget, detailHabit]);
+
+  // Deep links: groov://habit/<id> opens the detail sheet, groov://habits/new the form.
+  useEffect(() => {
+    if (!pendingRoute) return;
+    if (pendingRoute.tab !== 3) {
+      // Leaving this tab by link: drop any open sheet so it does not cover the target.
+      setDetailHabit(null); setModalVisible(false); setReminderTarget(null);
+      clearPendingRoute();
+      return;
+    }
+    const t = setTimeout(() => {
+      if (pendingRoute.action === 'new') { setEditingId(null); setForm(BLANK); setModalVisible(true); }
+      else if (pendingRoute.action === 'open') {
+        const h = habits.find(x => x.id === pendingRoute.habitId);
+        if (h) setDetailHabit(h);
+      }
+      clearPendingRoute();
+    }, 350);
+    return () => clearTimeout(t);
+  }, [pendingRoute]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Open Add Habit modal when navigated here from Challenge with a pending link
   useEffect(() => {

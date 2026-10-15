@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { AppState, useColorScheme, Linking, Alert } from 'react-native';
+import { AppState, useColorScheme, Linking, Alert, Platform } from 'react-native';
+import * as ExpoLinking from 'expo-linking';
+import * as QuickActions from 'expo-quick-actions';
+import { parseDeepLink } from '../utils/links';
 import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage';
 import { themes } from '../theme/colors';
 import { useAuth } from './AuthContext';
@@ -400,9 +403,63 @@ export function AppProvider({ children }) {
         if (userId) syncCompletion(userId, key, h.id, h.volumeGoal);
         return;
       }
-      if (action === 'open') setRequestedTab(0);
+      if (action === 'open') {
+        // Open the habit the reminder was about, otherwise Today.
+        if (data?.kind === 'habit' && data.habitId) setPendingRoute({ tab: 3, habitId: data.habitId, action: 'open' });
+        else setRequestedTab(0);
+      }
     };
   }, [allHabits, habits, userId]);
+
+  // ── Deep links & quick actions ───────────────────────────────────────────────
+  // A parsed route waits here until the owning screen consumes it (habit detail,
+  // new-habit sheet); tab switches are applied immediately.
+  const [pendingRoute, setPendingRoute] = useState(null);
+  const clearPendingRoute = useCallback(() => setPendingRoute(null), []);
+  const routeRef = useRef(null);
+  useEffect(() => {
+    routeRef.current = (route) => {
+      if (!route) return;
+      if (route.action === 'done' && route.habitId) {
+        const h = allHabits.find(x => x.id === route.habitId && !x.archived);
+        if (h) {
+          const key = localDateKey();
+          setCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
+          setDailySnapshot(prev => (prev[key] ? prev : { ...prev, [key]: snapshotOf(habits) }));
+          if (userId) syncCompletion(userId, key, h.id, h.volumeGoal);
+        }
+        setRequestedTab(0);
+        return;
+      }
+      setRequestedTab(route.tab);
+      setPendingRoute(route);
+    };
+  }, [allHabits, habits, userId]);
+  useEffect(() => {
+    if (!loaded) return;
+    const handle = (url) => { const r = parseDeepLink(url); if (r) routeRef.current?.(r); };
+    ExpoLinking.getInitialURL().then(handle).catch(() => {});
+    const sub = ExpoLinking.addEventListener('url', ({ url }) => handle(url));
+    return () => sub.remove();
+  }, [loaded]);
+
+  // Home-screen quick actions (long-press the app icon).
+  useEffect(() => {
+    if (!loaded || Platform.OS === 'web') return;
+    try {
+      QuickActions.setItems([
+        // Icons: SF Symbols on iOS; Android falls back to the app icon when the named
+        // drawable is absent, which is fine for now.
+        { id: 'today', title: 'Today', subtitle: 'Check off your habits', icon: Platform.OS === 'ios' ? 'symbol:checkmark.circle' : undefined, params: { href: 'groov://today' } },
+        { id: 'new-habit', title: 'New habit', icon: Platform.OS === 'ios' ? 'symbol:plus' : undefined, params: { href: 'groov://habits/new' } },
+        { id: 'progress', title: 'Progress', icon: Platform.OS === 'ios' ? 'symbol:chart.bar' : undefined, params: { href: 'groov://progress' } },
+      ]);
+    } catch {}
+    const onAction = (a) => { const href = a?.params?.href; if (href) { const r = parseDeepLink(href); if (r) routeRef.current?.(r); } };
+    if (QuickActions.initial) onAction(QuickActions.initial);
+    const sub = QuickActions.addListener(onAction);
+    return () => sub.remove();
+  }, [loaded]);
   useEffect(() => {
     if (!loaded) return;
     return listenForNotificationResponses((evt) => actionRef.current?.(evt));
@@ -1227,6 +1284,7 @@ export function AppProvider({ children }) {
       pendingChallengeRewards, clearPendingChallengeRewards,
       modalOpen, setModalOpen,
       requestedTab, setRequestedTab,
+      pendingRoute, clearPendingRoute,
       pendingHabitLinkChallenge, setPendingHabitLinkChallenge,
       getTodayCompletions, getHabitCount, isHabitDone, isHabitDoneOn, isHabitSatisfied, dueHabits,
       getCompletedCount, isAllDone, isChallengeHabitsDone,
