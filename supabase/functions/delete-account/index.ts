@@ -43,6 +43,14 @@ Deno.serve(async (req: Request) => {
     const results = await Promise.all(
       USER_TABLES.map((t) => adminClient.from(t).delete().eq('user_id', user.id))
     )
+    // Custom habit icons live in the private habit-icons bucket under <uid>/.
+    try {
+      const { data: objects } = await adminClient.storage.from('habit-icons').list(user.id, { limit: 1000 })
+      if (objects?.length) {
+        await adminClient.storage.from('habit-icons').remove(objects.map((o) => `${user.id}/${o.name}`))
+      }
+    } catch (_) { /* best effort; orphaned objects are harmless */ }
+
     const failed = results.find((r) => r.error)
     if (failed?.error) {
       return new Response(JSON.stringify({ error: `Failed to delete user data: ${failed.error.message}` }), {

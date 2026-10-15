@@ -23,6 +23,7 @@ import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
 import { mergeBackup } from '../utils/backup';
 import { initAnalytics, track, Events } from '../utils/analytics';
+import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocalUri, localIconExists } from '../services/icons';
 
 const AppContext = createContext(null);
 
@@ -665,23 +666,66 @@ export function AppProvider({ children }) {
     setHabitCountOn(habitId, key, done ? 0 : habit.volumeGoal);
   }, [habits, completions, setHabitCountOn]);
 
+  // Make a freshly picked icon durable: copy it next to the app data and upload it to
+  // the private bucket. Runs after the habit is saved so the UI never waits on it.
+  const adoptIcon = useCallback(async (habit) => {
+    const uri = habit.customIconUri;
+    if (!uri || isDurableLocalUri(uri)) return;
+    let localUri = uri;
+    try { localUri = persistPickedIcon(habit.id, uri); } catch (e) { if (__DEV__) console.warn('persistPickedIcon:', e?.message); }
+    let iconStoragePath = habit.iconStoragePath ?? null;
+    try { iconStoragePath = (await uploadIcon(userId, habit.id, localUri)) ?? iconStoragePath; } catch (e) { if (__DEV__) console.warn('uploadIcon:', e?.message); }
+    const updates = { customIconUri: localUri, iconStoragePath };
+    setHabits(prev => prev.map(h => (h.id === habit.id ? { ...h, ...updates } : h)));
+    if (userId) syncHabit(userId, { ...habit, ...updates });
+  }, [userId]);
+
   const addHabit = useCallback((habit) => {
     const sortOrder = habits.reduce((m, h) => Math.max(m, h.sortOrder ?? 0), -1) + 1;
     const newHabit = { ...habit, schedule: normalizeSchedule(habit.schedule), sortOrder, id: Date.now().toString(), createdAt: todayStr() };
     setHabits(prev => [...prev, newHabit]);
     if (userId) syncHabit(userId, newHabit);
+    adoptIcon(newHabit);
     track(Events.HABIT_CREATED, { type: newHabit.type, schedule: newHabit.schedule.type, timeOfDay: newHabit.timeOfDay || 'anytime' });
     return newHabit.id;
-  }, [habits, todayStr, userId]);
+  }, [habits, todayStr, userId, adoptIcon]);
 
   const updateHabit = useCallback((id, updates) => {
     if (updates.schedule) updates = { ...updates, schedule: normalizeSchedule(updates.schedule) };
-    setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
-    if (userId) {
-      const habit = allHabits.find(h => h.id === id);
-      if (habit) syncHabit(userId, { ...habit, ...updates });
+    const before = allHabits.find(h => h.id === id);
+    // Switching back to an emoji drops the stored image too.
+    if ('customIconUri' in updates && !updates.customIconUri && before?.iconStoragePath) {
+      updates = { ...updates, iconStoragePath: null };
+      removeIcon(userId, id, before.iconStoragePath);
     }
-  }, [allHabits, userId]);
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
+    if (userId && before) syncHabit(userId, { ...before, ...updates });
+    if (updates.customIconUri && updates.customIconUri !== before?.customIconUri) adoptIcon({ ...before, ...updates, id });
+  }, [allHabits, userId, adoptIcon]);
+
+  // Keep custom icons available: download ones another device uploaded, adopt
+  // legacy cache URIs that still resolve, and fall back to the emoji otherwise.
+  const iconCheckRef = useRef(new Set());
+  useEffect(() => {
+    if (!loaded) return;
+    allHabits.forEach(async (h) => {
+      const key = `${h.id}|${h.customIconUri ?? ''}|${h.iconStoragePath ?? ''}`;
+      if (iconCheckRef.current.has(key)) return;
+      iconCheckRef.current.add(key);
+      if (h.customIconUri && isDurableLocalUri(h.customIconUri) && localIconExists(h.customIconUri)) return;
+      if (h.iconStoragePath && userId) {
+        // Clear first so the Image remounts with a fresh URI once the file is back.
+        if (h.customIconUri) setHabits(prev => prev.map(x => (x.id === h.id ? { ...x, customIconUri: null } : x)));
+        const local = await downloadIcon(h.iconStoragePath, h.id);
+        setHabits(prev => prev.map(x => (x.id === h.id ? { ...x, customIconUri: local || null } : x)));
+        return;
+      }
+      if (h.customIconUri && !isDurableLocalUri(h.customIconUri)) {
+        if (localIconExists(h.customIconUri)) adoptIcon(h);
+        else setHabits(prev => prev.map(x => (x.id === h.id ? { ...x, customIconUri: null, icon: x.icon || '⭐' } : x)));
+      }
+    });
+  }, [loaded, allHabits, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Archive keeps the history (heatmap, snapshots, streak past) but removes the habit
   // from Today, reminders and challenges-to-claim. Reversible from the Habits screen.
@@ -717,6 +761,8 @@ export function AppProvider({ children }) {
   }, [userId, completions]);
 
   const deleteHabit = useCallback((id) => {
+    const gone = allHabits.find(h => h.id === id);
+    if (gone?.customIconUri || gone?.iconStoragePath) removeIcon(userId, id, gone.iconStoragePath);
     setHabits(prev => prev.filter(h => h.id !== id));
     const updatedChallenges = challenges.map(ch => ({
       ...ch,
@@ -727,7 +773,7 @@ export function AppProvider({ children }) {
       deleteHabitSync(userId, id);
       updatedChallenges.forEach(ch => syncChallenge(userId, ch));
     }
-  }, [challenges, userId]);
+  }, [challenges, userId, allHabits]);
 
   const updateSettings = useCallback((updates) => {
     const next = { ...settings, ...updates };

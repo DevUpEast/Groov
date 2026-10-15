@@ -10,6 +10,7 @@ import {
   dayStatus, bestHabitStreak, describeSchedule, weekStart, WEEKDAY_LABELS,
 } from '../utils/schedule';
 import { lightImpact } from '../utils/haptics';
+import HabitIcon from './HabitIcon';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const WEEKS = 15;                       // ~3.5 months of history in the grid
@@ -152,9 +153,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
       <SheetDragHandle panHandlers={pan.panHandlers} theme={theme} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
         <View style={styles.titleRow}>
-          {habit.customIconUri
-            ? <Image source={{ uri: habit.customIconUri }} style={styles.iconImage} />
-            : <Text style={styles.icon}>{habit.icon}</Text>}
+          <HabitIcon habit={habit} size={34} imageStyle={styles.iconImage} textStyle={styles.icon} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>{habit.name}</Text>
             <Text style={[styles.meta, { color: theme.textMuted }]}>

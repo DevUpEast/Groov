@@ -28,6 +28,7 @@ const habitToRow = (habit, userId) => ({
   sort_order: habit.sortOrder ?? 0,
   unit: habit.unit ?? null,
   intention: habit.intention ?? null,
+  icon_storage_path: habit.iconStoragePath ?? null,
 });
 
 const rowToHabit = (row) => ({
@@ -46,6 +47,7 @@ const rowToHabit = (row) => ({
   sortOrder: row.sort_order ?? 0,
   unit: row.unit ?? null,
   intention: row.intention ?? null,
+  iconStoragePath: row.icon_storage_path ?? null,
 });
 
 // Notes ride on the completions row (a note without a count is a 0-count row).

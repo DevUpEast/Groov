@@ -14,6 +14,7 @@ import EmptyCard from '../components/EmptyCard';
 import { SheetDragHandle } from '../components/SheetHeader';
 import TimePicker from '../components/TimePicker';
 import HabitDetailSheet from '../components/HabitDetailSheet';
+import HabitIcon from '../components/HabitIcon';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { describeSchedule, WEEKDAY_LABELS, DEFAULT_SCHEDULE } from '../utils/schedule';
 
@@ -430,11 +431,7 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen, reorder, onM
   return (
     <View style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       {habit.color ? <View style={[styles.rowStripe, { backgroundColor: accent }]} /> : null}
-      {habit.customIconUri ? (
-        <Image source={{ uri: habit.customIconUri }} style={styles.rowIconImage} />
-      ) : (
-        <Text style={styles.rowIcon}>{habit.icon}</Text>
-      )}
+      <HabitIcon habit={habit} size={26} imageStyle={styles.rowIconImage} textStyle={styles.rowIcon} />
       <TouchableOpacity style={styles.rowInfo} onPress={onOpen} activeOpacity={0.6} accessibilityRole="button" accessibilityLabel={`${habit.name}, show details`}>
         <Text style={[styles.rowName, { color: theme.text }]} numberOfLines={1}>{habit.name}</Text>
         <View style={styles.rowMeta}>
