@@ -73,7 +73,25 @@
           "project": "groov"
         }
       ],
-      "expo-quick-actions"
+      "expo-quick-actions",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "GroovToday",
+              "label": "Groov: Today",
+              "description": "Today's habits with one-tap check-off",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ]
     ],
     "extra": {
       "eas": {

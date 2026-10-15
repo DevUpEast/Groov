@@ -17,6 +17,7 @@ import { exportBackup, pickBackup } from '../services/backup';
 import { openRateApp } from '../services/review';
 import WhatsNewSheet from '../components/WhatsNewSheet';
 import LinkAccountSheet from '../components/LinkAccountSheet';
+import { WIDGET_NAME } from '../widgets/widgetData';
 import { summarizeBackup } from '../utils/backup';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
@@ -867,6 +868,24 @@ export default function SettingsScreen() {
 
         {/* About */}
         <Section title="ABOUT" theme={theme}>
+          {Platform.OS === 'android' && (
+            <Row
+              label="Add home-screen widget"
+              sublabel="Today's habits with one-tap check-off"
+              theme={theme}
+              onPress={async () => {
+                if (settings.hapticsEnabled) lightImpact();
+                try {
+                  const { requestPinWidget } = require('react-native-android-widget');
+                  const ok = await requestPinWidget({ widgetName: WIDGET_NAME });
+                  if (!ok) Alert.alert('Not supported', 'Your launcher does not support adding widgets from apps. Long-press your home screen and pick Groov from the widget list instead.');
+                } catch (e) {
+                  Alert.alert('Could not add widget', e?.message || 'Long-press your home screen and pick Groov from the widget list.');
+                }
+              }}
+              right={<Ionicons name="grid-outline" size={18} color={theme.primary} />}
+            />
+          )}
           <Row
             label="Rate Groov"
             sublabel="A quick rating helps a solo-built app a lot"
