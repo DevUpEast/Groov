@@ -16,6 +16,7 @@ import { to12h, to24h, formatTime12 as formatTime } from '../utils/time';
 import { exportBackup, pickBackup } from '../services/backup';
 import { openRateApp } from '../services/review';
 import WhatsNewSheet from '../components/WhatsNewSheet';
+import LinkAccountSheet from '../components/LinkAccountSheet';
 import { summarizeBackup } from '../utils/backup';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
@@ -219,11 +220,25 @@ export default function SettingsScreen() {
       setBackupBusy(false);
     }
   };
-  const { user, signOut, displayName, updateDisplayName, deleteAccount, sendPasswordReset, verifyPasswordReset, authProvider } = useAuth();
+  const { user, signOut, displayName, updateDisplayName, deleteAccount, sendPasswordReset, verifyPasswordReset, authProvider, isAnonymous } = useAuth();
+  const [linkSheet, setLinkSheet] = useState(false);
   // Apple/Google accounts have no Groov password to reset.
   const canResetPassword = authProvider === 'email';
 
   const handleSignOut = () => {
+    if (isAnonymous) {
+      // A guest has no way back in: signing out orphans the account and its data.
+      Alert.alert(
+        'Sign out of guest account?',
+        'You are using Groov without an account. Signing out now would lose your habits and history. Add an email or sign-in first to keep them.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Add a sign-in', onPress: () => setLinkSheet(true) },
+          { text: 'Sign out anyway', style: 'destructive', onPress: () => signOut() },
+        ],
+      );
+      return;
+    }
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -762,12 +777,22 @@ export default function SettingsScreen() {
             onPress={openNameEditor}
             right={<Ionicons name="create-outline" size={18} color={theme.textMuted} />}
           />
-          <Row
-            label="Signed in as"
-            sublabel={user?.email ?? ''}
-            theme={theme}
-            right={null}
-          />
+          {isAnonymous ? (
+            <Row
+              label="Guest account"
+              sublabel="Your data lives only on this device. Add a sign-in to back it up and sync."
+              theme={theme}
+              onPress={() => { if (settings.hapticsEnabled) lightImpact(); setLinkSheet(true); }}
+              right={<View style={[styles.linkPill, { backgroundColor: theme.primary }]}><Text style={styles.linkPillText}>Add sign-in</Text></View>}
+            />
+          ) : (
+            <Row
+              label="Signed in as"
+              sublabel={user?.email ?? (authProvider === 'apple' ? 'Apple ID' : authProvider === 'google' ? 'Google account' : '')}
+              theme={theme}
+              right={null}
+            />
+          )}
           <TouchableOpacity
             style={[styles.dangerRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}
             onPress={handleSignOut}
@@ -895,6 +920,12 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <WhatsNewSheet visible={whatsNew} onClose={() => setWhatsNew(false)} theme={theme} currentVersion={APP_VERSION} />
+      <LinkAccountSheet
+        visible={linkSheet}
+        theme={theme}
+        onClose={() => setLinkSheet(false)}
+        onLinked={() => { setLinkSheet(false); Alert.alert('You\'re all set', 'Your account is linked and your habits now sync.'); }}
+      />
 
       {/* Password Reset Modal */}
       {resetStep === 'verify' && (
@@ -1121,6 +1152,8 @@ const styles = StyleSheet.create({
   },
   devBtnText: { fontSize: 16, fontWeight: '700' },
   backupHint: { fontSize: 12, lineHeight: 17, paddingHorizontal: 16, paddingBottom: 12 },
+  linkPill: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  linkPillText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   dangerRow: { paddingHorizontal: 16, paddingVertical: 14 },
   dangerText: { color: '#EF4444', fontSize: 15, fontWeight: '600' },
   dangerSub: { fontSize: 12, marginTop: 2 },
