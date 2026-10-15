@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
-import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn } from '../_shared/schedule.ts'
+import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn, goalMet } from '../_shared/schedule.ts'
 
 // Wildcard origin is intentional: CORS is a browser mechanism and does not apply to
 // native mobile clients. Supabase edge functions require this header for the OPTIONS
@@ -152,7 +152,7 @@ Deno.serve(async (req: Request) => {
 
     // Fetch habits with their individual creation dates + completions for the active period
     const [{ data: habits }, { data: completionRows }] = await Promise.all([
-      supabase.from('habits').select('id, name, icon, volume_goal, created_at, schedule').eq('user_id', user.id).eq('archived', false),
+      supabase.from('habits').select('id, name, icon, type, volume_goal, created_at, schedule').eq('user_id', user.id).eq('archived', false),
       supabase
         .from('completions')
         .select('date, habit_id, count')
@@ -191,7 +191,7 @@ Deno.serve(async (req: Request) => {
         const d = new Date(today)
         d.setDate(d.getDate() - i)
         const dateStr = dateKey(d)
-        if (((completions[dateStr] ?? {})[h.id] ?? 0) >= h.volume_goal) completedDays++
+        if (goalMet(h.type, (completions[dateStr] ?? {})[h.id], h.volume_goal)) completedDays++
       }
 
       return {
@@ -219,7 +219,7 @@ Deno.serve(async (req: Request) => {
         const s = normalizeSchedule(h.schedule)
         return dateStr >= hCreated && s.type !== 'perWeek' && isScheduledOn(s, d)
       })
-      if (activeOnDay.length > 0 && activeOnDay.every((h) => (dayComps[h.id] ?? 0) >= h.volume_goal)) {
+      if (activeOnDay.length > 0 && activeOnDay.every((h) => goalMet(h.type, dayComps[h.id], h.volume_goal))) {
         perfectDays++
       }
     }

@@ -17,6 +17,7 @@ import HabitDetailSheet from '../components/HabitDetailSheet';
 import HabitIcon from '../components/HabitIcon';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { describeSchedule, WEEKDAY_LABELS, DEFAULT_SCHEDULE } from '../utils/schedule';
+import { HABIT_TYPES, describeGoal } from '../utils/habits';
 
 const ICONS = ['⭐', '🎯', '💪', '🧠', '✍️', '🎨', '🚶', '🛁', '🌿', '❤️', '💧', '🏃', '📚', '🧘', '😴', '🥗', '🍎', '☕', '🎵', '🌅'];
 const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE, color: null, timeOfDay: 'anytime', unit: '', intention: '' };
@@ -321,22 +322,34 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
 
                 <Text style={[styles.label, { color: theme.textMuted }]}>Type</Text>
                 <View style={styles.typeRow}>
-                  {['daily', 'volume'].map(t => (
-                    <TouchableOpacity
-                      key={t}
-                      style={[
-                        styles.typeBtn,
-                        { borderColor: form.type === t ? theme.primary : theme.border },
-                        form.type === t && { backgroundColor: theme.primaryLight },
-                      ]}
-                      onPress={() => setForm(f => ({ ...f, type: t, volumeGoal: t === 'volume' && !(f.volumeGoal >= 2) ? 3 : f.volumeGoal }))}
-                    >
-                      <Text style={[styles.typeBtnText, { color: form.type === t ? theme.primary : theme.textMuted }]}>
-                        {t === 'daily' ? '✓  Once a day' : '🔢  Volume goal'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {HABIT_TYPES.map(t => {
+                    const active = form.type === t.value;
+                    return (
+                      <TouchableOpacity
+                        key={t.value}
+                        style={[
+                          styles.typeChip,
+                          { borderColor: active ? theme.primary : theme.border },
+                          active && { backgroundColor: theme.primaryLight },
+                        ]}
+                        onPress={() => setForm(f => ({
+                          ...f,
+                          type: t.value,
+                          volumeGoal: t.value === 'volume' ? (f.volumeGoal >= 2 ? f.volumeGoal : 3)
+                            : t.value === 'timed' ? (f.volumeGoal >= 5 ? f.volumeGoal : 20)
+                            : t.value === 'atMost' ? (f.volumeGoal >= 1 && f.volumeGoal <= 20 ? f.volumeGoal : 2)
+                            : 1,
+                        }))}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                        accessibilityLabel={`${t.label}: ${t.hint}`}
+                      >
+                        <Text style={[styles.typeBtnText, { color: active ? theme.primary : theme.textMuted }]}>{t.emoji}  {t.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
+                <Text style={[styles.typeHint, { color: theme.textMuted }]}>{HABIT_TYPES.find(t => t.value === form.type)?.hint}</Text>
 
                 <SchedulePicker
                   schedule={form.schedule}
@@ -361,6 +374,40 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                     );
                   })}
                 </View>
+
+                {form.type === 'timed' && (
+                  <>
+                    <Text style={[styles.label, { color: theme.textMuted }]}>Minutes per day: {form.volumeGoal}</Text>
+                    <Slider value={form.volumeGoal} min={5} max={180} onValueChange={v => setForm(f => ({ ...f, volumeGoal: Math.max(5, Math.round(v / 5) * 5) }))} theme={theme} label="Minutes per day" />
+                    <View style={styles.sliderLabels}>
+                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>5 min</Text>
+                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>3 h</Text>
+                    </View>
+                  </>
+                )}
+
+                {form.type === 'atMost' && (
+                  <>
+                    <Text style={[styles.label, { color: theme.textMuted }]}>At most per day: {form.volumeGoal}</Text>
+                    <Slider value={form.volumeGoal} min={0} max={20} onValueChange={v => setForm(f => ({ ...f, volumeGoal: v }))} theme={theme} label="Daily limit" />
+                    <View style={styles.sliderLabels}>
+                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>0</Text>
+                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>20</Text>
+                    </View>
+                    <Text style={[styles.label, { color: theme.textMuted }]}>Unit (optional)</Text>
+                    <TextInput
+                      style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+                      placeholder="coffees, cigarettes, hours…"
+                      placeholderTextColor={theme.textMuted}
+                      value={form.unit || ''}
+                      onChangeText={unit => setForm(f => ({ ...f, unit }))}
+                      maxLength={20}
+                      returnKeyType="done"
+                      onSubmitEditing={Keyboard.dismiss}
+                      accessibilityLabel="Unit"
+                    />
+                  </>
+                )}
 
                 {form.type === 'volume' && (
                   <>
@@ -437,7 +484,7 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen, reorder, onM
         <View style={styles.rowMeta}>
           <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
             <Text style={[styles.typePillText, { color: theme.primary }]}>
-              {habit.type === 'daily' ? 'Daily' : `${habit.volumeGoal} ${habit.unit || '×'} / day`}
+              {describeGoal(habit)}
             </Text>
           </View>
           {habit.timeOfDay && habit.timeOfDay !== 'anytime' && (
@@ -576,9 +623,11 @@ export default function HabitsScreen() {
     const habit = {
       ...form,
       name: form.name.trim(),
-      unit: form.type === 'volume' ? (form.unit || '').trim() || null : null,
+      unit: form.type === 'volume' || form.type === 'atMost' ? (form.unit || '').trim() || null : null,
       intention: (form.intention || '').trim() || null,
-      volumeGoal: form.type === 'daily' ? 1 : Math.max(1, Number(form.volumeGoal) || 1),
+      volumeGoal: form.type === 'daily' || form.type === 'quit' ? 1
+        : form.type === 'atMost' ? Math.max(0, Number(form.volumeGoal) || 0)
+        : Math.max(1, Number(form.volumeGoal) || 1),
     };
     if (editingId) {
       updateHabit(editingId, habit);
@@ -803,7 +852,9 @@ const styles = StyleSheet.create({
   iconBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   iconBtnText: { fontSize: 22 },
   input: { borderWidth: 1.5, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 20 },
-  typeRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  typeChip: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5 },
+  typeHint: { fontSize: 12, marginBottom: 20 },
   typeBtn: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },
   typeBtnText: { fontSize: 14, fontWeight: '600' },
   scheduleBtn: { flex: 1, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },

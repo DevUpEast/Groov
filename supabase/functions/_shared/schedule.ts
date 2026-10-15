@@ -50,3 +50,15 @@ export function isScheduledOn(s: Schedule, d: Date): boolean {
   if (s.type === 'weekdays') return s.days.includes(d.getDay())
   return true
 }
+
+// Mirror of src/utils/habits.js isGoalMet.
+export function goalMet(type: string | null | undefined, count: number | undefined, goal: number | null | undefined): boolean {
+  const c = count ?? 0
+  const g = goal ?? 1
+  switch (type) {
+    case 'atMost': return c <= g
+    case 'volume':
+    case 'timed': return c >= g
+    default: return c >= 1
+  }
+}

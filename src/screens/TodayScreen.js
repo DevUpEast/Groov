@@ -17,6 +17,7 @@ import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import UndoToast from '../components/UndoToast';
 import NoteModal from '../components/NoteModal';
 import MoodCheckIn from '../components/MoodCheckIn';
+import { isGoalMet, usesCounter } from '../utils/habits';
 import { successNotification, mediumImpact } from '../utils/haptics';
 import { playChime, playSuccessChime, playChallengeChime, playHornFanfare } from '../utils/sounds';
 import { fetchDailyNudge } from '../services/aiCoaching';
@@ -221,10 +222,12 @@ export default function TodayScreen() {
     return { anyClaimed, anyComplete };
   }, [effectiveChallenges, challenges, dueHabits, isHabitSatisfied, markChallengeDay, completeChallengeImmediately, todayStr]);
 
-  const handleIncrement = useCallback(async (habit) => {
-    const justCompleted = incrementHabit(habit.id);
-    if (justCompleted === false && getHabitCount(habit.id) >= habit.volumeGoal) return; // already maxed
-    setToast({ habit, message: justCompleted ? `${habit.name} done ✓` : `${habit.name} +1` });
+  const handleIncrement = useCallback(async (habit, amount = 1) => {
+    const before = getHabitCount(habit.id);
+    const justCompleted = incrementHabit(habit.id, amount);
+    if (justCompleted === false && !usesCounter(habit) && before >= 1) return; // already checked
+    const over = habit.type === 'atMost' && before + amount > habit.volumeGoal;
+    setToast({ habit, amount, message: justCompleted ? (habit.type === 'quit' ? `${habit.name}: avoided ✓` : `${habit.name} done ✓`) : over ? `${habit.name}: over your limit` : `${habit.name} +${amount}` });
     if (settings.hapticsEnabled) await mediumImpact();
     if (settings.soundEnabled) (justCompleted ? playSuccessChime : playChime)();
 
@@ -251,13 +254,13 @@ export default function TodayScreen() {
     }
   }, [dueHabits, isHabitSatisfied, todayStr, autoClaimChallenges, incrementHabit, settings, getHabitCount]);
 
-  const handleDecrement = useCallback(async (habit) => {
+  const handleDecrement = useCallback(async (habit, amount = 1) => {
     const today = todayStr();
     const countBefore = getHabitCount(habit.id);
-    const habitWasDone = countBefore >= habit.volumeGoal;
-    const habitStillDone = (countBefore - 1) >= habit.volumeGoal;
+    const habitWasDone = isGoalMet(habit, countBefore);
+    const habitStillDone = isGoalMet(habit, Math.max(0, countBefore - (amount || 1)));
 
-    decrementHabit(habit.id);
+    decrementHabit(habit.id, amount || 1);
     allDoneCelebrated.current = false;
 
     // Only unmark challenge days when this habit transitions from done → not done
@@ -437,8 +440,8 @@ export default function TodayScreen() {
                     <HabitCard
                       key={habit.id}
                       habit={habit}
-                      onIncrement={() => handleIncrement(habit)}
-                      onDecrement={() => handleDecrement(habit)}
+                      onIncrement={(a) => handleIncrement(habit, a)}
+                      onDecrement={(a) => handleDecrement(habit, a)}
                       onNote={openNote}
                     />
                   ))}
@@ -447,8 +450,8 @@ export default function TodayScreen() {
                 <HabitCard
                   key={habit.id}
                   habit={habit}
-                  onIncrement={() => handleIncrement(habit)}
-                  onDecrement={() => handleDecrement(habit)}
+                  onIncrement={(a) => handleIncrement(habit, a)}
+                  onDecrement={(a) => handleDecrement(habit, a)}
                   onNote={openNote}
                 />
               ))}
@@ -505,7 +508,7 @@ export default function TodayScreen() {
         toast={toast}
         theme={theme}
         onHide={() => setToast(null)}
-        onUndo={() => { const h = toast?.habit; setToast(null); if (h) handleDecrement(h); }}
+        onUndo={() => { const h = toast?.habit; const a = toast?.amount || 1; setToast(null); if (h) handleDecrement(h, a); }}
       />
 
       <NoteModal

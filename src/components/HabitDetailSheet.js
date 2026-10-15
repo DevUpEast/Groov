@@ -11,6 +11,7 @@ import {
 } from '../utils/schedule';
 import { lightImpact } from '../utils/haptics';
 import HabitIcon from './HabitIcon';
+import { describeGoal, isGoalMet } from '../utils/habits';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const WEEKS = 15;                       // ~3.5 months of history in the grid
@@ -62,6 +63,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
 
   const today = todayStr();
   const isDone = useCallback((k) => (habit ? isHabitDoneOn(habit, k) : false), [habit, isHabitDoneOn]);
+  void isGoalMet;
   const excused = useCallback((k) => (habit ? isExcused(k, habit.id) : false), [habit, isExcused]);
 
   // Grid: WEEKS columns ending with the current week, rows Monday..Sunday.
@@ -130,14 +132,17 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
   const onCellPress = (d) => {
     if (d.future || d.before) return;
     if (settings.hapticsEnabled) lightImpact();
-    if (habit.type === 'volume' && habit.volumeGoal > 1) {
-      // Volume habits: offer the full range rather than a blind toggle.
+    if ((habit.type === 'volume' || habit.type === 'timed' || habit.type === 'atMost') && habit.volumeGoal >= 1) {
+      // Counter habits: offer the meaningful values rather than a blind toggle.
+      const isLimit = habit.type === 'atMost';
       Alert.alert(
         parseDateKey(d.key).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-        `${habit.name}: ${d.count}/${habit.volumeGoal}`,
+        `${habit.name}: ${d.count}/${habit.volumeGoal}${isLimit ? ' max' : ''}`,
         [
           { text: 'Clear', onPress: () => setHabitCountOn(habit.id, d.key, 0) },
-          { text: `Set ${habit.volumeGoal} (done)`, onPress: () => setHabitCountOn(habit.id, d.key, habit.volumeGoal) },
+          isLimit
+            ? { text: `Set ${habit.volumeGoal + 1} (over limit)`, onPress: () => setHabitCountOn(habit.id, d.key, habit.volumeGoal + 1) }
+            : { text: `Set ${habit.volumeGoal} (done)`, onPress: () => setHabitCountOn(habit.id, d.key, habit.volumeGoal) },
           { text: 'Cancel', style: 'cancel' },
         ],
       );
@@ -157,7 +162,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
           <View style={{ flex: 1 }}>
             <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>{habit.name}</Text>
             <Text style={[styles.meta, { color: theme.textMuted }]}>
-              {describeSchedule(habit.schedule)}{habit.type === 'volume' ? ` · ${habit.volumeGoal} ${habit.unit || '×'} a day` : ''}
+              {describeSchedule(habit.schedule)} · {describeGoal(habit)}
             </Text>
             {!!habit.intention && (
               <Text style={[styles.meta, { color: theme.primary }]} numberOfLines={2}>After I {habit.intention}</Text>
