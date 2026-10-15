@@ -5,7 +5,7 @@ const syncWarn = __DEV__ ? (msg, detail) => console.warn(msg, detail) : () => {}
 
 // Tables that carry user data. Every one has user_id and a trigger-maintained
 // updated_at column (see supabase/migrations/20261014_sync_fields.sql).
-const USER_TABLES = ['habits', 'completions', 'challenges', 'past_challenges', 'settings', 'daily_snapshots'];
+const USER_TABLES = ['habits', 'completions', 'challenges', 'past_challenges', 'settings', 'daily_snapshots', 'moods'];
 
 // ── Transformers ──────────────────────────────────────────────────────────────
 // updated_at is never sent: the server stamps inserts (default now()) and updates
@@ -156,7 +156,7 @@ const rowToSettings = (row) => ({
 
 // ── Bulk operations ───────────────────────────────────────────────────────────
 
-export async function pushAllLocalData(userId, { habits, completions, notes, settings, challenges, pastChallenges, dailySnapshot }) {
+export async function pushAllLocalData(userId, { habits, completions, notes, settings, challenges, pastChallenges, dailySnapshot, moods = {} }) {
   const ops = [];
 
   if (habits.length > 0)
@@ -174,6 +174,10 @@ export async function pushAllLocalData(userId, { habits, completions, notes, set
 
   ops.push(supabase.from('settings').upsert(settingsToRow(settings, userId)));
 
+  const moodRows = Object.entries(moods).filter(([, m]) => m >= 1 && m <= 5).map(([date, mood]) => ({ user_id: userId, date, mood }));
+  if (moodRows.length > 0)
+    ops.push(supabase.from('moods').upsert(moodRows));
+
   const snapshotRows = Object.entries(dailySnapshot).map(([date, snapshot]) => ({
     user_id: userId, date, snapshot,
   }));
@@ -188,16 +192,18 @@ export async function pushAllLocalData(userId, { habits, completions, notes, set
 }
 
 export async function pullAllData(userId) {
-  const [habitsRes, completionsRes, challengesRes, pastRes, settingsRes, snapshotsRes] = await Promise.all([
+  const [habitsRes, completionsRes, challengesRes, pastRes, settingsRes, snapshotsRes, moodsRes] = await Promise.all([
     supabase.from('habits').select('*').eq('user_id', userId).order('created_at').order('id'),
     supabase.from('completions').select('*').eq('user_id', userId),
     supabase.from('challenges').select('*').eq('user_id', userId).order('start_date').order('id'),
     supabase.from('past_challenges').select('*').eq('user_id', userId).order('archived_at', { ascending: false }).order('id'),
     supabase.from('settings').select('*').eq('user_id', userId).maybeSingle(),
     supabase.from('daily_snapshots').select('*').eq('user_id', userId),
+    supabase.from('moods').select('*').eq('user_id', userId),
   ]);
 
   return {
+    moods: moodsRes.data ? Object.fromEntries(moodsRes.data.map(r => [r.date, r.mood])) : null,
     habits: habitsRes.data ? habitsRes.data.map(rowToHabit) : null,
     completions: completionsRes.data ? rowsToCompletions(completionsRes.data) : null,
     notes: completionsRes.data ? rowsToNotes(completionsRes.data) : null,
@@ -221,10 +227,11 @@ export async function pullChangesSince(userId, sinceIso) {
     changed('habits'), changed('completions'), changed('challenges'), changed('past_challenges'),
     changed('settings'), changed('daily_snapshots'),
     ids('habits'), ids('challenges'),
+    changed('moods'),
   ]);
   const failed = results.find(r => r.error);
   if (failed) throw new Error(failed.error.message);
-  const [habitsRes, completionsRes, challengesRes, pastRes, settingsRes, snapshotsRes, habitIdsRes, challengeIdsRes] = results;
+  const [habitsRes, completionsRes, challengesRes, pastRes, settingsRes, snapshotsRes, habitIdsRes, challengeIdsRes, moodsRes] = results;
 
   return {
     habits: habitsRes.data.map(rowToHabit),
@@ -233,6 +240,7 @@ export async function pullChangesSince(userId, sinceIso) {
     pastChallenges: pastRes.data.map(rowToPastChallenge),
     settings: settingsRes.data[0] ? rowToSettings(settingsRes.data[0]) : null,
     dailySnapshots: snapshotsRes.data,
+    moods: moodsRes.data, // raw rows { date, mood }
     habitIds: habitIdsRes.data.map(r => r.id),
     challengeIds: challengeIdsRes.data.map(r => r.id),
   };
@@ -274,6 +282,16 @@ export async function syncCompletion(userId, date, habitId, count) {
   const { error } = await supabase.from('completions')
     .upsert({ user_id: userId, date, habit_id: habitId, count: Math.max(0, count) });
   if (error) syncWarn('syncCompletion:', error.message);
+}
+
+export async function syncMood(userId, date, mood) {
+  if (!(mood >= 1 && mood <= 5)) {
+    const { error } = await supabase.from('moods').delete().eq('user_id', userId).eq('date', date);
+    if (error) syncWarn('syncMood delete:', error.message);
+    return;
+  }
+  const { error } = await supabase.from('moods').upsert({ user_id: userId, date, mood });
+  if (error) syncWarn('syncMood:', error.message);
 }
 
 export async function syncNote(userId, date, habitId, note, count = 0) {

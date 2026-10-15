@@ -19,6 +19,7 @@ export function buildBackup(state, exportedAt = new Date().toISOString()) {
       challenges: state.challenges ?? [],
       pastChallenges: state.pastChallenges ?? [],
       dailySnapshot: state.dailySnapshot ?? {},
+      moods: state.moods ?? {},
       accountCreatedAt: state.accountCreatedAt ?? null,
     },
   };
@@ -65,6 +66,8 @@ export function validateBackup(input) {
       if (DATE_RE.test(date) && Array.isArray(snap)) dailySnapshot[date] = snap.filter(h => isObj(h) && typeof h.id === 'string');
     }
   }
+  const moods = {};
+  if (isObj(d.moods)) for (const [date, v] of Object.entries(d.moods)) if (DATE_RE.test(date) && v >= 1 && v <= 5) moods[date] = v;
   const settings = isObj(d.settings) ? d.settings : null;
   const accountCreatedAt = typeof d.accountCreatedAt === 'string' && DATE_RE.test(d.accountCreatedAt) ? d.accountCreatedAt : null;
 
@@ -74,7 +77,7 @@ export function validateBackup(input) {
   return {
     ok: true,
     exportedAt: typeof parsed.exportedAt === 'string' ? parsed.exportedAt : null,
-    data: { habits, completions, notes, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt },
+    data: { habits, completions, notes, settings, challenges, pastChallenges, dailySnapshot, moods, accountCreatedAt },
   };
 }
 
@@ -101,6 +104,7 @@ export function mergeBackup(current, incoming) {
     challenges: mergeList(current.challenges || [], incoming.challenges),
     pastChallenges: mergeList(current.pastChallenges || [], incoming.pastChallenges),
     dailySnapshot: { ...(current.dailySnapshot || {}), ...incoming.dailySnapshot },
+    moods: { ...(current.moods || {}), ...(incoming.moods || {}) },
     accountCreatedAt: [current.accountCreatedAt, incoming.accountCreatedAt].filter(Boolean).sort()[0] || null,
   };
 }
