@@ -16,6 +16,7 @@ import TrophyCelebration from '../components/TrophyCelebration';
 import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import UndoToast from '../components/UndoToast';
 import NoteModal from '../components/NoteModal';
+import MoodCheckIn from '../components/MoodCheckIn';
 import { successNotification, mediumImpact } from '../utils/haptics';
 import { playChime, playSuccessChime, playChallengeChime, playHornFanfare } from '../utils/sounds';
 import { fetchDailyNudge } from '../services/aiCoaching';
@@ -82,6 +83,7 @@ export default function TodayScreen() {
     pendingChallengeRewards, clearPendingChallengeRewards,
     setRequestedTab, getNote, setNote,
     pendingMilestone, clearPendingMilestone,
+    moods, setMood,
   } = useApp();
 
   // Big celebration only for streak milestones; a perfect day gets a light cheer.
@@ -451,6 +453,10 @@ export default function TodayScreen() {
                 />
               ))}
             </>
+          )}
+
+          {habits.length > 0 && (
+            <MoodCheckIn value={moods[today] ?? null} onChange={(v) => setMood(today, v)} theme={theme} haptics={settings.hapticsEnabled} />
           )}
 
           {/* Active Challenges */}

@@ -9,7 +9,7 @@ import { useAuth } from './AuthContext';
 import {
   pullAllData, pullChangesSince, pushAllLocalData, deleteAllUserData,
   syncHabit, deleteHabitSync,
-  syncCompletion, syncCompletionsForDate, syncNote,
+  syncCompletion, syncCompletionsForDate, syncNote, syncMood,
   syncChallenge, deleteChallengeSync, syncPastChallenge,
   syncSettings,
 } from '../services/sync';
@@ -173,6 +173,8 @@ export function AppProvider({ children }) {
   const [completions, setCompletions] = useState({});
   // Free-text note per completion: { 'YYYY-MM-DD': { habitId: 'text' } }.
   const [notes, setNotes] = useState({});
+  // Optional daily mood 1-5: { 'YYYY-MM-DD': 4 }.
+  const [moods, setMoods] = useState({});
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [challenges, setChallenges] = useState([]);
   const [pastChallenges, setPastChallenges] = useState([]);
@@ -254,7 +256,7 @@ export function AppProvider({ children }) {
     // NOTE: userId is always null here (auth resolves asynchronously after mount).
     // Do NOT check lastUserId vs userId here — it will always look like a different user.
     // The user-switch check runs in the cloud sync effect below, where userId is known.
-    const [h, c, s, ch, ob, ds, pc, aca, savedOffset, pcr, dev, n, lba] = await Promise.all([
+    const [h, c, s, ch, ob, ds, pc, aca, savedOffset, pcr, dev, n, lba, md] = await Promise.all([
       loadData('habits'),
       loadData('completions'),
       loadData('settings'),
@@ -268,12 +270,14 @@ export function AppProvider({ children }) {
       loadDevMode(),
       loadData('notes'),
       loadData('lastBackupAt'),
+      loadData('moods'),
     ]);
 
     if (h) setHabits(migrateHabits(h));
     if (c) setCompletions(c);
     if (n) setNotes(n);
     if (lba) setLastBackupAt(lba);
+    if (md) setMoods(md);
     setSettings(migrateSettings(s));
     if (ch) {
       setChallenges(migrateChallenges(Array.isArray(ch) ? ch : [ch]));
@@ -308,6 +312,7 @@ export function AppProvider({ children }) {
   useEffect(() => { if (loaded) saveData('habits', allHabits); }, [allHabits, loaded]);
   useEffect(() => { if (loaded) saveData('completions', completions); }, [completions, loaded]);
   useEffect(() => { if (loaded) saveData('notes', notes); }, [notes, loaded]);
+  useEffect(() => { if (loaded) saveData('moods', moods); }, [moods, loaded]);
   useEffect(() => { if (loaded) saveData('settings', settings); }, [settings, loaded]);
   useEffect(() => { if (loaded) saveData('dateOffset', dateOffset); }, [dateOffset, loaded]);
   useEffect(() => { if (loaded) saveData('challenges', challenges); }, [challenges, loaded]);
@@ -326,8 +331,8 @@ export function AppProvider({ children }) {
   // Keep stateRef fresh so the cloud sync effect can access current state without
   // adding all these values to its dependency array (which would re-trigger on every mutation)
   useEffect(() => {
-    stateRef.current = { habits: allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot };
-  }, [allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot]);
+    stateRef.current = { habits: allHabits, completions, notes, moods, settings, challenges, pastChallenges, dailySnapshot };
+  }, [allHabits, completions, notes, moods, settings, challenges, pastChallenges, dailySnapshot]);
 
   // ── Daily reminder scheduling ────────────────────────────────────────────────
   // Make the OS schedule match settings.reminders + habit.reminder on launch and
@@ -510,7 +515,7 @@ export function AppProvider({ children }) {
         // An empty state to reset to when switching/deleting accounts. Resetting stateRef
         // here (not just the React setters) ensures pushAllLocalData sends empty data
         // synchronously before React re-renders propagate the setter calls.
-        const emptyState = { habits: [], completions: {}, notes: {}, settings: DEFAULT_SETTINGS, challenges: [], pastChallenges: [], dailySnapshot: {} };
+        const emptyState = { habits: [], completions: {}, notes: {}, moods: {}, settings: DEFAULT_SETTINGS, challenges: [], pastChallenges: [], dailySnapshot: {} };
 
         if (accountWasDeleted) {
           // Account was explicitly deleted — the previous user's storage was already wiped in
@@ -520,6 +525,7 @@ export function AppProvider({ children }) {
           setHabits([]);
           setCompletions({});
           setNotes({});
+          setMoods({});
           setHasOnboarded(false);
           setChallenges([]);
           setPastChallenges([]);
@@ -531,6 +537,7 @@ export function AppProvider({ children }) {
           setHabits([]);
           setCompletions({});
           setNotes({});
+          setMoods({});
           // A brand-new user (e.g. a guest) on this device gets the onboarding flow;
           // a returning user is flipped back to true below when the cloud has data.
           setHasOnboarded(false);
@@ -567,6 +574,7 @@ export function AppProvider({ children }) {
           setHabits(migrateHabits(cloudData.habits));
           if (cloudData.completions) setCompletions(cloudData.completions);
           if (cloudData.notes) setNotes(cloudData.notes);
+          if (cloudData.moods) setMoods(cloudData.moods);
           if (cloudData.settings) setSettings(migrateSettings(cloudData.settings));
           if (cloudData.challenges) setChallenges(migrateChallenges(cloudData.challenges));
           if (cloudData.pastChallenges) setPastChallenges(cloudData.pastChallenges);
@@ -613,6 +621,7 @@ export function AppProvider({ children }) {
           setNotes(prev => mergeNotes(prev, delta.completions));
         }
         if (delta.dailySnapshots.length) setDailySnapshot(prev => mergeSnapshots(prev, delta.dailySnapshots));
+        if (delta.moods?.length) setMoods(prev => { const next = { ...prev }; for (const r of delta.moods) next[r.date] = r.mood; return next; });
         if (delta.settings) setSettings(migrateSettings(delta.settings));
         lastPulledAtRef.current = startedAt;
       })
@@ -804,6 +813,14 @@ export function AppProvider({ children }) {
   }, [habits, allHabits, userId]);
 
   const getNote = useCallback((habitId, key) => (notes[key] || {})[habitId] || '', [notes]);
+
+  // Mood 1-5 for a day; `null` clears it. Only today (or earlier) can be rated.
+  const setMood = useCallback((key, value) => {
+    if (key > todayStr()) return;
+    const v = value >= 1 && value <= 5 ? value : null;
+    setMoods(prev => { const next = { ...prev }; if (v) next[key] = v; else delete next[key]; return next; });
+    if (userId) syncMood(userId, key, v);
+  }, [todayStr, userId]);
 
   const setNote = useCallback((habitId, key, text) => {
     const trimmed = (text || '').trim();
@@ -1086,6 +1103,7 @@ export function AppProvider({ children }) {
     setHabits([]);
     setCompletions({});
     setNotes({});
+    setMoods({});
     setSettings(DEFAULT_SETTINGS);
     setChallenges([]);
     setPastChallenges([]);
@@ -1106,7 +1124,7 @@ export function AppProvider({ children }) {
   // over). Everything is persisted locally through the normal effects and pushed to
   // the cloud in one go.
   const importBackup = useCallback(async (data, mode = 'merge') => {
-    const current = { habits: allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt };
+    const current = { habits: allHabits, completions, notes, moods, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt };
     const next = mode === 'replace'
       ? { ...data, settings: data.settings ? migrateSettings(data.settings) : settings }
       : mergeBackup(current, data);
@@ -1116,19 +1134,20 @@ export function AppProvider({ children }) {
     setHabits(nextHabits);
     setCompletions(next.completions);
     setNotes(next.notes);
+    setMoods(next.moods || {});
     setSettings(nextSettings);
     setChallenges(nextChallenges);
     setPastChallenges(next.pastChallenges);
     setDailySnapshot(next.dailySnapshot);
     if (next.accountCreatedAt) setAccountCreatedAt(next.accountCreatedAt);
     setHasOnboarded(true);
-    stateRef.current = { habits: nextHabits, completions: next.completions, notes: next.notes, settings: nextSettings, challenges: nextChallenges, pastChallenges: next.pastChallenges, dailySnapshot: next.dailySnapshot };
+    stateRef.current = { habits: nextHabits, completions: next.completions, notes: next.notes, moods: next.moods || {}, settings: nextSettings, challenges: nextChallenges, pastChallenges: next.pastChallenges, dailySnapshot: next.dailySnapshot };
     if (userId) {
       if (mode === 'replace') await deleteAllUserData(userId).catch(() => {});
       await pushAllLocalData(userId, stateRef.current);
     }
     track(Events.BACKUP_RESTORED, { mode });
-  }, [allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt, userId]);
+  }, [allHabits, completions, notes, moods, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt, userId]);
 
   // Flush all current state to Supabase — call before sign-out to avoid data loss
   const pushAllData = useCallback(async () => {
@@ -1276,7 +1295,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      habits, allHabits, archivedHabits, completions, notes, settings, challenges, pastChallenges, hasOnboarded, theme, themeName,
+      habits, allHabits, archivedHabits, completions, notes, moods, setMood, dailySnapshot, settings, challenges, pastChallenges, hasOnboarded, theme, themeName,
       effectiveChallenges, effectivePastChallenges,
       dateOffset, setDateOffset, accountCreatedAt, displayName,
       devMode, setDevMode,

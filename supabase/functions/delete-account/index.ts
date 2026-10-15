@@ -10,7 +10,7 @@ const corsHeaders = {
 // block the client once the auth user is gone).
 const USER_TABLES = [
   'habits', 'completions', 'challenges', 'past_challenges', 'settings', 'daily_snapshots',
-  'ai_nudges', 'ai_reflections', 'profiles',
+  'ai_nudges', 'ai_reflections', 'profiles', 'moods',
 ]
 
 Deno.serve(async (req: Request) => {

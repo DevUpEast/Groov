@@ -153,7 +153,7 @@ function Section({ title, children, theme }) {
 export default function SettingsScreen() {
   const {
     settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, devMode, setDevMode,
-    allHabits, completions, notes, challenges, pastChallenges, dailySnapshot, accountCreatedAt, lastBackupAt, markBackedUp, importBackup,
+    allHabits, completions, notes, moods, challenges, pastChallenges, dailySnapshot, accountCreatedAt, lastBackupAt, markBackedUp, importBackup,
     ensureNotificationPermission,
   } = useApp();
 
@@ -178,7 +178,7 @@ export default function SettingsScreen() {
     if (settings.hapticsEnabled) lightImpact();
     setBackupBusy(true);
     try {
-      await exportBackup({ habits: allHabits, completions, notes, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt });
+      await exportBackup({ habits: allHabits, completions, notes, moods, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt });
       markBackedUp();
     } catch (e) {
       Alert.alert('Export failed', e.message || 'Could not create the backup file.');

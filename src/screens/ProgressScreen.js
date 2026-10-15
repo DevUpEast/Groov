@@ -7,7 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp, STREAK_MILESTONES, TIER_STYLES } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { fetchReflection } from '../services/aiCoaching';
-import { localDateKey } from '../utils/dates';
+import { localDateKey, addDays } from '../utils/dates';
+import { moodSummary, habitMoodCorrelations, describeCorrelation, moodEmoji, MIN_SAMPLES } from '../utils/mood';
+import { overallDayStatus } from '../utils/streaks';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CHART_H = 150;
@@ -242,7 +244,19 @@ function BarTooltip({ label, value, onClose, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
-  const { getLastNDays, getOverallStreak, getBestStreak, freezesLeft, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode, settings, effectivePastChallenges } = useApp();
+  const { getLastNDays, getOverallStreak, getBestStreak, freezesLeft, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode, settings, effectivePastChallenges, moods, dailySnapshot, isHabitDoneOn, isExcused } = useApp();
+
+  // Mood insights: averages on perfect vs other days and per-habit deltas.
+  const moodInsights = useMemo(() => {
+    const today = todayStr();
+    const habitsOn = (k) => dailySnapshot[k] || habits;
+    const isDone = (k, id) => { const h = habitsOn(k).find(x => x.id === id); return !!h && ((completions[k] || {})[id] || 0) >= h.volumeGoal; };
+    const isPerfect = (k) => overallDayStatus(k, today, habitsOn, isDone, isExcused) === 'done';
+    const summary = moodSummary(moods, isPerfect);
+    const correlations = habitMoodCorrelations(moods, habits, (h, k) => isHabitDoneOn(h, k));
+    const last7 = Array.from({ length: 7 }, (_, i) => { const k = addDays(today, -(6 - i)); return { key: k, mood: moods[k] ?? null }; });
+    return { summary, correlations, last7, headline: describeCorrelation(correlations[0]) };
+  }, [moods, habits, dailySnapshot, completions, todayStr, isHabitDoneOn, isExcused]);
   const earned = useMemo(() => new Map((settings.milestones || []).map(m => [m.id, m])), [settings.milestones]);
   const trophies = useMemo(() => effectivePastChallenges.filter(c => c.tier && c.tier !== 'none'), [effectivePastChallenges]);
   const [heatPeriodIdx, setHeatPeriodIdx] = useState(0);
@@ -436,6 +450,54 @@ export default function ProgressScreen() {
             ))}
           </View>
         </View>
+        {/* Mood insights */}
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.cardTitle, { color: theme.text }]}>🙂 Mood & habits</Text>
+          <Text style={[styles.cardHint, { color: theme.textMuted }]}>From your daily check-ins on Today</Text>
+          <View style={styles.moodStrip} accessible accessibilityLabel={`Last 7 days mood: ${moodInsights.last7.map(d => d.mood ?? 'none').join(', ')}`}>
+            {moodInsights.last7.map(d => (
+              <View key={d.key} style={styles.moodDay}>
+                <Text style={[styles.moodDayEmoji, !d.mood && { opacity: 0.25 }]}>{d.mood ? moodEmoji(d.mood) : '·'}</Text>
+                <Text style={[styles.moodDayLabel, { color: theme.textMuted }]}>{['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][new Date(d.key + 'T00:00:00').getDay()]}</Text>
+              </View>
+            ))}
+          </View>
+          {moodInsights.summary.count < MIN_SAMPLES ? (
+            <Text style={[styles.cardHint, { color: theme.textMuted, marginTop: 8 }]}>
+              Rate a few more days to see how your habits and mood connect ({moodInsights.summary.count}/{MIN_SAMPLES}).
+            </Text>
+          ) : (
+            <>
+              <View style={styles.moodStats}>
+                <View style={[styles.moodStat, { backgroundColor: theme.bg, borderColor: theme.border }]} accessible accessibilityLabel={`Average mood ${moodInsights.summary.average} of 5`}>
+                  <Text style={[styles.moodStatValue, { color: theme.primary }]}>{moodInsights.summary.average}</Text>
+                  <Text style={[styles.moodStatLabel, { color: theme.textMuted }]}>avg / 5</Text>
+                </View>
+                <View style={[styles.moodStat, { backgroundColor: theme.bg, borderColor: theme.border }]} accessible accessibilityLabel={`Perfect days ${moodInsights.summary.perfectAvg ?? 'no data'}`}>
+                  <Text style={[styles.moodStatValue, { color: theme.primary }]}>{moodInsights.summary.perfectAvg ?? '–'}</Text>
+                  <Text style={[styles.moodStatLabel, { color: theme.textMuted }]}>perfect days</Text>
+                </View>
+                <View style={[styles.moodStat, { backgroundColor: theme.bg, borderColor: theme.border }]} accessible accessibilityLabel={`Other days ${moodInsights.summary.otherAvg ?? 'no data'}`}>
+                  <Text style={[styles.moodStatValue, { color: theme.primary }]}>{moodInsights.summary.otherAvg ?? '–'}</Text>
+                  <Text style={[styles.moodStatLabel, { color: theme.textMuted }]}>other days</Text>
+                </View>
+              </View>
+              {moodInsights.headline ? (
+                <Text style={[styles.moodHeadline, { color: theme.text }]}>{moodInsights.headline}</Text>
+              ) : (
+                <Text style={[styles.cardHint, { color: theme.textMuted, marginTop: 8 }]}>No strong link between a single habit and your mood yet.</Text>
+              )}
+              {moodInsights.correlations.slice(0, 3).map(c => (
+                <View key={c.habitId} style={styles.corrRow}>
+                  <Text style={styles.corrIcon}>{c.icon || '⭐'}</Text>
+                  <Text style={[styles.corrName, { color: theme.text }]} numberOfLines={1}>{c.name}</Text>
+                  <Text style={[styles.corrDelta, { color: c.delta >= 0 ? theme.success : theme.danger }]}>{c.delta >= 0 ? '+' : ''}{c.delta}</Text>
+                </View>
+              ))}
+            </>
+          )}
+        </View>
+
         {/* Trophy case: streak milestones + challenge medals */}
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>🏆 Trophy Case</Text>
@@ -599,6 +661,19 @@ const styles = StyleSheet.create({
   periodBtn: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 16, borderWidth: 1.5 },
   periodBtnText: { fontSize: 11, fontWeight: '700' },
   heatGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
+  moodStrip: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  moodDay: { alignItems: 'center', flex: 1 },
+  moodDayEmoji: { fontSize: 22 },
+  moodDayLabel: { fontSize: 10, marginTop: 2 },
+  moodStats: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  moodStat: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
+  moodStatValue: { fontSize: 18, fontWeight: '800' },
+  moodStatLabel: { fontSize: 10, marginTop: 2 },
+  moodHeadline: { fontSize: 13, lineHeight: 19, marginTop: 12 },
+  corrRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  corrIcon: { fontSize: 16 },
+  corrName: { flex: 1, fontSize: 13, fontWeight: '600' },
+  corrDelta: { fontSize: 13, fontWeight: '800' },
   trophyRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
   trophyTile: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, gap: 2 },
   trophyEmoji: { fontSize: 24 },
