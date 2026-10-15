@@ -13,6 +13,33 @@ const REMINDER_PREFIX = 'reminder-';
 const HABIT_PREFIX = 'habit-';
 const EVENING_PREFIX = 'evening-habit-';
 const LEGACY_IDS = ['morning-reminder', 'evening-reminder'];
+const SNOOZE_PREFIX = 'snooze-';
+
+// Notification categories carry the action buttons (Done / Snooze).
+export const CATEGORY_HABIT = 'habit-reminder';
+export const CATEGORY_GENERAL = 'general-reminder';
+export const ACTION_DONE = 'done';
+export const ACTION_SNOOZE = 'snooze';
+
+// Back-off: after this many consecutive missed days a per-habit reminder only fires
+// every BACKOFF_EVERY days, with gentler copy, so an ignored reminder stops nagging.
+export const BACKOFF_AFTER_MISSES = 3;
+export const BACKOFF_EVERY = 3;
+
+let categoriesReady = false;
+async function setupCategories() {
+  if (Platform.OS === 'web' || categoriesReady) return;
+  try {
+    await Notifications.setNotificationCategoryAsync(CATEGORY_HABIT, [
+      { identifier: ACTION_DONE, buttonTitle: '✓ Done', options: { opensAppToForeground: false } },
+      { identifier: ACTION_SNOOZE, buttonTitle: 'Snooze 1h', options: { opensAppToForeground: false } },
+    ]);
+    await Notifications.setNotificationCategoryAsync(CATEGORY_GENERAL, [
+      { identifier: ACTION_SNOOZE, buttonTitle: 'Snooze 1h', options: { opensAppToForeground: false } },
+    ]);
+    categoriesReady = true;
+  } catch {}
+}
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -36,11 +63,34 @@ async function setupAndroidChannel() {
   } catch {}
 }
 
+// 'granted' | 'undetermined' | 'denied' without ever showing the OS dialog.
+export async function getPermissionState() {
+  if (Platform.OS === 'web') return 'denied';
+  try {
+    const p = await Notifications.getPermissionsAsync();
+    if (p.status === 'granted') return 'granted';
+    if (p.status === 'undetermined' || p.canAskAgain) return 'undetermined';
+    return 'denied';
+  } catch { return 'denied'; }
+}
+
+// Show the OS dialog (after our own primer) and report the outcome.
+export async function requestOsPermission() {
+  if (Platform.OS === 'web') return false;
+  try {
+    await setupAndroidChannel();
+    await setupCategories();
+    const { status } = await Notifications.requestPermissionsAsync();
+    return status === 'granted';
+  } catch { return false; }
+}
+
 // `prompt: false` only checks the current status and never shows the OS dialog.
 async function requestPermissions({ prompt = true } = {}) {
   if (Platform.OS === 'web') return false;
   try {
     await setupAndroidChannel();
+    await setupCategories();
     const current = await Notifications.getPermissionsAsync();
     if (current.status === 'granted') return true;
     if (!prompt) return false;
@@ -55,22 +105,41 @@ async function cancel(identifier) {
   await Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
 }
 
+// Does a habit with `misses` consecutive missed days get its reminder today?
+// Pure so it can be unit tested: the first BACKOFF_AFTER_MISSES misses still remind
+// daily; after that only every BACKOFF_EVERY-th day.
+export function reminderDueWithBackoff(misses) {
+  if (misses < BACKOFF_AFTER_MISSES) return true;
+  return (misses - BACKOFF_AFTER_MISSES) % BACKOFF_EVERY === 0;
+}
+
 // Build the full list of daily reminders that should exist for this state.
-function desiredDailyReminders(settings, habits) {
+// `missesByHabit` maps habitId -> consecutive missed days (excluding today).
+function desiredDailyReminders(settings, habits, missesByHabit = {}) {
   if (!settings?.notificationsEnabled) return [];
   const out = [];
   for (const r of settings.reminders || []) {
     if (!r.enabled || r.habitId) continue;
     const { hour, minute } = to24h(r.time);
-    out.push({ identifier: `${REMINDER_PREFIX}${r.id}`, hour, minute, title: `🔔 ${r.label}`, body: 'Time to check your habits!' });
+    out.push({ identifier: `${REMINDER_PREFIX}${r.id}`, hour, minute, title: `🔔 ${r.label}`, body: 'Time to check your habits!', category: CATEGORY_GENERAL, data: { kind: 'general', reminderId: r.id } });
   }
   for (const h of habits || []) {
     if (!h.reminder?.enabled) continue;
+    const misses = missesByHabit[h.id] || 0;
+    if (!reminderDueWithBackoff(misses)) continue;
     const { hour, minute } = to24h(h.reminder);
+    const backingOff = misses >= BACKOFF_AFTER_MISSES;
     out.push({
       identifier: `${HABIT_PREFIX}${h.id}`, hour, minute,
-      title: `${h.icon ?? '🔔'} Time for: ${h.name}`,
-      body: h.intention ? `After you ${h.intention}. Tap to log it.` : 'Tap to log your habit!',
+      title: backingOff ? `${h.icon ?? '🔔'} ${h.name}, still on your list` : `${h.icon ?? '🔔'} Time for: ${h.name}`,
+      body: backingOff
+        ? 'No pressure. Even a small step today restarts the streak.'
+        : h.intention ? `After you ${h.intention}. Tap to log it.` : 'Tap to log your habit!',
+      category: CATEGORY_HABIT,
+      data: { kind: 'habit', habitId: h.id },
+      // A backed-off reminder is a one-off for today, not a daily repeat, so the
+      // next day's evaluation decides whether it fires again.
+      oneOff: backingOff,
     });
   }
   return out;
@@ -83,9 +152,9 @@ function desiredDailyReminders(settings, habits) {
 // `prompt` controls whether a missing permission triggers the OS dialog: the launch
 // pass uses false so a fresh install is never greeted with a permission prompt;
 // user-initiated changes use true.
-export async function applyReminderSchedule(settings, habits, { prompt = true } = {}) {
+export async function applyReminderSchedule(settings, habits, { prompt = true, missesByHabit = {}, today } = {}) {
   if (Platform.OS === 'web') return;
-  const desired = desiredDailyReminders(settings, habits);
+  const desired = desiredDailyReminders(settings, habits, missesByHabit);
 
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
@@ -101,15 +170,65 @@ export async function applyReminderSchedule(settings, habits, { prompt = true } 
 
   for (const d of desired) {
     try {
+      let trigger = { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: d.hour, minute: d.minute };
+      if (d.oneOff && today) {
+        const fireDate = dateAt(today, d.hour, d.minute);
+        if (fireDate <= new Date()) continue; // today's slot already passed
+        trigger = { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireDate };
+      }
       await Notifications.scheduleNotificationAsync({
         identifier: d.identifier,
-        content: { title: d.title, body: d.body, sound: true, color: ACCENT },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: d.hour, minute: d.minute },
+        content: { title: d.title, body: d.body, sound: true, color: ACCENT, categoryIdentifier: d.category, data: d.data },
+        trigger,
       });
     } catch (e) {
       console.warn('applyReminderSchedule failed for', d.identifier, e);
     }
   }
+}
+
+// Re-deliver a notification's content in `minutes` (Snooze action).
+export async function snoozeNotification(content, minutes = 60) {
+  if (Platform.OS === 'web') return;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: `${SNOOZE_PREFIX}${Date.now()}`,
+      content: {
+        title: content?.title ?? '🔔 Reminder', body: content?.body ?? 'Time to check your habits!',
+        sound: true, color: ACCENT, categoryIdentifier: content?.categoryIdentifier ?? undefined, data: content?.data ?? {},
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: minutes * 60 },
+    });
+  } catch (e) {
+    console.warn('snoozeNotification failed:', e);
+  }
+}
+
+// Subscribe to notification taps / action buttons. `handler({ action, data, content })`
+// is also called for the response that launched the app from a cold start.
+export function listenForNotificationResponses(handler) {
+  if (Platform.OS === 'web') return () => {};
+  const toEvent = (resp) => ({
+    action: resp.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER ? 'open' : resp.actionIdentifier,
+    data: resp.notification?.request?.content?.data ?? {},
+    content: resp.notification?.request?.content ?? {},
+    id: resp.notification?.request?.identifier ?? null,
+  });
+  // Action buttons do not clear the notification on Android; do it ourselves.
+  const handle = (resp) => {
+    const evt = toEvent(resp);
+    if (evt.action !== 'open' && evt.id) Notifications.dismissNotificationAsync(evt.id).catch(() => {});
+    handler(evt);
+  };
+  Notifications.getLastNotificationResponseAsync().then(r => { if (r) handle(r); }).catch(() => {});
+  const sub = Notifications.addNotificationResponseReceivedListener(handle);
+  return () => sub.remove();
+}
+
+// App icon badge = number of habits still to do today (iOS; best-effort on Android).
+export async function setBadge(count) {
+  if (Platform.OS === 'web') return;
+  try { await Notifications.setBadgeCountAsync(Math.max(0, count)); } catch {}
 }
 
 // Smart check-in: a one-off notification for `today` at hour:minute, cancelled once
@@ -146,17 +265,21 @@ export async function cancelEveningHabitReminder(today) {
   await cancel(`${EVENING_PREFIX}${today}`);
 }
 
-// Dev tool: fire an evening-style notification immediately
-export async function sendTestNotification() {
+// Dev tool: fire a reminder immediately. With a habit it mimics that habit's
+// reminder (Done / Snooze actions included) so the action handling can be tested.
+export async function sendTestNotification(habit) {
   if (Platform.OS === 'web') return;
   const granted = await requestPermissions();
   if (!granted) return;
   await Notifications.scheduleNotificationAsync({
-    content: {
+    content: habit ? {
+      title: `${habit.icon ?? '🔔'} Time for: ${habit.name}`,
+      body: 'Test reminder. Tap Done to log it from here.',
+      sound: true, color: ACCENT, categoryIdentifier: CATEGORY_HABIT, data: { kind: 'habit', habitId: habit.id },
+    } : {
       title: 'Finish Habits',
       body: "You still have habits left to complete today. Keep that streak going!",
-      sound: true,
-      color: ACCENT,
+      sound: true, color: ACCENT, categoryIdentifier: CATEGORY_GENERAL, data: { kind: 'general' },
     },
     trigger: null,
   }).catch(() => {});

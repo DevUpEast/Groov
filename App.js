@@ -79,6 +79,7 @@ import ChallengeScreen from './src/screens/ChallengeScreen';
 import HabitsScreen from './src/screens/HabitsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
+import NotificationPrimer from './src/components/NotificationPrimer';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const NUM_TABS = 5;
@@ -95,7 +96,7 @@ const TABS = [
 const SCREENS = [TodayScreen, ProgressScreen, ChallengeScreen, HabitsScreen, SettingsScreen];
 
 function AppNavigator() {
-  const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen } = useApp();
+  const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen, notificationPrimer } = useApp();
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -204,6 +205,12 @@ function AppNavigator() {
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={activeIndex === 0 ? 'light' : (themeName === 'dark' ? 'light' : 'dark')} />
+      <NotificationPrimer
+        visible={notificationPrimer.visible}
+        theme={theme}
+        onAllow={() => notificationPrimer.answer(true)}
+        onLater={() => notificationPrimer.answer(false)}
+      />
 
       <Animated.View
         style={[styles.screenRow, { transform: [{ translateX }] }]}
