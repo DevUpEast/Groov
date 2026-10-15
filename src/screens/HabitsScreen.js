@@ -618,7 +618,7 @@ export default function HabitsScreen() {
   const {
     habits, archivedHabits, addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit, theme,
     pendingHabitLinkChallenge, setPendingHabitLinkChallenge, linkHabitToChallenge, ensureNotificationPermission,
-    pendingRoute, clearPendingRoute,
+    pendingRoute, clearPendingRoute, canAddHabit,
     setModalOpen, settings,
   } = useApp();
   const [modalVisible, setModalVisible] = useState(false);
@@ -665,6 +665,7 @@ export default function HabitsScreen() {
 
   const openAdd = () => {
     if (settings.hapticsEnabled) lightImpact();
+    if (!canAddHabit()) return;
     setEditingId(null);
     setForm(BLANK);
     setModalVisible(true);

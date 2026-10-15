@@ -82,6 +82,8 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 
 **Utilities** (`src/utils/`): `storage.js` (AsyncStorage wrappers), `backup.js` (JSON backup build/validate/merge; `src/services/backup.js` does the share sheet / document picker, Settings → Backup), `supabase.js` (client, PKCE), `sounds.js`, `haptics.js`, `notifications.js`
 
+**Groov Pro** (`src/services/entitlements.js`, `PaywallSheet`): `isPro` = `profiles.is_pro` (set by the `revenuecat-webhook` edge function, secret `REVENUECAT_WEBHOOK_SECRET`) or a live RevenueCat `pro` entitlement. `react-native-purchases` only initialises when `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` / `_IOS_KEY` are set; otherwise the paywall shows a "coming soon" note. Free limits in `FREE_LIMITS` (5 active habits, 1 global reminder); gate with `canAddHabit()` / `canAddReminder()` which open the paywall via `openPaywall(reason)`. AI quotas (`ai_usage`) use the same flag server-side.
+
 **Android widget** (`src/widgets/`): `react-native-android-widget` provider `GroovToday` (app.json plugin). `widgetData.js` builds today's model from AsyncStorage (pure, tested) and `applyWidgetToggle` writes check-offs back plus a `widgetPendingSync` queue the app flushes to Supabase; `TodayWidget.js` is the Flex/TextWidget tree; `widgetTaskHandler.js` is registered in `index.js` (headless, so Metro reload does not update it, cold-start the app); `refreshWidget.js` is called from AppContext on data changes. Settings → About has "Add home-screen widget" (`requestPinWidget`).
 
 **Theme:** `src/theme/colors.js` exports light and dark token objects; the in-app theme is a manual toggle in settings (does not follow the system yet).

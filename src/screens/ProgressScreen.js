@@ -247,7 +247,7 @@ function BarTooltip({ label, value, onClose, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
-  const { getLastNDays, getOverallStreak, getBestStreak, freezesLeft, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode, settings, effectivePastChallenges, moods, dailySnapshot, isHabitDoneOn, isExcused } = useApp();
+  const { getLastNDays, getOverallStreak, getBestStreak, freezesLeft, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode, settings, effectivePastChallenges, moods, dailySnapshot, isHabitDoneOn, isExcused, isPro, openPaywall } = useApp();
 
   // Mood insights: averages on perfect vs other days and per-habit deltas.
   const moodInsights = useMemo(() => {
@@ -619,6 +619,9 @@ export default function ProgressScreen() {
               {reflectionError && (
                 <Text style={[styles.cardHint, { color: theme.danger, marginTop: 4 }]}>
                   {reflectionErrorMsg && /limit/i.test(reflectionErrorMsg) ? reflectionErrorMsg : 'Generation failed. Please try again.'}
+                  {reflectionErrorMsg && /limit/i.test(reflectionErrorMsg) && !isPro ? (
+                    <Text style={{ color: theme.primary, fontWeight: '700' }} onPress={() => openPaywall('ai')}>  See Groov Pro</Text>
+                  ) : null}
                 </Text>
               )}
               <TouchableOpacity

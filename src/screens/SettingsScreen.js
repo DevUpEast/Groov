@@ -155,7 +155,7 @@ export default function SettingsScreen() {
   const {
     settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, devMode, setDevMode,
     allHabits, completions, notes, moods, challenges, pastChallenges, dailySnapshot, accountCreatedAt, lastBackupAt, markBackedUp, importBackup,
-    ensureNotificationPermission,
+    ensureNotificationPermission, isPro, openPaywall, canAddReminder,
   } = useApp();
 
   const [whatsNew, setWhatsNew] = useState(false);
@@ -421,6 +421,7 @@ export default function SettingsScreen() {
 
   const addReminder = async () => {
     if (settings.hapticsEnabled) lightImpact();
+    if (!canAddReminder()) return;
     if (!(await ensureNotificationPermission())) return;
     updateReminders([
       ...reminders,
@@ -768,6 +769,17 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </Section>
         )}
+
+        {/* Pro */}
+        <Section title="GROOV PRO" theme={theme}>
+          <Row
+            label={isPro ? 'You have Groov Pro' : 'Upgrade to Groov Pro'}
+            sublabel={isPro ? 'Thank you for supporting a one-person app' : 'Unlimited habits, more reminders and AI coaching'}
+            theme={theme}
+            onPress={isPro ? undefined : () => { if (settings.hapticsEnabled) lightImpact(); openPaywall('settings'); }}
+            right={<Ionicons name={isPro ? 'checkmark-circle' : 'sparkles-outline'} size={20} color={theme.primary} />}
+          />
+        </Section>
 
         {/* Account */}
         <Section title="ACCOUNT" theme={theme}>
