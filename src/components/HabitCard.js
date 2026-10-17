@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { completionsInWeek } from '../utils/schedule';
 import { addDays } from '../utils/dates';
 import { lightImpact } from '../utils/haptics';
 import { announce } from '../utils/a11y';
 import HabitIcon from './HabitIcon';
+import ActionSheet from './ui/ActionSheet';
 import { usesCounter, countStep, describeProgress, unitLabel } from '../utils/habits';
 import { t, useLocale } from '../i18n';
 
@@ -63,15 +64,15 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   // Long-press: forgiveness actions (skip today keeps the streak; fix yesterday).
   const yesterday = addDays(today, -1);
   const yesterdayDone = isHabitDoneOn(habit, yesterday);
-  const handleLongPress = () => {
-    if (settings.hapticsEnabled) lightImpact();
-    Alert.alert(habit.name, t('habitCard.longPress.body'), [
-      { text: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip'), onPress: () => toggleSkipHabitOn(habit.id, today) },
-      { text: yesterdayDone ? t('habitCard.longPress.undoYesterday') : t('habitCard.longPress.markYesterday'), onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
-      ...(onNote ? [{ text: note ? t('habitCard.longPress.editNote') : t('habitCard.longPress.addNote'), onPress: () => onNote(habit, today) }] : []),
-      { text: t('common.cancel'), style: 'cancel' },
-    ]);
-  };
+  // An ActionSheet, not a system alert: Android alerts show at most 3 buttons (Cancel was dropped)
+  // and ignore back. The sheet plays the long-press haptic itself.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const handleLongPress = () => setMenuOpen(true);
+  const menuOptions = [
+    { label: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip'), onPress: () => toggleSkipHabitOn(habit.id, today) },
+    { label: yesterdayDone ? t('habitCard.longPress.undoYesterday') : t('habitCard.longPress.markYesterday'), onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
+    ...(onNote ? [{ label: note ? t('habitCard.longPress.editNote') : t('habitCard.longPress.addNote'), onPress: () => onNote(habit, today) }] : []),
+  ];
 
   // Tapping anywhere on the card:
   //   daily  → toggle done/undone
@@ -83,81 +84,90 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
       : () => { if (done) { onDecrement(1); announce(t('habitCard.announce.unchecked', { name: habit.name })); } else { onIncrement(1); announce(isQuit ? t('habitCard.announce.avoided', { name: habit.name }) : t('habitCard.announce.done', { name: habit.name })); } };
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.card,
-        { backgroundColor: theme.surface, borderColor: done ? accent : theme.border },
-        done && { backgroundColor: habit.color ? `${habit.color}1F` : theme.primaryLight },
-        overLimit && { borderColor: theme.danger, backgroundColor: `${theme.danger}14` },
-        skipped && { opacity: 0.6, borderStyle: 'dashed' },
-      ]}
-      onPress={handleCardPress}
-      onLongPress={handleLongPress}
-      delayLongPress={350}
-      activeOpacity={0.7}
-      accessibilityRole={isVolume ? 'button' : 'checkbox'}
-      accessibilityState={isVolume ? undefined : { checked: done }}
-      accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
-      accessibilityHint={t('habitCard.a11y.hint')}
-    >
-      {habit.color ? <View style={[styles.stripe, { backgroundColor: habit.color }]} /> : null}
-      <HabitIcon habit={habit} size={26} imageStyle={styles.iconImage} textStyle={styles.icon} />
+    <>
+      <TouchableOpacity
+        style={[
+          styles.card,
+          { backgroundColor: theme.surface, borderColor: done ? accent : theme.border },
+          done && { backgroundColor: habit.color ? `${habit.color}1F` : theme.primaryLight },
+          overLimit && { borderColor: theme.danger, backgroundColor: `${theme.danger}14` },
+          skipped && { opacity: 0.6, borderStyle: 'dashed' },
+        ]}
+        onPress={handleCardPress}
+        onLongPress={handleLongPress}
+        delayLongPress={350}
+        activeOpacity={0.7}
+        accessibilityRole={isVolume ? 'button' : 'checkbox'}
+        accessibilityState={isVolume ? undefined : { checked: done }}
+        accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
+        accessibilityHint={t('habitCard.a11y.hint')}
+      >
+        {habit.color ? <View style={[styles.stripe, { backgroundColor: habit.color }]} /> : null}
+        <HabitIcon habit={habit} size={26} imageStyle={styles.iconImage} textStyle={styles.icon} />
 
-      <View style={styles.info}>
-        <Text style={[styles.name, { color: theme.text }, done && { color: theme.textMuted }]}
-          numberOfLines={1}>
-          {habit.name}
-        </Text>
-        {subParts.length > 0 && (
-          <Text style={[styles.sub, { color: theme.textMuted }]}>{subParts.join(' · ')}</Text>
-        )}
-      </View>
-
-      {isVolume ? (
-        <View style={styles.counter}>
-          {/* − is the only way to subtract for volume habits */}
-          {isTimed && (
-            <TouchableOpacity
-              style={[styles.counterBtn, { borderColor: timerStart ? theme.danger : accent, backgroundColor: timerStart ? theme.danger : 'transparent' }]}
-              onPress={toggleTimer}
-              accessibilityRole="button"
-              accessibilityLabel={timerStart ? t('habitCard.a11y.stopTimer') : t('habitCard.a11y.startTimer')}
-            >
-              <Text style={[styles.counterBtnText, { color: timerStart ? '#fff' : accent, fontSize: 13 }]}>{timerStart ? '■' : '▶'}</Text>
-            </TouchableOpacity>
+        <View style={styles.info}>
+          <Text style={[styles.name, { color: theme.text }, done && { color: theme.textMuted }]}
+            numberOfLines={1}>
+            {habit.name}
+          </Text>
+          {subParts.length > 0 && (
+            <Text style={[styles.sub, { color: theme.textMuted }]}>{subParts.join(' · ')}</Text>
           )}
-          <TouchableOpacity
-            style={[styles.counterBtn, { borderColor: theme.border }]}
-            onPress={() => onDecrement(step)}
-            accessibilityRole="button"
-            accessibilityLabel={(step > 1 ? t('habitCard.a11y.removeMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.removeOne', { unit: unitLabel(habit) })).trim()}
-            accessibilityState={{ disabled: count <= 0 }}
-          >
-            <Text style={[styles.counterBtnText, { color: theme.textMuted }]}>−</Text>
-          </TouchableOpacity>
-
-          <Text style={[styles.counterNum, { color: overLimit ? theme.danger : done && !isLimit ? accent : theme.text }]}>{count}</Text>
-
-          <TouchableOpacity
-            style={[styles.counterBtn, done && !isLimit ? { borderColor: accent, backgroundColor: accent } : { borderColor: theme.border }]}
-            onPress={() => onIncrement(step)}
-            accessibilityRole="button"
-            accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
-          >
-            <Text style={[styles.counterBtnText, { color: done && !isLimit ? '#fff' : theme.textMuted }]}>+</Text>
-          </TouchableOpacity>
         </View>
-      ) : (
-        /* Daily habit: visual-only checkbox; the whole card handles the tap */
-        <View style={[
-          styles.checkbox,
-          { borderColor: done ? accent : theme.border },
-          done && { backgroundColor: accent },
-        ]}>
-          {done ? <Text style={styles.check}>{isQuit ? '🛡' : '✓'}</Text> : skipped ? <Text style={{ fontSize: 13 }}>💤</Text> : null}
-        </View>
-      )}
-    </TouchableOpacity>
+
+        {isVolume ? (
+          <View style={styles.counter}>
+            {/* − is the only way to subtract for volume habits */}
+            {isTimed && (
+              <TouchableOpacity
+                style={[styles.counterBtn, { borderColor: timerStart ? theme.danger : accent, backgroundColor: timerStart ? theme.danger : 'transparent' }]}
+                onPress={toggleTimer}
+                accessibilityRole="button"
+                accessibilityLabel={timerStart ? t('habitCard.a11y.stopTimer') : t('habitCard.a11y.startTimer')}
+              >
+                <Text style={[styles.counterBtnText, { color: timerStart ? '#fff' : accent, fontSize: 13 }]}>{timerStart ? '■' : '▶'}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.counterBtn, { borderColor: theme.border }]}
+              onPress={() => onDecrement(step)}
+              accessibilityRole="button"
+              accessibilityLabel={(step > 1 ? t('habitCard.a11y.removeMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.removeOne', { unit: unitLabel(habit) })).trim()}
+              accessibilityState={{ disabled: count <= 0 }}
+            >
+              <Text style={[styles.counterBtnText, { color: theme.textMuted }]}>−</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.counterNum, { color: overLimit ? theme.danger : done && !isLimit ? accent : theme.text }]}>{count}</Text>
+
+            <TouchableOpacity
+              style={[styles.counterBtn, done && !isLimit ? { borderColor: accent, backgroundColor: accent } : { borderColor: theme.border }]}
+              onPress={() => onIncrement(step)}
+              accessibilityRole="button"
+              accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
+            >
+              <Text style={[styles.counterBtnText, { color: done && !isLimit ? '#fff' : theme.textMuted }]}>+</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          /* Daily habit: visual-only checkbox; the whole card handles the tap */
+          <View style={[
+            styles.checkbox,
+            { borderColor: done ? accent : theme.border },
+            done && { backgroundColor: accent },
+          ]}>
+            {done ? <Text style={styles.check}>{isQuit ? '🛡' : '✓'}</Text> : skipped ? <Text style={{ fontSize: 13 }}>💤</Text> : null}
+          </View>
+        )}
+      </TouchableOpacity>
+      <ActionSheet
+        visible={menuOpen}
+        title={habit.name}
+        message={t('habitCard.longPress.body')}
+        options={menuOptions}
+        onCancel={() => setMenuOpen(false)}
+      />
+    </>
   );
 }
 

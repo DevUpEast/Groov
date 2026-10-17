@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, Animated, PanResponder,
+  View, Text, TouchableOpacity, Animated, PanResponder, BackHandler,
   Dimensions, Platform, StyleSheet, Easing, useColorScheme, ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -104,13 +104,25 @@ function AppNavigator() {
   const [activeIndex, setActiveIndex] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
   const isAnimating = useRef(false);
+  // Each slide gets an id; only the latest one may clear isAnimating, so an interrupted slide's
+  // late completion callback cannot unlock the pager while the next slide is still running.
+  const animId = useRef(0);
+  const onSlideEnd = () => {
+    const id = ++animId.current;
+    return () => { if (animId.current === id) isAnimating.current = false; };
+  };
   const activeIndexRef = useRef(0);
   const modalOpenRef = useRef(false);
 
   useEffect(() => { modalOpenRef.current = modalOpen; }, [modalOpen]);
 
   // ALL hooks must be declared before any conditional return
-  const goToTab = useCallback((newIndex) => {
+  // `interrupt` stops a running slide first instead of ignoring the request (Android back).
+  const goToTab = useCallback((newIndex, { interrupt = false } = {}) => {
+    if (interrupt && isAnimating.current && newIndex !== activeIndexRef.current) {
+      translateX.stopAnimation();
+      isAnimating.current = false;
+    }
     if (newIndex === activeIndexRef.current || isAnimating.current) return;
     if (newIndex < 0 || newIndex >= NUM_TABS) return;
     isAnimating.current = true;
@@ -121,7 +133,7 @@ function AppNavigator() {
       duration: SLIDE_DURATION,
       useNativeDriver: true,
       easing: Easing.out(Easing.quad),
-    }).start(() => { isAnimating.current = false; });
+    }).start(onSlideEnd());
   }, [translateX]);
 
   // Fresh onboarding always lands on Today, whatever tab was active before a reset.
@@ -140,6 +152,20 @@ function AppNavigator() {
       setRequestedTab(null);
     }
   }, [requestedTab, goToTab, setRequestedTab]);
+
+  // Android back (key or edge gesture): with no overlay open (every overlay is a Modal and handles
+  // back itself), a non-Today tab returns to Today; on Today the event falls through and the
+  // activity finishes, as Today is the start destination.
+  useEffect(() => {
+    if (!hasOnboarded) return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (activeIndexRef.current === 0) return false;
+      // Interrupt a running slide (e.g. back right after a tab tap) rather than swallow the press.
+      goToTab(0, { interrupt: true });
+      return true;
+    });
+    return () => sub.remove();
+  }, [hasOnboarded, goToTab]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -166,7 +192,7 @@ function AppNavigator() {
             duration: SLIDE_DURATION,
             useNativeDriver: true,
             easing: Easing.out(Easing.quad),
-          }).start(() => { isAnimating.current = false; });
+          }).start(onSlideEnd());
         } else if (gs.dx > threshold && cur > 0) {
           isAnimating.current = true;
           activeIndexRef.current = cur - 1;
@@ -176,14 +202,14 @@ function AppNavigator() {
             duration: SLIDE_DURATION,
             useNativeDriver: true,
             easing: Easing.out(Easing.quad),
-          }).start(() => { isAnimating.current = false; });
+          }).start(onSlideEnd());
         } else {
           Animated.spring(translateX, {
             toValue: -cur * SCREEN_WIDTH,
             useNativeDriver: true,
             tension: 100,
             friction: 12,
-          }).start(() => { isAnimating.current = false; });
+          }).start(onSlideEnd());
         }
       },
       onPanResponderTerminate: () => {
@@ -193,7 +219,7 @@ function AppNavigator() {
           useNativeDriver: true,
           tension: 100,
           friction: 12,
-        }).start(() => { isAnimating.current = false; });
+        }).start(onSlideEnd());
       },
     })
   ).current;
@@ -240,6 +266,12 @@ function AppNavigator() {
             key={i}
             style={styles.screenSlot}
             pointerEvents={activeIndex === i ? 'auto' : 'none'}
+            // Off-screen tabs stay mounted; hide them from TalkBack (importantForAccessibility),
+            // VoiceOver (accessibilityElementsHidden) and web screen readers (aria-hidden;
+            // react-native-web ignores the other two).
+            importantForAccessibility={activeIndex === i ? 'auto' : 'no-hide-descendants'}
+            accessibilityElementsHidden={activeIndex !== i}
+            aria-hidden={activeIndex !== i}
           >
             <Screen />
           </View>
