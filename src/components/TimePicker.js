@@ -160,7 +160,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: theme.surface }]}>
           <Text style={[styles.title, { color: theme.text }]}>{t('timePicker.title')}</Text>

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, Animated, PanResponder,
+  View, Text, TouchableOpacity, Animated, PanResponder, BackHandler,
   Dimensions, Platform, StyleSheet, Easing, useColorScheme, ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -141,6 +141,19 @@ function AppNavigator() {
     }
   }, [requestedTab, goToTab, setRequestedTab]);
 
+  // Android back (key or edge gesture): with no overlay open (every overlay is a Modal and handles
+  // back itself), a non-Today tab returns to Today; on Today the event falls through and the
+  // activity finishes, as Today is the start destination.
+  useEffect(() => {
+    if (!hasOnboarded) return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (activeIndexRef.current === 0) return false;
+      goToTab(0);
+      return true;
+    });
+    return () => sub.remove();
+  }, [hasOnboarded, goToTab]);
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gs) =>
@@ -240,6 +253,12 @@ function AppNavigator() {
             key={i}
             style={styles.screenSlot}
             pointerEvents={activeIndex === i ? 'auto' : 'none'}
+            // Off-screen tabs stay mounted; hide them from TalkBack (importantForAccessibility),
+            // VoiceOver (accessibilityElementsHidden) and web screen readers (aria-hidden;
+            // react-native-web ignores the other two).
+            importantForAccessibility={activeIndex === i ? 'auto' : 'no-hide-descendants'}
+            accessibilityElementsHidden={activeIndex !== i}
+            aria-hidden={activeIndex !== i}
           >
             <Screen />
           </View>

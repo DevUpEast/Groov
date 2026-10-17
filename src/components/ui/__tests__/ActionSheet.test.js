@@ -1,0 +1,151 @@
+// Render tests for the shared ActionSheet (S-03), plus source checks for the Android back wiring.
+const fs = require('fs');
+const path = require('path');
+const React = require('react');
+const TestRenderer = require('react-test-renderer');
+const { act } = TestRenderer;
+const { Modal, Platform, View, ActionSheetIOS } = require('react-native');
+
+jest.mock('../../../context/AppContext', () => {
+  const { themes } = jest.requireActual('../../../theme/colors');
+  return { useApp: () => ({ theme: themes.light }) };
+});
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+jest.mock('../../../utils/haptics', () => ({ lightImpact: jest.fn() }));
+
+const ActionSheet = require('../ActionSheet').default;
+const { lightImpact } = require('../../../utils/haptics');
+
+global.IS_REACT_ACT_ENVIRONMENT = true;
+
+const originalOS = Platform.OS;
+afterEach(() => {
+  Platform.OS = originalOS;
+  jest.clearAllMocks();
+  jest.restoreAllMocks();
+});
+
+function render(props) {
+  let renderer;
+  act(() => { renderer = TestRenderer.create(React.createElement(ActionSheet, props)); });
+  return renderer;
+}
+const modalOf = (r) => r.root.findAll(n => n.type === Modal)[0];
+const buttons = (r) => r.root.findAll(
+  n => n.props.accessibilityRole === 'button' && typeof n.props.onPress === 'function' && typeof n.type !== 'string',
+);
+const labels = (r) => [...new Set(buttons(r).map(b => b.props.accessibilityLabel))];
+
+const makeOptions = () => [
+  { label: 'Skip today', onPress: jest.fn() },
+  { label: 'Mark done yesterday', onPress: jest.fn() },
+  { label: 'Add a note', onPress: jest.fn() },
+];
+
+describe('ActionSheet (Android)', () => {
+  beforeEach(() => { Platform.OS = 'android'; });
+
+  it('lists every option plus a Cancel row, under a header title', () => {
+    const r = render({ visible: true, title: 'Read', message: 'Pick', options: makeOptions(), onCancel: jest.fn() });
+    expect(labels(r)).toEqual(['Skip today', 'Mark done yesterday', 'Add a note', 'Cancel']);
+    const header = r.root.findAll(n => n.props.accessibilityRole === 'header')[0];
+    expect(header.props.children).toBe('Read');
+    expect(r.root.findAll(n => n.type === View && n.props.accessibilityViewIsModal).length).toBe(1);
+  });
+
+  it('closes on back (onRequestClose), scrim, Cancel and the escape gesture', () => {
+    const onCancel = jest.fn();
+    const r = render({ visible: true, title: 'T', options: makeOptions(), onCancel });
+    act(() => { modalOf(r).props.onRequestClose(); });
+    act(() => { r.root.findByProps({ testID: 'actionsheet-scrim' }).props.onPress(); });
+    act(() => { buttons(r).find(b => b.props.accessibilityLabel === 'Cancel').props.onPress(); });
+    const panel = r.root.findAll(n => n.type === View && n.props.accessibilityViewIsModal)[0];
+    act(() => { panel.props.onAccessibilityEscape(); });
+    expect(onCancel).toHaveBeenCalledTimes(4);
+  });
+
+  it('closes, then runs the chosen option only', () => {
+    const order = [];
+    const options = makeOptions();
+    options[1].onPress.mockImplementation(() => order.push('option'));
+    const onCancel = jest.fn(() => order.push('close'));
+    const r = render({ visible: true, title: 'T', options, onCancel });
+    act(() => { buttons(r).find(b => b.props.accessibilityLabel === 'Mark done yesterday').props.onPress(); });
+    expect(order).toEqual(['close', 'option']);
+    expect(options[0].onPress).not.toHaveBeenCalled();
+    expect(options[2].onPress).not.toHaveBeenCalled();
+  });
+
+  it('plays the haptic when it opens, not while hidden', () => {
+    const r = render({ visible: false, title: 'T', options: makeOptions(), onCancel: jest.fn() });
+    expect(lightImpact).not.toHaveBeenCalled();
+    act(() => { r.update(React.createElement(ActionSheet, { visible: true, title: 'T', options: makeOptions(), onCancel: jest.fn() })); });
+    expect(lightImpact).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ActionSheet (iOS)', () => {
+  it('uses the native sheet with Cancel as cancelButtonIndex and routes the choice', () => {
+    Platform.OS = 'ios';
+    const show = jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(() => {});
+    const options = makeOptions();
+    const onCancel = jest.fn();
+    const r = render({ visible: true, title: 'T', message: 'M', options, onCancel });
+    expect(modalOf(r)).toBeUndefined();
+    expect(show).toHaveBeenCalledTimes(1);
+    const [config, callback] = show.mock.calls[0];
+    expect(config.options).toEqual(['Skip today', 'Mark done yesterday', 'Add a note', 'Cancel']);
+    expect(config.cancelButtonIndex).toBe(3);
+    act(() => { callback(2); });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(options[2].onPress).toHaveBeenCalledTimes(1);
+    act(() => { callback(3); });
+    expect(onCancel).toHaveBeenCalledTimes(2);
+    expect(options[0].onPress).not.toHaveBeenCalled();
+  });
+});
+
+describe('Android back wiring (source checks)', () => {
+  const root = path.join(__dirname, '..', '..', '..', '..');
+  const app = fs.readFileSync(path.join(root, 'App.js'), 'utf8');
+  const card = fs.readFileSync(path.join(root, 'src', 'components', 'HabitCard.js'), 'utf8');
+  const picker = fs.readFileSync(path.join(root, 'src', 'components', 'TimePicker.js'), 'utf8');
+
+  it('App returns to Today on back from another tab and lets Today exit', () => {
+    expect(app).toMatch(/BackHandler\.addEventListener\('hardwareBackPress'/);
+    expect(app).toMatch(/if \(activeIndexRef\.current === 0\) return false;\s*goToTab\(0\);\s*return true;/);
+  });
+
+  it('hides inactive tab slots from TalkBack and VoiceOver', () => {
+    expect(app).toMatch(/importantForAccessibility=\{activeIndex === i \? 'auto' : 'no-hide-descendants'\}/);
+    expect(app).toMatch(/accessibilityElementsHidden=\{activeIndex !== i\}/);
+    expect(app).toMatch(/aria-hidden=\{activeIndex !== i\}/);
+  });
+
+  it('HabitCard uses the ActionSheet instead of a multi-button Alert', () => {
+    expect(card).not.toMatch(/Alert\.alert/);
+    expect(card).toMatch(/<ActionSheet\b/);
+  });
+
+  it('every Modal in the app handles back via onRequestClose (TimePicker included)', () => {
+    const files = [];
+    const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).forEach((e) => {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { if (e.name !== '__tests__') walk(p); } else if (p.endsWith('.js')) files.push(p);
+    });
+    walk(path.join(root, 'src'));
+    files.push(path.join(root, 'App.js'));
+    const missing = [];
+    files.forEach((f) => {
+      const src = fs.readFileSync(f, 'utf8');
+      // Each opening tag runs up to the first '>' that ends a line (an arrow '=>' never does here).
+      (src.match(/<Modal\b[\s\S]*?>\s*\n/g) || []).forEach((tag) => {
+        if (!/onRequestClose=/.test(tag)) missing.push(path.relative(root, f));
+      });
+    });
+    expect(missing).toEqual([]);
+    expect(picker).toMatch(/<Modal[^>]*onRequestClose=\{onClose\}/);
+  });
+});
