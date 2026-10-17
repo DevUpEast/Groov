@@ -10,34 +10,63 @@ import { useApp } from '../../context/AppContext';
  * so the app's BackHandler never sees it).
  *
  * Props:
- * - `visible`, `onClose` (back, scrim tap)
+ * - `visible`, `onClose` (back, scrim tap, VoiceOver escape)
+ * - `onDismiss`: runs once the dialog has fully gone. Show any follow-up `Alert` here, never in the
+ *   same tick as closing (iOS cannot present an alert over a Modal that is still dismissing). iOS and
+ *   web use the Modal's own `onDismiss`; Android has none, so it runs after `visible` turns false.
  * - `title` (announced as a header), `body` (secondary text under the title)
  * - `actions`: [{ label, onPress, variant: 'secondary' | 'primary', disabled, loading, loadingLabel,
  *   accessibilityLabel }]. Rendered in order, so put Cancel first (leading/left).
- * - `dismissable` (default true): false ignores back and scrim taps, e.g. while saving.
+ * - `dismissable` (default true): false ignores back, scrim taps and the escape gesture, e.g. while
+ *   saving.
  * - `destructive`: the primary action is drawn in the danger colour. A destructive action is never
  *   the default: do not wire it to `onSubmitEditing`.
  * - `initialFocusRef`: a ref to focus once the dialog is shown. Use it instead of `autoFocus`, which
- *   fires before an Android Modal window has focus and leaves the keyboard closed.
+ *   fires before an Android Modal window has focus and leaves the keyboard closed. On Android the
+ *   focus lands 150 ms after `onShow`, with one retry at 300 ms if the field is still not focused.
  * - `children`: extra content between the body and the actions (inputs, option lists). It scrolls
  *   when the keyboard leaves too little room, so the actions stay visible.
  */
+const FOCUS_DELAY_MS = 150;
+const FOCUS_RETRY_MS = 300;
+
 export default function Dialog({
-  visible, onClose, title, body, actions = [], dismissable = true, destructive = false, initialFocusRef, children,
+  visible, onClose, onDismiss, title, body, actions = [], dismissable = true, destructive = false,
+  initialFocusRef, children,
 }) {
   const { theme } = useApp();
   const requestClose = () => { if (dismissable) onClose?.(); };
 
   // Android shows the Modal window before it takes input focus; focusing in the same tick is a
-  // no-op, so wait briefly after onShow.
+  // no-op, so wait briefly after onShow and retry once if focus did not land (slow devices).
   const focusTimer = useRef(null);
   const handleShow = () => {
     if (!initialFocusRef) return;
     clearTimeout(focusTimer.current);
-    focusTimer.current = setTimeout(() => initialFocusRef.current?.focus(), Platform.OS === 'android' ? 150 : 0);
+    if (Platform.OS !== 'android') {
+      focusTimer.current = setTimeout(() => initialFocusRef.current?.focus(), 0);
+      return;
+    }
+    focusTimer.current = setTimeout(() => {
+      initialFocusRef.current?.focus();
+      focusTimer.current = setTimeout(() => {
+        const field = initialFocusRef.current;
+        if (field && field.isFocused && !field.isFocused()) field.focus();
+      }, FOCUS_RETRY_MS - FOCUS_DELAY_MS);
+    }, FOCUS_DELAY_MS);
   };
   useEffect(() => () => clearTimeout(focusTimer.current), []);
-  useEffect(() => { if (!visible) clearTimeout(focusTimer.current); }, [visible]);
+
+  // onDismiss: Android's Modal has no onDismiss, so fire it once visible turns false.
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+  const wasVisible = useRef(!!visible);
+  useEffect(() => {
+    if (!visible) clearTimeout(focusTimer.current);
+    if (wasVisible.current && !visible && Platform.OS === 'android') onDismissRef.current?.();
+    wasVisible.current = !!visible;
+  }, [visible]);
+  const handleModalDismiss = Platform.OS === 'android' ? undefined : () => onDismissRef.current?.();
 
   return (
     <Modal
@@ -48,12 +77,14 @@ export default function Dialog({
       navigationBarTranslucent
       onRequestClose={requestClose}
       onShow={handleShow}
+      onDismiss={handleModalDismiss}
     >
       {/* The scrim sits outside the KeyboardAvoidingView so it keeps covering the whole window
           (tab bar included) while the keyboard shrinks the area the card is centred in. */}
       <Pressable
         style={[StyleSheet.absoluteFill, { backgroundColor: theme.scrim }]}
         onPress={requestClose}
+        testID="dialog-scrim"
         accessible={false}
         importantForAccessibility="no"
       />
@@ -65,6 +96,7 @@ export default function Dialog({
         <View
           style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
           accessibilityViewIsModal
+          onAccessibilityEscape={requestClose}
         >
           <ScrollView
             style={styles.scroll}

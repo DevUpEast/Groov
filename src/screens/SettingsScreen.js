@@ -331,6 +331,14 @@ export default function SettingsScreen() {
     );
   };
 
+  // An Alert to show after a Dialog closes; flushed from the Dialog's onDismiss.
+  const afterDialogAlert = useRef(null);
+  const flushAfterDialogAlert = () => {
+    const pending = afterDialogAlert.current;
+    afterDialogAlert.current = null;
+    if (pending) Alert.alert(...pending);
+  };
+
   const handleVerifyReset = async () => {
     if (!resetCode.trim()) { setResetError(t('settings.resetModal.errors.enterCode')); return; }
     if (!resetNewPassword) { setResetError(t('settings.resetModal.errors.enterPassword')); return; }
@@ -340,8 +348,9 @@ export default function SettingsScreen() {
     setResetError('');
     try {
       await verifyPasswordReset(user?.email ?? '', resetCode, resetNewPassword);
+      // Shown from the Dialog's onDismiss, once the dialog has gone (iOS cannot present over it).
+      afterDialogAlert.current = [t('settings.resetModal.success.title'), t('settings.resetModal.success.body')];
       setResetStep(null);
-      Alert.alert(t('settings.resetModal.success.title'), t('settings.resetModal.success.body'));
     } catch (e) {
       setResetError(e.message || t('settings.resetModal.errors.invalidCode'));
     } finally {
@@ -399,10 +408,10 @@ export default function SettingsScreen() {
   const handleDevCodeSubmit = async () => {
     if (devCodeDraft === DEV_CODE) {
       setDevMode(true);
+      afterDialogAlert.current = [t('settings.dev.unlocked.title'), t('settings.dev.unlocked.body')];
       setShowDevInput(false);
       setDevCodeDraft('');
       lightImpact();
-      Alert.alert(t('settings.dev.unlocked.title'), t('settings.dev.unlocked.body'));
     } else {
       Alert.alert(t('settings.dev.invalid.title'), t('settings.dev.invalid.body'));
       setDevCodeDraft('');
@@ -987,6 +996,7 @@ export default function SettingsScreen() {
       {/* Password Reset dialog */}
       <Dialog
         visible={resetStep === 'verify'}
+        onDismiss={flushAfterDialogAlert}
         onClose={() => { setResetStep(null); setResetError(''); }}
         dismissable={!resetLoading}
         title={t('settings.resetModal.title')}
@@ -1059,6 +1069,7 @@ export default function SettingsScreen() {
       {/* Dev code entry dialog */}
       <Dialog
         visible={showDevInput}
+        onDismiss={flushAfterDialogAlert}
         onClose={() => { setShowDevInput(false); setDevCodeDraft(''); }}
         title={t('settings.dev.access.title')}
         body={t('settings.dev.access.body')}
