@@ -121,3 +121,28 @@ describe('countAfterIncrement', () => {
     expect(isGoalMet({ type: 'volume', volumeGoal: 8 }, countAfterIncrement({ type: 'volume' }, 7))).toBe(true);
   });
 });
+
+describe('markRestLeavesOutCounters (Today caption, M0-polish m2)', () => {
+  const { markRestLeavesOutCounters } = require('../habits');
+  const daily = { id: 'd', type: 'daily' };
+  const water = { id: 'w', type: 'volume', volumeGoal: 8 };
+  const stretch = { id: 's', type: 'timed', volumeGoal: 20 };
+  const limit = { id: 'l', type: 'atMost', volumeGoal: 2 };
+  const none = () => false;
+
+  it('is true when an unfinished counter, timer or limit is due', () => {
+    expect(markRestLeavesOutCounters([daily, water], [], none)).toBe(true);
+    expect(markRestLeavesOutCounters([daily, stretch], [], none)).toBe(true);
+    expect(markRestLeavesOutCounters([daily, limit], [], none)).toBe(true);
+  });
+
+  it('is false when only check-off habits are due, even if some are skipped', () => {
+    expect(markRestLeavesOutCounters([daily, { id: 'd2', type: 'daily' }, { id: 'q', type: 'quit' }], ['d2'], none)).toBe(false);
+    expect(markRestLeavesOutCounters([{ id: 'x' }], [], none)).toBe(false);
+  });
+
+  it('ignores finished or skipped counters', () => {
+    expect(markRestLeavesOutCounters([daily, water], [], (h) => h.id === 'w')).toBe(false);
+    expect(markRestLeavesOutCounters([daily, water], ['w'], none)).toBe(false);
+  });
+});

@@ -27,7 +27,7 @@ export const themes = {
     toastAction: '#A5B4FC',
     toastEdge: '#1E293B',
     // Secondary text on the indigo onboarding background (plan §2.5 onActionSecondary).
-    onBrandSecondary: '#E0E7FF',
+    onActionSecondary: '#E0E7FF',
   },
   dark: {
     bg: '#0F172A',
@@ -56,6 +56,6 @@ export const themes = {
     toastAction: '#A5B4FC',
     toastEdge: '#475569',
     // Dark onboarding sits on #818CF8, where white fails (2.98:1); ink passes (plan §2.5 dark onAction).
-    onBrandSecondary: '#0F172A',
+    onActionSecondary: '#0F172A',
   },
 };

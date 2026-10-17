@@ -17,7 +17,7 @@ import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import UndoToast from '../components/UndoToast';
 import NoteModal from '../components/NoteModal';
 import MoodCheckIn from '../components/MoodCheckIn';
-import { isGoalMet, usesCounter, countAfterIncrement } from '../utils/habits';
+import { isGoalMet, usesCounter, countAfterIncrement, markRestLeavesOutCounters } from '../utils/habits';
 import { successNotification, mediumImpact } from '../utils/haptics';
 import { playChime, playSuccessChime, playChallengeChime, playHornFanfare } from '../utils/sounds';
 import { fetchDailyNudge } from '../services/aiCoaching';
@@ -322,7 +322,8 @@ export default function TodayScreen() {
 
   // Untouched daily/quit habits the button would mark ("Mark the rest done (N)").
   const markRestCount = planMarkRest().changedIds.length;
-  const markRestPartial = markRestCount > 0 && markRestCount < total - completed;
+  const markRestPartial = markRestCount > 0
+    && markRestLeavesOutCounters(dueHabits, settings.skips?.[today] || [], isHabitSatisfied);
 
   const handleMarkRest = useCallback(async () => {
     const id = Date.now();
@@ -500,12 +501,11 @@ export default function TodayScreen() {
                   onPress={handleMarkRest}
                   style={styles.markRestBtn}
                   accessibilityRole="button"
-                  accessibilityHint={markRestPartial ? t('today.markRestNote') : undefined}
                 >
                   <Text style={[styles.markRestText, { color: theme.primary }]}>
                     {t('today.markRest', { count: markRestCount })}
                   </Text>
-                  {/* Counters, timers and limits are never bulk-marked, so say why the count is lower than "N remaining". */}
+                  {/* Counters, timers and limits are never bulk-marked, so say why the count is lower than "N remaining". It sits inside the button, so screen readers read it with the label. */}
                   {markRestPartial && (
                     <Text style={[styles.markRestNote, { color: theme.textMuted }]}>{t('today.markRestNote')}</Text>
                   )}
