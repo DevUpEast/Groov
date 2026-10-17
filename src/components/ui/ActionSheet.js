@@ -19,6 +19,7 @@ import { t, useLocale } from '../../i18n';
  * Props:
  * - `visible`, `title`, `message` (optional secondary line)
  * - `options`: [{ label, onPress, destructive? }]
+ * - Each open runs at most one option, however fast the taps.
  * - `onCancel`: hides the sheet. Called on Cancel, back and scrim, and also right before an
  *   option's `onPress`, so the caller only keeps one piece of state.
  */
@@ -32,8 +33,13 @@ export default function ActionSheet({ visible, title, message, options = [], onC
   const latest = useRef({ options, onCancel });
   latest.current = { options, onCancel };
 
+  // At most one option runs per open: a second tap landing during the fade-out would otherwise
+  // run a toggle twice (undoing it). Re-armed each time the sheet opens.
+  const fired = useRef(false);
+
   useEffect(() => {
     if (!visible) return;
+    fired.current = false;
     lightImpact();
     if (!native) return;
     const opts = latest.current.options;
@@ -50,6 +56,8 @@ export default function ActionSheet({ visible, title, message, options = [], onC
       },
       (index) => {
         const { options: cur, onCancel: cancel } = latest.current;
+        if (fired.current) return;
+        fired.current = true;
         cancel?.();
         if (index < cur.length) cur[index]?.onPress?.();
       },
@@ -59,6 +67,8 @@ export default function ActionSheet({ visible, title, message, options = [], onC
   if (native) return null;
 
   const choose = (option) => {
+    if (fired.current) return;
+    fired.current = true;
     onCancel?.();
     option.onPress?.();
   };

@@ -4,7 +4,7 @@ const path = require('path');
 const React = require('react');
 const TestRenderer = require('react-test-renderer');
 const { act } = TestRenderer;
-const { Modal, Platform, View, ActionSheetIOS } = require('react-native');
+const { Modal, Platform, View, Text, StyleSheet, ActionSheetIOS } = require('react-native');
 
 jest.mock('../../../context/AppContext', () => {
   const { themes } = jest.requireActual('../../../theme/colors');
@@ -78,6 +78,34 @@ describe('ActionSheet (Android)', () => {
     expect(options[2].onPress).not.toHaveBeenCalled();
   });
 
+  it('draws a destructive option in the danger colour, still a named button', () => {
+    const { themes } = jest.requireActual('../../../theme/colors');
+    const options = [...makeOptions(), { label: 'Delete', onPress: jest.fn(), destructive: true }];
+    const r = render({ visible: true, title: 'T', options, onCancel: jest.fn() });
+    const row = buttons(r).find(b => b.props.accessibilityLabel === 'Delete');
+    expect(row.props.accessibilityRole).toBe('button');
+    const color = (n) => StyleSheet.flatten(n.props.style).color;
+    expect(color(row.findAll(n => n.type === Text)[0])).toBe(themes.light.danger);
+    const plain = buttons(r).find(b => b.props.accessibilityLabel === 'Skip today');
+    expect(color(plain.findAll(n => n.type === Text)[0])).toBe(themes.light.text);
+  });
+
+  it('runs an option at most once per open, and re-arms when reopened', () => {
+    const options = makeOptions();
+    const props = { title: 'T', options, onCancel: jest.fn() };
+    const r = render({ ...props, visible: true });
+    const press = (label) => act(() => { buttons(r).find(b => b.props.accessibilityLabel === label).props.onPress(); });
+    press('Skip today');
+    press('Skip today');
+    press('Add a note');
+    expect(options[0].onPress).toHaveBeenCalledTimes(1);
+    expect(options[2].onPress).not.toHaveBeenCalled();
+    act(() => { r.update(React.createElement(ActionSheet, { ...props, visible: false })); });
+    act(() => { r.update(React.createElement(ActionSheet, { ...props, visible: true })); });
+    press('Skip today');
+    expect(options[0].onPress).toHaveBeenCalledTimes(2);
+  });
+
   it('plays the haptic when it opens, not while hidden', () => {
     const r = render({ visible: false, title: 'T', options: makeOptions(), onCancel: jest.fn() });
     expect(lightImpact).not.toHaveBeenCalled();
@@ -101,9 +129,35 @@ describe('ActionSheet (iOS)', () => {
     act(() => { callback(2); });
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(options[2].onPress).toHaveBeenCalledTimes(1);
-    act(() => { callback(3); });
+    // A fresh open: the Cancel index only hides the sheet.
+    const r2 = render({ visible: true, title: 'T', options, onCancel });
+    const cancelCallback = show.mock.calls[1][1];
+    act(() => { cancelCallback(3); });
     expect(onCancel).toHaveBeenCalledTimes(2);
     expect(options[0].onPress).not.toHaveBeenCalled();
+    r2.unmount();
+  });
+});
+
+describe('ActionSheet (iOS) destructive and repeat callbacks', () => {
+  it('passes destructiveButtonIndex and ignores a second callback', () => {
+    Platform.OS = 'ios';
+    const show = jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(() => {});
+    const options = [makeOptions()[0], { label: 'Delete', onPress: jest.fn(), destructive: true }];
+    render({ visible: true, title: 'T', options, onCancel: jest.fn() });
+    const [config, callback] = show.mock.calls[0];
+    expect(config.destructiveButtonIndex).toEqual([1]);
+    expect(config.cancelButtonIndex).toBe(2);
+    act(() => { callback(1); });
+    act(() => { callback(1); });
+    expect(options[1].onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits destructiveButtonIndex when no option is destructive', () => {
+    Platform.OS = 'ios';
+    const show = jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation(() => {});
+    render({ visible: true, title: 'T', options: makeOptions(), onCancel: jest.fn() });
+    expect(show.mock.calls[0][0].destructiveButtonIndex).toBeUndefined();
   });
 });
 
@@ -115,7 +169,9 @@ describe('Android back wiring (source checks)', () => {
 
   it('App returns to Today on back from another tab and lets Today exit', () => {
     expect(app).toMatch(/BackHandler\.addEventListener\('hardwareBackPress'/);
-    expect(app).toMatch(/if \(activeIndexRef\.current === 0\) return false;\s*goToTab\(0\);\s*return true;/);
+    expect(app).toMatch(/if \(activeIndexRef\.current === 0\) return false;[\s\S]{0,200}?goToTab\(0, \{ interrupt: true \}\);\s*return true;/);
+    // A running slide is stopped rather than the press swallowed.
+    expect(app).toMatch(/if \(interrupt && isAnimating\.current[^)]*\) \{\s*translateX\.stopAnimation\(\);\s*isAnimating\.current = false;/);
   });
 
   it('hides inactive tab slots from TalkBack and VoiceOver', () => {
@@ -138,13 +194,17 @@ describe('Android back wiring (source checks)', () => {
     walk(path.join(root, 'src'));
     files.push(path.join(root, 'App.js'));
     const missing = [];
+    let tagCount = 0;
     files.forEach((f) => {
       const src = fs.readFileSync(f, 'utf8');
       // Each opening tag runs up to the first '>' that ends a line (an arrow '=>' never does here).
       (src.match(/<Modal\b[\s\S]*?>\s*\n/g) || []).forEach((tag) => {
+        tagCount += 1;
         if (!/onRequestClose=/.test(tag)) missing.push(path.relative(root, f));
       });
     });
+    // 13 Modals today; a broken regex or path must not pass by matching nothing.
+    expect(tagCount).toBeGreaterThanOrEqual(13);
     expect(missing).toEqual([]);
     expect(picker).toMatch(/<Modal[^>]*onRequestClose=\{onClose\}/);
   });
