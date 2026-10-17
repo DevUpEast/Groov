@@ -17,6 +17,7 @@
 //   [data-card]            a habit card; "above the fold" = fully between the strip bottom and the tab bar
 //   [data-tabbar] [data-tab]  the tab bar and its tabs; each tab must hold exactly one icon glyph
 //                          (one .ion element, no border/outline box around it)
+//   clipped                lists any text that overflows its own clipped box (truncated labels, names, lines)
 import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -79,6 +80,10 @@ try {
         tabs: tabs.length,
         oneGlyphPerTab: tabs.length > 0 && tabs.every(t => t.glyphs === 1 && !t.boxed),
         tabIconPx: tabs[0]?.size ?? null,
+        tabLabelPx: (() => { const l = ph.querySelector('[data-tab] .lbl'); return l ? parseFloat(getComputedStyle(l).fontSize) : null; })(),
+        // Text that is cut off: any leaf element in the phone whose content overflows its own clipped box.
+        clipped: [...ph.querySelectorAll('*')].filter(e => e.children.length === 0 && !e.classList.contains('ion') && e.textContent.trim()
+          && e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== 'visible').map(e => e.textContent.trim()),
         iconFontLoaded: document.fonts.check('24px Ion'),
       };
     }));
