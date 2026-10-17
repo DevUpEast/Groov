@@ -155,6 +155,7 @@
     },
     "sectionHabits": "HÁBITOS DE HOY",
     "markRest": "Marcar el resto como hecho (%{count})",
+    "markRestNote": "Los contadores y temporizadores no cambian",
     "activeChallenges": "RETOS ACTIVOS",
     "challenge": {
       "sub": "Día %{day} de %{days} · %{count} registrados",

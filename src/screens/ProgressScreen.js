@@ -675,7 +675,7 @@ export default function ProgressScreen() {
         onClose={() => setStreakRuleOpen(false)}
         title={t('progress.streakRule.title')}
         body={t('progress.streakRule.body')}
-        actions={[{ key: 'close', label: t('common.close'), variant: 'primary', onPress: () => setStreakRuleOpen(false) }]}
+        actions={[{ key: 'close', label: t('common.close'), onPress: () => setStreakRuleOpen(false) }]}
       />
 
       {/* Day detail sheet */}

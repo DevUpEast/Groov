@@ -155,6 +155,7 @@
     },
     "sectionHabits": "HÁBITOS DE HOJE",
     "markRest": "Marcar o resto como concluído (%{count})",
+    "markRestNote": "Contadores e timers continuam como estão",
     "activeChallenges": "DESAFIOS ATIVOS",
     "challenge": {
       "sub": "Dia %{day} de %{days} · %{count} registrados",

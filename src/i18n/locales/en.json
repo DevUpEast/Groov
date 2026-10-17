@@ -155,6 +155,7 @@
     },
     "sectionHabits": "TODAY'S HABITS",
     "markRest": "Mark the rest done (%{count})",
+    "markRestNote": "Counters and timers stay as they are",
     "activeChallenges": "ACTIVE CHALLENGES",
     "challenge": {
       "sub": "Day %{day} of %{days} · %{count} logged",

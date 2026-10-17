@@ -78,6 +78,8 @@ function Row({ label, sublabel, sublabelColor, right, theme, onPress }) {
 // for permission through `onAllow` (resolves true when granted).
 function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn, permitted = true, onAllow, time, onToggle, onTime, onRemove, editing, labelDraft, onLabelDraft, onLabelSave, onStartEdit }) {
   const blocked = masterOn && enabled && !permitted;
+  // The time chip follows the switch: dimmed and inert while off, master-off or denied.
+  const timeActive = masterOn && enabled && permitted;
   const toggle = async () => {
     if (!masterOn) return;
     if (!permitted) {
@@ -138,11 +140,11 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
       </View>
       <View style={styles.reminderActionsRow}>
         <TouchableOpacity
-          style={[styles.timeBtn, { borderColor: theme.border, opacity: masterOn && enabled ? 1 : 0.4 }]}
-          onPress={() => masterOn && enabled && onTime()}
+          style={[styles.timeBtn, { borderColor: theme.border, opacity: timeActive ? 1 : 0.4 }]}
+          onPress={() => timeActive && onTime()}
           accessibilityRole="button"
           accessibilityLabel={t('settings.changeTimeA11y', { time: formatTime(time) })}
-          accessibilityState={{ disabled: !(masterOn && enabled) }}
+          accessibilityState={{ disabled: !timeActive }}
         >
           <Text style={[styles.timeBtnText, { color: theme.primary }]}>{formatTime(time)}</Text>
         </TouchableOpacity>

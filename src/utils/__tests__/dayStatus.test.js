@@ -215,3 +215,39 @@ describe('undated habits cannot run the walk to its cap (S-08 review m1)', () =>
     expect(earliestCreatedAt(stamped)).toBe(d(9));
   });
 });
+
+// M0-polish F11: the per-habit streak (AppContext.getStreakForHabit) walks habitStreak
+// with isHabitDoneOnDay(...) === true, so a day before createdAt is never "done", and a
+// freeze or skip there is a rest day (no increment). Nothing before createdAt can count.
+describe('per-habit streak never counts days before createdAt (F11)', () => {
+  const { habitStreak, bestHabitStreak } = require('../schedule');
+  const streakFor = (habit, completions, excusedKeys = []) => habitStreak(
+    habit.schedule, TODAY, TODAY,
+    (k) => isHabitDoneOnDay(habit, k, completions) === true,
+    { isExcused: (k) => excusedKeys.includes(k) },
+  );
+
+  it('a habit created today, freezes and a stray log before it, today pending: 0', () => {
+    const h = { id: 'w', type: 'volume', volumeGoal: 8, schedule: { type: 'daily' }, createdAt: TODAY };
+    const completions = { [d(3)]: { w: 8 } };
+    expect(streakFor(h, completions, [d(1), d(2)])).toBe(0);
+    expect(bestHabitStreak(h.schedule, TODAY, TODAY, TODAY, (k) => isHabitDoneOnDay(h, k, completions) === true)).toBe(0);
+  });
+
+  it('an untouched atMost habit is not "done" before createdAt', () => {
+    const h = { id: 'a', type: 'atMost', volumeGoal: 2, schedule: { type: 'daily' }, createdAt: d(2) };
+    // d(2), d(1) and today are untouched (within the limit): 3, not a walk back to the cap.
+    expect(streakFor(h, {}, [])).toBe(3);
+  });
+
+  it('done on its first day, then two frozen days, today pending: 1 (rest days hold, never add)', () => {
+    const h = { id: 'w', type: 'volume', volumeGoal: 8, schedule: { type: 'daily' }, createdAt: d(3) };
+    const completions = { [d(3)]: { w: 8 } };
+    expect(streakFor(h, completions, [d(1), d(2), d(4), d(5)])).toBe(1);
+  });
+
+  it('a perWeek habit created mid-week gets no credit for the days before it existed', () => {
+    const h = { id: 'p', type: 'daily', schedule: { type: 'perWeek', target: 2 }, createdAt: TODAY };
+    expect(streakFor(h, {}, [d(1), d(2), d(8)])).toBe(0);
+  });
+});

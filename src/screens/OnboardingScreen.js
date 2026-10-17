@@ -122,7 +122,7 @@ function OnboardingFlow() {
             <Text style={[styles.btnText, { color: theme.primary }]}>{t('common.next')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => finish(false)} style={styles.skipBtn} accessibilityRole="button" accessibilityLabel={t('onboarding.skipA11y')}>
-            <Text style={styles.skipText}>{t('common.skip')}</Text>
+            <Text style={[styles.skipText, { color: theme.onBrandSecondary }]}>{t('common.skip')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -176,7 +176,7 @@ function OnboardingFlow() {
             <Text style={[styles.btnText, { color: theme.primary }]}>{picked.length === 0 ? t('onboarding.pick.startEmpty') : t('common.next')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { haptic(); setStep(1); }} style={styles.skipBtn} accessibilityRole="button">
-            <Text style={styles.skipText}>{t('common.back')}</Text>
+            <Text style={[styles.skipText, { color: theme.onBrandSecondary }]}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -223,10 +223,10 @@ function OnboardingFlow() {
             <Text style={[styles.btnText, { color: theme.primary }]}>{t('onboarding.reminders.turnOn')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => finish(true, false)} disabled={asking} style={styles.skipBtn} accessibilityRole="button" accessibilityLabel={t('onboarding.reminders.notNowA11y')}>
-            <Text style={styles.skipText}>{t('common.notNow')}</Text>
+            <Text style={[styles.skipText, { color: theme.onBrandSecondary }]}>{t('common.notNow')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { haptic(); setStep(3); }} disabled={asking} style={styles.backBtn} accessibilityRole="button">
-            <Text style={styles.skipText}>{t('common.back')}</Text>
+            <Text style={[styles.skipText, { color: theme.onBrandSecondary }]}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -291,7 +291,7 @@ function OnboardingFlow() {
             <Text style={[styles.btnText, { color: theme.primary }]}>{hasReminders ? t('common.next') : t('onboarding.plan.start')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { haptic(); setStep(2); }} style={styles.skipBtn} accessibilityRole="button">
-            <Text style={styles.skipText}>{t('common.back')}</Text>
+            <Text style={[styles.skipText, { color: theme.onBrandSecondary }]}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   btn: { width: '100%', maxWidth: 420, padding: 16, borderRadius: 16, alignItems: 'center', backgroundColor: '#fff' },
   btnText: { fontSize: 17, fontWeight: '700' },
   skipBtn: { marginTop: 12, padding: 8 },
-  skipText: { fontSize: 15, color: 'rgba(255,255,255,0.75)' },
+  skipText: { fontSize: 15, fontWeight: '600' },
   backBtn: { marginTop: 2, padding: 8 },
   emojiSmall: { fontSize: 40, textAlign: 'center', marginBottom: 8 },
   reminderRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 8 },
