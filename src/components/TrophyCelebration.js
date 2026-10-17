@@ -5,7 +5,7 @@ import { heavyImpact, mediumImpact } from '../utils/haptics';
 import { useReducedMotion, announce } from '../utils/a11y';
 import { t } from '../i18n';
 
-export default function TrophyCelebration({ visible, onDone, settings, theme }) {
+export default function TrophyCelebration({ visible, onDone, theme }) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const orbitAnim = useRef(new Animated.Value(0)).current;
   const [showConfetti, setShowConfetti] = useState(false);

@@ -26,7 +26,7 @@ jest.mock('expo-file-system/legacy', () => ({
 
 const fs = require('fs');
 const path = require('path');
-const { Platform } = require('react-native');
+const { Platform, Vibration } = require('react-native');
 const Haptics = require('expo-haptics');
 const haptics = require('../haptics');
 
@@ -66,9 +66,15 @@ describe('haptics gate', () => {
     expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
   });
 
-  test('a failing native call is swallowed without a fallback', async () => {
-    Haptics.impactAsync.mockImplementationOnce(() => Promise.reject(new Error('unsupported')));
-    await expect(haptics.lightImpact()).resolves.toBeUndefined();
+  test('a failing native call is swallowed without a Vibration fallback', async () => {
+    const vibrate = jest.spyOn(Vibration, 'vibrate').mockImplementation(() => {});
+    try {
+      Haptics.impactAsync.mockImplementationOnce(() => Promise.reject(new Error('unsupported')));
+      await expect(haptics.lightImpact()).resolves.toBeUndefined();
+      expect(vibrate).not.toHaveBeenCalled();
+    } finally {
+      vibrate.mockRestore();
+    }
   });
 
   test('web is a no-op', async () => {
@@ -85,20 +91,25 @@ describe('haptics gate', () => {
 });
 
 describe('sounds audio mode', () => {
-  test('setAudioModeAsync gets playsInSilentMode false and mixWithOthers (iOS ambient)', async () => {
+  test('setAudioModeAsync is called once with playsInSilentMode false and mixWithOthers (iOS ambient)', async () => {
     const originalOS = Platform.OS;
     Platform.OS = 'ios';
     jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
-    const { setAudioModeAsync } = require('expo-audio');
-    const { playChime } = require('../sounds');
-    playChime();
-    for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r));
-    expect(setAudioModeAsync).toHaveBeenCalledWith(expect.objectContaining({
-      playsInSilentMode: false,
-      interruptionMode: 'mixWithOthers',
-    }));
-    jest.clearAllTimers();
-    jest.useRealTimers();
-    Platform.OS = originalOS;
+    try {
+      const { setAudioModeAsync } = require('expo-audio');
+      const { playChime } = require('../sounds');
+      playChime();
+      playChime();
+      for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r));
+      expect(setAudioModeAsync).toHaveBeenCalledTimes(1);
+      expect(setAudioModeAsync).toHaveBeenCalledWith(expect.objectContaining({
+        playsInSilentMode: false,
+        interruptionMode: 'mixWithOthers',
+      }));
+    } finally {
+      jest.clearAllTimers();
+      jest.useRealTimers();
+      Platform.OS = originalOS;
+    }
   });
 });

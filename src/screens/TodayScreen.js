@@ -536,7 +536,6 @@ export default function TodayScreen() {
       <TrophyCelebration
         visible={trophyCelebrating}
         onDone={() => { setTrophyCelebrating(false); setTimeout(() => maybeRequestReview('challenge-complete'), 800); }}
-        settings={settings}
         theme={theme}
       />
 

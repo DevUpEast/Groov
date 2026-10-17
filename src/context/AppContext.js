@@ -286,7 +286,9 @@ export function AppProvider({ children }) {
     if (n) setNotes(n);
     if (lba) setLastBackupAt(lba);
     if (md) setMoods(md);
-    setSettings(migrateSettings(s));
+    const loadedSettings = migrateSettings(s);
+    setHapticsEnabled(loadedSettings.hapticsEnabled !== false); // before children mount
+    setSettings(loadedSettings);
     if (ch) {
       setChallenges(migrateChallenges(Array.isArray(ch) ? ch : [ch]));
     } else {
@@ -323,6 +325,8 @@ export function AppProvider({ children }) {
   useEffect(() => { if (loaded) saveData('moods', moods); }, [moods, loaded]);
   useEffect(() => { if (loaded) saveData('settings', settings); }, [settings, loaded]);
   // One haptics gate for the whole app (src/utils/haptics.js); callers need no check.
+  // The load paths above also set it synchronously so child mount effects never
+  // see a stale value; this effect covers every other settings change.
   useEffect(() => setHapticsEnabled(settings.hapticsEnabled !== false), [settings.hapticsEnabled]);
   useEffect(() => { if (loaded) saveData('dateOffset', dateOffset); }, [dateOffset, loaded]);
   useEffect(() => { if (loaded) saveData('challenges', challenges); }, [challenges, loaded]);
@@ -661,7 +665,11 @@ export function AppProvider({ children }) {
           if (cloudData.completions) setCompletions(cloudData.completions);
           if (cloudData.notes) setNotes(cloudData.notes);
           if (cloudData.moods) setMoods(cloudData.moods);
-          if (cloudData.settings) setSettings(migrateSettings(cloudData.settings));
+          if (cloudData.settings) {
+            const cloudSettings = migrateSettings(cloudData.settings);
+            setHapticsEnabled(cloudSettings.hapticsEnabled !== false);
+            setSettings(cloudSettings);
+          }
           if (cloudData.challenges) setChallenges(migrateChallenges(cloudData.challenges));
           if (cloudData.pastChallenges) setPastChallenges(cloudData.pastChallenges);
           if (cloudData.dailySnapshot) setDailySnapshot(cloudData.dailySnapshot);
@@ -710,7 +718,11 @@ export function AppProvider({ children }) {
         }
         if (delta.dailySnapshots.length) setDailySnapshot(prev => mergeSnapshots(prev, delta.dailySnapshots));
         if (delta.moods?.length) setMoods(prev => { const next = { ...prev }; for (const r of delta.moods) next[r.date] = r.mood; return next; });
-        if (delta.settings) setSettings(migrateSettings(delta.settings));
+        if (delta.settings) {
+          const pulledSettings = migrateSettings(delta.settings);
+          setHapticsEnabled(pulledSettings.hapticsEnabled !== false);
+          setSettings(pulledSettings);
+        }
         lastPulledAtRef.current = startedAt;
       })
       .catch((e) => { if (__DEV__) console.warn('Foreground pull failed:', e.message); })
@@ -1233,6 +1245,7 @@ export function AppProvider({ children }) {
     setCompletions(next.completions);
     setNotes(next.notes);
     setMoods(next.moods || {});
+    setHapticsEnabled(nextSettings.hapticsEnabled !== false);
     setSettings(nextSettings);
     setChallenges(nextChallenges);
     setPastChallenges(next.pastChallenges);
