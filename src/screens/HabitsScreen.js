@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, Alert, Animated, ActivityIndicator,
-  PanResponder, TouchableWithoutFeedback, Keyboard, Image,
+  PanResponder, Keyboard, Image,
 } from 'react-native';
 import SafeAreaView from '../components/SafeAreaView';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,8 +21,18 @@ import { getHabitTypes, describeGoal } from '../utils/habits';
 import { suggestHabit } from '../services/aiCoaching';
 import { useAuth } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
+import { accentIdFor } from '../theme/accentNames';
 
-const ICONS = ['⭐', '🎯', '💪', '🧠', '✍️', '🎨', '🚶', '🛁', '🌿', '❤️', '💧', '🏃', '📚', '🧘', '😴', '🥗', '🍎', '☕', '🎵', '🌅'];
+// Preset icons. The stored value is the emoji; `key` names it for screen readers (habits.icons.<key>).
+const ICONS = [
+  { key: 'star', emoji: '⭐' }, { key: 'target', emoji: '🎯' }, { key: 'strength', emoji: '💪' },
+  { key: 'brain', emoji: '🧠' }, { key: 'writing', emoji: '✍️' }, { key: 'art', emoji: '🎨' },
+  { key: 'walk', emoji: '🚶' }, { key: 'bath', emoji: '🛁' }, { key: 'plant', emoji: '🌿' },
+  { key: 'heart', emoji: '❤️' }, { key: 'water', emoji: '💧' }, { key: 'run', emoji: '🏃' },
+  { key: 'books', emoji: '📚' }, { key: 'meditate', emoji: '🧘' }, { key: 'sleep', emoji: '😴' },
+  { key: 'salad', emoji: '🥗' }, { key: 'apple', emoji: '🍎' }, { key: 'coffee', emoji: '☕' },
+  { key: 'music', emoji: '🎵' }, { key: 'sunrise', emoji: '🌅' },
+];
 const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE, color: null, timeOfDay: 'anytime', unit: '', intention: '' };
 
 // Per-habit accent colours (null = theme primary). Chosen to read on light and dark.
@@ -103,7 +113,7 @@ function SchedulePicker({ schedule, onChange, theme }) {
             <TouchableOpacity
               style={[styles.stepBtn, { borderColor: theme.border, opacity: target <= 1 ? 0.4 : 1 }]}
               onPress={() => target > 1 && onChange({ type: 'perWeek', target: target - 1 })}
-              accessibilityRole="button" accessibilityLabel={t('habits.form.fewerDays')}
+              accessibilityRole="button" accessibilityLabel={t('habits.form.fewerDays')} accessibilityState={{ disabled: target <= 1 }}
             >
               <Text style={[styles.stepBtnText, { color: theme.text }]}>−</Text>
             </TouchableOpacity>
@@ -111,7 +121,7 @@ function SchedulePicker({ schedule, onChange, theme }) {
             <TouchableOpacity
               style={[styles.stepBtn, { borderColor: theme.border, opacity: target >= 6 ? 0.4 : 1 }]}
               onPress={() => target < 6 && onChange({ type: 'perWeek', target: target + 1 })}
-              accessibilityRole="button" accessibilityLabel={t('habits.form.moreDays')}
+              accessibilityRole="button" accessibilityLabel={t('habits.form.moreDays')} accessibilityState={{ disabled: target >= 6 }}
             >
               <Text style={[styles.stepBtnText, { color: theme.text }]}>+</Text>
             </TouchableOpacity>
@@ -121,6 +131,9 @@ function SchedulePicker({ schedule, onChange, theme }) {
     </>
   );
 }
+// Responder probe for the habit form: dismiss the keyboard, never claim the touch.
+const dismissKeyboardOnBlankTap = () => { Keyboard.dismiss(); return false; };
+
 const DEFAULT_REMINDER = { enabled: false, hour12: 9, minute: 0, ampm: 'AM' };
 
 function formatReminder(reminder) {
@@ -132,19 +145,25 @@ function formatReminder(reminder) {
 function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) {
   return (
     <View style={styles.iconGrid}>
-      {ICONS.map(icon => (
-        <TouchableOpacity
-          key={icon}
-          style={[
-            styles.iconBtn,
-            { backgroundColor: theme.bg, borderColor: selected === icon && !customIconUri ? theme.primary : theme.border },
-            selected === icon && !customIconUri && { backgroundColor: theme.primaryLight },
-          ]}
-          onPress={() => onSelect(icon)}
-        >
-          <Text style={styles.iconBtnText}>{icon}</Text>
-        </TouchableOpacity>
-      ))}
+      {ICONS.map(({ key, emoji }) => {
+        const active = selected === emoji && !customIconUri;
+        return (
+          <TouchableOpacity
+            key={key}
+            style={[
+              styles.iconBtn,
+              { backgroundColor: theme.bg, borderColor: active ? theme.primary : theme.border },
+              active && { backgroundColor: theme.primaryLight },
+            ]}
+            onPress={() => onSelect(emoji)}
+            accessibilityRole="button"
+            accessibilityLabel={t(`habits.icons.${key}`)}
+            accessibilityState={{ selected: active }}
+          >
+            <Text style={styles.iconBtnText}>{emoji}</Text>
+          </TouchableOpacity>
+        );
+      })}
       {/* Camera / Gallery button */}
       <TouchableOpacity
         style={[
@@ -153,6 +172,9 @@ function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) 
           customIconUri && { backgroundColor: theme.primaryLight },
         ]}
         onPress={onCustomIcon}
+        accessibilityRole="button"
+        accessibilityLabel={t('habits.form.photoIcon')}
+        accessibilityState={{ selected: !!customIconUri }}
       >
         {customIconUri ? (
           <Image source={{ uri: customIconUri }} style={{ width: 28, height: 28, borderRadius: 4 }} />
@@ -287,7 +309,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
             <Text style={[styles.sheetTitle, { color: theme.text }]}>
               {editingId ? t('habits.form.editTitle') : t('habits.form.newTitle')}
             </Text>
-            <TouchableOpacity onPress={handleClose} style={styles.sheetCloseBtn}>
+            <TouchableOpacity onPress={handleClose} style={styles.sheetCloseBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
               <Ionicons name="close" size={24} color={theme.textMuted} />
             </TouchableOpacity>
           </View>
@@ -297,7 +319,10 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 8 }}
           >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            {/* Tapping blank space dismisses the keyboard. A responder (not a Touchable) keeps the
+                wrapper out of the accessibility tree: a clickable wrapper made TalkBack merge every
+                label in the form into one focus stop. */}
+            <View onStartShouldSetResponder={dismissKeyboardOnBlankTap}>
               <View>
                 {!editingId && !!user && (
                   <View style={[styles.magicBox, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
@@ -342,13 +367,14 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                 <View style={styles.colorRow}>
                   {HABIT_COLORS.map(c => {
                     const active = (form.color || null) === c;
+                    const accentId = accentIdFor(c);
                     return (
                       <TouchableOpacity
                         key={c || 'default'}
                         style={[styles.colorDot, { backgroundColor: c || theme.primary, borderColor: active ? theme.text : 'transparent' }]}
                         onPress={() => setForm(f => ({ ...f, color: c }))}
                         accessibilityRole="button"
-                        accessibilityLabel={c ? t('habits.form.colourA11y', { color: c }) : t('habits.form.defaultColour')}
+                        accessibilityLabel={!c ? t('habits.form.defaultColour') : accentId ? t(`habits.colors.${accentId}`) : t('habits.form.colour')}
                         accessibilityState={{ selected: active }}
                       >
                         {active && <Text style={styles.colorCheck}>✓</Text>}
@@ -366,6 +392,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   onChangeText={name => setForm(f => ({ ...f, name }))}
                   returnKeyType="done"
                   onSubmitEditing={Keyboard.dismiss}
+                  accessibilityLabel={t('habits.form.name')}
                 />
 
                 <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.plan')}</Text>
@@ -483,6 +510,8 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                             volMax === opt.max && { backgroundColor: theme.primaryLight },
                           ]}
                           onPress={() => handleVolMaxChange(opt.max)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: volMax === opt.max }}
                         >
                           <Text style={[styles.volMaxBtnText, { color: volMax === opt.max ? theme.primary : theme.textMuted }]}>
                             {t('habits.form.max', { max: opt.label })}
@@ -496,6 +525,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                       max={volMax}
                       onValueChange={v => setForm(f => ({ ...f, volumeGoal: v }))}
                       theme={theme}
+                      label={t('habits.form.timesLabel')}
                     />
                     <View style={styles.sliderLabels}>
                       <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>2</Text>
@@ -516,13 +546,15 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   </>
                 )}
               </View>
-            </TouchableWithoutFeedback>
+            </View>
 
             {/* Save button at bottom of scroll */}
             <TouchableOpacity
               style={[styles.saveBtn, { backgroundColor: form.name.trim() ? theme.primary : theme.border, marginTop: 12 }]}
               onPress={onSave}
               disabled={!form.name.trim()}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !form.name.trim() }}
             >
               <Text style={styles.saveBtnText}>{editingId ? t('habits.form.saveChanges') : t('habits.form.addHabit')}</Text>
             </TouchableOpacity>

@@ -20,13 +20,20 @@
     "Deutsch",
     "Français",
     "Português (Brasil)",
-    "日本語"
+    "日本語",
+    "Magenta"
   ],
   "keys": {
-    "es": [],
+    "es": [
+      "habits.colors.coral"
+    ],
     "de": [],
-    "fr": [],
-    "pt-BR": [],
+    "fr": [
+      "habits.icons.art"
+    ],
+    "pt-BR": [
+      "habits.colors.coral"
+    ],
     "ja": []
   }
 }
