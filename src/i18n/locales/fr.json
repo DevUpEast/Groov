@@ -476,6 +476,7 @@
     "share": "Partager",
     "shareA11y": "Partager tes progrès",
     "stats": { "streak": "Série en cours", "best": "Meilleure série", "perfect": "Jours parfaits", "a11y": "%{label} : %{value}" },
+    "streakRule": { "title": "Comment fonctionnent les séries", "body": "Un jour compte quand chaque habitude prévue ce jour-là est faite. Les jours de repos et les gels conservent ta série.", "a11y": "Comment les séries sont comptées" },
     "freezes": { "one": "❄️ %{count} gel de série restant ce mois-ci · un jour manqué est couvert automatiquement", "other": "❄️ %{count} gels de série restants ce mois-ci · un jour manqué est couvert automatiquement" },
     "weekly": { "title": "Habitudes accomplies : semaine", "hint": "Appuie sur une barre pour les détails" },
     "history": "Historique",

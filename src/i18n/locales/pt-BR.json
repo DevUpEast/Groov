@@ -476,6 +476,7 @@
     "share": "Compartilhar",
     "shareA11y": "Compartilhar seu progresso",
     "stats": { "streak": "Dias Seguidos", "best": "Melhor Sequência", "perfect": "Dias Perfeitos", "a11y": "%{label}: %{value}" },
+    "streakRule": { "title": "Como as sequências funcionam", "body": "Um dia conta quando todos os hábitos programados para aquele dia são concluídos. Dias de descanso e pausas mantêm sua sequência.", "a11y": "Como as sequências são contadas" },
     "freezes": { "one": "❄️ %{count} pausa de sequência restante neste mês · um dia perdido é coberto automaticamente", "other": "❄️ %{count} pausas de sequência restantes neste mês · um dia perdido é coberto automaticamente" },
     "weekly": { "title": "Hábitos Concluídos: Semanal", "hint": "Toque em uma barra para ver detalhes" },
     "history": "Histórico",

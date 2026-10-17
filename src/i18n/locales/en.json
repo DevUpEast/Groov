@@ -476,6 +476,7 @@
     "share": "Share",
     "shareA11y": "Share your progress",
     "stats": { "streak": "Day Streak", "best": "Best Streak", "perfect": "Perfect Days", "a11y": "%{label}: %{value}" },
+    "streakRule": { "title": "How streaks work", "body": "A day counts when every habit scheduled that day is done. Rest days and freezes keep your streak.", "a11y": "How streaks are counted" },
     "freezes": { "one": "❄️ %{count} streak freeze left this month · a missed day is covered automatically", "other": "❄️ %{count} streak freezes left this month · a missed day is covered automatically" },
     "weekly": { "title": "Habits Completed: Weekly", "hint": "Tap a bar for details" },
     "history": "History",

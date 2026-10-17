@@ -476,6 +476,7 @@
     "share": "Compartir",
     "shareA11y": "Compartir tu progreso",
     "stats": { "streak": "Racha de días", "best": "Mejor racha", "perfect": "Días perfectos", "a11y": "%{label}: %{value}" },
+    "streakRule": { "title": "Cómo funcionan las rachas", "body": "Un día cuenta cuando completas todos los hábitos programados para ese día. Los días de descanso y las congelaciones mantienen tu racha.", "a11y": "Cómo se cuentan las rachas" },
     "freezes": { "one": "❄️ Te queda %{count} congelación de racha este mes · un día fallado se cubre automáticamente", "other": "❄️ Te quedan %{count} congelaciones de racha este mes · un día fallado se cubre automáticamente" },
     "weekly": { "title": "Hábitos completados: semanal", "hint": "Toca una barra para ver detalles" },
     "history": "Historial",

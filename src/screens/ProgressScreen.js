@@ -10,8 +10,8 @@ import { fetchReflection } from '../services/aiCoaching';
 import { localDateKey, addDays } from '../utils/dates';
 import { moodSummary, habitMoodCorrelations, describeCorrelation, moodEmoji, MIN_SAMPLES } from '../utils/mood';
 import { overallDayStatus } from '../utils/streaks';
-import { isGoalMet } from '../utils/habits';
 import ShareCards from '../components/ShareCards';
+import Dialog from '../components/ui/Dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { weekdayLabels } from '../utils/schedule';
 import { t, getLocale, useLocale } from '../i18n';
@@ -98,6 +98,10 @@ function BarChart({ data, labels, theme, onBarPress, futureFlags, a11yLabels }) 
 
 function HeatmapCell({ day, size, gap, theme, onPress }) {
   const { completed, total, future, frozen } = day;
+  // Before any habit existed: not drawn and not focusable (plan §2.4), never a miss.
+  if (day.before) {
+    return <View style={{ width: size, height: size, marginRight: gap, marginBottom: gap }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />;
+  }
   let bg = theme.progressBarBg;
   if (!future && total > 0 && completed >= total) bg = theme.primary;
   else if (!future && frozen) bg = FROZEN_COLOR;
@@ -200,7 +204,7 @@ function DayDetailModal({ visible, day, onClose, theme }) {
             ) : (
               dayHabits.map(h => {
                 const count = dayCompletions[h.id] || 0;
-                const done = isGoalMet(h, count);
+                const done = h.status === 'done'; // shared rule (utils/dayStatus.js summarizeDay)
                 const rest = !done && h.status === 'rest';
                 return (
                   <View key={h.id} style={[styles.habitRow, { borderBottomColor: theme.border, opacity: rest ? 0.55 : 1 }]}>
@@ -249,25 +253,24 @@ function BarTooltip({ label, value, onClose, theme }) {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
-  const { getLastNDays, getOverallStreak, getBestStreak, freezesLeft, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode, settings, effectivePastChallenges, moods, dailySnapshot, isHabitDoneOn, isExcused, isPro, openPaywall } = useApp();
+  const { getLastNDays, getOverallStreak, getBestStreak, freezesLeft, habits, theme, completions, accountCreatedAt, displayName, todayStr, devMode, settings, effectivePastChallenges, moods, habitsOnDay, isSnapshotHabitDone, isHabitDoneOn, isExcused, isPro, openPaywall } = useApp();
   const { locale } = useLocale();
   const dayLabels = weekdayLabels();
 
   // Mood insights: averages on perfect vs other days and per-habit deltas.
   const moodInsights = useMemo(() => {
     const today = todayStr();
-    const habitsOn = (k) => dailySnapshot[k] || habits;
-    const isDone = (k, id) => { const h = habitsOn(k).find(x => x.id === id); return !!h && isGoalMet(h, (completions[k] || {})[id]); };
-    const isPerfect = (k) => overallDayStatus(k, today, habitsOn, isDone, isExcused) === 'done';
+    const isPerfect = (k) => overallDayStatus(k, today, habitsOnDay, isSnapshotHabitDone, isExcused) === 'done';
     const summary = moodSummary(moods, isPerfect);
     const correlations = habitMoodCorrelations(moods, habits, (h, k) => isHabitDoneOn(h, k));
     const last7 = Array.from({ length: 7 }, (_, i) => { const k = addDays(today, -(6 - i)); return { key: k, mood: moods[k] ?? null }; });
     return { summary, correlations, last7, headline: describeCorrelation(correlations[0]) };
-  }, [moods, habits, dailySnapshot, completions, todayStr, isHabitDoneOn, isExcused, locale]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [moods, habits, habitsOnDay, isSnapshotHabitDone, todayStr, isHabitDoneOn, isExcused, locale]); // eslint-disable-line react-hooks/exhaustive-deps
   const earned = useMemo(() => new Map((settings.milestones || []).map(m => [m.id, m])), [settings.milestones]);
   const trophies = useMemo(() => effectivePastChallenges.filter(c => c.tier && c.tier !== 'none'), [effectivePastChallenges]);
   const [heatPeriodIdx, setHeatPeriodIdx] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
+  const [streakRuleOpen, setStreakRuleOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [tooltipInfo, setTooltipInfo] = useState(null);
 
@@ -345,20 +348,20 @@ export default function ProgressScreen() {
     [last7]
   );
 
-  const futureFlagsBar = useMemo(() => last7.map(d => !!d.future), [last7]);
+  const futureFlagsBar = useMemo(() => last7.map(d => !!(d.future || d.before)), [last7]);
 
   const chartA11yLabels = useMemo(() =>
     last7.map((d, i) => {
       const date = new Date(d.date + 'T00:00:00');
       const label = date.toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
-      return d.future ? t('progress.bar.noData', { label }) : t('progress.bar.percent', { label, value: chartData[i] });
+      return d.future || d.before ? t('progress.bar.noData', { label }) : t('progress.bar.percent', { label, value: chartData[i] });
     }),
     [last7, chartData, locale] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handleBarPress = (i, val) => {
     const d = last7[i];
-    if (d.future) return;
+    if (d.future || d.before) return;
     lightImpact();
     const date = new Date(d.date + 'T00:00:00');
     const label = date.toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
@@ -392,14 +395,28 @@ export default function ProgressScreen() {
         {/* Stats row */}
         <View style={styles.statsRow}>
           {[
-            { label: t('progress.stats.streak'), value: streak, emoji: '🔥' },
+            { label: t('progress.stats.streak'), value: streak, emoji: '🔥', info: true },
             { label: t('progress.stats.best'), value: bestStreak, emoji: '🏅' },
             { label: t('progress.stats.perfect'), value: totalCompleted, emoji: '⭐' },
           ].map(stat => (
-            <View key={stat.label} style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]} accessible accessibilityLabel={t('progress.stats.a11y', { label: stat.label, value: stat.value })}>
-              <Text style={styles.statEmoji}>{stat.emoji}</Text>
-              <Text style={[styles.statValue, { color: theme.primary }]}>{stat.value}</Text>
-              <Text style={[styles.statLabel, { color: theme.textMuted }]}>{stat.label}</Text>
+            <View key={stat.label} style={styles.statSlot}>
+              <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]} accessible accessibilityLabel={t('progress.stats.a11y', { label: stat.label, value: stat.value })}>
+                <Text style={styles.statEmoji}>{stat.emoji}</Text>
+                <Text style={[styles.statValue, { color: theme.primary }]}>{stat.value}</Text>
+                <Text style={[styles.statLabel, { color: theme.textMuted }]}>{stat.label}</Text>
+              </View>
+              {stat.info && (
+                // A sibling of the card, not a child: the card is one accessible element.
+                <TouchableOpacity
+                  style={styles.statInfo}
+                  onPress={() => { lightImpact(); setStreakRuleOpen(true); }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('progress.streakRule.a11y')}
+                >
+                  <Ionicons name="information-circle-outline" size={18} color={theme.textMuted} />
+                </TouchableOpacity>
+              )}
             </View>
           ))}
         </View>
@@ -653,6 +670,14 @@ export default function ProgressScreen() {
 
       <ShareCards visible={shareOpen} onClose={() => setShareOpen(false)} />
 
+      <Dialog
+        visible={streakRuleOpen}
+        onClose={() => setStreakRuleOpen(false)}
+        title={t('progress.streakRule.title')}
+        body={t('progress.streakRule.body')}
+        actions={[{ key: 'close', label: t('common.close'), variant: 'primary', onPress: () => setStreakRuleOpen(false) }]}
+      />
+
       {/* Day detail sheet */}
       <DayDetailModal
         visible={!!selectedDay}
@@ -673,6 +698,8 @@ const styles = StyleSheet.create({
   shareChipText: { fontSize: 13, fontWeight: '700' },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   freezeLine: { fontSize: 12, textAlign: 'center', marginBottom: 24, lineHeight: 17 },
+  statSlot: { flex: 1 },
+  statInfo: { position: 'absolute', top: 6, right: 6, padding: 2 },
   statCard: {
     flex: 1, alignItems: 'center', paddingVertical: 20, paddingHorizontal: 8,
     borderRadius: 14, borderWidth: 1, gap: 6,

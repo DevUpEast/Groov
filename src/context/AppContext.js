@@ -25,10 +25,12 @@ import {
 } from '../utils/notifications';
 import { localDateKey, todayKey, addDays } from '../utils/dates';
 import { overallStreak, bestOverallStreak, overallDayStatus, reconcileFreezes, freezesLeftInMonth } from '../utils/streaks';
-import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak, dayStatus } from '../utils/schedule';
+import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak } from '../utils/schedule';
 import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
+import { snapshotOf, isHabitDoneOnDay, makeDayRules } from '../utils/dayStatus';
+import { buildSeed, applySeedCompletions, applySeedSnapshot, backdateCreatedAt } from '../utils/seed';
 import { mergeBackup } from '../utils/backup';
 import { initAnalytics, track, Events } from '../utils/analytics';
 import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup';
@@ -160,9 +162,9 @@ function migrateHabits(hs) {
   return hs.map(h => ({ ...h, schedule: normalizeSchedule(h.schedule) }));
 }
 
-const snapshotOf = (habits) => habits.map(h => ({
-  id: h.id, name: h.name, icon: h.icon, type: h.type, volumeGoal: h.volumeGoal, schedule: normalizeSchedule(h.schedule),
-}));
+// Record `habits` as `key`'s snapshot unless one with habits is already there. An
+// empty snapshot is treated as missing so a stale `[]` can never stick to a day.
+const withSnapshot = (prev, key, habits) => (prev[key]?.length ? prev : { ...prev, [key]: snapshotOf(habits) });
 
 function migrateChallenges(chs) {
   if (!Array.isArray(chs)) return [];
@@ -340,9 +342,12 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (!loaded) return;
+    // Before onboarding there are no habits yet; writing `[today]: []` here is the
+    // stale value the demo seed used to copy over the real snapshot (STA-2).
+    if (!hasOnboarded && habits.length === 0) return;
     const today = todayStr();
     setDailySnapshot(prev => ({ ...prev, [today]: snapshotOf(habits) }));
-  }, [habits, loaded, todayStr]);
+  }, [habits, loaded, todayStr, hasOnboarded]);
 
   // Keep stateRef fresh so the cloud sync effect can access current state without
   // adding all these values to its dependency array (which would re-trigger on every mutation)
@@ -420,7 +425,7 @@ export function AppProvider({ children }) {
         if (!h) return;
         const key = localDateKey();
         setCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
-        setDailySnapshot(prev => (prev[key] ? prev : { ...prev, [key]: snapshotOf(habits) }));
+        setDailySnapshot(prev => withSnapshot(prev, key, habits));
         if (userId) syncCompletion(userId, key, h.id, h.volumeGoal);
         return;
       }
@@ -446,7 +451,7 @@ export function AppProvider({ children }) {
         if (h) {
           const key = localDateKey();
           setCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
-          setDailySnapshot(prev => (prev[key] ? prev : { ...prev, [key]: snapshotOf(habits) }));
+          setDailySnapshot(prev => withSnapshot(prev, key, habits));
           if (userId) syncCompletion(userId, key, h.id, h.volumeGoal);
         }
         setRequestedTab(0);
@@ -567,7 +572,7 @@ export function AppProvider({ children }) {
     if (!loaded) return;
     const realToday = localDateKey();
     const left = habits.filter(h => isScheduledOn(h.schedule, realToday)
-      && !isSatisfiedOn(h.schedule, realToday, (k) => isGoalMet(h, (completions[k] || {})[h.id]))).length;
+      && !isSatisfiedOn(h.schedule, realToday, (k) => isHabitDoneOnDay(h, k, completions) === true)).length;
     setBadge(settings.notificationsEnabled ? left : 0);
   }, [loaded, habits, completions, settings.notificationsEnabled, clockTick]);
 
@@ -584,7 +589,7 @@ export function AppProvider({ children }) {
     }
     const due = habits.filter(h => isScheduledOn(h.schedule, realToday));
     const allDone = due.length > 0 && due.every(h =>
-      isSatisfiedOn(h.schedule, realToday, (k) => isGoalMet(h, (completions[k] || {})[h.id])));
+      isSatisfiedOn(h.schedule, realToday, (k) => isHabitDoneOnDay(h, k, completions) === true));
     if (allDone) {
       cancelEveningHabitReminder(realToday);
     } else {
@@ -718,7 +723,7 @@ export function AppProvider({ children }) {
           setCompletions(prev => mergeCompletions(prev, delta.completions));
           setNotes(prev => mergeNotes(prev, delta.completions));
         }
-        if (delta.dailySnapshots.length) setDailySnapshot(prev => mergeSnapshots(prev, delta.dailySnapshots));
+        if (delta.dailySnapshots.length) setDailySnapshot(prev => mergeSnapshots(prev, delta.dailySnapshots, todayStr()));
         if (delta.moods?.length) setMoods(prev => { const next = { ...prev }; for (const r of delta.moods) next[r.date] = r.mood; return next; });
         if (delta.settings) {
           const pulledSettings = migrateSettings(delta.settings);
@@ -746,10 +751,8 @@ export function AppProvider({ children }) {
 
   // Goal met on `key` (any date) for a habit. Days before the habit existed never
   // count (matters for 'atMost', where an untouched day is otherwise a success).
-  const isHabitDoneOn = useCallback((habit, key) => {
-    if (habit.createdAt && key < habit.createdAt) return false;
-    return isGoalMet(habit, (completions[key] || {})[habit.id]);
-  }, [completions]);
+  // The shared rule lives in utils/dayStatus.js; 'before' reads as not done here.
+  const isHabitDoneOn = useCallback((habit, key) => isHabitDoneOnDay(habit, key, completions) === true, [completions]);
 
   // Habits the Today screen shows: everything scheduled today. perWeek habits are
   // always available so the user can log them on any day they choose.
@@ -770,8 +773,7 @@ export function AppProvider({ children }) {
     const today = todayStr();
     return isSatisfiedOn(habit.schedule, today, (k) => {
       if (k !== today) return isHabitDoneOn(habit, k);
-      if (habit.createdAt && k < habit.createdAt) return false;
-      return isGoalMet(habit, (todayCounts || {})[habit.id]);
+      return isHabitDoneOnDay(habit, k, { [today]: todayCounts || {} }) === true;
     });
   }, [isHabitDoneOn, todayStr]);
 
@@ -805,10 +807,7 @@ export function AppProvider({ children }) {
       ...prev,
       [today]: { ...(prev[today] || {}), [habitId]: next },
     }));
-    setDailySnapshot(prev => {
-      if (prev[today]) return prev;
-      return { ...prev, [today]: snapshotOf(habits) };
-    });
+    setDailySnapshot(prev => withSnapshot(prev, today, habits));
     if (userId) syncCompletion(userId, today, habitId, next);
     const met = justMetGoal(habit, current, next);
     if (met) track(Events.COMPLETION, { type: habit.type });
@@ -841,7 +840,7 @@ export function AppProvider({ children }) {
       if (Object.keys(day).length > 0) out[key] = day; else delete out[key];
       return out;
     });
-    setDailySnapshot(prev => (prev[key] ? prev : { ...prev, [key]: snapshotOf(habits) }));
+    setDailySnapshot(prev => withSnapshot(prev, key, habits));
     if (userId) syncCompletion(userId, key, habitId, next);
   }, [habits, todayStr, userId]);
 
@@ -1110,7 +1109,7 @@ export function AppProvider({ children }) {
     if (plan.changedIds.length === 0) return plan;
     const today = todayStr();
     setCompletions(prev => ({ ...prev, [today]: { ...(prev[today] || {}), ...Object.fromEntries(plan.changedIds.map(id => [id, 1])) } }));
-    setDailySnapshot(prev => (prev[today] ? prev : { ...prev, [today]: snapshotOf(habits) }));
+    setDailySnapshot(prev => withSnapshot(prev, today, habits));
     if (userId) syncCompletionsForDate(userId, today, Object.fromEntries(plan.changedIds.map(id => [id, 1])));
     plan.changedIds.forEach(id => track(Events.COMPLETION, { type: habits.find(h => h.id === id)?.type }));
     return plan;
@@ -1297,56 +1296,54 @@ export function AppProvider({ children }) {
   }, [userId]);
 
   // Dev tool: fill the last 30 days with random completion data
+  // The demo effect calls this in the same commit in which the snapshot effect queues
+  // today's snapshot, so `completions` / `dailySnapshot` in this closure can be stale
+  // (the old seed copied a stale `today: []` over the fresh one, STA-2). State is
+  // therefore applied with functional updates, and today's snapshot is never replaced
+  // by an empty one. The seeded habits are backdated so their history counts.
   const seedRandomHistory = useCallback(async () => {
-    const habitSnapshot = snapshotOf(habits);
-    const newCompletions = { ...completions };
-    const newSnapshot = { ...dailySnapshot };
-
     const realToday = localDateKey();
-    for (let i = 1; i <= 30; i++) {
-      const dateStr = addDays(realToday, -i);
-      const dayMap = {};
-      habits.forEach(h => {
-        // Each habit independently gets a 55–95% daily completion rate
-        const rate = 0.55 + Math.random() * 0.4;
-        dayMap[h.id] = Math.random() < rate ? h.volumeGoal : 0;
-      });
-      newCompletions[dateStr] = dayMap;
-      newSnapshot[dateStr] = habitSnapshot;
-    }
+    const seed = buildSeed(habits, completions, dailySnapshot, realToday);
+    const seededIds = new Set(habits.map(h => h.id));
+    const backdate = (h) => (seededIds.has(h.id) ? backdateCreatedAt(h, seed.floor) : h);
+    const nextAllHabits = allHabits.map(backdate);
 
     // Ensure accountCreatedAt is at least 31 days back so history is visible
-    const floorDate = addDays(realToday, -31);
-    const newAca = !accountCreatedAt || accountCreatedAt > floorDate ? floorDate : accountCreatedAt;
+    const newAca = !accountCreatedAt || accountCreatedAt > seed.floor ? seed.floor : accountCreatedAt;
 
-    setCompletions(newCompletions);
-    setDailySnapshot(newSnapshot);
+    setCompletions(prev => applySeedCompletions(prev, seed.pastCompletions));
+    setDailySnapshot(prev => applySeedSnapshot(prev, seed.pastSnapshot, realToday, habits));
+    setHabits(prev => prev.map(backdate));
     // Save immediately to AsyncStorage so data persists even if the app is killed before
     // React's state-change effects fire, or if a subsequent Supabase pull would overwrite them.
-    await saveData('completions', newCompletions);
-    await saveData('dailySnapshot', newSnapshot);
+    // `seed.*` already merges the closure state the same way the updaters merge `prev`.
+    await saveData('completions', seed.completions);
+    await saveData('dailySnapshot', seed.snapshot);
+    await saveData('habits', nextAllHabits);
     if (newAca !== accountCreatedAt) {
       setAccountCreatedAt(newAca);
       saveData('accountCreatedAt', newAca);
     }
     if (userId) {
-      await pushAllLocalData(userId, { ...stateRef.current, completions: newCompletions, dailySnapshot: newSnapshot });
+      await pushAllLocalData(userId, { ...stateRef.current, habits: nextAllHabits, completions: seed.completions, dailySnapshot: seed.snapshot });
     }
-  }, [habits, completions, dailySnapshot, accountCreatedAt, userId]);
+  }, [habits, allHabits, completions, dailySnapshot, accountCreatedAt, userId]);
   seedRandomHistoryRef.current = seedRandomHistory;
 
   // ── Streak / progress helpers ────────────────────────────────────────────────
 
-  // Habits that existed on a given day (snapshot), falling back to the live list.
-  const habitsOnDay = useCallback((key) => dailySnapshot[key] || habits, [dailySnapshot, habits]);
-
-  const isSnapshotHabitDone = useCallback((k, id) => {
-    const h = habitsOnDay(k).find(x => x.id === id);
-    if (!h) return false;
-    const live = allHabits.find(x => x.id === id);
-    if (live?.createdAt && k < live.createdAt) return false;
-    return isGoalMet(h, (completions[k] || {})[id]);
-  }, [habitsOnDay, completions, allHabits]);
+  // Habits on a given day (utils/dayStatus.js): today is always the live list, past
+  // days their snapshot (falling back to the live list), with createdAt filled in
+  // from the live records. This is the one source for streaks, Perfect Days, the
+  // heat map and the share cards.
+  // The streak walk's view (`habitsOnDay`) leaves out a habit that did not exist yet
+  // on a day other habits existed on (see streakHabitsOn).
+  const dayRules = useMemo(
+    () => makeDayRules({ today: todayKey(dateOffset), snapshot: dailySnapshot, liveHabits: habits, allHabits, completions }),
+    [dailySnapshot, habits, allHabits, completions, dateOffset, clockTick], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const habitsOnDay = dayRules.habitsOn;
+  const isSnapshotHabitDone = dayRules.isDone;
 
   const getStreakForHabit = useCallback((habitId) => {
     const habit = habits.find(h => h.id === habitId);
@@ -1393,6 +1390,22 @@ export function AppProvider({ children }) {
     if (next !== settings.streakFreezes) updateSettings({ streakFreezes: next });
   }, [loaded, clockTick, completions, dailySnapshot, habits, settings.skips, settings.streakFreezes, accountCreatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // One day for Perfect Days, the heat map, the bar chart and the share cards, judged
+  // by the shared rule (utils/dayStatus.js summarizeDay). Rest days and habits that
+  // did not exist yet drop out of the totals; `before` marks a day on which no habit
+  // existed yet (not drawn, never counted). The habit list leaves 'before' habits out.
+  const getDaySummary = useCallback((dateStr) => {
+    const s = dayRules.summary(dateStr, isExcused);
+    return {
+      date: dateStr,
+      completed: s.completed,
+      total: s.total,
+      before: s.before,
+      habits: s.habits.filter(h => h.status !== 'before').map(h => ({ ...h, skipped: isHabitSkippedOn(h.id, dateStr) })),
+      frozen: isDayFrozen(dateStr),
+    };
+  }, [dayRules, isExcused, isHabitSkippedOn, isDayFrozen]);
+
   const getLastNDays = useCallback((n) => {
     const days = [];
 
@@ -1410,22 +1423,11 @@ export function AppProvider({ children }) {
       if (dateStr > todayLocal) {
         days.push({ date: dateStr, completed: 0, total: 0, habits: [], future: true });
       } else {
-        const dayCompletions = completions[dateStr] || {};
-        const snapshot = dailySnapshot[dateStr];
-        // Each habit gets its schedule status for the day; rest days drop out of the
-        // totals so an unscheduled habit never makes a day look "partial".
-        const dayHabits = (snapshot || snapshotOf(habits)).map(h => ({
-          ...h,
-          status: dayStatus(h.schedule, dateStr, todayLocal, (k) => isGoalMet(h, (completions[k] || {})[h.id]), (k) => isExcused(k, h.id)),
-          skipped: isHabitSkippedOn(h.id, dateStr),
-        }));
-        const counted = dayHabits.filter(h => h.status !== 'rest');
-        const done = counted.filter(h => h.status === 'done').length;
-        days.push({ date: dateStr, completed: done, total: counted.length, habits: dayHabits, frozen: isDayFrozen(dateStr) });
+        days.push(getDaySummary(dateStr));
       }
     }
     return days;
-  }, [completions, habits, dailySnapshot, dateOffset, accountCreatedAt, isExcused, isHabitSkippedOn, isDayFrozen]);
+  }, [getDaySummary, dateOffset, accountCreatedAt]);
 
   const getLast30Days = useCallback(() => getLastNDays(30), [getLastNDays]);
 
@@ -1469,7 +1471,8 @@ export function AppProvider({ children }) {
       lastBackupAt, markBackedUp, importBackup,
       ensureNotificationPermission, notificationPrimer: { visible: primerVisible, answer: answerPrimer },
       isPro, refreshPro, paywall, openPaywall, closePaywall, canAddHabit, canAddReminder,
-      getStreakForHabit, getOverallStreak, getBestStreak, getLast30Days, getLastNDays,
+      getStreakForHabit, getOverallStreak, getBestStreak, getLast30Days, getLastNDays, getDaySummary,
+      habitsOnDay, isSnapshotHabitDone,
       todayStr,
     }}>
       {children}

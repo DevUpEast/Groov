@@ -108,7 +108,7 @@ function Footer({ date }) {
 }
 
 export default function ShareCards({ visible, onClose, initialKind = 'streak' }) {
-  const { theme, settings, getOverallStreak, getBestStreak, getLastNDays, habits, displayName, todayStr, completions, dailySnapshot } = useApp();
+  const { theme, settings, getOverallStreak, getBestStreak, getLastNDays, getDaySummary, habits, displayName, todayStr } = useApp();
   useLocale();
   const [kind, setKind] = useState(initialKind);
   const [busy, setBusy] = useState(false);
@@ -131,21 +131,17 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
       for (let r = 0; r < 7; r++) {
         if (key.slice(0, 4) !== year || key > today) col.push(null);
         else {
-          const snap = dailySnapshot[key];
-          const dayHabits = snap || [];
-          if (dayHabits.length === 0) col.push(0);
-          else {
-            const comps = completions[key] || {};
-            const done = dayHabits.filter(h => (comps[h.id] || 0) >= (h.volumeGoal || 1)).length;
-            col.push(done / dayHabits.length);
-          }
+          // Same rule as Progress (utils/dayStatus.js): schedules, goals and
+          // createdAt; a rest day or a day before any habit is an empty cell.
+          const d = getDaySummary(key);
+          col.push(d.total > 0 ? d.completed / d.total : 0);
         }
         key = addDays(key, 1);
       }
       cols.push(col);
     }
     return { year, cols };
-  }, [today, completions, dailySnapshot]);
+  }, [today, getDaySummary]);
 
   const share = useCallback(async () => {
     if (busy) return;

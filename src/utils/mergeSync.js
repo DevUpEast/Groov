@@ -42,11 +42,16 @@ export function mergeCompletions(local, rows) {
   return next;
 }
 
-// Apply changed daily snapshot rows ({ date, snapshot }).
-export function mergeSnapshots(local, rows) {
+// Apply changed daily snapshot rows ({ date, snapshot }). `today` (optional) is never
+// overwritten: the local snapshot is authoritative for the current day, so a stale
+// row pushed by another device cannot blank today's habits (STA-2).
+export function mergeSnapshots(local, rows, today) {
   if (!rows?.length) return local;
   const next = { ...local };
-  for (const row of rows) next[row.date] = row.snapshot;
+  for (const row of rows) {
+    if (today && row.date === today) continue;
+    next[row.date] = row.snapshot;
+  }
   return next;
 }
 

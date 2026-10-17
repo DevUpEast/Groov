@@ -476,6 +476,7 @@
     "share": "Teilen",
     "shareA11y": "Teile deinen Fortschritt",
     "stats": { "streak": "Tage-Serie", "best": "Beste Serie", "perfect": "Perfekte Tage", "a11y": "%{label}: %{value}" },
+    "streakRule": { "title": "So funktionieren Serien", "body": "Ein Tag zählt, wenn jede für diesen Tag geplante Gewohnheit erledigt ist. Ruhetage und Freezes halten deine Serie.", "a11y": "Wie Serien gezählt werden" },
     "freezes": { "one": "❄️ %{count} Serien-Freeze diesen Monat übrig · ein verpasster Tag wird automatisch abgedeckt", "other": "❄️ %{count} Serien-Freezes diesen Monat übrig · ein verpasster Tag wird automatisch abgedeckt" },
     "weekly": { "title": "Erledigte Gewohnheiten: Woche", "hint": "Tippe auf einen Balken für Details" },
     "history": "Verlauf",
