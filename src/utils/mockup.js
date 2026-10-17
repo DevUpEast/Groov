@@ -2,7 +2,8 @@
 // no-op on native. Contract "mockup-v1":
 //   query params on the app URL: theme=light|dark|system, insets=top,right,bottom,left,
 //     route=<path> (consumed by parseDeepLink), guest=1 (auto anonymous session),
-//     demo=1 (seed starter habits + 30 days of history), mockup=1
+//     demo=1 (seed starter habits + 30 days of history), lang=<locale code> (UI language
+//     for this page load, not persisted), mockup=1
 //   window messages from the host: { type: 'mockup:theme', theme }, { type: 'mockup:navigate', route }
 //   messages to the host: { type: 'mockup:statusbar', style }, { type: 'mockup:ready' }
 import { Platform } from 'react-native';
@@ -18,6 +19,7 @@ export const mockupParams = {
   get active() { return isWeb && params().get('mockup') === '1'; },
   get guest() { return isWeb && params().get('guest') === '1'; },
   get demo() { return isWeb && params().get('demo') === '1'; },
+  get lang() { return (isWeb && params().get('lang')) || null; },
   get theme() { const t = params().get('theme'); return t === 'light' || t === 'dark' ? t : null; },
   get insets() {
     const raw = params().get('insets');

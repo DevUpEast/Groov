@@ -113,7 +113,13 @@ export function initLocale() {
   if (!initPromise) {
     initPromise = Promise.resolve()
       .then(() => storage().loadData(LOCALE_STORAGE_KEY))
-      .then(saved => { apply(typeof saved === 'string' ? saved : null); })
+      .then(saved => {
+        // iOS mockup host (web, `?lang=de`): render this page load in that language without
+        // persisting it. Required lazily so native and Jest never load the mockup module.
+        let override = null;
+        try { override = matchSupportedLocale(require('../utils/mockup').mockupParams.lang); } catch {}
+        apply(override || (typeof saved === 'string' ? saved : null));
+      })
       .catch(() => {});
   }
   return initPromise;

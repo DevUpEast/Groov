@@ -1,0 +1,32 @@
+{
+  "_comment": "Values a locale may legitimately keep identical to English (scripts/i18n-check.mjs). 'values' applies to every locale; 'keys' lists per-locale key paths that may stay English. Strings made only of %{placeholders}, digits, punctuation and emoji are always allowed.",
+  "values": [
+    "Groov",
+    "Groov Pro",
+    "Pro",
+    "OK",
+    "Google",
+    "Apple",
+    "Email",
+    "E-Mail",
+    "Supabase",
+    "Aptabase",
+    "Sentry",
+    "RevenueCat",
+    "Anthropic",
+    "Claude",
+    "English",
+    "Español",
+    "Deutsch",
+    "Français",
+    "Português (Brasil)",
+    "日本語"
+  ],
+  "keys": {
+    "es": [],
+    "de": [],
+    "fr": [],
+    "pt-BR": [],
+    "ja": []
+  }
+}
