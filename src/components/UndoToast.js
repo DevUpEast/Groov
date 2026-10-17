@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Text, TouchableOpacity, StyleSheet, View } from 'react-native';
 import { t } from '../i18n';
 
-// Bottom toast shown after a check-in: "<habit> logged · Undo". Auto-hides.
+// Bottom toast shown after a check-in: "<habit> logged · Undo". Auto-hides after
+// `toast.duration` (falls back to `duration`; Mark the rest done uses 8 s).
 export default function UndoToast({ toast, onUndo, onHide, theme, bottom = 16, duration = 4000 }) {
   const y = useRef(new Animated.Value(80)).current;
   const timer = useRef(null);
@@ -14,7 +15,7 @@ export default function UndoToast({ toast, onUndo, onHide, theme, bottom = 16, d
       return;
     }
     Animated.spring(y, { toValue: 0, useNativeDriver: true, tension: 90, friction: 12 }).start();
-    timer.current = setTimeout(onHide, duration);
+    timer.current = setTimeout(onHide, toast.duration ?? duration);
     return () => clearTimeout(timer.current);
   }, [toast]); // eslint-disable-line react-hooks/exhaustive-deps
 

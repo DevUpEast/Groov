@@ -10,7 +10,7 @@ import ActionSheet from './ui/ActionSheet';
 import { usesCounter, countStep, describeProgress, unitLabel } from '../utils/habits';
 import { t, useLocale } from '../i18n';
 
-export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
+export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkipToggle }) {
   const {
     getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, todayStr,
     isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, settings, getNote,
@@ -69,7 +69,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const handleLongPress = () => setMenuOpen(true);
   const menuOptions = [
-    { label: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip'), onPress: () => toggleSkipHabitOn(habit.id, today) },
+    { label: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip'), onPress: () => { toggleSkipHabitOn(habit.id, today); onSkipToggle?.(habit); } },
     { label: yesterdayDone ? t('habitCard.longPress.undoYesterday') : t('habitCard.longPress.markYesterday'), onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
     ...(onNote ? [{ label: note ? t('habitCard.longPress.editNote') : t('habitCard.longPress.addNote'), onPress: () => onNote(habit, today) }] : []),
   ];

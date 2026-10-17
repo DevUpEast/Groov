@@ -154,10 +154,7 @@
       "body": "Ninguno de tus hábitos está programado para hoy. Disfruta la pausa, tus rachas están a salvo."
     },
     "sectionHabits": "HÁBITOS DE HOY",
-    "markAll": "Marcar todo",
-    "unmarkAll": "Desmarcar todo",
-    "markAllA11y": "Marcar todos los hábitos como hechos",
-    "unmarkAllA11y": "Desmarcar todos los hábitos",
+    "markRest": "Marcar el resto como hecho (%{count})",
     "activeChallenges": "RETOS ACTIVOS",
     "challenge": {
       "sub": "Día %{day} de %{days} · %{count} registrados",
@@ -170,7 +167,8 @@
       "done": "%{name} listo ✓",
       "avoided": "%{name}: evitado ✓",
       "overLimit": "%{name}: superaste tu límite",
-      "plus": "%{name} +%{amount}"
+      "plus": "%{name} +%{amount}",
+      "markedRest": { "one": "%{count} hábito marcado como hecho", "other": "%{count} hábitos marcados como hechos" }
     },
     "milestone": {
       "title": "¡Racha de %{days} días!",
