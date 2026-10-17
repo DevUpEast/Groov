@@ -28,6 +28,11 @@ describe('parseDeepLink', () => {
     expect(parseDeepLink('groov://nope')).toBeNull();
     expect(parseDeepLink(null)).toBeNull();
   });
+  it('parses the dev design-preview route without a tab change', () => {
+    expect(parseDeepLink('groov://dev/design')).toEqual({ tab: null, action: 'designPreview' });
+    expect(parseDeepLink('https://x.y/app/?route=dev%2Fdesign')).toEqual({ tab: null, action: 'designPreview' });
+    expect(parseDeepLink('groov://dev')).toBeNull();
+  });
   it('builds links', () => {
     expect(habitLink('7')).toBe('groov://habit/7');
     expect(habitLink('7', 'done')).toBe('groov://habit/7/done');

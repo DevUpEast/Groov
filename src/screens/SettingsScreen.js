@@ -52,7 +52,7 @@ function Row({ label, sublabel, sublabelColor, right, theme, onPress }) {
     <View style={[styles.row, { borderBottomColor: theme.border }]}>
       <View style={styles.rowLeft}>
         <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
-        {sublabel && <Text style={[styles.rowSub, { color: sublabelColor ?? theme.textMuted }]}>{sublabel}</Text>}
+        {sublabel && <Text style={[styles.rowSub, { color: sublabelColor ?? theme.textSecondary }]}>{sublabel}</Text>}
       </View>
       <View style={styles.rowRight}>{right}</View>
     </View>
@@ -123,7 +123,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
                 </View>
               )}
             </View>
-            <Text style={[styles.reminderSublabel, { color: blocked ? theme.primary : theme.textMuted }]}>
+            <Text style={[styles.reminderSublabel, { color: blocked ? theme.primary : theme.textSecondary }]}>
               {sublabelText}
             </Text>
           </TouchableOpacity>
@@ -150,7 +150,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
         </TouchableOpacity>
         {onRemove && (
           <TouchableOpacity style={styles.deleteReminderBtn} onPress={onRemove} accessibilityRole="button" accessibilityLabel={t('settings.removeReminderA11y')}>
-            <Ionicons name="trash-outline" size={18} color={theme.danger} />
+            <Ionicons name="trash-outline" size={18} color={theme.dangerText} />
           </TouchableOpacity>
         )}
       </View>
@@ -161,7 +161,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
 function Section({ title, children, theme }) {
   return (
     <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-      <Text style={[styles.sectionTitle, { color: theme.textMuted }]}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
       {children}
     </View>
   );
@@ -545,7 +545,7 @@ export default function SettingsScreen() {
           <View style={[styles.row, { borderBottomColor: theme.border }]}>
             <View style={styles.rowLeft}>
               <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.theme')}</Text>
-              <Text style={[styles.rowSub, { color: theme.textMuted }]}>
+              <Text style={[styles.rowSub, { color: theme.textSecondary }]}>
                 {settings.theme === 'system' ? t('settings.themeFollows') : settings.theme === 'dark' ? t('settings.themeAlwaysDark') : t('settings.themeAlwaysLight')}
               </Text>
             </View>
@@ -563,7 +563,7 @@ export default function SettingsScreen() {
                     accessibilityLabel={t('settings.themeA11y', { label })}
                     accessibilityState={{ selected: active }}
                   >
-                    <Text style={[styles.segmentText, { color: active ? '#fff' : theme.textMuted }]}>{label}</Text>
+                    <Text style={[styles.segmentText, { color: active ? '#fff' : theme.textSecondary }]}>{label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -578,9 +578,9 @@ export default function SettingsScreen() {
           >
             <View style={styles.rowLeft}>
               <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.language')}</Text>
-              <Text style={[styles.rowSub, { color: theme.textMuted }]}>{languageSub}</Text>
+              <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{languageSub}</Text>
             </View>
-            <Ionicons name="language-outline" size={18} color={theme.textMuted} />
+            <Ionicons name="language-outline" size={18} color={theme.textSecondary} />
           </TouchableOpacity>
         </Section>
 
@@ -717,9 +717,9 @@ export default function SettingsScreen() {
             <View style={[styles.row, { borderBottomColor: theme.border }]}>
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.simulatedDate')}</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>{formattedDevDate}</Text>
+                <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{formattedDevDate}</Text>
                 {dateOffset !== 0 && (
-                  <Text style={[styles.rowSub, { color: theme.warning }]}>
+                  <Text style={[styles.rowSub, { color: theme.textSecondary }]}>
                     {t('settings.dev.offset', { count: Math.abs(dateOffset), offset: `${dateOffset > 0 ? '+' : ''}${dateOffset}` })}
                   </Text>
                 )}
@@ -734,7 +734,7 @@ export default function SettingsScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={t('settings.dev.resetDate')}
                 >
-                  <Text style={[styles.devBtnText, { color: theme.textMuted, fontSize: 10 }]}>{t('settings.dev.now')}</Text>
+                  <Text style={[styles.devBtnText, { color: theme.textSecondary, fontSize: 10 }]}>{t('settings.dev.now')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.devBtn, { borderColor: theme.border }]} onPress={() => adjustDay(1)} accessibilityRole="button" accessibilityLabel={t('settings.dev.nextDay')}>
                   <Text style={[styles.devBtnText, { color: theme.text }]}>+</Text>
@@ -755,7 +755,7 @@ export default function SettingsScreen() {
             >
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.sendTest')}</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>{t('settings.dev.sendTestSub')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{t('settings.dev.sendTestSub')}</Text>
               </View>
               <Ionicons name="notifications-outline" size={20} color={theme.primary} />
             </TouchableOpacity>
@@ -784,7 +784,7 @@ export default function SettingsScreen() {
             >
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.seed.title')}</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>{t('settings.dev.seed.sub')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{t('settings.dev.seed.sub')}</Text>
               </View>
               <Ionicons name="calendar-outline" size={20} color={theme.primary} />
             </TouchableOpacity>
@@ -804,9 +804,9 @@ export default function SettingsScreen() {
             >
               <View style={styles.rowLeft}>
                 <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.crash.title')}</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>{t('settings.dev.crash.sub')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{t('settings.dev.crash.sub')}</Text>
               </View>
-              <Ionicons name="warning-outline" size={20} color={theme.warning} />
+              <Ionicons name="warning-outline" size={20} color={theme.textSecondary} />
             </TouchableOpacity>
 
             {/* Lock dev tools */}
@@ -829,10 +829,10 @@ export default function SettingsScreen() {
               accessibilityLabel={t('settings.dev.disable.title')}
             >
               <View style={styles.rowLeft}>
-                <Text style={[styles.rowLabel, { color: theme.danger }]}>{t('settings.dev.disable.title')}</Text>
-                <Text style={[styles.rowSub, { color: theme.textMuted }]}>{t('settings.dev.disable.sub')}</Text>
+                <Text style={[styles.rowLabel, { color: theme.dangerText }]}>{t('settings.dev.disable.title')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{t('settings.dev.disable.sub')}</Text>
               </View>
-              <Ionicons name="lock-closed-outline" size={20} color={theme.danger} />
+              <Ionicons name="lock-closed-outline" size={20} color={theme.dangerText} />
             </TouchableOpacity>
           </Section>
         )}
@@ -855,7 +855,7 @@ export default function SettingsScreen() {
             sublabel={displayName || t('settings.account.displayNameSub')}
             theme={theme}
             onPress={openNameEditor}
-            right={<Ionicons name="create-outline" size={18} color={theme.textMuted} />}
+            right={<Ionicons name="create-outline" size={18} color={theme.textSecondary} />}
           />
           {isAnonymous ? (
             <Row
@@ -879,7 +879,7 @@ export default function SettingsScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('settings.account.signOut')}
           >
-            <Text style={styles.dangerText}>{t('settings.account.signOut')}</Text>
+            <Text style={[styles.dangerText, { color: theme.dangerText }]}>{t('settings.account.signOut')}</Text>
           </TouchableOpacity>
         </Section>
 
@@ -900,7 +900,7 @@ export default function SettingsScreen() {
             right={<Ionicons name="download-outline" size={20} color={theme.primary} />}
           />
           {!lastBackupAt && (
-            <Text style={[styles.backupHint, { color: theme.warning }]}>{t('settings.backup.hint')}</Text>
+            <Text style={[styles.backupHint, { color: theme.textSecondary }]}>{t('settings.backup.hint')}</Text>
           )}
         </Section>
 
@@ -916,7 +916,7 @@ export default function SettingsScreen() {
               accessibilityState={{ disabled: resetLoading }}
             >
               <Text style={[styles.dangerText, { color: theme.primary }]}>{t('settings.data.resetPassword')}</Text>
-              <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
+              <Text style={[styles.dangerSub, { color: theme.textSecondary }]}>
                 {t('settings.data.resetPasswordSub')}
               </Text>
             </TouchableOpacity>
@@ -927,8 +927,8 @@ export default function SettingsScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('settings.data.clearA11y')}
           >
-            <Text style={styles.dangerText}>{t('settings.data.clear')}</Text>
-            <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
+            <Text style={[styles.dangerText, { color: theme.dangerText }]}>{t('settings.data.clear')}</Text>
+            <Text style={[styles.dangerSub, { color: theme.textSecondary }]}>
               {t('settings.data.clearSub')}
             </Text>
           </TouchableOpacity>
@@ -938,8 +938,8 @@ export default function SettingsScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('settings.data.deleteA11y')}
           >
-            <Text style={styles.dangerText}>{t('settings.data.deleteAccount')}</Text>
-            <Text style={[styles.dangerSub, { color: theme.textMuted }]}>
+            <Text style={[styles.dangerText, { color: theme.dangerText }]}>{t('settings.data.deleteAccount')}</Text>
+            <Text style={[styles.dangerSub, { color: theme.textSecondary }]}>
               {t('settings.data.deleteSub')}
             </Text>
           </TouchableOpacity>
@@ -970,47 +970,47 @@ export default function SettingsScreen() {
             sublabel={t('settings.about.rateSub')}
             theme={theme}
             onPress={handleRate}
-            right={<Ionicons name="star-outline" size={18} color={theme.warning} />}
+            right={<Ionicons name="star-outline" size={18} color={theme.textSecondary} />}
           />
           <Row
             label={t('settings.about.feedback')}
             sublabel={SUPPORT_EMAIL ? t('settings.about.feedbackEmail') : t('settings.about.feedbackSub')}
             theme={theme}
             onPress={handleFeedback}
-            right={<Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.textMuted} />}
+            right={<Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.textSecondary} />}
           />
           <Row
             label={t('settings.about.whatsNew')}
             sublabel={t('settings.about.whatsNewSub', { version: VERSION_LABEL })}
             theme={theme}
             onPress={() => { if (settings.hapticsEnabled) lightImpact(); setWhatsNew(true); }}
-            right={<Ionicons name="sparkles-outline" size={18} color={theme.textMuted} />}
+            right={<Ionicons name="sparkles-outline" size={18} color={theme.textSecondary} />}
           />
           <Row
             label={t('settings.about.help')}
             theme={theme}
             onPress={() => Linking.openURL(SUPPORT_URL).catch(() => {})}
-            right={<Ionicons name="open-outline" size={18} color={theme.textMuted} />}
+            right={<Ionicons name="open-outline" size={18} color={theme.textSecondary} />}
           />
           <Row
             label={t('settings.about.privacy')}
             sublabel={t('settings.about.privacySub')}
             theme={theme}
             onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
-            right={<Ionicons name="open-outline" size={18} color={theme.textMuted} />}
+            right={<Ionicons name="open-outline" size={18} color={theme.textSecondary} />}
           />
           <Row
             label={t('settings.about.terms')}
             theme={theme}
             onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}
-            right={<Ionicons name="open-outline" size={18} color={theme.textMuted} />}
+            right={<Ionicons name="open-outline" size={18} color={theme.textSecondary} />}
           />
         </Section>
 
         <TouchableOpacity onPress={handleVersionTap} activeOpacity={0.7} style={styles.versionBtn} accessibilityRole="button" accessibilityLabel={VERSION_LABEL}>
-          <Text style={[styles.version, { color: theme.textMuted }]}>{VERSION_LABEL}</Text>
+          <Text style={[styles.version, { color: theme.textSecondary }]}>{VERSION_LABEL}</Text>
           {devTapCount > 2 && !showDevTools && (
-            <Text style={[styles.devHint, { color: theme.textMuted }]}>
+            <Text style={[styles.devHint, { color: theme.textSecondary }]}>
               {t('settings.dev.moreTaps', { count: 7 - devTapCount })}
             </Text>
           )}
@@ -1044,7 +1044,7 @@ export default function SettingsScreen() {
           onChangeText={setResetCode}
           accessibilityLabel={t('settings.resetModal.codePlaceholder')}
           placeholder={t('settings.resetModal.codePlaceholder')}
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor={theme.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -1054,7 +1054,7 @@ export default function SettingsScreen() {
           onChangeText={setResetNewPassword}
           accessibilityLabel={t('settings.resetModal.newPassword')}
           placeholder={t('settings.resetModal.newPassword')}
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor={theme.textSecondary}
           secureTextEntry
         />
         <TextInput
@@ -1063,11 +1063,11 @@ export default function SettingsScreen() {
           onChangeText={setResetConfirmPassword}
           accessibilityLabel={t('settings.resetModal.confirmPassword')}
           placeholder={t('settings.resetModal.confirmPassword')}
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor={theme.textSecondary}
           secureTextEntry
         />
         {!!resetError && (
-          <Text style={[styles.dialogError, { color: theme.danger }]} accessibilityLiveRegion="polite">{resetError}</Text>
+          <Text style={[styles.dialogError, { color: theme.dangerText }]} accessibilityLiveRegion="polite">{resetError}</Text>
         )}
       </Dialog>
 
@@ -1091,7 +1091,7 @@ export default function SettingsScreen() {
           onChangeText={setNameDraft}
           accessibilityLabel={t('settings.account.nameModal.placeholder')}
           placeholder={t('settings.account.nameModal.placeholder')}
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor={theme.textSecondary}
           maxLength={40}
           onSubmitEditing={saveName}
           returnKeyType="done"
@@ -1118,7 +1118,7 @@ export default function SettingsScreen() {
           onChangeText={setDevCodeDraft}
           accessibilityLabel={t('settings.dev.access.a11y')}
           placeholder={t('settings.dev.access.placeholder')}
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor={theme.textSecondary}
           secureTextEntry
           onSubmitEditing={handleDevCodeSubmit}
           returnKeyType="done"
@@ -1235,7 +1235,7 @@ const styles = StyleSheet.create({
   linkPill: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   linkPillText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   dangerRow: { paddingHorizontal: 16, paddingVertical: 14 },
-  dangerText: { color: '#EF4444', fontSize: 15, fontWeight: '600' },
+  dangerText: { fontSize: 15, fontWeight: '600' },
   dangerSub: { fontSize: 12, marginTop: 2 },
   version: { textAlign: 'center', fontSize: 12, marginTop: 8 },
   versionBtn: { alignItems: 'center', marginTop: 8 },

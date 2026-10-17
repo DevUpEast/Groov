@@ -411,7 +411,7 @@ export function AppProvider({ children }) {
         setRequestedTab(0);
         return;
       }
-      setRequestedTab(route.tab);
+      if (route.tab != null) setRequestedTab(route.tab);
       setPendingRoute(route);
     };
   }, [allHabits, habits, userId]);

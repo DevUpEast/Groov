@@ -107,14 +107,15 @@ export default function Dialog({
             {!!title && (
               <Text style={[styles.title, { color: theme.text }]} accessibilityRole="header">{title}</Text>
             )}
-            {!!body && <Text style={[styles.body, { color: theme.textMuted }]}>{body}</Text>}
+            {!!body && <Text style={[styles.body, { color: theme.textSecondary }]}>{body}</Text>}
             {children}
           </ScrollView>
           {actions.length > 0 && (
             <View style={styles.actions}>
               {actions.map((a, i) => {
                 const primary = a.variant === 'primary';
-                const fill = destructive ? theme.danger : theme.primary;
+                const fill = destructive ? theme.dangerFill : theme.primary;
+                const onFill = destructive ? theme.onDanger : theme.onPrimary;
                 const busy = !!a.loading;
                 const disabled = !!a.disabled || busy;
                 return (
@@ -133,7 +134,7 @@ export default function Dialog({
                     accessibilityLabel={a.accessibilityLabel ?? a.label}
                     accessibilityState={{ disabled, busy }}
                   >
-                    <Text style={[styles.btnText, { color: primary ? theme.onPrimary : theme.textMuted }]}>
+                    <Text style={[styles.btnText, { color: primary ? onFill : theme.textSecondary }]}>
                       {busy && a.loadingLabel ? a.loadingLabel : a.label}
                     </Text>
                   </TouchableOpacity>

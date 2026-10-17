@@ -29,11 +29,13 @@ const MAX_PICK = 5;
 const TIME_CHIPS = ['morning', 'afternoon', 'evening', 'anytime'];
 
 // App renders onboarding before its own <StatusBar>, so without this the platform default
-// (dark icons on iOS) sits on the indigo background (ONB-9).
+// (dark icons on iOS) sits on the indigo background (ONB-9). Dark theme uses ink icons on
+// #818CF8, like its onAction text (white there is 2.98:1).
 export default function OnboardingScreen() {
+  const { themeName } = useApp();
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style={themeName === 'dark' ? 'dark' : 'light'} />
       <OnboardingFlow />
     </>
   );
@@ -101,7 +103,7 @@ function OnboardingFlow() {
   const dots = (
     <View style={styles.dots} accessibilityLabel={t('onboarding.stepA11y', { step: step + 1, total: totalSteps })}>
       {Array.from({ length: totalSteps }).map((_, i) => (
-        <View key={i} style={[styles.dot, { backgroundColor: i === step ? '#fff' : 'rgba(255,255,255,0.4)' }, i === step && styles.dotActive]} />
+        <View key={i} style={[styles.dot, { backgroundColor: i === step ? theme.onAction : theme.onActionSecondary }, i === step ? styles.dotActive : styles.dotIdle]} />
       ))}
     </View>
   );
@@ -116,7 +118,7 @@ function OnboardingFlow() {
           <View style={[styles.card, { backgroundColor: theme.surface }]}>
             <Text style={styles.emoji}>{s.emoji}</Text>
             <Text style={[styles.title, { color: theme.text }]}>{t(`onboarding.intro.${s.key}.title`)}</Text>
-            <Text style={[styles.body, { color: theme.textMuted }]}>{t(`onboarding.intro.${s.key}.body`)}</Text>
+            <Text style={[styles.body, { color: theme.textSecondary }]}>{t(`onboarding.intro.${s.key}.body`)}</Text>
           </View>
           <TouchableOpacity style={styles.btn} onPress={() => { haptic(); setStep(step + 1); }} accessibilityRole="button">
             <Text style={[styles.btnText, { color: theme.primary }]}>{t('common.next')}</Text>
@@ -137,7 +139,7 @@ function OnboardingFlow() {
           {dots}
           <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
             <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.pick.title')}</Text>
-            <Text style={[styles.body, { color: theme.textMuted, marginBottom: 16 }]}>
+            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: 16 }]}>
               {t('onboarding.pick.body')}
             </Text>
             <ScrollView style={{ alignSelf: 'stretch', maxHeight: 340 }} showsVerticalScrollIndicator={false}>
@@ -155,7 +157,7 @@ function OnboardingFlow() {
                     <Text style={styles.pickIcon}>{h.icon}</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.pickName, { color: theme.text }]}>{h.name}</Text>
-                      <Text style={[styles.pickSub, { color: theme.textMuted }]}>
+                      <Text style={[styles.pickSub, { color: theme.textSecondary }]}>
                         {h.type === 'volume' ? t('onboarding.pick.perDay', { goal: h.volumeGoal, unit: h.unit }) : t('onboarding.pick.onceADay')}
                       </Text>
                     </View>
@@ -166,7 +168,7 @@ function OnboardingFlow() {
                 );
               })}
             </ScrollView>
-            <Text style={[styles.counter, { color: theme.textMuted }]}>{t('onboarding.pick.selected', { count: picked.length, max: MAX_PICK })}</Text>
+            <Text style={[styles.counter, { color: theme.textSecondary }]}>{t('onboarding.pick.selected', { count: picked.length, max: MAX_PICK })}</Text>
           </View>
           <TouchableOpacity
             style={[styles.btn, { opacity: picked.length === 0 ? 0.6 : 1 }]}
@@ -192,7 +194,7 @@ function OnboardingFlow() {
           <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
             <Text style={styles.emojiSmall}>🔔</Text>
             <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.reminders.title')}</Text>
-            <Text style={[styles.body, { color: theme.textMuted, marginBottom: 16 }]}>
+            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: 16 }]}>
               {t('onboarding.reminders.body')}
             </Text>
             <ScrollView style={{ alignSelf: 'stretch', maxHeight: 320 }} showsVerticalScrollIndicator={false}>
@@ -207,7 +209,7 @@ function OnboardingFlow() {
                   >
                     <Text style={styles.pickIcon}>{habit.icon}</Text>
                     <Text style={[styles.pickName, { color: theme.text, flex: 1 }]} numberOfLines={2}>{habit.name}</Text>
-                    <Text style={[styles.reminderTime, { color: time ? theme.primary : theme.textMuted }]}>{label}</Text>
+                    <Text style={[styles.reminderTime, { color: time ? theme.primary : theme.textSecondary }]}>{label}</Text>
                   </View>
                 );
               })}
@@ -241,7 +243,7 @@ function OnboardingFlow() {
           {dots}
           <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
             <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.plan.title')}</Text>
-            <Text style={[styles.body, { color: theme.textMuted, marginBottom: 12 }]}>
+            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: 12 }]}>
               {t('onboarding.plan.body')}
             </Text>
             <ScrollView style={{ alignSelf: 'stretch', maxHeight: 360 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -262,7 +264,7 @@ function OnboardingFlow() {
                             accessibilityRole="button"
                             accessibilityState={{ selected: on }}
                           >
-                            <Text style={[styles.chipText, { color: on ? theme.primary : theme.textMuted }]}>{t(`timeOfDay.${c}`)}</Text>
+                            <Text style={[styles.chipText, { color: on ? theme.primary : theme.textSecondary }]}>{t(`timeOfDay.${c}`)}</Text>
                           </TouchableOpacity>
                         );
                       })}
@@ -270,7 +272,7 @@ function OnboardingFlow() {
                     <TextInput
                       style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
                       placeholder={t('onboarding.plan.placeholder')}
-                      placeholderTextColor={theme.textMuted}
+                      placeholderTextColor={theme.textSecondary}
                       value={plan.intention ?? ''}
                       onChangeText={text => setPlans(p => ({ ...p, [h.key]: { ...p[h.key], intention: text } }))}
                       maxLength={80}
@@ -305,6 +307,7 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', gap: 8, marginBottom: 24 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   dotActive: { width: 24 },
+  dotIdle: { opacity: 0.4 },
   card: {
     borderRadius: 24, padding: 28, alignItems: 'center', width: '100%', maxWidth: 420, marginBottom: 20,
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 20, elevation: 8,

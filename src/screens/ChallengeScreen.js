@@ -4,6 +4,7 @@ import {
   Modal, TextInput, Alert, Platform,
   PanResponder, Keyboard, Animated, Dimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import SafeAreaView from '../components/SafeAreaView';
 import { useApp, getChallengeTier, TIER_STYLES } from '../context/AppContext';
 import Slider from '../components/Slider';
@@ -67,14 +68,14 @@ function makeDragPanResponder(translateY, onClose) {
 // ── Day badge ─────────────────────────────────────────────────────────────────
 
 function DayBadge({ dayNum, completed, isCurrent, isMissed, theme }) {
-  let bg = theme.progressBarBg;
-  let textColor = theme.textMuted;
+  let bg = theme.track;
+  let textColor = theme.textSecondary;
   let label = String(dayNum);
   let borderColor = theme.border;
 
   if (completed) { bg = theme.primary; textColor = '#fff'; label = '✓'; borderColor = theme.primary; }
   else if (isCurrent) { borderColor = theme.primary; textColor = theme.primary; }
-  else if (isMissed) { bg = theme.surface; textColor = theme.textMuted; }
+  else if (isMissed) { bg = theme.surface; textColor = theme.textSecondary; }
 
   return (
     <View style={[styles.badge, { backgroundColor: bg, borderColor }]}>
@@ -153,7 +154,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
       >
         {!initial && (
           <>
-            <Text style={[styles.label, { color: theme.textMuted }]}>{t('challenges.form.template')}</Text>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>{t('challenges.form.template')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
               {templates.map(tpl => {
                 const active = days === tpl.days && name === tpl.name;
@@ -173,7 +174,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
                   >
                     <Text style={styles.templateEmoji}>{tpl.icon}</Text>
                     <Text style={[styles.templateDays, { color: active ? theme.primary : theme.text }]}>{t('challenges.form.templateDays', { count: tpl.days })}</Text>
-                    <Text style={[styles.templateName, { color: theme.textMuted }]} numberOfLines={1}>{tpl.shortName}</Text>
+                    <Text style={[styles.templateName, { color: theme.textSecondary }]} numberOfLines={1}>{tpl.shortName}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -181,7 +182,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
           </>
         )}
 
-        <Text style={[styles.label, { color: theme.textMuted }]}>{t('challenges.form.icon')}</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>{t('challenges.form.icon')}</Text>
         <View style={styles.iconPickerRow}>
           {CHALLENGE_ICONS.map(ic => (
             <TouchableOpacity
@@ -201,31 +202,31 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
           ))}
         </View>
 
-        <Text style={[styles.label, { color: theme.textMuted }]}>{t('challenges.form.name')}</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>{t('challenges.form.name')}</Text>
         <TextInput
           style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
           value={name}
           onChangeText={setName}
           accessibilityLabel={t('challenges.form.nameA11y')}
           placeholder={t('challenges.form.namePlaceholder')}
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor={theme.textSecondary}
           returnKeyType="done"
           onSubmitEditing={Keyboard.dismiss}
         />
 
-        <Text style={[styles.label, { color: theme.textMuted }]}>{t('challenges.form.description')}</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>{t('challenges.form.description')}</Text>
         <TextInput
           style={[styles.input, styles.inputMulti, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
           value={description}
           onChangeText={setDescription}
           accessibilityLabel={t('challenges.form.descriptionA11y')}
           placeholder={t('challenges.form.descriptionPlaceholder')}
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor={theme.textSecondary}
           multiline
           numberOfLines={3}
         />
 
-        <Text style={[styles.label, { color: theme.textMuted }]}>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>
           {t('challenges.form.duration', { count: days })}
         </Text>
 
@@ -243,7 +244,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
               accessibilityLabel={t('challenges.form.rangeA11y', { label: t(`challenges.form.range.${opt.key}`), max: opt.max })}
               accessibilityState={{ selected: rangeMax === opt.max }}
             >
-              <Text style={[styles.rangeBtnText, { color: rangeMax === opt.max ? theme.primary : theme.textMuted }]}>
+              <Text style={[styles.rangeBtnText, { color: rangeMax === opt.max ? theme.primary : theme.textSecondary }]}>
                 {t(`challenges.form.range.${opt.key}`)}
               </Text>
             </TouchableOpacity>
@@ -253,15 +254,15 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
         <Slider value={days} min={1} max={rangeMax} onValueChange={setDays} theme={theme} label={t('challenges.form.durationA11y')} />
 
         <View style={styles.sliderLabels}>
-          <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>1</Text>
-          <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>{rangeMax}</Text>
+          <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>1</Text>
+          <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{rangeMax}</Text>
         </View>
 
         {/* ── Linked habits ── */}
-        <Text style={[styles.label, { color: theme.textMuted }]}>{t('challenges.form.linked')}</Text>
+        <Text style={[styles.label, { color: theme.textSecondary }]}>{t('challenges.form.linked')}</Text>
 
         {habits.length === 0 ? (
-          <Text style={[styles.noHabitsInForm, { color: theme.textMuted }]}>
+          <Text style={[styles.noHabitsInForm, { color: theme.textSecondary }]}>
             {t('challenges.form.noHabits')}
           </Text>
         ) : (
@@ -308,9 +309,12 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
             })}
 
             {selectedHabitIds.length === 0 && (
-              <Text style={[styles.linkWarning, { color: '#D97706' }]}>
-                {t('challenges.form.selectOne')}
-              </Text>
+              <View style={styles.linkWarningRow}>
+                <Ionicons name="alert-circle-outline" size={16} color={theme.textSecondary} />
+                <Text style={[styles.linkWarning, { color: theme.textSecondary }]}>
+                  {t('challenges.form.selectOne')}
+                </Text>
+              </View>
             )}
           </>
         )}
@@ -358,7 +362,7 @@ function PastChallengeDetailModal({ challenge, onClose, theme }) {
   const cardBg = ts.bg || theme.surface;
   const cardBorder = ts.border || theme.border;
   const textColor = ts.text || theme.text;
-  const subColor = ts.text || theme.textMuted;
+  const subColor = ts.text || theme.textSecondary;
 
   return (
     <Modal visible={sheet.internalVisible} animationType="none" transparent onRequestClose={doClose}>
@@ -387,7 +391,7 @@ function PastChallengeDetailModal({ challenge, onClose, theme }) {
 
             <Text style={[styles.label, { color: subColor }]}>{t('challenges.detail.progress', { done: completedCount, days: challenge.days })}</Text>
 
-            <View style={[styles.progressBg, { backgroundColor: tier !== 'none' ? cardBorder + '40' : theme.progressBarBg }]}>
+            <View style={[styles.progressBg, { backgroundColor: tier !== 'none' ? cardBorder + '40' : theme.track }]}>
               <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: cardBorder || theme.primary }]} />
             </View>
             <Text style={[styles.progressLabel, { color: subColor }]}>{t('challenges.card.percentComplete', { percent: Math.round(progress * 100) })}</Text>
@@ -397,10 +401,10 @@ function PastChallengeDetailModal({ challenge, onClose, theme }) {
                 const completed = i < completedCount;
                 return (
                   <View key={i} style={[styles.badge, {
-                    backgroundColor: completed ? (cardBorder || theme.primary) : theme.progressBarBg,
+                    backgroundColor: completed ? (cardBorder || theme.primary) : theme.track,
                     borderColor: completed ? (cardBorder || theme.primary) : theme.border,
                   }]}>
-                    <Text style={[styles.badgeText, { color: completed ? '#fff' : theme.textMuted }]}>
+                    <Text style={[styles.badgeText, { color: completed ? '#fff' : theme.textSecondary }]}>
                       {completed ? '✓' : String(i + 1)}
                     </Text>
                   </View>
@@ -437,15 +441,15 @@ function ChallengeCard({ challenge, habits, today, onEdit, onDelete, theme }) {
         <Text style={styles.trophy}>{challenge.icon || '🏆'}</Text>
         <View style={styles.challengeInfo}>
           <Text style={[styles.challengeName, { color: theme.text }]}>{challenge.name}</Text>
-          <Text style={[styles.challengeSub, { color: theme.textMuted }]}>
+          <Text style={[styles.challengeSub, { color: theme.textSecondary }]}>
             {t('challenges.card.sub', { day: currentDay, days: challenge.days, count: completedCount })}
           </Text>
         </View>
         <TouchableOpacity onPress={onEdit} style={styles.editBtn} accessibilityRole="button" accessibilityLabel={t('challenges.card.editA11y', { name: challenge.name })}>
-          <Text style={[styles.editBtnText, { color: theme.textMuted }]}>{t('common.edit')}</Text>
+          <Text style={[styles.editBtnText, { color: theme.textSecondary }]}>{t('common.edit')}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onDelete} style={styles.deleteBtn} accessibilityRole="button" accessibilityLabel={t('challenges.card.deleteA11y')}>
-          <Text style={[styles.deleteBtnText, { color: theme.danger }]}>✕</Text>
+          <Text style={[styles.deleteBtnText, { color: theme.dangerText }]}>✕</Text>
         </TouchableOpacity>
       </View>
 
@@ -469,15 +473,15 @@ function ChallengeCard({ challenge, habits, today, onEdit, onDelete, theme }) {
         })}
       </View>
 
-      <View style={[styles.progressBg, { backgroundColor: theme.progressBarBg }]}>
+      <View style={[styles.progressBg, { backgroundColor: theme.track }]}>
         <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.primary }]} />
       </View>
-      <Text style={[styles.progressLabel, { color: theme.textMuted }]}>
+      <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
         {t('challenges.card.percentComplete', { percent: Math.round(progress * 100) })}
       </Text>
 
       {challenge.description ? (
-        <Text style={[styles.desc, { color: theme.textMuted }]}>{challenge.description}</Text>
+        <Text style={[styles.desc, { color: theme.textSecondary }]}>{challenge.description}</Text>
       ) : null}
 
       {/* Linked habits — collapsible dropdown, no Manage button */}
@@ -490,11 +494,11 @@ function ChallengeCard({ challenge, habits, today, onEdit, onDelete, theme }) {
           accessibilityLabel={linked.length > 0 ? t('challenges.card.linkedA11y', { count: linked.length }) : t('challenges.card.noneLinked')}
           accessibilityState={{ expanded: showLinked, disabled: linkedHabits.length === 0 }}
         >
-          <Text style={[styles.linkedTitle, { color: theme.textMuted }]}>
+          <Text style={[styles.linkedTitle, { color: theme.textSecondary }]}>
             {linked.length > 0 ? t('challenges.card.linkedHabits', { count: linked.length }) : t('challenges.card.noneLinked')}
           </Text>
           {linkedHabits.length > 0 && (
-            <Text style={[styles.linkedChevron, { color: theme.textMuted }]}>
+            <Text style={[styles.linkedChevron, { color: theme.textSecondary }]}>
               {showLinked ? ' ▲' : ' ▼'}
             </Text>
           )}
@@ -516,11 +520,11 @@ function ChallengeCard({ challenge, habits, today, onEdit, onDelete, theme }) {
         {todayDone ? (
           <Text style={[styles.claimDoneText, { color: theme.success }]}>{t('challenges.card.todayLogged')}</Text>
         ) : linked.length === 0 ? (
-          <Text style={[styles.claimWaiting, { color: theme.textMuted }]}>
+          <Text style={[styles.claimWaiting, { color: theme.textSecondary }]}>
             {t('challenges.card.tapEdit')}
           </Text>
         ) : (
-          <Text style={[styles.claimWaiting, { color: theme.textMuted }]}>
+          <Text style={[styles.claimWaiting, { color: theme.textSecondary }]}>
             {t('challenges.card.completeLinked')}
           </Text>
         )}
@@ -639,10 +643,10 @@ export default function ChallengeScreen() {
 
         {/* Past Challenges */}
         <View style={{ marginTop: 8 }}>
-          <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>{t('challenges.past')}</Text>
+          <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('challenges.past')}</Text>
           {effectivePastChallenges.length === 0 ? (
             <View style={[styles.pastEmptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={[styles.pastEmptyText, { color: theme.textMuted }]}>
+              <Text style={[styles.pastEmptyText, { color: theme.textSecondary }]}>
                 {t('challenges.pastEmpty')}
               </Text>
             </View>
@@ -653,7 +657,7 @@ export default function ChallengeScreen() {
               const cardBg = ts.bg || theme.surface;
               const cardBorder = ts.border || theme.border;
               const nameColor = ts.text || theme.text;
-              const subColor = ts.text || theme.textMuted;
+              const subColor = ts.text || theme.textSecondary;
               return (
                 <TouchableOpacity
                   key={ch.id ?? i}
@@ -766,7 +770,8 @@ const styles = StyleSheet.create({
   habitLinkName: { flex: 1, fontSize: 15, fontWeight: '500' },
   habitLinkCheck: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   habitLinkCheckMark: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  linkWarning: { fontSize: 13, marginBottom: 10, fontStyle: 'italic' },
+  linkWarningRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  linkWarning: { flex: 1, fontSize: 13, fontStyle: 'italic' },
   addHabitInModalBtn: { borderWidth: 1.5, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 4, marginBottom: 16, borderStyle: 'dashed' },
   addHabitInModalText: { fontSize: 15, fontWeight: '700' },
   templateChip: { width: 96, borderWidth: 1.5, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center' },
