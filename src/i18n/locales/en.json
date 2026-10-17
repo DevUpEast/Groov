@@ -155,7 +155,6 @@
     },
     "sectionHabits": "TODAY'S HABITS",
     "markRest": "Mark the rest done (%{count})",
-    "markRestA11y": { "one": "Mark %{count} more habit done", "other": "Mark %{count} more habits done" },
     "activeChallenges": "ACTIVE CHALLENGES",
     "challenge": {
       "sub": "Day %{day} of %{days} · %{count} logged",

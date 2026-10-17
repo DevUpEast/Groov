@@ -25,7 +25,7 @@ import { localDateKey, parseDateKey } from '../utils/dates';
 import { maybeRequestReview } from '../services/review';
 import {
   currentChallengeDay, isChallengeExpired, getRelevantHabits,
-  planChallengeClaims, routeClaims, cancelQueuedForHabit, planFlush,
+  planChallengeClaims, routeClaims, cancelQueuedForHabit, planFlush, endMarkRestWindow,
 } from '../utils/challenges';
 import { t, getLocale, useLocale } from '../i18n';
 
@@ -191,9 +191,10 @@ export default function TodayScreen() {
 
   // Claim (and complete) challenges after an action. `countsOverride` is today's
   // map *after* the action, so the decision never waits for React to apply it.
-  // With `defer`, a completing claim only marks the day and is queued under `token`.
-  // Returns { claimedIds, completingIds, completedNowIds }.
+  // With `defer`, a completing claim only marks the day and is queued under `token`
+  // with the day it was claimed on. Returns { claimedIds, completingIds, completedNowIds }.
   const autoClaimChallenges = useCallback((countsOverride, { defer = false, token = null } = {}) => {
+    const today = todayStr();
     // Use effectiveChallenges so completedDays are filtered to <= today (the raw list
     // keeps future-dated entries when the dev date offset is rewound); activeIds skips
     // any "reverted" challenge that now lives in pastChallenges.
@@ -201,13 +202,13 @@ export default function TodayScreen() {
       challenges: effectiveChallenges,
       activeIds: challenges.map(c => c.id),
       dueHabits,
-      today: todayStr(),
+      today,
       isSatisfied: countsOverride ? (h) => isHabitSatisfiedWith(h, countsOverride) : isHabitSatisfied,
     });
     const { markIds, completeNowIds, queueIds } = routeClaims(plan, defer);
     markIds.forEach(id => markChallengeDay(id));
     completeNowIds.forEach(id => completeChallengeImmediately(id));
-    queueIds.forEach(id => queueRef.current.push({ challengeId: id, claimedAt: Date.now(), token }));
+    queueIds.forEach(id => queueRef.current.push({ challengeId: id, claimedAt: Date.now(), token, dayKey: today }));
     return { ...plan, completedNowIds: completeNowIds };
   }, [effectiveChallenges, challenges, dueHabits, isHabitSatisfied, isHabitSatisfiedWith, markChallengeDay, completeChallengeImmediately, todayStr]);
 
@@ -220,7 +221,7 @@ export default function TodayScreen() {
     queueRef.current = queueRef.current.filter(i => !due.includes(i));
     const { challenges: active, effectiveChallenges: eff, completeChallengeImmediately: complete, settings: s } = latest.current;
     const ids = planFlush(due, eff.filter(ch => active.some(c => c.id === ch.id)));
-    ids.forEach(id => complete(id));
+    ids.forEach(id => complete(id, due.find(i => i.challengeId === id)?.dayKey));
     if (ids.length > 0) {
       if (s.soundEnabled) playHornFanfare();
       setTrophyCelebrating(true);
@@ -228,7 +229,15 @@ export default function TodayScreen() {
   }, []);
 
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => { if (state === 'background') flushQueued(); });
+    // Backgrounding ends the undo window: hiding the Mark-the-rest toast flushes its
+    // token (prevToast effect below); flushQueued() covers anything else still queued.
+    // The cleanup runs only when AppProvider remounts (sign-out, account switch): Today
+    // never unmounts inside the pager.
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state !== 'background') return;
+      setToast(endMarkRestWindow);
+      flushQueued();
+    });
     return () => { sub.remove(); flushQueued(); };
   }, [flushQueued]);
 
@@ -316,12 +325,13 @@ export default function TodayScreen() {
 
   const handleMarkRest = useCallback(async () => {
     const id = Date.now();
+    const dayKey = todayStr();
     const plan = markRestDone();
     if (plan.changedIds.length === 0) return;
     // Completion is deferred until the undo window closes (S-02).
     const { claimedIds } = autoClaimChallenges(plan.next, { defer: true, token: id });
     setToast({
-      id, kind: 'markRest', before: plan.before, claimedIds, duration: MARK_REST_UNDO_MS,
+      id, kind: 'markRest', dayKey, before: plan.before, changedIds: plan.changedIds, claimedIds, duration: MARK_REST_UNDO_MS,
       message: t('today.toast.markedRest', { count: plan.changedIds.length }),
     });
     if (settings.hapticsEnabled) await mediumImpact();
@@ -336,14 +346,15 @@ export default function TodayScreen() {
       hapticFillSequence();
       setCelebrating(true);
     }
-  }, [markRestDone, autoClaimChallenges, settings, dueHabits, isHabitSatisfiedWith]);
+  }, [markRestDone, autoClaimChallenges, settings, dueHabits, isHabitSatisfiedWith, todayStr]);
 
-  // Undo for Mark the rest: drop its queued completions, put back the exact previous
-  // counts and un-mark exactly the challenge days this action claimed.
+  // Undo for Mark the rest, on the day the action ran (tst.dayKey): drop its queued
+  // completions, revert the habits it marked that are still at 1, and un-mark exactly
+  // the challenge days it claimed.
   const undoMarkRest = useCallback((tst) => {
     queueRef.current = queueRef.current.filter(i => i.token !== tst.id);
-    restoreHabitCounts(tst.before);
-    tst.claimedIds.forEach(id => unmarkChallengeDay(id));
+    restoreHabitCounts(tst.before, tst.changedIds, tst.dayKey);
+    tst.claimedIds.forEach(id => unmarkChallengeDay(id, tst.dayKey));
     allDoneCelebrated.current = false;
   }, [restoreHabitCounts, unmarkChallengeDay]);
 
@@ -488,7 +499,6 @@ export default function TodayScreen() {
                   onPress={handleMarkRest}
                   style={styles.markRestBtn}
                   accessibilityRole="button"
-                  accessibilityLabel={t('today.markRestA11y', { count: markRestCount })}
                 >
                   <Text style={[styles.markRestText, { color: theme.primary }]}>
                     {t('today.markRest', { count: markRestCount })}

@@ -155,7 +155,6 @@
     },
     "sectionHabits": "HABITUDES DU JOUR",
     "markRest": "Cocher le reste (%{count})",
-    "markRestA11y": { "one": "Cocher %{count} habitude de plus", "other": "Cocher %{count} habitudes de plus" },
     "activeChallenges": "DÉFIS EN COURS",
     "challenge": {
       "sub": "Jour %{day} sur %{days} · %{count} validés",

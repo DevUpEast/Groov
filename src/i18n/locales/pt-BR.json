@@ -154,8 +154,7 @@
       "body": "Nenhum dos seus hábitos está programado para hoje. Aproveite a pausa, suas sequências estão seguras."
     },
     "sectionHabits": "HÁBITOS DE HOJE",
-    "markRest": "Marcar o resto como feito (%{count})",
-    "markRestA11y": { "one": "Marcar mais %{count} hábito como concluído", "other": "Marcar mais %{count} hábitos como concluídos" },
+    "markRest": "Marcar o resto como concluído (%{count})",
     "activeChallenges": "DESAFIOS ATIVOS",
     "challenge": {
       "sub": "Dia %{day} de %{days} · %{count} registrados",

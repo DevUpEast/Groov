@@ -1,4 +1,5 @@
-import { applyMarkRest, restoreDayCounts, restoreSyncMap, countAfterIncrement, isGoalMet } from '../habits';
+import { applyMarkRest, revertMarkRest, countAfterIncrement, isGoalMet } from '../habits';
+import { endMarkRestWindow } from '../challenges';
 
 const TODAY = '2026-10-17';
 const habits = [
@@ -51,26 +52,63 @@ describe('applyMarkRest', () => {
 });
 
 describe('(a) Mark the rest then Undo restores the exact day', () => {
-  it('deep-equals the previous counts, including a partial volume habit', () => {
-    const completions = { '2026-10-16': { move: 1 }, [TODAY]: { water: 3, move: 0, stretch: 5 } };
+  // Mark the rest + Undo, as AppContext runs them.
+  const markThenUndo = (completions, edit = (c) => c) => {
     const before = completions[TODAY];
-    const { next } = applyMarkRest(before, habits, []);
-    const after = { ...completions, [TODAY]: next };
-    const undone = restoreDayCounts(after, TODAY, before);
+    const { next, changedIds } = applyMarkRest(before, habits, []);
+    const marked = edit({ ...completions, [TODAY]: next });
+    return revertMarkRest(marked, TODAY, before, changedIds);
+  };
+
+  it('deep-equals the previous counts when nothing else changed, including a partial volume habit', () => {
+    const completions = { '2026-10-16': { move: 1 }, [TODAY]: { water: 3, move: 0, stretch: 5 } };
+    const { completions: undone, syncMap } = markThenUndo(completions);
     expect(undone[TODAY]).toEqual({ water: 3, move: 0, stretch: 5 });
     expect(undone).toEqual(completions);
+    // Only the habits the action marked are written back (0 where there was no entry).
+    expect(syncMap).toEqual({ move: 0, read: 0, legacy: 0, sugar: 0 });
   });
 
   it('removes the day again when it had no entries before', () => {
     const completions = { '2026-10-16': { move: 1 } };
-    const { next } = applyMarkRest(completions[TODAY], habits, []);
-    const undone = restoreDayCounts({ ...completions, [TODAY]: next }, TODAY, completions[TODAY]);
-    expect(undone).toEqual(completions);
+    expect(markThenUndo(completions).completions).toEqual(completions);
   });
 
-  it('syncs ids the action added back as 0 and keeps the previous values', () => {
-    expect(restoreSyncMap({ water: 3, move: 1, read: 1 }, { water: 3 })).toEqual({ water: 3, move: 0, read: 0 });
-    expect(restoreSyncMap({ move: 1 }, undefined)).toEqual({ move: 0 });
+  it('keeps an edit made inside the window: water decremented mid-window survives Undo', () => {
+    const completions = { [TODAY]: { water: 3 } };
+    const decrementWater = (c) => ({ ...c, [TODAY]: { ...c[TODAY], water: 2 } });
+    const { completions: undone, syncMap } = markThenUndo(completions, decrementWater);
+    expect(undone[TODAY]).toEqual({ water: 2 });
+    expect('water' in syncMap).toBe(false);
+  });
+
+  it('leaves a marked habit the user already un-checked inside the window, and keeps the day if other entries exist', () => {
+    const uncheckRead = (c) => ({ ...c, [TODAY]: { ...c[TODAY], read: 0, water: 1 } });
+    const { completions: undone, syncMap } = markThenUndo({}, uncheckRead);
+    expect(undone[TODAY]).toEqual({ read: 0, water: 1 });
+    expect(syncMap).toEqual({ move: 0, legacy: 0, sugar: 0 });
+  });
+
+  it('reverts on the day the action ran, not today at Undo time (m2)', () => {
+    const completions = { [TODAY]: { water: 3 } };
+    const before = completions[TODAY];
+    const { next, changedIds } = applyMarkRest(before, habits, []);
+    // Midnight passed inside the window: a new day already has a check-off.
+    const later = { [TODAY]: next, '2026-10-18': { move: 1 } };
+    const { completions: undone } = revertMarkRest(later, TODAY, before, changedIds);
+    expect(undone[TODAY]).toEqual({ water: 3 });
+    expect(undone['2026-10-18']).toEqual({ move: 1 });
+  });
+});
+
+describe('endMarkRestWindow (M1: backgrounding closes the undo window)', () => {
+  it('hides a Mark-the-rest toast so Undo cannot outlive the flush', () => {
+    expect(endMarkRestWindow({ id: 1, kind: 'markRest' })).toBeNull();
+  });
+  it('leaves other toasts and no toast alone', () => {
+    const single = { id: 2, habit: { id: 'move' } };
+    expect(endMarkRestWindow(single)).toBe(single);
+    expect(endMarkRestWindow(null)).toBeNull();
   });
 });
 

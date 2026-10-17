@@ -166,20 +166,23 @@ export function applyMarkRest(todayCounts, dueHabits, skipsToday = [], isSatisfi
   return { next, changedIds };
 }
 
-// Undo for "Mark the rest done": put back exactly the day map captured before the
-// action (`before` may be undefined when the day had no entries yet).
-export function restoreDayCounts(completions, key, before) {
+// Undo for "Mark the rest done" on day `key`: only the ids the action changed that are
+// still at 1 go back to their `before` value (removed when they had no entry), so edits
+// made inside the undo window (a decrement, another habit) survive. `before` may be
+// undefined when the day had no entries; the day is then removed again if nothing else
+// is left. Returns the new completions and the rows to sync (reverted ids, 0 when they
+// had no entry, since sync has no per-row delete).
+export function revertMarkRest(completions, key, before, changedIds) {
+  const day = { ...((completions || {})[key] || {}) };
+  const syncMap = {};
+  (changedIds || []).forEach(id => {
+    if (day[id] !== 1) return;
+    if (before && Object.prototype.hasOwnProperty.call(before, id)) day[id] = before[id];
+    else delete day[id];
+    syncMap[id] = (before && before[id]) || 0;
+  });
   const out = { ...(completions || {}) };
-  if (before === undefined) delete out[key];
-  else out[key] = { ...before };
-  return out;
-}
-
-// Rows to upsert so the cloud matches a restored day: every habit in either map,
-// with ids missing from `before` written as 0 (sync has no per-row delete).
-export function restoreSyncMap(current, before) {
-  const rows = {};
-  Object.keys(current || {}).forEach(id => { rows[id] = 0; });
-  Object.entries(before || {}).forEach(([id, n]) => { rows[id] = n; });
-  return rows;
+  if (before === undefined && Object.keys(day).length === 0) delete out[key];
+  else out[key] = day;
+  return { completions: out, syncMap };
 }

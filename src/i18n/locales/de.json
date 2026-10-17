@@ -154,8 +154,7 @@
       "body": "Heute ist keine deiner Gewohnheiten geplant. Genieße die Pause, deine Serien sind sicher."
     },
     "sectionHabits": "HEUTIGE GEWOHNHEITEN",
-    "markRest": "Rest abhaken (%{count})",
-    "markRestA11y": { "one": "%{count} weitere Gewohnheit abhaken", "other": "%{count} weitere Gewohnheiten abhaken" },
+    "markRest": "Den Rest abhaken (%{count})",
     "activeChallenges": "AKTIVE CHALLENGES",
     "challenge": {
       "sub": "Tag %{day} von %{days} · %{count} erfasst",

@@ -4,7 +4,7 @@ import * as ExpoLinking from 'expo-linking';
 import * as QuickActions from 'expo-quick-actions';
 import { parseDeepLink } from '../utils/links';
 import {
-  isGoalMet, justMetGoal, STARTER_HABITS, countAfterIncrement, applyMarkRest, restoreDayCounts, restoreSyncMap,
+  isGoalMet, justMetGoal, STARTER_HABITS, countAfterIncrement, applyMarkRest, revertMarkRest,
 } from '../utils/habits';
 import { refreshWidget } from '../widgets/refreshWidget';
 import { configurePurchases, checkPro, FREE_LIMITS } from '../services/entitlements';
@@ -1023,8 +1023,9 @@ export function AppProvider({ children }) {
     if (userId && ch) syncChallenge(userId, mark(ch));
   }, [challenges, todayStr, userId]);
 
-  const unmarkChallengeDay = useCallback((challengeId) => {
-    const today = todayStr();
+  // `key` defaults to today; Mark the rest's Undo passes the day the action ran.
+  const unmarkChallengeDay = useCallback((challengeId, key) => {
+    const today = key || todayStr();
     const unmark = (ch) => ({ ...ch, completedDays: ch.completedDays.filter(d => d !== today), completed: false });
     setChallenges(prev => prev.map(ch => (ch.id === challengeId ? unmark(ch) : ch)));
     const ch = challenges.find(c => c.id === challengeId);
@@ -1070,8 +1071,10 @@ export function AppProvider({ children }) {
     setChallenges(prev => prev.filter(c => c.id !== challengeId));
   }, [challenges, todayStr, userId]);
 
-  const completeChallengeImmediately = useCallback((challengeId) => {
-    const today = todayStr();
+  // `key`: the day being claimed (defaults to today; a deferred Mark-the-rest
+  // completion passes the day the action ran).
+  const completeChallengeImmediately = useCallback((challengeId, key) => {
+    const today = key || todayStr();
     const ch = challenges.find(c => c.id === challengeId);
     if (!ch) return;
     const updatedDays = ch.completedDays.includes(today)
@@ -1113,13 +1116,13 @@ export function AppProvider({ children }) {
     return plan;
   }, [planMarkRest, habits, todayStr, userId]);
 
-  // Undo for Mark the rest: today's map becomes exactly `before` again; habits that had
-  // no entry before are written back to the cloud as 0.
-  const restoreHabitCounts = useCallback((before) => {
-    const today = todayStr();
-    const current = completions[today];
-    setCompletions(prev => restoreDayCounts(prev, today, before));
-    if (userId) syncCompletionsForDate(userId, today, restoreSyncMap(current, before));
+  // Undo for Mark the rest on day `key`: the habits it marked that are still at 1 go back
+  // to `before` (revertMarkRest); anything edited inside the window is kept.
+  const restoreHabitCounts = useCallback((before, changedIds, key) => {
+    const day = key || todayStr();
+    const { syncMap } = revertMarkRest(completions, day, before, changedIds);
+    setCompletions(prev => revertMarkRest(prev, day, before, changedIds).completions);
+    if (userId && Object.keys(syncMap).length > 0) syncCompletionsForDate(userId, day, syncMap);
   }, [completions, todayStr, userId]);
 
   const archiveExpiredChallenge = useCallback((challengeId) => {

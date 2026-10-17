@@ -155,7 +155,6 @@
     },
     "sectionHabits": "HÁBITOS DE HOY",
     "markRest": "Marcar el resto como hecho (%{count})",
-    "markRestA11y": { "one": "Marcar %{count} hábito más como hecho", "other": "Marcar %{count} hábitos más como hechos" },
     "activeChallenges": "RETOS ACTIVOS",
     "challenge": {
       "sub": "Día %{day} de %{days} · %{count} registrados",

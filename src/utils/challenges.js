@@ -69,6 +69,13 @@ export function cancelQueuedForHabit(queue, habitId, challenges, dueHabits) {
   return { queue: rest, cancelledIds };
 }
 
+// The app went to the background: the Mark-the-rest undo window ends there (its toast
+// hides, which flushes the queue), so Undo can never appear after the completion ran.
+// Other toasts stay. Used as a setToast updater.
+export function endMarkRestWindow(toast) {
+  return toast?.kind === 'markRest' ? null : toast;
+}
+
 // The window closed: complete the queued challenges that are still active (not
 // archived by the expiry effect or completed elsewhere) and still have every day.
 export function planFlush(queue, currentChallenges) {
