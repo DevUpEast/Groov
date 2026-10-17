@@ -154,10 +154,8 @@
       "body": "Nenhum dos seus hábitos está programado para hoje. Aproveite a pausa, suas sequências estão seguras."
     },
     "sectionHabits": "HÁBITOS DE HOJE",
-    "markAll": "Marcar tudo",
-    "unmarkAll": "Desmarcar tudo",
-    "markAllA11y": "Marcar todos os hábitos como concluídos",
-    "unmarkAllA11y": "Desmarcar todos os hábitos",
+    "markRest": "Marcar o resto como feito (%{count})",
+    "markRestA11y": { "one": "Marcar mais %{count} hábito como concluído", "other": "Marcar mais %{count} hábitos como concluídos" },
     "activeChallenges": "DESAFIOS ATIVOS",
     "challenge": {
       "sub": "Dia %{day} de %{days} · %{count} registrados",
@@ -170,7 +168,8 @@
       "done": "%{name} concluído ✓",
       "avoided": "%{name}: evitado ✓",
       "overLimit": "%{name}: acima do seu limite",
-      "plus": "%{name} +%{amount}"
+      "plus": "%{name} +%{amount}",
+      "markedRest": { "one": "%{count} hábito marcado como concluído", "other": "%{count} hábitos marcados como concluídos" }
     },
     "milestone": {
       "title": "Sequência de %{days} dias!",

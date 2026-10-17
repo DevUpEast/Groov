@@ -154,10 +154,8 @@
       "body": "Aucune de tes habitudes n'est prévue aujourd'hui. Profite de la pause, tes séries sont en sécurité."
     },
     "sectionHabits": "HABITUDES DU JOUR",
-    "markAll": "Tout cocher",
-    "unmarkAll": "Tout décocher",
-    "markAllA11y": "Marquer toutes les habitudes comme faites",
-    "unmarkAllA11y": "Décocher toutes les habitudes",
+    "markRest": "Cocher le reste (%{count})",
+    "markRestA11y": { "one": "Cocher %{count} habitude de plus", "other": "Cocher %{count} habitudes de plus" },
     "activeChallenges": "DÉFIS EN COURS",
     "challenge": {
       "sub": "Jour %{day} sur %{days} · %{count} validés",
@@ -170,7 +168,8 @@
       "done": "%{name} fait ✓",
       "avoided": "%{name} : évitée ✓",
       "overLimit": "%{name} : limite dépassée",
-      "plus": "%{name} +%{amount}"
+      "plus": "%{name} +%{amount}",
+      "markedRest": { "one": "%{count} habitude cochée", "other": "%{count} habitudes cochées" }
     },
     "milestone": {
       "title": "Série de %{days} jours !",

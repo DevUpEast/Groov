@@ -3,7 +3,9 @@ import { AppState, useColorScheme, Linking, Alert, Platform } from 'react-native
 import * as ExpoLinking from 'expo-linking';
 import * as QuickActions from 'expo-quick-actions';
 import { parseDeepLink } from '../utils/links';
-import { isGoalMet, justMetGoal, STARTER_HABITS } from '../utils/habits';
+import {
+  isGoalMet, justMetGoal, STARTER_HABITS, countAfterIncrement, applyMarkRest, restoreDayCounts, restoreSyncMap,
+} from '../utils/habits';
 import { refreshWidget } from '../widgets/refreshWidget';
 import { configurePurchases, checkPro, FREE_LIMITS } from '../services/entitlements';
 import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage';
@@ -762,6 +764,17 @@ export function AppProvider({ children }) {
     return isSatisfiedOn(habit.schedule, todayStr(), (k) => isHabitDoneOn(habit, k));
   }, [isHabitDoneOn, todayStr]);
 
+  // Same rule, but judged against `todayCounts` (a post-action map) for today, so a
+  // caller can decide before React has applied its own setCompletions.
+  const isHabitSatisfiedWith = useCallback((habit, todayCounts) => {
+    const today = todayStr();
+    return isSatisfiedOn(habit.schedule, today, (k) => {
+      if (k !== today) return isHabitDoneOn(habit, k);
+      if (habit.createdAt && k < habit.createdAt) return false;
+      return isGoalMet(habit, (todayCounts || {})[habit.id]);
+    });
+  }, [isHabitDoneOn, todayStr]);
+
   const getCompletedCount = useCallback(() => {
     return dueHabits.filter(h => isHabitSatisfied(h)).length;
   }, [dueHabits, isHabitSatisfied]);
@@ -787,7 +800,7 @@ export function AppProvider({ children }) {
     const current = (completions[today] || {})[habitId] || 0;
     const capped = habit.type === 'daily' || habit.type === 'quit' || !habit.type;
     if (capped && current >= 1) return false;
-    const next = capped ? 1 : current + Math.max(1, Math.round(amount));
+    const next = countAfterIncrement(habit, current, amount);
     setCompletions(prev => ({
       ...prev,
       [today]: { ...(prev[today] || {}), [habitId]: next },
@@ -996,32 +1009,26 @@ export function AppProvider({ children }) {
 
   // ── Challenge actions ────────────────────────────────────────────────────────
 
+  // Functional updates so several challenges can be marked or un-marked in one tick
+  // (Mark the rest done, its Undo) without the last call overwriting the others.
   const markChallengeDay = useCallback((challengeId) => {
     const today = todayStr();
-    const updated = challenges.map(ch => {
-      if (ch.id !== challengeId) return ch;
+    const mark = (ch) => {
       if (ch.completedDays.includes(today)) return ch;
       const newDays = [...ch.completedDays, today];
       return { ...ch, completedDays: newDays, completed: newDays.length >= ch.days };
-    });
-    setChallenges(updated);
-    if (userId) {
-      const ch = updated.find(c => c.id === challengeId);
-      if (ch) syncChallenge(userId, ch);
-    }
+    };
+    setChallenges(prev => prev.map(ch => (ch.id === challengeId ? mark(ch) : ch)));
+    const ch = challenges.find(c => c.id === challengeId);
+    if (userId && ch) syncChallenge(userId, mark(ch));
   }, [challenges, todayStr, userId]);
 
   const unmarkChallengeDay = useCallback((challengeId) => {
     const today = todayStr();
-    const updated = challenges.map(ch => {
-      if (ch.id !== challengeId) return ch;
-      return { ...ch, completedDays: ch.completedDays.filter(d => d !== today), completed: false };
-    });
-    setChallenges(updated);
-    if (userId) {
-      const ch = updated.find(c => c.id === challengeId);
-      if (ch) syncChallenge(userId, ch);
-    }
+    const unmark = (ch) => ({ ...ch, completedDays: ch.completedDays.filter(d => d !== today), completed: false });
+    setChallenges(prev => prev.map(ch => (ch.id === challengeId ? unmark(ch) : ch)));
+    const ch = challenges.find(c => c.id === challengeId);
+    if (userId && ch) syncChallenge(userId, unmark(ch));
   }, [challenges, todayStr, userId]);
 
   const editChallenge = useCallback((challengeId, updates) => {
@@ -1084,16 +1091,36 @@ export function AppProvider({ children }) {
     }
   }, [challenges, todayStr, userId]);
 
-  const setAllHabitCounts = useCallback((getValue) => {
+  // "Mark the rest done" (S-02): only untouched, non-skipped daily/quit habits become 1
+  // (applyMarkRest). Returns { before, next, changedIds }; `before` is today's exact
+  // map (undefined when the day had no entries) for restoreHabitCounts.
+  const planMarkRest = useCallback(() => {
     const today = todayStr();
-    const todayMap = { ...(completions[today] || {}) };
-    dueHabits.forEach(h => { todayMap[h.id] = getValue(h); });
-    setCompletions(prev => ({ ...prev, [today]: todayMap }));
-    if (userId) syncCompletionsForDate(userId, today, todayMap);
-  }, [dueHabits, completions, todayStr, userId]);
+    const before = completions[today];
+    const skipsToday = settings.skips?.[today] || [];
+    const { next, changedIds } = applyMarkRest(before, dueHabits, skipsToday, isHabitSatisfied);
+    return { before, next, changedIds };
+  }, [completions, dueHabits, settings.skips, isHabitSatisfied, todayStr]);
 
-  const selectAllHabitsToday = useCallback(() => setAllHabitCounts(h => h.volumeGoal), [setAllHabitCounts]);
-  const resetAllHabitsToday = useCallback(() => setAllHabitCounts(() => 0), [setAllHabitCounts]);
+  const markRestDone = useCallback(() => {
+    const plan = planMarkRest();
+    if (plan.changedIds.length === 0) return plan;
+    const today = todayStr();
+    setCompletions(prev => ({ ...prev, [today]: { ...(prev[today] || {}), ...Object.fromEntries(plan.changedIds.map(id => [id, 1])) } }));
+    setDailySnapshot(prev => (prev[today] ? prev : { ...prev, [today]: snapshotOf(habits) }));
+    if (userId) syncCompletionsForDate(userId, today, Object.fromEntries(plan.changedIds.map(id => [id, 1])));
+    plan.changedIds.forEach(id => track(Events.COMPLETION, { type: habits.find(h => h.id === id)?.type }));
+    return plan;
+  }, [planMarkRest, habits, todayStr, userId]);
+
+  // Undo for Mark the rest: today's map becomes exactly `before` again; habits that had
+  // no entry before are written back to the cloud as 0.
+  const restoreHabitCounts = useCallback((before) => {
+    const today = todayStr();
+    const current = completions[today];
+    setCompletions(prev => restoreDayCounts(prev, today, before));
+    if (userId) syncCompletionsForDate(userId, today, restoreSyncMap(current, before));
+  }, [completions, todayStr, userId]);
 
   const archiveExpiredChallenge = useCallback((challengeId) => {
     const ch = challenges.find(c => c.id === challengeId);
@@ -1433,7 +1460,7 @@ export function AppProvider({ children }) {
       updateSettings,
       markChallengeDay, unmarkChallengeDay, editChallenge, createChallenge, deleteChallenge,
       archiveExpiredChallenge, completeChallengeImmediately,
-      selectAllHabitsToday, resetAllHabitsToday,
+      markRestDone, planMarkRest, restoreHabitCounts, isHabitSatisfiedWith,
       linkHabitToChallenge, unlinkHabitFromChallenge, linkAllHabitsToChallenge,
       completeOnboarding, resetAll, pushAllData, seedRandomHistory,
       lastBackupAt, markBackedUp, importBackup,

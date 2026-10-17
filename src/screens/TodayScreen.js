@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, AppState,
 } from 'react-native';
 import SafeAreaView from '../components/SafeAreaView';
 import Svg, { Path, Rect } from 'react-native-svg';
@@ -17,13 +17,16 @@ import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import UndoToast from '../components/UndoToast';
 import NoteModal from '../components/NoteModal';
 import MoodCheckIn from '../components/MoodCheckIn';
-import { isGoalMet, usesCounter } from '../utils/habits';
+import { isGoalMet, usesCounter, countAfterIncrement } from '../utils/habits';
 import { successNotification, mediumImpact } from '../utils/haptics';
 import { playChime, playSuccessChime, playChallengeChime, playHornFanfare } from '../utils/sounds';
 import { fetchDailyNudge } from '../services/aiCoaching';
 import { localDateKey, parseDateKey } from '../utils/dates';
 import { maybeRequestReview } from '../services/review';
-import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
+import {
+  currentChallengeDay, isChallengeExpired, getRelevantHabits,
+  planChallengeClaims, routeClaims, cancelQueuedForHabit, planFlush,
+} from '../utils/challenges';
 import { t, getLocale, useLocale } from '../i18n';
 
 // Today list sections. Habits without a time of day go under "Anytime", which is
@@ -62,12 +65,9 @@ function hapticFillSequence() {
   successNotification();
 }
 
-// Habits a challenge watches today: its linked habits (or all of them) that are
-// actually scheduled today, so a weekday-only habit never blocks a weekend claim.
-function getRelevantHabits(challenge, dueHabits) {
-  const ids = challenge.linkedHabitIds || [];
-  return ids.length > 0 ? dueHabits.filter(h => ids.includes(h.id)) : dueHabits;
-}
+// How long the "Mark the rest done" toast (and its Undo) stays up. A challenge that
+// Mark the rest would complete waits for this window before it is archived.
+const MARK_REST_UNDO_MS = 8000;
 
 export default function TodayScreen() {
   const {
@@ -75,7 +75,8 @@ export default function TodayScreen() {
     incrementHabit, decrementHabit, isHabitSatisfied,
     isChallengeHabitsDone, settings, theme, markChallengeDay, unmarkChallengeDay,
     getHabitCount, dateOffset, todayStr, accountCreatedAt, displayName, devMode,
-    completeChallengeImmediately, selectAllHabitsToday, resetAllHabitsToday,
+    completeChallengeImmediately, markRestDone, planMarkRest, restoreHabitCounts,
+    isHabitSatisfiedWith, getTodayCompletions,
     pendingChallengeRewards, clearPendingChallengeRewards,
     setRequestedTab, getNote, setNote,
     pendingMilestone, clearPendingMilestone,
@@ -179,64 +180,93 @@ export default function TodayScreen() {
   const total = dueHabits.length;
   const progress = total > 0 ? completed / total : 0;
 
-  // Shared logic for auto-claiming/completing challenges after habits are done.
-  // Returns { anyClaimed, anyComplete } so callers can trigger sounds/trophies.
-  const autoClaimChallenges = useCallback((justCompletedHabitId, assumeAllDone = false) => {
-    const today = todayStr();
-    let anyClaimed = false;
-    let anyComplete = false;
+  // Completions queued by "Mark the rest done": { challengeId, claimedAt, token }.
+  // They run when that action's toast hides (or the app backgrounds / the screen
+  // unmounts), so Undo can still take the claim back before anything is archived.
+  const queueRef = useRef([]);
+  // Latest state for the deferred flush, which may run from a stale closure
+  // (AppState listener, unmount cleanup).
+  const latest = useRef({});
+  latest.current = { challenges, effectiveChallenges, completeChallengeImmediately, settings };
 
-    // Use effectiveChallenges so completedDays are filtered to <= today.
-    // The raw challenges array keeps future-dated entries when the dev-tool date offset is
-    // rewound, which would inflate the completion count and trigger early completion.
-    // Skip any "reverted" challenge that lives in pastChallenges rather than challenges.
-    effectiveChallenges.forEach(ch => {
-      if (!challenges.some(c => c.id === ch.id)) return;
-      if (ch.completedDays.includes(today)) return;
-      if (isChallengeExpired(ch, today)) return;
-
-      const relevant = getRelevantHabits(ch, dueHabits);
-      if (relevant.length === 0) return;
-
-      const allRelevantDone = assumeAllDone || relevant.every(h => {
-        if (justCompletedHabitId && h.id === justCompletedHabitId) return true;
-        return isHabitSatisfied(h);
-      });
-
-      if (!allRelevantDone) return;
-
-      const newDaysList = [...ch.completedDays, today];
-      if (newDaysList.length >= ch.days) {
-        completeChallengeImmediately(ch.id);
-        anyComplete = true;
-      } else {
-        markChallengeDay(ch.id);
-      }
-      anyClaimed = true;
+  // Claim (and complete) challenges after an action. `countsOverride` is today's
+  // map *after* the action, so the decision never waits for React to apply it.
+  // With `defer`, a completing claim only marks the day and is queued under `token`.
+  // Returns { claimedIds, completingIds, completedNowIds }.
+  const autoClaimChallenges = useCallback((countsOverride, { defer = false, token = null } = {}) => {
+    // Use effectiveChallenges so completedDays are filtered to <= today (the raw list
+    // keeps future-dated entries when the dev date offset is rewound); activeIds skips
+    // any "reverted" challenge that now lives in pastChallenges.
+    const plan = planChallengeClaims({
+      challenges: effectiveChallenges,
+      activeIds: challenges.map(c => c.id),
+      dueHabits,
+      today: todayStr(),
+      isSatisfied: countsOverride ? (h) => isHabitSatisfiedWith(h, countsOverride) : isHabitSatisfied,
     });
+    const { markIds, completeNowIds, queueIds } = routeClaims(plan, defer);
+    markIds.forEach(id => markChallengeDay(id));
+    completeNowIds.forEach(id => completeChallengeImmediately(id));
+    queueIds.forEach(id => queueRef.current.push({ challengeId: id, claimedAt: Date.now(), token }));
+    return { ...plan, completedNowIds: completeNowIds };
+  }, [effectiveChallenges, challenges, dueHabits, isHabitSatisfied, isHabitSatisfiedWith, markChallengeDay, completeChallengeImmediately, todayStr]);
 
-    return { anyClaimed, anyComplete };
-  }, [effectiveChallenges, challenges, dueHabits, isHabitSatisfied, markChallengeDay, completeChallengeImmediately, todayStr]);
+  // Run the queued completions (all of them, or only those of one toast), re-reading
+  // current state: a challenge that is gone (archived by the expiry effect, completed
+  // on another device) or no longer has every day is skipped. Trophy after the flush.
+  const flushQueued = useCallback((token) => {
+    const due = token === undefined ? queueRef.current : queueRef.current.filter(i => i.token === token);
+    if (due.length === 0) return;
+    queueRef.current = queueRef.current.filter(i => !due.includes(i));
+    const { challenges: active, effectiveChallenges: eff, completeChallengeImmediately: complete, settings: s } = latest.current;
+    const ids = planFlush(due, eff.filter(ch => active.some(c => c.id === ch.id)));
+    ids.forEach(id => complete(id));
+    if (ids.length > 0) {
+      if (s.soundEnabled) playHornFanfare();
+      setTrophyCelebrating(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => { if (state === 'background') flushQueued(); });
+    return () => { sub.remove(); flushQueued(); };
+  }, [flushQueued]);
+
+  // The Mark-the-rest toast hid (timeout, or replaced by another toast): its window closed.
+  const prevToast = useRef(null);
+  useEffect(() => {
+    const prev = prevToast.current;
+    prevToast.current = toast;
+    if (prev && prev !== toast && prev.kind === 'markRest') flushQueued(prev.id);
+  }, [toast, flushQueued]);
+
+  // A linked habit was un-marked or skipped inside the window: its queued completion is
+  // cancelled. With `unmark`, the cancelled challenges' day is un-marked here too.
+  const cancelQueuedFor = useCallback((habitId, unmark) => {
+    if (queueRef.current.length === 0) return;
+    const { queue, cancelledIds } = cancelQueuedForHabit(queueRef.current, habitId, challenges, dueHabits);
+    queueRef.current = queue;
+    if (unmark) cancelledIds.forEach(id => { if (challenges.some(c => c.id === id)) unmarkChallengeDay(id); });
+  }, [challenges, dueHabits, unmarkChallengeDay]);
 
   const handleIncrement = useCallback(async (habit, amount = 1) => {
     const before = getHabitCount(habit.id);
+    const after = { ...getTodayCompletions(), [habit.id]: countAfterIncrement(habit, before, amount) };
     const justCompleted = incrementHabit(habit.id, amount);
     if (justCompleted === false && !usesCounter(habit) && before >= 1) return; // already checked
     const over = habit.type === 'atMost' && before + amount > habit.volumeGoal;
-    setToast({ habit, amount, message: justCompleted ? (habit.type === 'quit' ? t('today.toast.avoided', { name: habit.name }) : t('today.toast.done', { name: habit.name })) : over ? t('today.toast.overLimit', { name: habit.name }) : t('today.toast.plus', { name: habit.name, amount }) });
+    setToast({ id: Date.now(), habit, amount, message: justCompleted ? (habit.type === 'quit' ? t('today.toast.avoided', { name: habit.name }) : t('today.toast.done', { name: habit.name })) : over ? t('today.toast.overLimit', { name: habit.name }) : t('today.toast.plus', { name: habit.name, amount }) });
     if (settings.hapticsEnabled) await mediumImpact();
     if (settings.soundEnabled) (justCompleted ? playSuccessChime : playChime)();
 
     if (justCompleted) {
-      // Compute synchronously: this habit just hit its goal; check every other habit
-      // against the pre-increment completions (they haven't changed).
-      const willAllBeDone = dueHabits.every(h => {
-        if (h.id === habit.id) return true;
-        return isHabitSatisfied(h);
-      });
+      // Judge everything against the counts after this check-off.
+      const willAllBeDone = dueHabits.every(h => isHabitSatisfiedWith(h, after));
 
-      const { anyClaimed, anyComplete } = autoClaimChallenges(habit.id);
-      if (settings.soundEnabled && anyClaimed) {
+      // A single check-off completes a challenge immediately, with its trophy.
+      const { claimedIds, completedNowIds } = autoClaimChallenges(after);
+      const anyComplete = completedNowIds.length > 0;
+      if (settings.soundEnabled && claimedIds.length > 0) {
         // Let the habit chime finish before the challenge sound starts.
         setTimeout(anyComplete ? playHornFanfare : playChallengeChime, 320);
       }
@@ -248,7 +278,7 @@ export default function TodayScreen() {
         setCelebrating(true);
       }
     }
-  }, [dueHabits, isHabitSatisfied, todayStr, autoClaimChallenges, incrementHabit, settings, getHabitCount]);
+  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, settings, getHabitCount, getTodayCompletions]);
 
   const handleDecrement = useCallback(async (habit, amount = 1) => {
     const today = todayStr();
@@ -261,6 +291,9 @@ export default function TodayScreen() {
 
     // Only unmark challenge days when this habit transitions from done → not done
     if (habitWasDone && !habitStillDone) {
+      // Any queued Mark-the-rest completion watching this habit is cancelled; its day
+      // is un-marked by the loop below.
+      cancelQueuedFor(habit.id, false);
       effectiveChallenges.forEach(ch => {
         if (!challenges.some(c => c.id === ch.id)) return;
         if (!ch.completedDays.includes(today)) return;
@@ -270,42 +303,49 @@ export default function TodayScreen() {
         }
       });
     }
-  }, [decrementHabit, effectiveChallenges, challenges, dueHabits, getHabitCount, unmarkChallengeDay, todayStr]);
+  }, [decrementHabit, effectiveChallenges, challenges, dueHabits, getHabitCount, unmarkChallengeDay, todayStr, cancelQueuedFor]);
 
-  const handleSelectAll = useCallback(async () => {
-    const today = todayStr();
+  // Skipping (or un-skipping) a linked habit inside the window cancels the queued
+  // completion and un-marks that challenge's day.
+  const handleSkipToggle = useCallback((habit) => {
+    cancelQueuedFor(habit.id, true);
+  }, [cancelQueuedFor]);
 
-    if (allDone) {
-      // Unselect all
-      resetAllHabitsToday();
-      allDoneCelebrated.current = false;
-      effectiveChallenges.forEach(ch => {
-        if (!challenges.some(c => c.id === ch.id)) return;
-        if (ch.completedDays.includes(today)) unmarkChallengeDay(ch.id);
-      });
-    } else {
-      selectAllHabitsToday();
-      if (settings.soundEnabled) playSuccessChime();
-      // assumeAllDone=true because selectAllHabitsToday hasn't flushed to state yet
-      const { anyClaimed, anyComplete } = autoClaimChallenges(null, true);
-      if (settings.soundEnabled && anyClaimed) {
-        setTimeout(anyComplete ? playHornFanfare : playChallengeChime, 320);
-      }
+  // Untouched daily/quit habits the button would mark ("Mark the rest done (N)").
+  const markRestCount = planMarkRest().changedIds.length;
 
-      if (!allDoneCelebrated.current) {
-        allDoneCelebrated.current = true;
-        hapticFillSequence();
-        setCelebrating(true);
-      }
-      if (anyComplete) {
-        setTimeout(() => setTrophyCelebrating(true), 500);
-      }
+  const handleMarkRest = useCallback(async () => {
+    const id = Date.now();
+    const plan = markRestDone();
+    if (plan.changedIds.length === 0) return;
+    // Completion is deferred until the undo window closes (S-02).
+    const { claimedIds } = autoClaimChallenges(plan.next, { defer: true, token: id });
+    setToast({
+      id, kind: 'markRest', before: plan.before, claimedIds, duration: MARK_REST_UNDO_MS,
+      message: t('today.toast.markedRest', { count: plan.changedIds.length }),
+    });
+    if (settings.hapticsEnabled) await mediumImpact();
+    if (settings.soundEnabled) {
+      playSuccessChime();
+      if (claimedIds.length > 0) setTimeout(playChallengeChime, 320);
     }
-  }, [
-    allDone, effectiveChallenges, challenges, todayStr,
-    autoClaimChallenges, selectAllHabitsToday, resetAllHabitsToday,
-    unmarkChallengeDay, settings,
-  ]);
+    // Celebrate only when the day is truly complete: counters may still be open.
+    const allNow = dueHabits.length > 0 && dueHabits.every(h => isHabitSatisfiedWith(h, plan.next));
+    if (allNow && !allDoneCelebrated.current) {
+      allDoneCelebrated.current = true;
+      hapticFillSequence();
+      setCelebrating(true);
+    }
+  }, [markRestDone, autoClaimChallenges, settings, dueHabits, isHabitSatisfiedWith]);
+
+  // Undo for Mark the rest: drop its queued completions, put back the exact previous
+  // counts and un-mark exactly the challenge days this action claimed.
+  const undoMarkRest = useCallback((tst) => {
+    queueRef.current = queueRef.current.filter(i => i.token !== tst.id);
+    restoreHabitCounts(tst.before);
+    tst.claimedIds.forEach(id => unmarkChallengeDay(id));
+    allDoneCelebrated.current = false;
+  }, [restoreHabitCounts, unmarkChallengeDay]);
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.primary }]}>
@@ -418,16 +458,6 @@ export default function TodayScreen() {
             <>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>{t('today.sectionHabits')}</Text>
-                <TouchableOpacity
-                  onPress={handleSelectAll}
-                  style={[styles.selectAllBtn, { borderColor: allDone ? theme.primary : theme.border }]}
-                  accessibilityRole="button"
-                  accessibilityLabel={allDone ? t('today.unmarkAllA11y') : t('today.markAllA11y')}
-                >
-                  <Text style={[styles.selectAllBtnText, { color: allDone ? theme.primary : theme.textMuted }]}>
-                    {allDone ? t('today.unmarkAll') : t('today.markAll')}
-                  </Text>
-                </TouchableOpacity>
               </View>
               {grouped ? grouped.map(section => (
                 <View key={section.key}>
@@ -439,6 +469,7 @@ export default function TodayScreen() {
                       onIncrement={(a) => handleIncrement(habit, a)}
                       onDecrement={(a) => handleDecrement(habit, a)}
                       onNote={openNote}
+                      onSkipToggle={handleSkipToggle}
                     />
                   ))}
                 </View>
@@ -449,8 +480,21 @@ export default function TodayScreen() {
                   onIncrement={(a) => handleIncrement(habit, a)}
                   onDecrement={(a) => handleDecrement(habit, a)}
                   onNote={openNote}
+                  onSkipToggle={handleSkipToggle}
                 />
               ))}
+              {markRestCount > 0 && (
+                <TouchableOpacity
+                  onPress={handleMarkRest}
+                  style={styles.markRestBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('today.markRestA11y', { count: markRestCount })}
+                >
+                  <Text style={[styles.markRestText, { color: theme.primary }]}>
+                    {t('today.markRest', { count: markRestCount })}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
 
@@ -504,7 +548,11 @@ export default function TodayScreen() {
         toast={toast}
         theme={theme}
         onHide={() => setToast(null)}
-        onUndo={() => { const h = toast?.habit; const a = toast?.amount || 1; setToast(null); if (h) handleDecrement(h, a); }}
+        onUndo={() => {
+          const tst = toast;
+          if (tst?.kind === 'markRest') { undoMarkRest(tst); setToast(null); return; }
+          const h = tst?.habit; const a = tst?.amount || 1; setToast(null); if (h) handleDecrement(h, a);
+        }}
       />
 
       <NoteModal
@@ -582,10 +630,8 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase',
   },
-  selectAllBtn: {
-    borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
-  },
-  selectAllBtnText: { fontSize: 12, fontWeight: '700' },
+  markRestBtn: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, marginTop: 4 },
+  markRestText: { fontSize: 15, fontWeight: '700' },
   timeLabel: { fontSize: 12, fontWeight: '700', marginTop: 6, marginBottom: 8 },
   nudgeCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,

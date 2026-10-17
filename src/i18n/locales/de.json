@@ -154,10 +154,8 @@
       "body": "Heute ist keine deiner Gewohnheiten geplant. Genieße die Pause, deine Serien sind sicher."
     },
     "sectionHabits": "HEUTIGE GEWOHNHEITEN",
-    "markAll": "Alle abhaken",
-    "unmarkAll": "Alle zurücksetzen",
-    "markAllA11y": "Alle Gewohnheiten als erledigt markieren",
-    "unmarkAllA11y": "Alle Gewohnheiten zurücksetzen",
+    "markRest": "Rest abhaken (%{count})",
+    "markRestA11y": { "one": "%{count} weitere Gewohnheit abhaken", "other": "%{count} weitere Gewohnheiten abhaken" },
     "activeChallenges": "AKTIVE CHALLENGES",
     "challenge": {
       "sub": "Tag %{day} von %{days} · %{count} erfasst",
@@ -170,7 +168,8 @@
       "done": "%{name} erledigt ✓",
       "avoided": "%{name}: vermieden ✓",
       "overLimit": "%{name}: über deinem Limit",
-      "plus": "%{name} +%{amount}"
+      "plus": "%{name} +%{amount}",
+      "markedRest": { "one": "%{count} Gewohnheit abgehakt", "other": "%{count} Gewohnheiten abgehakt" }
     },
     "milestone": {
       "title": "%{days}-Tage-Serie!",

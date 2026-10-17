@@ -154,10 +154,8 @@
       "body": "今日予定されている習慣はありません。ゆっくり休んでください。連続記録は守られています。"
     },
     "sectionHabits": "今日の習慣",
-    "markAll": "すべてチェック",
-    "unmarkAll": "すべて解除",
-    "markAllA11y": "すべての習慣を完了にする",
-    "unmarkAllA11y": "すべての習慣の完了を解除する",
+    "markRest": "残りを完了にする（%{count}）",
+    "markRestA11y": { "one": "残り%{count}件の習慣を完了にする", "other": "残り%{count}件の習慣を完了にする" },
     "activeChallenges": "進行中のチャレンジ",
     "challenge": {
       "sub": "%{days}日中%{day}日目 · %{count}日達成",
@@ -170,7 +168,8 @@
       "done": "%{name}を完了 ✓",
       "avoided": "%{name}：我慢できました ✓",
       "overLimit": "%{name}：上限を超えました",
-      "plus": "%{name} +%{amount}"
+      "plus": "%{name} +%{amount}",
+      "markedRest": { "one": "%{count}件の習慣を完了にしました", "other": "%{count}件の習慣を完了にしました" }
     },
     "milestone": {
       "title": "%{days}日連続！",

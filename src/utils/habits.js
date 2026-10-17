@@ -139,3 +139,47 @@ export const STARTER_HABITS = STARTER_HABIT_DEFS.map(({ unitKey, ...d }) => ({
   get name() { return t(`onboarding.starter.${d.key}`); },
   ...(unitKey ? { get unit() { return t(`onboarding.starter.${unitKey}`); } } : {}),
 }));
+
+// Count after an increment: daily/quit habits cap at 1, counters add `amount`
+// (at least 1). Shared by AppContext.incrementHabit and TodayScreen's post-action map.
+export function countAfterIncrement(habit, current, amount = 1) {
+  const capped = habit?.type === 'daily' || habit?.type === 'quit' || !habit?.type;
+  return capped ? 1 : (current || 0) + Math.max(1, Math.round(amount));
+}
+
+// "Mark the rest done" (S-02): set only untouched (count 0), non-skipped daily/quit
+// habits to 1. Counters (volume/timed) and atMost limits are never touched, and a
+// habit that already counts as satisfied today (a perWeek target met) is left alone.
+// Returns the new map for today and the ids it changed.
+export function applyMarkRest(todayCounts, dueHabits, skipsToday = [], isSatisfied = null) {
+  const next = { ...(todayCounts || {}) };
+  const changedIds = [];
+  (dueHabits || []).forEach(h => {
+    const type = h.type || 'daily';
+    if (type !== 'daily' && type !== 'quit') return;
+    if ((next[h.id] || 0) !== 0) return;
+    if ((skipsToday || []).includes(h.id)) return;
+    if (isSatisfied && isSatisfied(h)) return;
+    next[h.id] = 1;
+    changedIds.push(h.id);
+  });
+  return { next, changedIds };
+}
+
+// Undo for "Mark the rest done": put back exactly the day map captured before the
+// action (`before` may be undefined when the day had no entries yet).
+export function restoreDayCounts(completions, key, before) {
+  const out = { ...(completions || {}) };
+  if (before === undefined) delete out[key];
+  else out[key] = { ...before };
+  return out;
+}
+
+// Rows to upsert so the cloud matches a restored day: every habit in either map,
+// with ids missing from `before` written as 0 (sync has no per-row delete).
+export function restoreSyncMap(current, before) {
+  const rows = {};
+  Object.keys(current || {}).forEach(id => { rows[id] = 0; });
+  Object.entries(before || {}).forEach(([id, n]) => { rows[id] = n; });
+  return rows;
+}

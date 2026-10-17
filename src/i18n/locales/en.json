@@ -154,10 +154,8 @@
       "body": "None of your habits are scheduled today. Enjoy the break, your streaks are safe."
     },
     "sectionHabits": "TODAY'S HABITS",
-    "markAll": "Mark All",
-    "unmarkAll": "Unmark All",
-    "markAllA11y": "Mark all habits done",
-    "unmarkAllA11y": "Unmark all habits",
+    "markRest": "Mark the rest done (%{count})",
+    "markRestA11y": { "one": "Mark %{count} more habit done", "other": "Mark %{count} more habits done" },
     "activeChallenges": "ACTIVE CHALLENGES",
     "challenge": {
       "sub": "Day %{day} of %{days} · %{count} logged",
@@ -170,7 +168,8 @@
       "done": "%{name} done ✓",
       "avoided": "%{name}: avoided ✓",
       "overLimit": "%{name}: over your limit",
-      "plus": "%{name} +%{amount}"
+      "plus": "%{name} +%{amount}",
+      "markedRest": { "one": "Marked %{count} habit done", "other": "Marked %{count} habits done" }
     },
     "milestone": {
       "title": "%{days}-day streak!",
