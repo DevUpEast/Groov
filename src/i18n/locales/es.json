@@ -322,7 +322,7 @@
       "unitPlaceholderLimit": "cafés, cigarrillos, horas…",
       "unitPlaceholderVolume": "vasos, páginas, minutos…",
       "timesPerDay": "Veces por día: %{count}",
-      "timesLabel": "Veces al día",
+      "timesLabel": "Veces por día",
       "max": "Máx. %{max}",
       "saveChanges": "Guardar cambios",
       "addHabit": "Añadir hábito"

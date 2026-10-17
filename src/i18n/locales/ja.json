@@ -253,10 +253,10 @@
     },
     "icons": {
       "star": "星",
-      "target": "的",
+      "target": "ターゲット",
       "strength": "筋力",
       "brain": "脳",
-      "writing": "書く",
+      "writing": "筆記",
       "art": "アート",
       "walk": "ウォーキング",
       "bath": "お風呂",
@@ -277,7 +277,7 @@
       "coral": "コーラル",
       "lime": "ライム",
       "teal": "ティール",
-      "sky": "スカイ",
+      "sky": "空色",
       "magenta": "マゼンタ",
       "pink": "ピンク",
       "slate": "スレート"

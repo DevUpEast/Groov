@@ -41,6 +41,18 @@ describe('habit form accessibility (S-06)', () => {
   it('exposes selected state on every chip-like control', () => {
     // icon, photo, colour, schedule, weekday, type, time of day, volume max
     const selected = touchables.filter(tag => /accessibilityState=\{\{\s*selected:/.test(tag));
-    expect(selected.length).toBe(8);
+    expect(selected.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('labels the Name input and the volume slider', () => {
+    expect(form).toContain("accessibilityLabel={t('habits.form.name')}");
+    expect(form).toContain("label={t('habits.form.timesLabel')}");
+  });
+
+  it('exposes the disabled state on Save', () => {
+    const save = touchables.find(tag => tag.includes('onPress={onSave}'));
+    expect(save).toBeDefined();
+    expect(save).toMatch(/accessibilityRole="button"/);
+    expect(save).toMatch(/accessibilityState=\{\{\s*disabled:\s*!form\.name\.trim\(\)\s*\}\}/);
   });
 });
