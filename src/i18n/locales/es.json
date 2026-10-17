@@ -394,7 +394,7 @@
     "history": "Historial",
     "hint": "Toca cualquier día pasado para corregirlo",
     "cellA11y": "%{date}: %{status}",
-    "status": { "future": "futuro", "done": "hecho", "rest": "descanso", "missed": "fallado", "none": "ninguno" },
+    "status": { "future": "futuro", "done": "hecho", "rest": "descanso", "missed": "fallado", "none": "ninguno", "pending": "pendiente" },
     "legend": { "done": "Hecho", "partial": "Parcial", "missed": "Fallado", "skippedFrozen": "Omitido / congelado", "rest": "Descanso" },
     "byWeekday": "Por día de la semana",
     "since": "Tasa de cumplimiento desde el %{date}",
@@ -897,7 +897,8 @@
   },
   "trophy": {
     "announce": "Reto completado. Trofeo conseguido.",
-    "a11y": "Reto completado, trofeo conseguido"
+    "a11y": "Reto completado, trofeo conseguido",
+    "tapToContinue": "Toca para continuar"
   },
   "celebration": {
     "a11y": "%{title}. %{subtitle}. Cerrar"

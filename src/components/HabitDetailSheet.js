@@ -22,6 +22,9 @@ const DAY_LABEL_W = 22;
 const PARTIAL_COLOR = '#FDE68A';
 const FROZEN_COLOR = '#7DD3FC';
 const MISSED_COLOR = '#FCA5A5';
+// Today, not yet done: outlined neutral, never red (STA-4). A >= 3:1 neutral (3.47:1 on
+// white); F-01 replaces the literal with the `controlBorder` token.
+const PENDING_OUTLINE = '#7C8BA0';
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Monday first
 
 function pct(n, d) {
@@ -84,7 +87,8 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
         const future = key > today;
         const before = isHabitDoneOnDay(habit, key, completions) === 'before' || !!(accountCreatedAt && key < accountCreatedAt);
         const status = future || before ? 'none' : dayStatus(habit.schedule, key, today, isDone, excused);
-        days.push({ key, future, before, status, count: (completions[key] || {})[habit.id] || 0 });
+        const pending = key === today && status === 'missed';
+        days.push({ key, future, before, status, pending, count: (completions[key] || {})[habit.id] || 0 });
       }
       const m = parseDateKey(start).getMonth();
       monthLabels.push(m !== lastMonth ? parseDateKey(start).toLocaleDateString(getLocale(), { month: 'short' }) : '');
@@ -128,6 +132,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
     if (d.future || d.before) return 'transparent';
     if (d.status === 'done') return theme.primary;
     if (d.count > 0) return PARTIAL_COLOR;
+    if (d.pending) return 'transparent';
     if (d.status === 'rest') return isHabitSkippedOn(habit.id, d.key) || excused(d.key) ? FROZEN_COLOR : theme.progressBarBg;
     return MISSED_COLOR;
   };
@@ -223,11 +228,11 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
                   onPress={() => onCellPress(d)}
                   activeOpacity={d.future || d.before ? 1 : 0.6}
                   accessibilityRole="button"
-                  accessibilityLabel={t('habitDetail.cellA11y', { date: d.key, status: t(`habitDetail.status.${d.future ? 'future' : d.status}`) })}
+                  accessibilityLabel={t('habitDetail.cellA11y', { date: d.key, status: t(`habitDetail.status.${d.future ? 'future' : d.pending ? 'pending' : d.status}`) })}
                   style={{
                     width: cell, height: cell, marginBottom: GRID_GAP, borderRadius: 3,
                     backgroundColor: colorFor(d),
-                    borderWidth: d.key === today ? 1.5 : 0, borderColor: theme.text,
+                    borderWidth: d.key === today ? 1.5 : 0, borderColor: d.pending ? PENDING_OUTLINE : theme.text,
                   }}
                 />
               ))}

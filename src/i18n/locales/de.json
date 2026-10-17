@@ -394,7 +394,7 @@
     "history": "Verlauf",
     "hint": "Tippe auf einen vergangenen Tag, um ihn zu korrigieren",
     "cellA11y": "%{date}: %{status}",
-    "status": { "future": "Zukunft", "done": "erledigt", "rest": "Ruhetag", "missed": "verpasst", "none": "keine" },
+    "status": { "future": "Zukunft", "done": "erledigt", "rest": "Ruhetag", "missed": "verpasst", "none": "keine", "pending": "offen" },
     "legend": { "done": "Erledigt", "partial": "Teilweise", "missed": "Verpasst", "skippedFrozen": "Übersprungen / eingefroren", "rest": "Ruhetag" },
     "byWeekday": "Nach Wochentag",
     "since": "Erfolgsquote seit %{date}",
@@ -897,7 +897,8 @@
   },
   "trophy": {
     "announce": "Challenge abgeschlossen. Trophäe verdient.",
-    "a11y": "Challenge abgeschlossen, Trophäe verdient"
+    "a11y": "Challenge abgeschlossen, Trophäe verdient",
+    "tapToContinue": "Tippe, um fortzufahren"
   },
   "celebration": {
     "a11y": "%{title}. %{subtitle}. Schließen"

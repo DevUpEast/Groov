@@ -394,7 +394,7 @@
     "history": "履歴",
     "hint": "過去の日をタップして修正できます",
     "cellA11y": "%{date}：%{status}",
-    "status": { "future": "未来", "done": "完了", "rest": "休み", "missed": "未達成", "none": "なし" },
+    "status": { "future": "未来", "done": "完了", "rest": "休み", "missed": "未達成", "none": "なし", "pending": "未完了" },
     "legend": { "done": "完了", "partial": "一部", "missed": "未達成", "skippedFrozen": "スキップ/フリーズ", "rest": "休み" },
     "byWeekday": "曜日別",
     "since": "%{date}からの達成率",
@@ -897,7 +897,8 @@
   },
   "trophy": {
     "announce": "チャレンジ完了。トロフィーを獲得しました。",
-    "a11y": "チャレンジ完了、トロフィーを獲得"
+    "a11y": "チャレンジ完了、トロフィーを獲得",
+    "tapToContinue": "タップして続ける"
   },
   "celebration": {
     "a11y": "%{title}。%{subtitle}。閉じる"

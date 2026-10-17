@@ -394,7 +394,7 @@
     "history": "Histórico",
     "hint": "Toque em qualquer dia passado para corrigi-lo",
     "cellA11y": "%{date}: %{status}",
-    "status": { "future": "futuro", "done": "concluído", "rest": "descanso", "missed": "perdido", "none": "nenhum" },
+    "status": { "future": "futuro", "done": "concluído", "rest": "descanso", "missed": "perdido", "none": "nenhum", "pending": "pendente" },
     "legend": { "done": "Feito", "partial": "Parcial", "missed": "Perdido", "skippedFrozen": "Pulado / congelado", "rest": "Descanso" },
     "byWeekday": "Por dia da semana",
     "since": "Taxa de conclusão desde %{date}",
@@ -897,7 +897,8 @@
   },
   "trophy": {
     "announce": "Desafio concluído. Troféu conquistado.",
-    "a11y": "Desafio concluído, troféu conquistado"
+    "a11y": "Desafio concluído, troféu conquistado",
+    "tapToContinue": "Toque para continuar"
   },
   "celebration": {
     "a11y": "%{title}. %{subtitle}. Dispensar"

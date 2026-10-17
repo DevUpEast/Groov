@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Keyboard,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import SafeAreaView from '../components/SafeAreaView';
 import { useApp } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
@@ -27,7 +28,18 @@ const MAX_PICK = 5;
 
 const TIME_CHIPS = ['morning', 'afternoon', 'evening', 'anytime'];
 
+// App renders onboarding before its own <StatusBar>, so without this the platform default
+// (dark icons on iOS) sits on the indigo background (ONB-9).
 export default function OnboardingScreen() {
+  return (
+    <>
+      <StatusBar style="light" />
+      <OnboardingFlow />
+    </>
+  );
+}
+
+function OnboardingFlow() {
   const { completeOnboarding, theme, settings, ensureNotificationPermission } = useApp();
   const { locale } = useLocale();
   const [step, setStep] = useState(0); // 0,1 intro · 2 pick · 3 intentions · 4 reminders

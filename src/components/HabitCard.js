@@ -9,6 +9,7 @@ import HabitIcon from './HabitIcon';
 import ActionSheet from './ui/ActionSheet';
 import { usesCounter, countStep, describeProgress, unitLabel } from '../utils/habits';
 import { t, useLocale } from '../i18n';
+import { mixHex } from '../utils/color';
 
 export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkipToggle }) {
   const {
@@ -89,8 +90,11 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         style={[
           styles.card,
           { backgroundColor: theme.surface, borderColor: done ? accent : theme.border },
-          done && { backgroundColor: habit.color ? `${habit.color}1F` : theme.primaryLight },
-          overLimit && { borderColor: theme.danger, backgroundColor: `${theme.danger}14` },
+          // Opaque, pre-mixed tints with no elevation: Android draws the shadow through a
+          // translucent fill, which framed every done card in a dark border (CHK-8).
+          done && { backgroundColor: habit.color ? mixHex(habit.color, theme.surface, 0x1F / 255) : theme.primaryLight },
+          overLimit && { borderColor: theme.danger, backgroundColor: mixHex(theme.danger, theme.surface, 0x14 / 255) },
+          (done || overLimit) && styles.flat,
           skipped && { opacity: 0.6, borderStyle: 'dashed' },
         ]}
         onPress={handleCardPress}
@@ -185,6 +189,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: 'hidden',
   },
+  flat: { elevation: 0, shadowOpacity: 0 },
   stripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   icon: { fontSize: 26, marginRight: 12 },
   iconImage: { width: 32, height: 32, borderRadius: 6, marginRight: 12 },
