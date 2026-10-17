@@ -19,6 +19,8 @@ export const themes = {
     tabIconInactive: '#9CA3AF',
     progressBarBg: '#E5E7EB',
     cardShadow: '#000',
+    onPrimary: '#FFFFFF',
+    scrim: 'rgba(15,23,42,0.40)',
   },
   dark: {
     bg: '#0F172A',
@@ -40,5 +42,7 @@ export const themes = {
     tabIconInactive: '#64748B',
     progressBarBg: '#334155',
     cardShadow: '#000',
+    onPrimary: '#FFFFFF',
+    scrim: 'rgba(0,0,0,0.60)',
   },
 };
