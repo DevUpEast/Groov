@@ -394,8 +394,8 @@
     "history": "Historique",
     "hint": "Appuie sur un jour passé pour le corriger",
     "cellA11y": "%{date} : %{status}",
-    "status": { "future": "à venir", "done": "fait", "rest": "repos", "missed": "manqué", "none": "aucun" },
-    "legend": { "done": "Fait", "partial": "Partiel", "missed": "Manqué", "skippedFrozen": "Passé / gelé", "rest": "Repos" },
+    "status": { "future": "à venir", "done": "fait", "rest": "repos", "missed": "manqué", "none": "aucun", "pending": "en attente" },
+    "legend": { "done": "Fait", "partial": "Partiel", "missed": "Manqué", "pending": "À faire aujourd’hui", "skippedFrozen": "Passé / gelé", "rest": "Repos" },
     "byWeekday": "Par jour de la semaine",
     "since": "Taux de réussite depuis le %{date}",
     "weekdayA11y": "%{day} : %{percent} pour cent",
@@ -897,7 +897,8 @@
   },
   "trophy": {
     "announce": "Défi terminé. Trophée obtenu.",
-    "a11y": "Défi terminé, trophée obtenu"
+    "a11y": "Défi terminé, trophée obtenu",
+    "tapToContinue": "Touchez pour continuer"
   },
   "celebration": {
     "a11y": "%{title}. %{subtitle}. Fermer"

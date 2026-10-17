@@ -394,8 +394,8 @@
     "history": "History",
     "hint": "Tap any past day to fix it",
     "cellA11y": "%{date}: %{status}",
-    "status": { "future": "future", "done": "done", "rest": "rest", "missed": "missed", "none": "none" },
-    "legend": { "done": "Done", "partial": "Partial", "missed": "Missed", "skippedFrozen": "Skipped / frozen", "rest": "Rest" },
+    "status": { "future": "future", "done": "done", "rest": "rest", "missed": "missed", "none": "none", "pending": "pending" },
+    "legend": { "done": "Done", "partial": "Partial", "missed": "Missed", "pending": "To do today", "skippedFrozen": "Skipped / frozen", "rest": "Rest" },
     "byWeekday": "By weekday",
     "since": "Completion rate since %{date}",
     "weekdayA11y": "%{day}: %{percent} percent",
@@ -897,7 +897,8 @@
   },
   "trophy": {
     "announce": "Challenge complete. Trophy earned.",
-    "a11y": "Challenge complete, trophy earned"
+    "a11y": "Challenge complete, trophy earned",
+    "tapToContinue": "Tap to continue"
   },
   "celebration": {
     "a11y": "%{title}. %{subtitle}. Dismiss"

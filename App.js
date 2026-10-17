@@ -227,7 +227,7 @@ function AppNavigator() {
   // Conditional return AFTER all hooks
   // Mirror the status-bar style to the iOS mockup host (web only).
   const statusStyle = !hasOnboarded
-    ? (themeName === 'dark' ? 'light' : 'dark')
+    ? 'light' // OnboardingScreen renders a light StatusBar on its indigo background
     : (activeIndex === 0 ? 'light' : (themeName === 'dark' ? 'light' : 'dark'));
   useEffect(() => {
     if (mockupParams.active) postToMockupHost({ type: 'mockup:statusbar', style: statusStyle });
