@@ -155,6 +155,7 @@
     },
     "sectionHabits": "HEUTIGE GEWOHNHEITEN",
     "markRest": "Den Rest abhaken (%{count})",
+    "markRestNote": "Zähler und Timer bleiben unverändert",
     "activeChallenges": "AKTIVE CHALLENGES",
     "challenge": {
       "sub": "Tag %{day} von %{days} · %{count} erfasst",

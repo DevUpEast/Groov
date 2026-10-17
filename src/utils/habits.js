@@ -166,6 +166,19 @@ export function applyMarkRest(todayCounts, dueHabits, skipsToday = [], isSatisfi
   return { next, changedIds };
 }
 
+// True when "Mark the rest done" leaves out an unfinished habit due today because of its
+// type: a counter (volume), a timer (timed) or a limit (atMost). Skipped habits do not
+// count, since they are left out for a different reason. Drives the Today caption that
+// explains why the button's count is lower than "N remaining".
+export function markRestLeavesOutCounters(dueHabits, skipsToday = [], isSatisfied = null) {
+  return (dueHabits || []).some(h => {
+    const type = h.type || 'daily';
+    if (type !== 'volume' && type !== 'timed' && type !== 'atMost') return false;
+    if ((skipsToday || []).includes(h.id)) return false;
+    return !(isSatisfied && isSatisfied(h));
+  });
+}
+
 // Undo for "Mark the rest done" on day `key`: only the ids the action changed that are
 // still at 1 go back to their `before` value (removed when they had no entry), so edits
 // made inside the undo window (a decrement, another habit) survive. `before` may be

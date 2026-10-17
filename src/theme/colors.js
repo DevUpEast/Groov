@@ -21,6 +21,13 @@ export const themes = {
     cardShadow: '#000',
     onPrimary: '#FFFFFF',
     scrim: 'rgba(15,23,42,0.40)',
+    // Snackbar (plan §2.2). Pulled forward from F-01 for the Undo toast.
+    toast: '#1E293B',
+    onToast: '#F8FAFC',
+    toastAction: '#A5B4FC',
+    toastEdge: '#1E293B',
+    // Secondary text on the indigo onboarding background (plan §2.5 onActionSecondary).
+    onActionSecondary: '#E0E7FF',
   },
   dark: {
     bg: '#0F172A',
@@ -44,5 +51,11 @@ export const themes = {
     cardShadow: '#000',
     onPrimary: '#FFFFFF',
     scrim: 'rgba(0,0,0,0.60)',
+    toast: '#394353',
+    onToast: '#F8FAFC',
+    toastAction: '#A5B4FC',
+    toastEdge: '#475569',
+    // Dark onboarding sits on #818CF8, where white fails (2.98:1); ink passes (plan §2.5 dark onAction).
+    onActionSecondary: '#0F172A',
   },
 };

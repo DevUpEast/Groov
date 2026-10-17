@@ -26,10 +26,10 @@ export default function UndoToast({ toast, onUndo, onHide, theme, bottom = 16, d
       pointerEvents="box-none"
       accessibilityLiveRegion="polite"
     >
-      <View style={[styles.toast, { backgroundColor: theme.text }]}>
-        <Text style={[styles.msg, { color: theme.bg }]} numberOfLines={1}>{toast.message}</Text>
+      <View style={[styles.toast, { backgroundColor: theme.toast, borderColor: theme.toastEdge }]}>
+        <Text style={[styles.msg, { color: theme.onToast }]} numberOfLines={1}>{toast.message}</Text>
         <TouchableOpacity onPress={onUndo} style={styles.undoBtn} accessibilityRole="button" accessibilityLabel={t('common.undo')}>
-          <Text style={[styles.undo, { color: '#A5B4FC' }]}>{t('common.undo')}</Text>
+          <Text style={[styles.undo, { color: theme.toastAction }]}>{t('common.undo')}</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 16, right: 16, alignItems: 'center' },
   toast: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingLeft: 16, paddingRight: 6, paddingVertical: 8, borderRadius: 12,
+    paddingLeft: 16, paddingRight: 6, paddingVertical: 8, borderRadius: 12, borderWidth: 1,
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6,
     maxWidth: '100%',
   },

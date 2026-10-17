@@ -155,6 +155,7 @@
     },
     "sectionHabits": "今日の習慣",
     "markRest": "残りを完了にする（%{count}）",
+    "markRestNote": "カウンターとタイマーはそのままです",
     "activeChallenges": "進行中のチャレンジ",
     "challenge": {
       "sub": "%{days}日中%{day}日目 · %{count}日達成",
