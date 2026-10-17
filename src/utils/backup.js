@@ -2,6 +2,8 @@
 // validating one that came back in, and summarising it for the confirm dialog.
 
 import { t } from '../i18n';
+import { localDateKey } from './dates';
+import { stampCreatedAt } from './dayStatus';
 
 export const BACKUP_FORMAT = 'groov-backup';
 export const BACKUP_VERSION = 1;
@@ -43,7 +45,7 @@ export function validateBackup(input) {
   const d = parsed.data;
   if (!isObj(d)) return { ok: false, error: t('backup.noData') };
 
-  const habits = Array.isArray(d.habits)
+  const rawHabits = Array.isArray(d.habits)
     ? d.habits.filter(h => isObj(h) && typeof h.id === 'string' && typeof h.name === 'string')
     : [];
   const cleanDayMap = (src, valueOk) => {
@@ -58,6 +60,9 @@ export function validateBackup(input) {
     return out;
   };
   const completions = cleanDayMap(d.completions, v => typeof v === 'number' && v >= 0);
+  // A habit without createdAt would count as existing on every day (S-08): date it
+  // from its first logged day, else today.
+  const habits = stampCreatedAt(rawHabits, completions, localDateKey());
   const notes = cleanDayMap(d.notes, v => typeof v === 'string' && v.length > 0);
   const chOk = (c) => isObj(c) && typeof c.id === 'string' && typeof c.name === 'string' && typeof c.days === 'number';
   const challenges = Array.isArray(d.challenges) ? d.challenges.filter(chOk) : [];

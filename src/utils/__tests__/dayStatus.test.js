@@ -1,5 +1,6 @@
 import {
   snapshotOf, habitsForDay, isHabitDoneOnDay, streakHabitsOn, summarizeDay, makeDayRules, isPerfectSummary,
+  stampCreatedAt, earliestCreatedAt,
 } from '../dayStatus';
 import { overallDayStatus, overallStreak, bestOverallStreak } from '../streaks';
 import { addDays } from '../dates';
@@ -175,5 +176,42 @@ describe('makeDayRules: streaks and Perfect Days agree', () => {
     const rules = makeDayRules({ today: TODAY, snapshot: {}, liveHabits: [A, B], allHabits: [A, B], completions: { [d(1)]: { A: 1 } } });
     expect(streakHabitsOn(rules.dayHabits(d(1)), d(1)).map(h => h.id)).toEqual(['A']);
     expect(isPerfectSummary(rules.summary(d(1)))).toBe(true);
+  });
+});
+
+describe('undated habits cannot run the walk to its cap (S-08 review m1)', () => {
+  // An undated atMost habit is "done" on every untouched day; with the mixed-day rule
+  // the dated habit's pre-creation days would otherwise be excluded all the way back.
+  const coffee = { id: 'coffee', type: 'atMost', volumeGoal: 2 }; // no createdAt
+  const move = { id: 'move', type: 'daily', volumeGoal: 1, createdAt: d(9) };
+  const water = { id: 'water', type: 'volume', volumeGoal: 8, createdAt: d(9) };
+  const habits = [coffee, move, water];
+  const completions = allDone([move, water], [d(9), d(8), d(7), d(6), d(5), d(4), d(3), d(2), d(1), TODAY]);
+
+  it('the floor (earliest createdAt) ends the walk where the dated habits start', () => {
+    const rules = makeDayRules({ today: TODAY, snapshot: {}, liveHabits: habits, allHabits: habits, completions });
+    expect(rules.floor).toBe(d(9));
+    expect(overallStreak(TODAY, TODAY, rules.habitsOn, rules.isDone)).toBe(10);
+  });
+
+  it('with no dated habit the floor falls back to accountCreatedAt', () => {
+    const rules = makeDayRules({ today: TODAY, snapshot: {}, liveHabits: [coffee], allHabits: [coffee], completions: {}, accountCreatedAt: d(3) });
+    expect(rules.floor).toBe(d(3));
+  });
+
+  it('stampCreatedAt dates an undated habit from its first logged day, else the fallback', () => {
+    const stamped = stampCreatedAt(habits, { [d(20)]: { coffee: 1 }, [d(4)]: { coffee: 3 } }, TODAY);
+    expect(stamped[0].createdAt).toBe(d(20));
+    expect(stamped[1]).toBe(move); // dated habits untouched
+    expect(stampCreatedAt([coffee], {}, TODAY)[0].createdAt).toBe(TODAY);
+    const dated = [move, water];
+    expect(stampCreatedAt(dated, {}, TODAY)).toBe(dated);
+  });
+
+  it('after stamping (as migrateHabits and backup import do) the streak stays sane', () => {
+    const stamped = stampCreatedAt(habits, completions, TODAY); // coffee never logged -> today
+    const rules = makeDayRules({ today: TODAY, snapshot: {}, liveHabits: stamped, allHabits: stamped, completions });
+    expect(overallStreak(TODAY, TODAY, rules.habitsOn, rules.isDone)).toBe(10);
+    expect(earliestCreatedAt(stamped)).toBe(d(9));
   });
 });

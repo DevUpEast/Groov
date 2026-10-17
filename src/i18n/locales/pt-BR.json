@@ -587,7 +587,7 @@
       "sendTest": "Enviar Notificação de Teste",
       "sendTestSub": "Dispara um lembrete para o seu primeiro hábito, com Concluir / Adiar",
       "sent": { "title": "Enviada", "body": "Notificação de teste disparada. Confira a bandeja de notificações." },
-      "seed": { "title": "Gerar Histórico de 30 Dias", "body": "Isso vai preencher os últimos 30 dias com conclusões aleatórias. O histórico existente será sobrescrito.", "generate": "Gerar", "done": "Histórico aleatório de 30 dias adicionado.", "sub": "Conclusões aleatórias dos últimos 30 dias" },
+      "seed": { "title": "Gerar Histórico de 30 Dias", "body": "Isso preenche os últimos 30 dias com conclusões aleatórias; os dias que você já registrou são mantidos. Também recua em 31 dias a data de início dos seus hábitos para que o histórico conte. As alterações são sincronizadas com a nuvem e não podem ser desfeitas.", "generate": "Gerar", "done": "Histórico aleatório de 30 dias adicionado.", "sub": "Conclusões aleatórias dos últimos 30 dias" },
       "crash": { "title": "Testar Falha", "body": "Isso gera um erro de renderização para você conferir a tela de falha e o Sentry.", "crash": "Falhar", "sub": "Gera um erro para testar a tela de falha" },
       "disable": { "title": "Desativar Ferramentas de Dev", "body": "Isso vai bloquear as ferramentas de dev novamente neste dispositivo. Para desbloquear de novo, você precisará tocar no rótulo da versão 7 vezes e digitar o código.", "disable": "Desativar", "sub": "Bloqueia as ferramentas de dev novamente neste dispositivo" },
       "access": { "title": "Acesso de Desenvolvedor", "body": "Digite o código de desenvolvedor", "a11y": "Código de desenvolvedor", "placeholder": "Digite o código", "unlock": "Desbloquear" },

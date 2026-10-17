@@ -25,6 +25,42 @@ export function habitsForDay(key, today, snapshot, liveHabits, allHabits = liveH
   return list.map(h => (h.createdAt || !created.has(h.id) ? h : { ...h, createdAt: created.get(h.id) }));
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Give every habit a createdAt. A habit without one would count as existing on
+// every day back to 1970 (an undated atMost habit is "done" on every untouched day,
+// so the streak walk could run to its cap). Uses the habit's earliest logged day in
+// `completions`, else `fallback` (normally today). Returns the same array when
+// nothing needed stamping.
+export function stampCreatedAt(habits, completions, fallback) {
+  if (!Array.isArray(habits)) return habits;
+  let first = null;
+  const earliest = (id) => {
+    if (!first) {
+      first = new Map();
+      for (const key of Object.keys(completions || {}).sort()) {
+        if (!DATE_RE.test(key)) continue;
+        for (const hid of Object.keys(completions[key] || {})) if (!first.has(hid)) first.set(hid, key);
+      }
+    }
+    return first.get(id);
+  };
+  let changed = false;
+  const out = habits.map(h => {
+    if (!h || (typeof h.createdAt === 'string' && DATE_RE.test(h.createdAt))) return h;
+    changed = true;
+    return { ...h, createdAt: earliest(h.id) || fallback };
+  });
+  return changed ? out : habits;
+}
+
+// Earliest createdAt among `habits` (null when none is dated).
+export function earliestCreatedAt(habits) {
+  let min = null;
+  for (const h of habits || []) if (h?.createdAt && (!min || h.createdAt < min)) min = h.createdAt;
+  return min;
+}
+
 // true / false: goal met or not that day. 'before': the habit did not exist yet
 // (the day is before its createdAt); callers exclude it rather than count a miss.
 export function isHabitDoneOnDay(habit, key, completions) {
@@ -66,7 +102,12 @@ export function summarizeDay(key, today, dayHabits, completions, isExcused) {
 //   habitsOn(key)   what the streak walk sees (streakHabitsOn)
 //   isDone(key, id) the streak's per-habit test ('before' reads as not done)
 //   summary(key, isExcused) the Perfect Days / heat map summary
-export function makeDayRules({ today, snapshot, liveHabits, allHabits, completions }) {
+//
+// `floor` (default: the earliest createdAt in allHabits, else `accountCreatedAt`):
+// before it no habit is excluded, so the walk ends where it did before S-08 even if
+// some habit has no createdAt.
+export function makeDayRules({ today, snapshot, liveHabits, allHabits, completions, accountCreatedAt, floor }) {
+  const bound = floor !== undefined ? floor : (earliestCreatedAt(allHabits || liveHabits) || accountCreatedAt || null);
   // Streak walks ask for the same day once per habit; build each day's list once.
   const cache = new Map();
   const dayHabits = (key) => {
@@ -75,7 +116,8 @@ export function makeDayRules({ today, snapshot, liveHabits, allHabits, completio
   };
   return {
     dayHabits,
-    habitsOn: (key) => streakHabitsOn(dayHabits(key), key),
+    floor: bound,
+    habitsOn: (key) => (bound && key < bound ? dayHabits(key) : streakHabitsOn(dayHabits(key), key)),
     isDone: (key, id) => isHabitDoneOnDay(dayHabits(key).find(h => h.id === id), key, completions) === true,
     summary: (key, isExcused) => summarizeDay(key, today, dayHabits(key), completions, isExcused),
   };

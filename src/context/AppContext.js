@@ -29,7 +29,7 @@ import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak } from '..
 import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
-import { snapshotOf, isHabitDoneOnDay, makeDayRules } from '../utils/dayStatus';
+import { snapshotOf, isHabitDoneOnDay, makeDayRules, stampCreatedAt, earliestCreatedAt } from '../utils/dayStatus';
 import { buildSeed, applySeedCompletions, applySeedSnapshot, backdateCreatedAt } from '../utils/seed';
 import { mergeBackup } from '../utils/backup';
 import { initAnalytics, track, Events } from '../utils/analytics';
@@ -157,9 +157,11 @@ function migrateSettings(s) {
 
 // Every habit carries a normalised schedule (missing = every day, the pre-schedule
 // behaviour). Snapshots are rewritten the same way so history stays consistent.
-function migrateHabits(hs) {
+// Also dates any habit that has no createdAt (from its first logged day, else today):
+// an undated habit would count as existing on every day (S-08).
+function migrateHabits(hs, completions = {}) {
   if (!Array.isArray(hs)) return [];
-  return hs.map(h => ({ ...h, schedule: normalizeSchedule(h.schedule) }));
+  return stampCreatedAt(hs, completions, localDateKey()).map(h => ({ ...h, schedule: normalizeSchedule(h.schedule) }));
 }
 
 // Record `habits` as `key`'s snapshot unless one with habits is already there. An
@@ -285,7 +287,7 @@ export function AppProvider({ children }) {
       loadData('moods'),
     ]);
 
-    if (h) setHabits(migrateHabits(h));
+    if (h) setHabits(migrateHabits(h, c || {}));
     if (c) setCompletions(c);
     if (n) setNotes(n);
     if (lba) setLastBackupAt(lba);
@@ -668,7 +670,7 @@ export function AppProvider({ children }) {
         const pulledAt = Date.now();
         const hasCloudData = cloudData.habits !== null && cloudData.habits.length > 0;
         if (hasCloudData) {
-          setHabits(migrateHabits(cloudData.habits));
+          setHabits(migrateHabits(cloudData.habits, cloudData.completions || {}));
           if (cloudData.completions) setCompletions(cloudData.completions);
           if (cloudData.notes) setNotes(cloudData.notes);
           if (cloudData.moods) setMoods(cloudData.moods);
@@ -1267,7 +1269,7 @@ export function AppProvider({ children }) {
     const next = mode === 'replace'
       ? { ...data, settings: data.settings ? migrateSettings(data.settings) : settings }
       : mergeBackup(current, data);
-    const nextHabits = migrateHabits(next.habits);
+    const nextHabits = migrateHabits(next.habits, next.completions || {});
     const nextSettings = migrateSettings(next.settings);
     const nextChallenges = migrateChallenges(next.challenges);
     setHabits(nextHabits);
@@ -1339,8 +1341,8 @@ export function AppProvider({ children }) {
   // The streak walk's view (`habitsOnDay`) leaves out a habit that did not exist yet
   // on a day other habits existed on (see streakHabitsOn).
   const dayRules = useMemo(
-    () => makeDayRules({ today: todayKey(dateOffset), snapshot: dailySnapshot, liveHabits: habits, allHabits, completions }),
-    [dailySnapshot, habits, allHabits, completions, dateOffset, clockTick], // eslint-disable-line react-hooks/exhaustive-deps
+    () => makeDayRules({ today: todayKey(dateOffset), snapshot: dailySnapshot, liveHabits: habits, allHabits, completions, accountCreatedAt }),
+    [dailySnapshot, habits, allHabits, completions, dateOffset, clockTick, accountCreatedAt], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const habitsOnDay = dayRules.habitsOn;
   const isSnapshotHabitDone = dayRules.isDone;
@@ -1386,9 +1388,11 @@ export function AppProvider({ children }) {
     if (!loaded) return;
     const today = localDateKey();
     const raw = (k) => overallDayStatus(k, today, habitsOnDay, isSnapshotHabitDone, (key, id) => isHabitSkippedOn(id, key));
-    const next = reconcileFreezes(settings.streakFreezes, today, raw, { floor: accountCreatedAt || undefined });
+    // Never spend a freeze on a day before any habit existed (or before the account).
+    const floor = [accountCreatedAt, earliestCreatedAt(allHabits)].filter(Boolean).sort().pop();
+    const next = reconcileFreezes(settings.streakFreezes, today, raw, { floor: floor || undefined });
     if (next !== settings.streakFreezes) updateSettings({ streakFreezes: next });
-  }, [loaded, clockTick, completions, dailySnapshot, habits, settings.skips, settings.streakFreezes, accountCreatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded, clockTick, completions, dailySnapshot, habits, allHabits, settings.skips, settings.streakFreezes, accountCreatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // One day for Perfect Days, the heat map, the bar chart and the share cards, judged
   // by the shared rule (utils/dayStatus.js summarizeDay). Rest days and habits that
