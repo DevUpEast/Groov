@@ -218,7 +218,7 @@
     },
     "reminders": {
       "title": "Um lembrete na hora certa",
-      "body": "Um lembrete por dia para cada hábito, no período do dia que você escolheu. Altere ou desative quando quiser em Ajustes.",
+      "body": "Um lembrete por dia para cada hábito com um período do dia. Altere ou desative quando quiser em Ajustes.",
       "none": "Sem lembrete",
       "turnOn": "Ativar lembretes",
       "rowA11y": "%{name}: %{time}",

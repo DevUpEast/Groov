@@ -218,7 +218,7 @@
     },
     "reminders": {
       "title": "Get a nudge at the right time",
-      "body": "One reminder a day for each habit, at the time of day you picked. Change them or turn them off any time in Settings.",
+      "body": "One reminder a day for each habit with a time of day. Change them or turn them off any time in Settings.",
       "none": "No reminder",
       "turnOn": "Turn on reminders",
       "rowA11y": "%{name}: %{time}",

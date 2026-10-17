@@ -50,7 +50,9 @@ export default function OnboardingScreen() {
     const tod = (plans[h.key] || {}).timeOfDay ?? h.timeOfDay;
     return { habit: h, time: reminderTimeForTimeOfDay(tod) };
   }), [chosen, plans]);
-  const hasReminders = reminderRows.some(r => r.time);
+  // Web has no notification permission to ask for, so the step would only end with
+  // reminders silently off; skip it there (the mockup included).
+  const hasReminders = Platform.OS !== 'web' && reminderRows.some(r => r.time);
   const uses24h = useMemo(() => usesDevice24hClock(), []);
 
   // `remindersOn`: the user allowed notifications on the reminders step. Otherwise the
@@ -83,7 +85,7 @@ export default function OnboardingScreen() {
     finish(true, granted);
   };
 
-  const totalSteps = 5;
+  const totalSteps = hasReminders ? 5 : 4;
   const dots = (
     <View style={styles.dots} accessibilityLabel={t('onboarding.stepA11y', { step: step + 1, total: totalSteps })}>
       {Array.from({ length: totalSteps }).map((_, i) => (

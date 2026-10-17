@@ -583,6 +583,7 @@ export function AppProvider({ children }) {
           setPastChallenges([]);
           setDailySnapshot({});
           setSettings(DEFAULT_SETTINGS);
+          setHapticsEnabled(true);
         } else if (lastUserId !== null && lastUserId !== userId) {
           // Different user logged in on this device — wipe the previous user's local data.
           await storeClearAll();

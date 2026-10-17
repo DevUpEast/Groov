@@ -47,12 +47,12 @@ function feedbackMailto() {
 const THEME_OPTIONS = ['light', 'dark', 'system'];
 
 
-function Row({ label, sublabel, right, theme, onPress }) {
+function Row({ label, sublabel, sublabelColor, right, theme, onPress }) {
   const content = (
     <View style={[styles.row, { borderBottomColor: theme.border }]}>
       <View style={styles.rowLeft}>
         <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
-        {sublabel && <Text style={[styles.rowSub, { color: theme.textMuted }]}>{sublabel}</Text>}
+        {sublabel && <Text style={[styles.rowSub, { color: sublabelColor ?? theme.textMuted }]}>{sublabel}</Text>}
       </View>
       <View style={styles.rowRight}>{right}</View>
     </View>
@@ -131,7 +131,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
           onValueChange={toggle}
           trackColor={{ false: theme.border, true: theme.primary }}
           thumbColor="#fff"
-          style={{ opacity: masterOn ? 1 : 0.4 }}
+          style={{ opacity: masterOn && permitted ? 1 : 0.4 }}
           accessibilityLabel={label}
           accessibilityState={{ disabled: !masterOn }}
         />
@@ -442,6 +442,9 @@ export default function SettingsScreen() {
   // Unknown (null) counts as permitted so the rows do not flash "Tap to allow" on launch.
   // Web has no OS permission to ask for; its master row already explains that.
   const permitted = Platform.OS === 'web' || notificationPermission == null || notificationPermission === 'granted';
+  // Notifications are on in Groov but the OS has not allowed them: the master row is
+  // the primary "Tap to allow" control (rows below also ask, but are dimmed).
+  const masterBlocked = masterOn && !permitted;
 
   const updateReminders = (newReminders) => updateSettings({ reminders: newReminders });
 
@@ -583,7 +586,9 @@ export default function SettingsScreen() {
         <Section title={t('settings.notifications')} theme={theme}>
           <Row
             label={t('settings.enableNotifications')}
-            sublabel={Platform.OS === 'web' ? t('settings.enableSubWeb') : t('settings.enableSub')}
+            sublabel={masterBlocked ? t('settings.offTapToAllow') : Platform.OS === 'web' ? t('settings.enableSubWeb') : t('settings.enableSub')}
+            sublabelColor={masterBlocked ? theme.primary : undefined}
+            onPress={masterBlocked ? ensureNotificationPermission : undefined}
             theme={theme}
             right={
               <Switch

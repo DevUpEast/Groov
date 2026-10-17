@@ -218,7 +218,7 @@
     },
     "reminders": {
       "title": "Un rappel au bon moment",
-      "body": "Un rappel par jour pour chaque habitude, au moment de la journée choisi. Modifiez-les ou désactivez-les à tout moment dans les Réglages.",
+      "body": "Un rappel par jour pour chaque habitude associée à un moment de la journée. Modifiez-les ou désactivez-les à tout moment dans les Réglages.",
       "none": "Aucun rappel",
       "turnOn": "Activer les rappels",
       "rowA11y": "%{name} : %{time}",

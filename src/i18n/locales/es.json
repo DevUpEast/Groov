@@ -218,7 +218,7 @@
     },
     "reminders": {
       "title": "Un aviso en el momento justo",
-      "body": "Un recordatorio al día por hábito, en el momento del día que elegiste. Cámbialos o desactívalos cuando quieras en Ajustes.",
+      "body": "Un recordatorio al día por cada hábito con un momento del día. Cámbialos o desactívalos cuando quieras en Ajustes.",
       "none": "Sin recordatorio",
       "turnOn": "Activar recordatorios",
       "rowA11y": "%{name}: %{time}",

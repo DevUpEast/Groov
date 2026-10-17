@@ -218,7 +218,7 @@
     },
     "reminders": {
       "title": "Ein Stups zur richtigen Zeit",
-      "body": "Eine Erinnerung pro Tag für jede Gewohnheit, zur gewählten Tageszeit. Du kannst sie jederzeit in den Einstellungen ändern oder ausschalten.",
+      "body": "Eine Erinnerung pro Tag für jede Gewohnheit mit einer Tageszeit. Du kannst sie jederzeit in den Einstellungen ändern oder ausschalten.",
       "none": "Keine Erinnerung",
       "turnOn": "Erinnerungen einschalten",
       "rowA11y": "%{name}: %{time}",
