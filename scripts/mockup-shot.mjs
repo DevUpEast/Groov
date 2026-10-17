@@ -4,23 +4,22 @@
 //   options: --device iphone16pro --frame 0|1 --scale 2 --wait 2500 --base <url> --full 0|1
 //            --click "text=Continue without an account" (repeatable, run before the shot)
 //            --html out.html (dump the app iframe's visible text for text-level review)
-//            --debug 1 (print console errors, page errors and failed requests to stderr)
-// Without --base, serves ./mockup-dist on a free port (run scripts/build-mockup.sh first).
+//            --debug 1 (print console errors, page errors, failed requests and each
+//                       anonymous sign-in to stderr, plus a sign-in count at the end)
+//            --demo 0|1 --guest 0|1 --lang de (forwarded to the app; default: apps.json params)
+//            --fresh (throwaway Chrome profile: first-run, onboarding, welcome shots)
+//            --reset-demo (delete .mockup-profile/ first; alone, without --out, it only resets)
+// Without --base, serves ./mockup-dist on port 8786 (run scripts/build-mockup.sh first).
+// The Chrome profile .mockup-profile/ keeps the guest session and demo data between runs,
+// so only the first run signs in anonymously and seeds the demo.
 import path from 'node:path';
 import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import puppeteer from 'puppeteer-core';
-import { startServer } from './mockup-serve.mjs';
+import { parseArgs, openMockup, hostUrl, attachDebug, loadHost, resetProfile, waitForDemo, sleep } from './mockup-lib.mjs';
 
-const args = {};
-const clicks = [];
-for (let i = 2; i < process.argv.length; i++) {
-  const a = process.argv[i];
-  if (a.startsWith('--')) {
-    const k = a.slice(2); const v = process.argv[i + 1];
-    if (k === 'click') { clicks.push(v); i++; continue; }
-    args[k] = v && !v.startsWith('--') ? (i++, v) : '1';
-  }
+const { args, clicks } = parseArgs(process.argv.slice(2));
+if (args['reset-demo']) {
+  resetProfile();
+  if (!args.out) process.exit(0);
 }
 const app = args.app || 'groov';
 const device = args.device || 'iphone16pro';
@@ -31,41 +30,16 @@ const scale = Number(args.scale || 2);
 const wait = Number(args.wait || 2500);
 const out = path.resolve(args.out || `mockup-${app}-${route || 'home'}-${theme}.png`);
 
-const CHROME = [
-  process.env.CHROME_PATH,
-  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome', '/usr/bin/chromium',
-].find(p => p && fs.existsSync(p));
-if (!CHROME) { console.error('No Chrome/Edge found; set CHROME_PATH'); process.exit(1); }
-
-let server = null;
-let base = args.base;
-if (!base) {
-  const port = 8790 + Math.floor(Math.random() * 100);
-  server = await startServer({ port });
-  base = `http://localhost:${port}/Groov`;
-}
-const url = `${base}/index.html?app=${app}&device=${device}&theme=${theme}&route=${encodeURIComponent(route)}&chrome=0&frame=${frame ? 1 : 0}&scale=1`;
-
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--hide-scrollbars'] });
+const session = await openMockup({ base: args.base, fresh: args.fresh === '1' });
+const url = hostUrl(session.base, { app, device, theme, route, frame, demo: args.demo, guest: args.guest, lang: args.lang });
 try {
-  const page = await browser.newPage();
-  if (args.debug) {
-    const log = (tag, text) => console.error(`[${tag}] ${String(text).slice(0, 800)}`);
-    page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') log('console.' + m.type(), m.text()); });
-    page.on('pageerror', e => log('pageerror', e.message));
-    page.on('requestfailed', r => log('requestfailed', r.url()));
-    page.on('response', r => { if (r.status() >= 400) log('http ' + r.status(), r.url()); });
-  }
+  const page = await session.browser.newPage();
+  const counter = attachDebug(page, args.debug);
   await page.setViewport({ width: 1100, height: 1300, deviceScaleFactor: scale });
-  await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-  const frameEl = await page.waitForSelector('#screenFrame', { timeout: 30000 });
-  const appFrame = await frameEl.contentFrame();
-  await appFrame.waitForSelector('body', { timeout: 30000 });
-  await new Promise(r => setTimeout(r, wait));
+  const appFrame = await loadHost(page, url);
+  // An unseeded profile signs in and seeds the demo on this load; wait until it lands.
+  if (args.demo !== '0' && args.guest !== '0') await waitForDemo(appFrame, session);
+  await sleep(wait);
   for (const sel of clicks) {
     try {
       if (sel.startsWith('text=')) {
@@ -78,17 +52,18 @@ try {
       } else {
         await appFrame.click(sel);
       }
-      await new Promise(r => setTimeout(r, 900));
+      await sleep(900);
     } catch (e) { console.warn('click failed', sel, e.message); }
   }
   if (args.html) {
     const html = await appFrame.evaluate(() => document.body.innerText);
     fs.writeFileSync(path.resolve(args.html), html);
   }
+  fs.mkdirSync(path.dirname(out), { recursive: true });
   if (args.full === '1') await page.screenshot({ path: out, fullPage: true });
   else { const phone = await page.$('#phone'); await phone.screenshot({ path: out, omitBackground: !frame }); }
+  if (args.debug) console.error(`[auth] anonymous sign-ins this run: ${counter.anonSignIns}`);
   console.log(out);
 } finally {
-  await browser.close();
-  if (server) server.close();
+  await session.close();
 }

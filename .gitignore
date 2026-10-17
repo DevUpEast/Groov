@@ -55,3 +55,9 @@ reports/
 # per-machine Claude Code settings
 .claude/settings.local.json
 mockup-dist/
+.gh/
+
+# mockup shot tooling (scripts/mockup-shot.mjs, shot-matrix.mjs): Chrome profile with the
+# reused guest session, and the screenshot output
+.mockup-profile/
+.shots/
