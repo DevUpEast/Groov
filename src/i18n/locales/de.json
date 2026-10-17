@@ -215,6 +215,14 @@
       "placeholder": "Nachdem ich… (z. B. Kaffee gekocht habe, in der Küche)",
       "a11y": "Plan für %{name}",
       "start": "Meinen 3-Tage-Kickstart starten 🚀"
+    },
+    "reminders": {
+      "title": "Ein Stups zur richtigen Zeit",
+      "body": "Eine Erinnerung pro Tag für jede Gewohnheit, zur gewählten Tageszeit. Du kannst sie jederzeit in den Einstellungen ändern oder ausschalten.",
+      "none": "Keine Erinnerung",
+      "turnOn": "Erinnerungen einschalten",
+      "rowA11y": "%{name}: %{time}",
+      "notNowA11y": "Nicht jetzt, ohne Erinnerungen starten"
     }
   },
   "habits": {
@@ -563,6 +571,8 @@
     "smartSub": "Kommt um %{time}, nur wenn noch Gewohnheiten offen sind",
     "firesAt": "Kommt um %{time}",
     "notificationsDisabled": "Benachrichtigungen deaktiviert",
+    "offTapToAllow": "Aus · Tippen zum Erlauben",
+    "allowA11y": "%{label} ist aus, weil Benachrichtigungen nicht erlaubt sind. Tippen zum Erlauben",
     "reminderLabelA11y": "Name der Erinnerung",
     "editLabelA11y": "Name der Erinnerung bearbeiten, %{label}",
     "changeTimeA11y": "Uhrzeit ändern, aktuell %{time}",

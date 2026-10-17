@@ -8,10 +8,13 @@ import { useApp } from '../context/AppContext';
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { t, useLocale } from '../i18n';
 import { STARTER_HABITS, getStarterHabits } from '../utils/habits';
+import { reminderTimeForTimeOfDay } from '../utils/settings';
+import { formatTimeForClock } from '../utils/time';
+import { usesDevice24hClock } from '../utils/clock';
 
-// First-run flow: two intro slides, pick starter habits, then an implementation
-// intention ("after X, I will Y") per habit. Finishing creates the habits and the
-// 3-Day Kickstart challenge the last slide promises.
+// First-run flow: two intro slides, pick starter habits, an implementation intention
+// ("after X, I will Y") per habit, then reminders at each habit's time of day.
+// Finishing creates the habits and the 3-Day Kickstart challenge.
 
 const INTRO = [
   { emoji: '🌱', key: 'stick' },
@@ -25,9 +28,10 @@ const MAX_PICK = 5;
 const TIME_CHIPS = ['morning', 'afternoon', 'evening', 'anytime'];
 
 export default function OnboardingScreen() {
-  const { completeOnboarding, theme, settings } = useApp();
+  const { completeOnboarding, theme, settings, ensureNotificationPermission } = useApp();
   const { locale } = useLocale();
-  const [step, setStep] = useState(0); // 0,1 intro · 2 pick · 3 intentions
+  const [step, setStep] = useState(0); // 0,1 intro · 2 pick · 3 intentions · 4 reminders
+  const [asking, setAsking] = useState(false);
   const [picked, setPicked] = useState(DEFAULT_PICK);
   const [plans, setPlans] = useState({}); // key -> { timeOfDay, intention }
 
@@ -41,19 +45,45 @@ export default function OnboardingScreen() {
   const starters = useMemo(() => getStarterHabits(), [locale]);
   const chosen = useMemo(() => starters.filter(h => picked.includes(h.key)), [picked, starters]);
 
-  const finish = (withHabits) => {
+  // Each chosen habit's reminder time comes from its time of day (WID-6); anytime has none.
+  const reminderRows = useMemo(() => chosen.map(h => {
+    const tod = (plans[h.key] || {}).timeOfDay ?? h.timeOfDay;
+    return { habit: h, time: reminderTimeForTimeOfDay(tod) };
+  }), [chosen, plans]);
+  const hasReminders = reminderRows.some(r => r.time);
+  const uses24h = useMemo(() => usesDevice24hClock(), []);
+
+  // `remindersOn`: the user allowed notifications on the reminders step. Otherwise the
+  // times are still saved, switched off, so Settings can turn them on later.
+  const finish = (withHabits, remindersOn = false) => {
     if (settings?.hapticsEnabled !== false) mediumImpact();
     const habits = withHabits
       ? chosen.map(h => {
           const plan = plans[h.key] || {};
           const { key, ...rest } = h;
-          return { ...rest, timeOfDay: plan.timeOfDay ?? h.timeOfDay, intention: (plan.intention || '').trim() || null };
+          const timeOfDay = plan.timeOfDay ?? h.timeOfDay;
+          const time = reminderTimeForTimeOfDay(timeOfDay);
+          return {
+            ...rest,
+            timeOfDay,
+            intention: (plan.intention || '').trim() || null,
+            ...(time ? { reminder: { ...time, enabled: remindersOn } } : {}),
+          };
         })
       : [];
     completeOnboarding(habits);
   };
 
-  const totalSteps = 4;
+  const turnOnReminders = async () => {
+    if (asking) return;
+    haptic();
+    setAsking(true);
+    const granted = await ensureNotificationPermission();
+    setAsking(false);
+    finish(true, granted);
+  };
+
+  const totalSteps = 5;
   const dots = (
     <View style={styles.dots} accessibilityLabel={t('onboarding.stepA11y', { step: step + 1, total: totalSteps })}>
       {Array.from({ length: totalSteps }).map((_, i) => (
@@ -139,6 +169,56 @@ export default function OnboardingScreen() {
     );
   }
 
+  // ── Reminders ───────────────────────────────────────────────────────────────
+  if (step === 4) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.primary }]}>
+        <View style={styles.container}>
+          {dots}
+          <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
+            <Text style={styles.emojiSmall}>🔔</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.reminders.title')}</Text>
+            <Text style={[styles.body, { color: theme.textMuted, marginBottom: 16 }]}>
+              {t('onboarding.reminders.body')}
+            </Text>
+            <ScrollView style={{ alignSelf: 'stretch', maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              {reminderRows.map(({ habit, time }) => {
+                const label = time ? formatTimeForClock(time, uses24h) : t('onboarding.reminders.none');
+                return (
+                  <View
+                    key={habit.key}
+                    style={[styles.reminderRow, { borderColor: theme.border, backgroundColor: theme.bg }]}
+                    accessible
+                    accessibilityLabel={t('onboarding.reminders.rowA11y', { name: habit.name, time: label })}
+                  >
+                    <Text style={styles.pickIcon}>{habit.icon}</Text>
+                    <Text style={[styles.pickName, { color: theme.text, flex: 1 }]} numberOfLines={2}>{habit.name}</Text>
+                    <Text style={[styles.reminderTime, { color: time ? theme.primary : theme.textMuted }]}>{label}</Text>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+          <TouchableOpacity
+            style={[styles.btn, { opacity: asking ? 0.6 : 1 }]}
+            onPress={turnOnReminders}
+            disabled={asking}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: asking }}
+          >
+            <Text style={[styles.btnText, { color: theme.primary }]}>{t('onboarding.reminders.turnOn')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => finish(true, false)} disabled={asking} style={styles.skipBtn} accessibilityRole="button" accessibilityLabel={t('onboarding.reminders.notNowA11y')}>
+            <Text style={styles.skipText}>{t('common.notNow')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { haptic(); setStep(3); }} disabled={asking} style={styles.backBtn} accessibilityRole="button">
+            <Text style={styles.skipText}>{t('common.back')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // ── Implementation intentions ───────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.primary }]}>
@@ -189,8 +269,12 @@ export default function OnboardingScreen() {
               })}
             </ScrollView>
           </View>
-          <TouchableOpacity style={styles.btn} onPress={() => finish(true)} accessibilityRole="button">
-            <Text style={[styles.btnText, { color: theme.primary }]}>{t('onboarding.plan.start')}</Text>
+          <TouchableOpacity
+            style={styles.btn}
+            onPress={() => { if (hasReminders) { haptic(); Keyboard.dismiss(); setStep(4); } else finish(true); }}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.btnText, { color: theme.primary }]}>{hasReminders ? t('common.next') : t('onboarding.plan.start')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { haptic(); setStep(2); }} style={styles.skipBtn} accessibilityRole="button">
             <Text style={styles.skipText}>{t('common.back')}</Text>
@@ -219,6 +303,10 @@ const styles = StyleSheet.create({
   btnText: { fontSize: 17, fontWeight: '700' },
   skipBtn: { marginTop: 12, padding: 8 },
   skipText: { fontSize: 15, color: 'rgba(255,255,255,0.75)' },
+  backBtn: { marginTop: 2, padding: 8 },
+  emojiSmall: { fontSize: 40, textAlign: 'center', marginBottom: 8 },
+  reminderRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 8 },
+  reminderTime: { fontSize: 14, fontWeight: '700' },
   pickRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 12, padding: 12, marginBottom: 8 },
   pickIcon: { fontSize: 24 },
   pickName: { fontSize: 15, fontWeight: '600' },

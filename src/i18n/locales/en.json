@@ -215,6 +215,14 @@
       "placeholder": "After I… (e.g. make coffee, in the kitchen)",
       "a11y": "Plan for %{name}",
       "start": "Start my 3-Day Kickstart 🚀"
+    },
+    "reminders": {
+      "title": "Get a nudge at the right time",
+      "body": "One reminder a day for each habit, at the time of day you picked. Change them or turn them off any time in Settings.",
+      "none": "No reminder",
+      "turnOn": "Turn on reminders",
+      "rowA11y": "%{name}: %{time}",
+      "notNowA11y": "Not now, start without reminders"
     }
   },
   "habits": {
@@ -563,6 +571,8 @@
     "smartSub": "Fires at %{time} only if habits are still unfinished",
     "firesAt": "Fires at %{time}",
     "notificationsDisabled": "Notifications disabled",
+    "offTapToAllow": "Off · Tap to allow",
+    "allowA11y": "%{label} is off because notifications are not allowed. Tap to allow",
     "reminderLabelA11y": "Reminder label",
     "editLabelA11y": "Edit reminder label, %{label}",
     "changeTimeA11y": "Change time, currently %{time}",

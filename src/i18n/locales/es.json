@@ -215,6 +215,14 @@
       "placeholder": "Después de… (p. ej. preparar café, en la cocina)",
       "a11y": "Plan para %{name}",
       "start": "Empezar mi arranque de 3 días 🚀"
+    },
+    "reminders": {
+      "title": "Un aviso en el momento justo",
+      "body": "Un recordatorio al día por hábito, en el momento del día que elegiste. Cámbialos o desactívalos cuando quieras en Ajustes.",
+      "none": "Sin recordatorio",
+      "turnOn": "Activar recordatorios",
+      "rowA11y": "%{name}: %{time}",
+      "notNowA11y": "Ahora no, empezar sin recordatorios"
     }
   },
   "habits": {
@@ -563,6 +571,8 @@
     "smartSub": "Se envía a las %{time} solo si aún quedan hábitos sin terminar",
     "firesAt": "Se envía a las %{time}",
     "notificationsDisabled": "Notificaciones desactivadas",
+    "offTapToAllow": "Desactivado · Toca para permitir",
+    "allowA11y": "%{label} está desactivado porque las notificaciones no están permitidas. Toca para permitirlas",
     "reminderLabelA11y": "Etiqueta del recordatorio",
     "editLabelA11y": "Editar etiqueta del recordatorio, %{label}",
     "changeTimeA11y": "Cambiar la hora, actualmente %{time}",
