@@ -165,7 +165,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { backgroundColor: theme.scrim }]}>
         <View style={[styles.card, { backgroundColor: theme.surface }]}>
           <Text style={[styles.title, { color: theme.text }]}>{t('timePicker.title')}</Text>
 
@@ -217,7 +217,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
               <Text style={[styles.cancelText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSave} accessibilityRole="button">
-              <Text style={styles.saveText}>{t('common.save')}</Text>
+              <Text style={[styles.saveText, { color: theme.onPrimary }]}>{t('common.save')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -229,7 +229,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
 const styles = StyleSheet.create({
   overlay: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)', padding: 24,
+    padding: 24,
   },
   card: {
     width: '100%', maxWidth: 340, borderRadius: 20, padding: 24,
@@ -254,5 +254,5 @@ const styles = StyleSheet.create({
   cancelBtn: { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },
   cancelText: { fontSize: 15, fontWeight: '600' },
   saveBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  saveText: { fontSize: 15, fontWeight: '700' },
 });

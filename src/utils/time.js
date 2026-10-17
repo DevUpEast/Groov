@@ -26,8 +26,9 @@ export function formatTime12(time) {
 
 // The native time picker works in Date objects. timeToDate builds today's Date at the stored
 // 12-hour time; from24h turns the picker's result (a Date, or an hour/minute pair) back into the
-// stored { hour12, minute, ampm } shape.
-export function timeToDate(time, base = new Date()) {
+// stored { hour12, minute, ampm } shape. The default base is a fixed date with no DST transition,
+// so a spring-forward day can never turn 2:30 into 3:30; both pickers ignore the date part.
+export function timeToDate(time, base = new Date(2000, 0, 1)) {
   const { hour, minute } = to24h(time);
   const d = new Date(base.getTime());
   d.setHours(hour, minute, 0, 0);

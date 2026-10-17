@@ -76,6 +76,25 @@ describe('Android', () => {
     expect(DateTimePickerAndroid.dismiss).toHaveBeenCalledWith('time');
   });
 
+  it('ignores the late dismissed event that its own unmount dismiss triggers', () => {
+    const { renderer, props } = render();
+    const { onChange } = DateTimePickerAndroid.open.mock.calls[0][0];
+    act(() => { renderer.unmount(); });
+    act(() => { onChange({ type: 'dismissed' }, undefined); });
+    expect(props.onClose).not.toHaveBeenCalled();
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it('closes when the native dialog fails to open', () => {
+    const { renderer, props } = render();
+    const { onError } = DateTimePickerAndroid.open.mock.calls[0][0];
+    act(() => { onError(new Error('ERROR_NO_ACTIVITY')); });
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+    expect(props.onSave).not.toHaveBeenCalled();
+    act(() => { renderer.unmount(); });
+    expect(DateTimePickerAndroid.dismiss).not.toHaveBeenCalled();
+  });
+
   it('does not dismiss again after the dialog already closed', () => {
     const { renderer } = render();
     const { onChange } = DateTimePickerAndroid.open.mock.calls[0][0];
@@ -118,6 +137,8 @@ describe('iOS', () => {
     getCalendars.mockReturnValue([{ uses24hourClock: true }]);
     const { renderer } = render();
     expect(renderer.root.findAll(n => n.props.children === '07:45').length).toBeGreaterThan(0);
+    act(() => { pickerOf(renderer).props.onChange({ type: 'set' }, new Date(2000, 0, 1, 21, 5)); });
+    expect(renderer.root.findAll(n => n.props.children === '21:05').length).toBeGreaterThan(0);
     getCalendars.mockReturnValue([{ uses24hourClock: false }]);
   });
 });

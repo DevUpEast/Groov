@@ -32,20 +32,29 @@ function AndroidTimePicker({ visible, hour12, minute, ampm, onClose, onSave }) {
   useEffect(() => {
     if (!visible) return undefined;
     let open = true;
+    let cancelled = false;
     DateTimePickerAndroid.open({
       mode: 'time',
       value: timeToDate({ hour12, minute, ampm }),
       onChange: (event, date) => {
         open = false;
+        // The cleanup below dismisses the dialog, which fires a late 'dismissed' event; ignore it so
+        // it cannot close a picker that was reopened in the meantime.
+        if (cancelled) return;
         if (event?.type === 'set' && date) {
           lightImpact();
           handlers.current.onSave(from24h(date));
         }
         handlers.current.onClose();
       },
+      // A failed open (e.g. no activity) must still release the caller, or its row stays stuck.
+      onError: () => { open = false; if (!cancelled) handlers.current.onClose(); },
     });
     // Closing the parent (a deep link, a tab change) takes the dialog down with it.
-    return () => { if (open) DateTimePickerAndroid.dismiss('time'); };
+    return () => {
+      cancelled = true;
+      if (open) DateTimePickerAndroid.dismiss('time');
+    };
   }, [visible]);
 
   return null;
@@ -71,6 +80,7 @@ function IOSTimePicker({ visible, hour12, minute, ampm, onClose, onSave, theme }
           <Text style={[styles.preview, { color: theme.textMuted }]}>
             {formatTimeForClock(from24h(value), uses24h)}
           </Text>
+          {/* No `locale` on purpose: an explicit locale makes UIDatePicker ignore the 24-hour override. */}
           <DateTimePicker
             mode="time"
             display="spinner"

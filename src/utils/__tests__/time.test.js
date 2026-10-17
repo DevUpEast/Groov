@@ -44,6 +44,11 @@ describe('native picker conversions', () => {
     expect(timeToDate({ hour12: 12, minute: 30, ampm: 'PM' }, base).getHours()).toBe(12);
   });
 
+  it('defaults to a fixed date with no DST transition', () => {
+    const d = timeToDate({ hour12: 2, minute: 30, ampm: 'AM' });
+    expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()]).toEqual([2000, 0, 1, 2, 30]);
+  });
+
   it('from24h maps a picker Date back to the stored shape', () => {
     expect(from24h(new Date(2026, 0, 1, 7, 45))).toEqual({ hour12: 7, minute: 45, ampm: 'AM' });
     expect(from24h(new Date(2026, 0, 1, 0, 5))).toEqual({ hour12: 12, minute: 5, ampm: 'AM' });
@@ -55,7 +60,7 @@ describe('native picker conversions', () => {
     for (let h = 0; h < 24; h++) {
       for (let m = 0; m < 60; m++) {
         const stored = to12h(h, m);
-        expect(from24h(timeToDate(stored))).toEqual(stored);
+        expect(from24h(timeToDate(stored, new Date(2000, 0, 1)))).toEqual(stored);
       }
     }
   });
