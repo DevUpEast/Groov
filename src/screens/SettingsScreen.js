@@ -9,6 +9,7 @@ import * as Application from 'expo-application';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import TimePicker from '../components/TimePicker';
+import Dialog from '../components/ui/Dialog';
 import { sendTestNotification } from '../utils/notifications';
 import { lightImpact } from '../utils/haptics';
 import { playSuccessChime } from '../utils/sounds';
@@ -330,6 +331,14 @@ export default function SettingsScreen() {
     );
   };
 
+  // An Alert to show after a Dialog closes; flushed from the Dialog's onDismiss.
+  const afterDialogAlert = useRef(null);
+  const flushAfterDialogAlert = () => {
+    const pending = afterDialogAlert.current;
+    afterDialogAlert.current = null;
+    if (pending) Alert.alert(...pending);
+  };
+
   const handleVerifyReset = async () => {
     if (!resetCode.trim()) { setResetError(t('settings.resetModal.errors.enterCode')); return; }
     if (!resetNewPassword) { setResetError(t('settings.resetModal.errors.enterPassword')); return; }
@@ -339,8 +348,9 @@ export default function SettingsScreen() {
     setResetError('');
     try {
       await verifyPasswordReset(user?.email ?? '', resetCode, resetNewPassword);
+      // Shown from the Dialog's onDismiss, once the dialog has gone (iOS cannot present over it).
+      afterDialogAlert.current = [t('settings.resetModal.success.title'), t('settings.resetModal.success.body')];
       setResetStep(null);
-      Alert.alert(t('settings.resetModal.success.title'), t('settings.resetModal.success.body'));
     } catch (e) {
       setResetError(e.message || t('settings.resetModal.errors.invalidCode'));
     } finally {
@@ -356,6 +366,7 @@ export default function SettingsScreen() {
   const [nameModal, setNameModal] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
+  const nameInputRef = useRef(null);
   const openNameEditor = () => { setNameDraft(displayName ?? ''); setNameModal(true); };
   const saveName = async () => {
     const next = nameDraft.trim();
@@ -375,6 +386,7 @@ export default function SettingsScreen() {
   const [devTapCount, setDevTapCount] = useState(0);
   const [showDevInput, setShowDevInput] = useState(false);
   const [devCodeDraft, setDevCodeDraft] = useState('');
+  const devInputRef = useRef(null);
   const devTapTimer = useRef(null);
   const showDevTools = devMode;
   // Throws during render so the root ErrorBoundary (and Sentry, when configured) can be exercised.
@@ -396,10 +408,10 @@ export default function SettingsScreen() {
   const handleDevCodeSubmit = async () => {
     if (devCodeDraft === DEV_CODE) {
       setDevMode(true);
+      afterDialogAlert.current = [t('settings.dev.unlocked.title'), t('settings.dev.unlocked.body')];
       setShowDevInput(false);
       setDevCodeDraft('');
       lightImpact();
-      Alert.alert(t('settings.dev.unlocked.title'), t('settings.dev.unlocked.body'));
     } else {
       Alert.alert(t('settings.dev.invalid.title'), t('settings.dev.invalid.body'));
       setDevCodeDraft('');
@@ -981,188 +993,134 @@ export default function SettingsScreen() {
         onLinked={() => { setLinkSheet(false); Alert.alert(t('settings.account.linked.title'), t('settings.account.linked.body')); }}
       />
 
-      {/* Password Reset Modal */}
-      {resetStep === 'verify' && (
-        <View style={styles.devModal}>
-          <View style={[styles.devModalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.devModalTitle, { color: theme.text }]}>{t('settings.resetModal.title')}</Text>
-            <Text style={[styles.devModalSub, { color: theme.textMuted }]}>
-              {t('settings.resetModal.body', { email: user?.email ?? '' })}
-            </Text>
-            <TextInput
-              style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-              value={resetCode}
-              onChangeText={setResetCode}
-              accessibilityLabel={t('settings.resetModal.codePlaceholder')}
-              placeholder={t('settings.resetModal.codePlaceholder')}
-              placeholderTextColor={theme.textMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TextInput
-              style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-              value={resetNewPassword}
-              onChangeText={setResetNewPassword}
-              accessibilityLabel={t('settings.resetModal.newPassword')}
-              placeholder={t('settings.resetModal.newPassword')}
-              placeholderTextColor={theme.textMuted}
-              secureTextEntry
-            />
-            <TextInput
-              style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text, marginBottom: 4 }]}
-              value={resetConfirmPassword}
-              onChangeText={setResetConfirmPassword}
-              accessibilityLabel={t('settings.resetModal.confirmPassword')}
-              placeholder={t('settings.resetModal.confirmPassword')}
-              placeholderTextColor={theme.textMuted}
-              secureTextEntry
-            />
-            {!!resetError && (
-              <Text style={[styles.devModalSub, { color: theme.danger, marginBottom: 8 }]}>{resetError}</Text>
-            )}
-            <View style={styles.devModalBtns}>
-              <TouchableOpacity
-                style={[styles.devModalBtn, { borderColor: theme.border }]}
-                onPress={() => { setResetStep(null); setResetError(''); }}
-                disabled={resetLoading}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: resetLoading }}
-              >
-                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.devModalBtn, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: resetLoading ? 0.6 : 1 }]}
-                onPress={handleVerifyReset}
-                disabled={resetLoading}
-                accessibilityRole="button"
-                accessibilityLabel={t('settings.resetModal.setPassword')}
-                accessibilityState={{ disabled: resetLoading, busy: resetLoading }}
-              >
-                <Text style={[styles.devModalBtnText, { color: '#fff' }]}>
-                  {resetLoading ? t('common.saving') : t('settings.resetModal.setPassword')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
+      {/* Password Reset dialog */}
+      <Dialog
+        visible={resetStep === 'verify'}
+        onDismiss={flushAfterDialogAlert}
+        onClose={() => { setResetStep(null); setResetError(''); }}
+        dismissable={!resetLoading}
+        title={t('settings.resetModal.title')}
+        body={t('settings.resetModal.body', { email: user?.email ?? '' })}
+        actions={[
+          { key: 'cancel', label: t('common.cancel'), onPress: () => { setResetStep(null); setResetError(''); }, disabled: resetLoading },
+          { key: 'set', label: t('settings.resetModal.setPassword'), loadingLabel: t('common.saving'), variant: 'primary', onPress: handleVerifyReset, loading: resetLoading },
+        ]}
+      >
+        <TextInput
+          style={[styles.dialogInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
+          value={resetCode}
+          onChangeText={setResetCode}
+          accessibilityLabel={t('settings.resetModal.codePlaceholder')}
+          placeholder={t('settings.resetModal.codePlaceholder')}
+          placeholderTextColor={theme.textMuted}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TextInput
+          style={[styles.dialogInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
+          value={resetNewPassword}
+          onChangeText={setResetNewPassword}
+          accessibilityLabel={t('settings.resetModal.newPassword')}
+          placeholder={t('settings.resetModal.newPassword')}
+          placeholderTextColor={theme.textMuted}
+          secureTextEntry
+        />
+        <TextInput
+          style={[styles.dialogInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text, marginBottom: 4 }]}
+          value={resetConfirmPassword}
+          onChangeText={setResetConfirmPassword}
+          accessibilityLabel={t('settings.resetModal.confirmPassword')}
+          placeholder={t('settings.resetModal.confirmPassword')}
+          placeholderTextColor={theme.textMuted}
+          secureTextEntry
+        />
+        {!!resetError && (
+          <Text style={[styles.dialogError, { color: theme.danger }]} accessibilityLiveRegion="polite">{resetError}</Text>
+        )}
+      </Dialog>
 
-      {/* Display name modal */}
-      {nameModal && (
-        <View style={styles.devModal}>
-          <View style={[styles.devModalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.devModalTitle, { color: theme.text }]}>{t('settings.account.nameModal.title')}</Text>
-            <Text style={[styles.devModalSub, { color: theme.textMuted }]}>{t('settings.account.nameModal.sub')}</Text>
-            <TextInput
-              style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-              value={nameDraft}
-              onChangeText={setNameDraft}
-              accessibilityLabel={t('settings.account.nameModal.placeholder')}
-              placeholder={t('settings.account.nameModal.placeholder')}
-              placeholderTextColor={theme.textMuted}
-              autoFocus
-              maxLength={40}
-              onSubmitEditing={saveName}
-              returnKeyType="done"
-            />
-            <View style={styles.devModalBtns}>
-              <TouchableOpacity
-                style={[styles.devModalBtn, { borderColor: theme.border }]}
-                onPress={() => setNameModal(false)}
-                disabled={nameSaving}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: nameSaving }}
-              >
-                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.devModalBtn, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: nameSaving ? 0.6 : 1 }]}
-                onPress={saveName}
-                disabled={nameSaving}
-                accessibilityRole="button"
-                accessibilityLabel={t('common.save')}
-                accessibilityState={{ disabled: nameSaving, busy: nameSaving }}
-              >
-                <Text style={[styles.devModalBtnText, { color: '#fff' }]}>{nameSaving ? t('common.saving') : t('common.save')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
+      {/* Display name dialog */}
+      <Dialog
+        visible={nameModal}
+        onClose={() => setNameModal(false)}
+        dismissable={!nameSaving}
+        title={t('settings.account.nameModal.title')}
+        body={t('settings.account.nameModal.sub')}
+        initialFocusRef={nameInputRef}
+        actions={[
+          { key: 'cancel', label: t('common.cancel'), onPress: () => setNameModal(false), disabled: nameSaving },
+          { key: 'save', label: t('common.save'), loadingLabel: t('common.saving'), variant: 'primary', onPress: saveName, loading: nameSaving },
+        ]}
+      >
+        <TextInput
+          ref={nameInputRef}
+          style={[styles.dialogInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text, marginBottom: 0 }]}
+          value={nameDraft}
+          onChangeText={setNameDraft}
+          accessibilityLabel={t('settings.account.nameModal.placeholder')}
+          placeholder={t('settings.account.nameModal.placeholder')}
+          placeholderTextColor={theme.textMuted}
+          maxLength={40}
+          onSubmitEditing={saveName}
+          returnKeyType="done"
+        />
+      </Dialog>
 
-      {/* Dev code entry modal */}
-      {showDevInput && (
-        <View style={styles.devModal}>
-          <View style={[styles.devModalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.devModalTitle, { color: theme.text }]}>{t('settings.dev.access.title')}</Text>
-            <Text style={[styles.devModalSub, { color: theme.textMuted }]}>{t('settings.dev.access.body')}</Text>
-            <TextInput
-              style={[styles.devModalInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
-              value={devCodeDraft}
-              onChangeText={setDevCodeDraft}
-              accessibilityLabel={t('settings.dev.access.a11y')}
-              placeholder={t('settings.dev.access.placeholder')}
-              placeholderTextColor={theme.textMuted}
-              secureTextEntry
-              autoFocus
-              onSubmitEditing={handleDevCodeSubmit}
-              returnKeyType="done"
-            />
-            <View style={styles.devModalBtns}>
-              <TouchableOpacity
-                style={[styles.devModalBtn, { borderColor: theme.border }]}
-                onPress={() => { setShowDevInput(false); setDevCodeDraft(''); }}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.devModalBtn, { backgroundColor: theme.primary, borderColor: theme.primary }]}
-                onPress={handleDevCodeSubmit}
-                accessibilityRole="button"
-              >
-                <Text style={[styles.devModalBtnText, { color: '#fff' }]}>{t('settings.dev.access.unlock')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
+      {/* Dev code entry dialog */}
+      <Dialog
+        visible={showDevInput}
+        onDismiss={flushAfterDialogAlert}
+        onClose={() => { setShowDevInput(false); setDevCodeDraft(''); }}
+        title={t('settings.dev.access.title')}
+        body={t('settings.dev.access.body')}
+        initialFocusRef={devInputRef}
+        actions={[
+          { key: 'cancel', label: t('common.cancel'), onPress: () => { setShowDevInput(false); setDevCodeDraft(''); } },
+          { key: 'unlock', label: t('settings.dev.access.unlock'), variant: 'primary', onPress: handleDevCodeSubmit },
+        ]}
+      >
+        <TextInput
+          ref={devInputRef}
+          style={[styles.dialogInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text, marginBottom: 0 }]}
+          value={devCodeDraft}
+          onChangeText={setDevCodeDraft}
+          accessibilityLabel={t('settings.dev.access.a11y')}
+          placeholder={t('settings.dev.access.placeholder')}
+          placeholderTextColor={theme.textMuted}
+          secureTextEntry
+          onSubmitEditing={handleDevCodeSubmit}
+          returnKeyType="done"
+        />
+      </Dialog>
 
       {/* Language picker */}
-      {langModal && (
-        <View style={styles.devModal}>
-          <View style={[styles.devModalCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.devModalTitle, { color: theme.text }]}>{t('settings.languageTitle')}</Text>
-            <Text style={[styles.devModalSub, { color: theme.textMuted }]}>{t('settings.languageBody')}</Text>
-            {[{ code: null, label: t('settings.languageSystem') }, ...SUPPORTED_LOCALES].map(opt => {
-              const selected = (localePreference ?? null) === opt.code;
-              return (
-                <TouchableOpacity
-                  key={opt.code ?? 'system'}
-                  style={[styles.langOption, { borderBottomColor: theme.border }]}
-                  onPress={() => chooseLocale(opt.code)}
-                  activeOpacity={0.7}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected, checked: selected }}
-                  accessibilityLabel={opt.label}
-                >
-                  <Text style={[styles.langOptionText, { color: selected ? theme.primary : theme.text }]}>{opt.label}</Text>
-                  {selected && <Ionicons name="checkmark" size={18} color={theme.primary} />}
-                </TouchableOpacity>
-              );
-            })}
-            <View style={[styles.devModalBtns, { marginTop: 16 }]}>
+      <Dialog
+        visible={langModal}
+        onClose={() => setLangModal(false)}
+        title={t('settings.languageTitle')}
+        body={t('settings.languageBody')}
+        actions={[{ key: 'close', label: t('common.close'), onPress: () => setLangModal(false) }]}
+      >
+        <View accessibilityRole="radiogroup">
+          {[{ code: null, label: t('settings.languageSystem') }, ...SUPPORTED_LOCALES].map(opt => {
+            const selected = (localePreference ?? null) === opt.code;
+            return (
               <TouchableOpacity
-                style={[styles.devModalBtn, { borderColor: theme.border }]}
-                onPress={() => setLangModal(false)}
-                accessibilityRole="button"
+                key={opt.code ?? 'system'}
+                style={[styles.langOption, { borderBottomColor: theme.border }]}
+                onPress={() => chooseLocale(opt.code)}
+                activeOpacity={0.7}
+                accessibilityRole="radio"
+                accessibilityState={{ selected, checked: selected }}
+                accessibilityLabel={opt.label}
               >
-                <Text style={[styles.devModalBtnText, { color: theme.textMuted }]}>{t('common.close')}</Text>
+                <Text style={[styles.langOptionText, { color: selected ? theme.primary : theme.text }]}>{opt.label}</Text>
+                {selected && <Ionicons name="checkmark" size={18} color={theme.primary} />}
               </TouchableOpacity>
-            </View>
-          </View>
+            );
+          })}
         </View>
-      )}
+      </Dialog>
 
       {timeModal && (() => {
         const habit = timeModal.kind === 'habit' ? habits.find(h => h.id === timeModal.id) : null;
@@ -1250,22 +1208,7 @@ const styles = StyleSheet.create({
   version: { textAlign: 'center', fontSize: 12, marginTop: 8 },
   versionBtn: { alignItems: 'center', marginTop: 8 },
   devHint: { fontSize: 11, marginTop: 4 },
-  devModal: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 999,
-  },
-  devModalCard: {
-    width: '80%',
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 24,
-  },
-  devModalTitle: { fontSize: 17, fontWeight: '700', marginBottom: 4 },
-  devModalSub: { fontSize: 13, marginBottom: 16 },
-  devModalInput: {
+  dialogInput: {
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 14,
@@ -1273,15 +1216,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 16,
   },
-  devModalBtns: { flexDirection: 'row', gap: 10 },
-  devModalBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  devModalBtnText: { fontSize: 14, fontWeight: '600' },
+  dialogError: { fontSize: 13, marginBottom: 8 },
   langOption: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 12, borderBottomWidth: 1,
