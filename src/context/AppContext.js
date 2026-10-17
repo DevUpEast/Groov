@@ -24,6 +24,7 @@ import {
   ACTION_DONE, ACTION_SNOOZE, BACKOFF_AFTER_MISSES,
 } from '../utils/notifications';
 import { localDateKey, todayKey, addDays } from '../utils/dates';
+import { deriveAccountCreatedAt } from '../utils/accountCreatedAt';
 import { overallStreak, bestOverallStreak, overallDayStatus, reconcileFreezes, freezesLeftInMonth } from '../utils/streaks';
 import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak } from '../utils/schedule';
 import { loadDevMode, saveDevMode } from '../utils/devMode';
@@ -245,9 +246,7 @@ export function AppProvider({ children }) {
       if (clamped !== aca) saveData('accountCreatedAt', clamped);
       setAccountCreatedAt(clamped);
     } else {
-      const today = localDateKey();
-      const completionDates = c ? Object.keys(c).sort() : [];
-      const firstDate = completionDates.length > 0 ? completionDates[0] : today;
+      const firstDate = deriveAccountCreatedAt({ completions: c, habits: h });
       setAccountCreatedAt(firstDate);
       saveData('accountCreatedAt', firstDate);
     }
@@ -568,12 +567,25 @@ export function AppProvider({ children }) {
         // here (not just the React setters) ensures pushAllLocalData sends empty data
         // synchronously before React re-renders propagate the setter calls.
         const emptyState = { habits: [], completions: {}, notes: {}, moods: {}, settings: DEFAULT_SETTINGS, challenges: [], pastChallenges: [], dailySnapshot: {} };
+        // The account's first day as stored on this device. A switch or deletion drops it:
+        // the in-memory value belongs to the previous user and is recomputed after the pull.
+        let storedAca = await loadData('accountCreatedAt');
+        const settleAccountCreatedAt = (completionsForAca, habitsForAca) => {
+          const next = deriveAccountCreatedAt({ stored: storedAca, completions: completionsForAca, habits: habitsForAca });
+          setAccountCreatedAt(next);
+          // Save even when it equals the in-memory value: a switch wiped the stored key.
+          saveData('accountCreatedAt', next);
+        };
 
         if (accountWasDeleted) {
           // Account was explicitly deleted — the previous user's storage was already wiped in
           // AuthContext.deleteAccount(). Just clear the sentinel and reset in-memory state.
           await saveData('accountWasDeleted', null);
           stateRef.current = emptyState;
+          storedAca = null;
+          // Today until the pull below lowers it, so a failed (offline) pull never
+          // leaves the previous user's date in memory.
+          settleAccountCreatedAt(null, null);
           setHabits([]);
           setCompletions({});
           setNotes({});
@@ -588,6 +600,10 @@ export function AppProvider({ children }) {
           // Different user logged in on this device — wipe the previous user's local data.
           await storeClearAll();
           stateRef.current = emptyState;
+          storedAca = null;
+          // Today until the pull below lowers it, so a failed (offline) pull never
+          // leaves the previous user's date in memory.
+          settleAccountCreatedAt(null, null);
           setHabits([]);
           setCompletions({});
           setNotes({});
@@ -623,6 +639,7 @@ export function AppProvider({ children }) {
           setChallenges([]);
           setPastChallenges([]);
           setDailySnapshot({});
+          settleAccountCreatedAt(null, null);
           return;
         }
 
@@ -642,8 +659,10 @@ export function AppProvider({ children }) {
           if (cloudData.pastChallenges) setPastChallenges(cloudData.pastChallenges);
           if (cloudData.dailySnapshot) setDailySnapshot(cloudData.dailySnapshot);
           setHasOnboarded(true);
+          settleAccountCreatedAt(cloudData.completions, cloudData.habits);
         } else {
           await pushAllLocalData(userId, stateRef.current);
+          settleAccountCreatedAt(stateRef.current.completions, stateRef.current.habits);
         }
         lastPulledAtRef.current = pulledAt;
       } catch (e) {
@@ -683,6 +702,14 @@ export function AppProvider({ children }) {
         if (delta.completions.length) {
           setCompletions(prev => mergeCompletions(prev, delta.completions));
           setNotes(prev => mergeNotes(prev, delta.completions));
+        }
+        if (delta.completions.length || delta.habits.length) {
+          // Real history from another device can only move the first day earlier;
+          // deleted rows (count 0) and future dates never count.
+          const pulledCompletions = mergeCompletions({}, delta.completions);
+          setAccountCreatedAt(prev => (prev
+            ? deriveAccountCreatedAt({ stored: prev, completions: pulledCompletions, habits: delta.habits })
+            : prev));
         }
         if (delta.dailySnapshots.length) setDailySnapshot(prev => mergeSnapshots(prev, delta.dailySnapshots, todayStr()));
         if (delta.moods?.length) setMoods(prev => { const next = { ...prev }; for (const r of delta.moods) next[r.date] = r.mood; return next; });
@@ -1240,7 +1267,11 @@ export function AppProvider({ children }) {
     setChallenges(nextChallenges);
     setPastChallenges(next.pastChallenges);
     setDailySnapshot(next.dailySnapshot);
-    if (next.accountCreatedAt) setAccountCreatedAt(next.accountCreatedAt);
+    // Replace keeps the backup's own date (so it can move later); merge already took
+    // the earlier of the two. Either way the imported history can lower it.
+    const nextAca = deriveAccountCreatedAt({ stored: next.accountCreatedAt ?? null, completions: next.completions, habits: nextHabits });
+    setAccountCreatedAt(nextAca);
+    saveData('accountCreatedAt', nextAca);
     setHasOnboarded(true);
     stateRef.current = { habits: nextHabits, completions: next.completions, notes: next.notes, moods: next.moods || {}, settings: nextSettings, challenges: nextChallenges, pastChallenges: next.pastChallenges, dailySnapshot: next.dailySnapshot };
     if (userId) {
