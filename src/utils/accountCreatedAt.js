@@ -11,7 +11,13 @@
 // (a delta pull) can lower the value to real history but never raise it.
 import { isDateKey, localDateKey } from './dates';
 
-const dayOf = (value) => (typeof value === 'string' ? value.slice(0, 10) : null);
+// A date key as is; a timestamp becomes its LOCAL calendar day (never the UTC slice).
+const dayOf = (value) => {
+  if (typeof value !== 'string') return null;
+  if (isDateKey(value)) return value;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : localDateKey(d);
+};
 
 export function earliestCompletionDate(completions) {
   let min = null;

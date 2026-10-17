@@ -583,6 +583,9 @@ export function AppProvider({ children }) {
           await saveData('accountWasDeleted', null);
           stateRef.current = emptyState;
           storedAca = null;
+          // Today until the pull below lowers it, so a failed (offline) pull never
+          // leaves the previous user's date in memory.
+          settleAccountCreatedAt(null, null);
           setHabits([]);
           setCompletions({});
           setNotes({});
@@ -598,6 +601,9 @@ export function AppProvider({ children }) {
           await storeClearAll();
           stateRef.current = emptyState;
           storedAca = null;
+          // Today until the pull below lowers it, so a failed (offline) pull never
+          // leaves the previous user's date in memory.
+          settleAccountCreatedAt(null, null);
           setHabits([]);
           setCompletions({});
           setNotes({});
@@ -1261,7 +1267,11 @@ export function AppProvider({ children }) {
     setChallenges(nextChallenges);
     setPastChallenges(next.pastChallenges);
     setDailySnapshot(next.dailySnapshot);
-    if (next.accountCreatedAt) setAccountCreatedAt(next.accountCreatedAt);
+    // Replace keeps the backup's own date (so it can move later); merge already took
+    // the earlier of the two. Either way the imported history can lower it.
+    const nextAca = deriveAccountCreatedAt({ stored: next.accountCreatedAt ?? null, completions: next.completions, habits: nextHabits });
+    setAccountCreatedAt(nextAca);
+    saveData('accountCreatedAt', nextAca);
     setHasOnboarded(true);
     stateRef.current = { habits: nextHabits, completions: next.completions, notes: next.notes, moods: next.moods || {}, settings: nextSettings, challenges: nextChallenges, pastChallenges: next.pastChallenges, dailySnapshot: next.dailySnapshot };
     if (userId) {

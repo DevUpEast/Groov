@@ -36,8 +36,16 @@ describe('deriveAccountCreatedAt', () => {
     expect(deriveAccountCreatedAt({ completions: { '2026-09-01': { a: 1 } }, habits, today: TODAY })).toBe('2026-08-20');
   });
 
-  it('reads the date part of a timestamp createdAt', () => {
-    expect(deriveAccountCreatedAt({ habits: [{ createdAt: '2026-07-04T12:00:00Z' }], today: TODAY })).toBe('2026-07-04');
+  it('reads a timestamp createdAt as its local calendar day', () => {
+    // 23:30 local time: the UTC date of this instant differs in most timezones.
+    const late = new Date(2026, 6, 4, 23, 30);
+    expect(deriveAccountCreatedAt({ habits: [{ createdAt: late.toISOString() }], today: TODAY })).toBe('2026-07-04');
+    const early = new Date(2026, 6, 4, 0, 15);
+    expect(deriveAccountCreatedAt({ habits: [{ createdAt: early.toISOString() }], today: TODAY })).toBe('2026-07-04');
+  });
+
+  it('ignores an unparseable createdAt', () => {
+    expect(deriveAccountCreatedAt({ habits: [{ createdAt: 'yesterday-ish' }], today: TODAY })).toBe(TODAY);
   });
 
   it('keeps an earlier stored value', () => {
