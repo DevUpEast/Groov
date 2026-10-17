@@ -47,12 +47,12 @@ function feedbackMailto() {
 const THEME_OPTIONS = ['light', 'dark', 'system'];
 
 
-function Row({ label, sublabel, right, theme, onPress }) {
+function Row({ label, sublabel, sublabelColor, right, theme, onPress }) {
   const content = (
     <View style={[styles.row, { borderBottomColor: theme.border }]}>
       <View style={styles.rowLeft}>
         <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
-        {sublabel && <Text style={[styles.rowSub, { color: theme.textMuted }]}>{sublabel}</Text>}
+        {sublabel && <Text style={[styles.rowSub, { color: sublabelColor ?? theme.textMuted }]}>{sublabel}</Text>}
       </View>
       <View style={styles.rowRight}>{right}</View>
     </View>
@@ -73,7 +73,23 @@ function Row({ label, sublabel, right, theme, onPress }) {
 }
 
 // One reminder entry: label (editable for global reminders), enabled switch, time + remove.
-function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn, time, onToggle, onTime, onRemove, editing, labelDraft, onLabelDraft, onLabelSave, onStartEdit }) {
+// `permitted` is false when the OS has not granted notifications: a stored-on reminder
+// then shows as off ("Off · Tap to allow") because it cannot fire, and tapping it asks
+// for permission through `onAllow` (resolves true when granted).
+function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn, permitted = true, onAllow, time, onToggle, onTime, onRemove, editing, labelDraft, onLabelDraft, onLabelSave, onStartEdit }) {
+  const blocked = masterOn && enabled && !permitted;
+  const toggle = async () => {
+    if (!masterOn) return;
+    if (!permitted) {
+      const ok = await onAllow?.();
+      if (ok && !enabled) onToggle();
+      return;
+    }
+    onToggle();
+  };
+  const sublabelText = !masterOn ? t('settings.notificationsDisabled')
+    : blocked ? t('settings.offTapToAllow')
+    : sublabel ?? t('settings.firesAt', { time: formatTime(time) });
   return (
     <View style={[styles.reminderBlock, { borderTopColor: theme.border }]}>
       <View style={styles.reminderLabelRow}>
@@ -90,11 +106,11 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
           />
         ) : (
           <TouchableOpacity
-            onPress={onStartEdit}
+            onPress={blocked ? onAllow : onStartEdit}
             style={{ flex: 1 }}
-            activeOpacity={onStartEdit ? 0.7 : 1}
-            accessibilityRole={onStartEdit ? 'button' : undefined}
-            accessibilityLabel={onStartEdit ? t('settings.editLabelA11y', { label }) : undefined}
+            activeOpacity={blocked || onStartEdit ? 0.7 : 1}
+            accessibilityRole={blocked || onStartEdit ? 'button' : undefined}
+            accessibilityLabel={blocked ? t('settings.allowA11y', { label }) : onStartEdit ? t('settings.editLabelA11y', { label }) : undefined}
           >
             <View style={styles.reminderLabelInner}>
               {!!icon && <Text style={styles.habitReminderIcon}>{icon}</Text>}
@@ -105,17 +121,17 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
                 </View>
               )}
             </View>
-            <Text style={[styles.reminderSublabel, { color: theme.textMuted }]}>
-              {!masterOn ? t('settings.notificationsDisabled') : sublabel ?? t('settings.firesAt', { time: formatTime(time) })}
+            <Text style={[styles.reminderSublabel, { color: blocked ? theme.primary : theme.textMuted }]}>
+              {sublabelText}
             </Text>
           </TouchableOpacity>
         )}
         <Switch
-          value={enabled && masterOn}
-          onValueChange={() => masterOn && onToggle()}
+          value={enabled && masterOn && permitted}
+          onValueChange={toggle}
           trackColor={{ false: theme.border, true: theme.primary }}
           thumbColor="#fff"
-          style={{ opacity: masterOn ? 1 : 0.4 }}
+          style={{ opacity: masterOn && permitted ? 1 : 0.4 }}
           accessibilityLabel={label}
           accessibilityState={{ disabled: !masterOn }}
         />
@@ -153,7 +169,7 @@ export default function SettingsScreen() {
   const {
     settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, devMode, setDevMode,
     allHabits, completions, notes, moods, challenges, pastChallenges, dailySnapshot, accountCreatedAt, lastBackupAt, markBackedUp, importBackup,
-    ensureNotificationPermission, isPro, openPaywall, canAddReminder,
+    ensureNotificationPermission, notificationPermission, isPro, openPaywall, canAddReminder,
   } = useApp();
   const { locale, preference: localePreference } = useLocale();
   const [langModal, setLangModal] = useState(false);
@@ -423,6 +439,12 @@ export default function SettingsScreen() {
   const reminders = settings.reminders || [];
   const habitReminders = habits.filter(h => h.reminder && h.reminder.hour12 !== undefined);
   const masterOn = settings.notificationsEnabled;
+  // Unknown (null) counts as permitted so the rows do not flash "Tap to allow" on launch.
+  // Web has no OS permission to ask for; its master row already explains that.
+  const permitted = Platform.OS === 'web' || notificationPermission == null || notificationPermission === 'granted';
+  // Notifications are on in Groov but the OS has not allowed them: the master row is
+  // the primary "Tap to allow" control (rows below also ask, but are dimmed).
+  const masterBlocked = masterOn && !permitted;
 
   const updateReminders = (newReminders) => updateSettings({ reminders: newReminders });
 
@@ -564,11 +586,13 @@ export default function SettingsScreen() {
         <Section title={t('settings.notifications')} theme={theme}>
           <Row
             label={t('settings.enableNotifications')}
-            sublabel={Platform.OS === 'web' ? t('settings.enableSubWeb') : t('settings.enableSub')}
+            sublabel={masterBlocked ? t('settings.offTapToAllow') : Platform.OS === 'web' ? t('settings.enableSubWeb') : t('settings.enableSub')}
+            sublabelColor={masterBlocked ? theme.primary : undefined}
+            onPress={masterBlocked ? ensureNotificationPermission : undefined}
             theme={theme}
             right={
               <Switch
-                value={settings.notificationsEnabled}
+                value={settings.notificationsEnabled && permitted}
                 onValueChange={async v => {
                   if (v && !(await ensureNotificationPermission())) return;
                   updateSettings({ notificationsEnabled: v });
@@ -587,6 +611,8 @@ export default function SettingsScreen() {
             sublabel={masterOn ? t('settings.smartSub', { time: formatTime(eveningTime) }) : undefined}
             enabled={!!settings.eveningReminderEnabled}
             masterOn={masterOn}
+            permitted={permitted}
+            onAllow={ensureNotificationPermission}
             time={eveningTime}
             onToggle={async () => {
               if (!settings.eveningReminderEnabled && !(await ensureNotificationPermission())) return;
@@ -602,6 +628,8 @@ export default function SettingsScreen() {
               label={r.label}
               enabled={r.enabled}
               masterOn={masterOn}
+              permitted={permitted}
+              onAllow={ensureNotificationPermission}
               time={r.time}
               onToggle={() => toggleReminderEnabled(i)}
               onTime={() => setTimeModal({ kind: 'reminder', idx: i })}
@@ -623,6 +651,8 @@ export default function SettingsScreen() {
               badge={t('settings.habitBadge')}
               enabled={!!h.reminder.enabled}
               masterOn={masterOn}
+              permitted={permitted}
+              onAllow={ensureNotificationPermission}
               time={h.reminder}
               onToggle={() => toggleHabitReminder(h)}
               onTime={() => setTimeModal({ kind: 'habit', id: h.id })}

@@ -215,6 +215,14 @@
       "placeholder": "Depois que eu… (ex.: fizer café, na cozinha)",
       "a11y": "Plano para %{name}",
       "start": "Começar meu Pontapé Inicial de 3 Dias 🚀"
+    },
+    "reminders": {
+      "title": "Um lembrete na hora certa",
+      "body": "Um lembrete por dia para cada hábito com um período do dia. Altere ou desative quando quiser em Ajustes.",
+      "none": "Sem lembrete",
+      "turnOn": "Ativar lembretes",
+      "rowA11y": "%{name}: %{time}",
+      "notNowA11y": "Agora não, começar sem lembretes"
     }
   },
   "habits": {
@@ -563,6 +571,8 @@
     "smartSub": "Dispara às %{time} apenas se ainda houver hábitos pendentes",
     "firesAt": "Dispara às %{time}",
     "notificationsDisabled": "Notificações desativadas",
+    "offTapToAllow": "Desativado · Toque para permitir",
+    "allowA11y": "%{label} está desativado porque as notificações não estão permitidas. Toque para permitir",
     "reminderLabelA11y": "Nome do lembrete",
     "editLabelA11y": "Editar nome do lembrete, %{label}",
     "changeTimeA11y": "Alterar horário, atualmente %{time}",

@@ -215,6 +215,14 @@
       "placeholder": "Après avoir… (ex. fait mon café, dans la cuisine)",
       "a11y": "Plan pour %{name}",
       "start": "Lancer mon démarrage en 3 jours 🚀"
+    },
+    "reminders": {
+      "title": "Un rappel au bon moment",
+      "body": "Un rappel par jour pour chaque habitude associée à un moment de la journée. Modifiez-les ou désactivez-les à tout moment dans les Réglages.",
+      "none": "Aucun rappel",
+      "turnOn": "Activer les rappels",
+      "rowA11y": "%{name} : %{time}",
+      "notNowA11y": "Pas maintenant, commencer sans rappels"
     }
   },
   "habits": {
@@ -563,6 +571,8 @@
     "smartSub": "Se déclenche à %{time} uniquement s'il reste des habitudes à faire",
     "firesAt": "Se déclenche à %{time}",
     "notificationsDisabled": "Notifications désactivées",
+    "offTapToAllow": "Désactivé · Touchez pour autoriser",
+    "allowA11y": "%{label} est désactivé car les notifications ne sont pas autorisées. Touchez pour autoriser",
     "reminderLabelA11y": "Intitulé du rappel",
     "editLabelA11y": "Modifier l'intitulé du rappel, %{label}",
     "changeTimeA11y": "Changer l'heure, actuellement %{time}",

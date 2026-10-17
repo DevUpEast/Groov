@@ -37,6 +37,7 @@ import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup
 import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocalUri, localIconExists } from '../services/icons';
 import { t, useLocale } from '../i18n';
 import { setHapticsEnabled } from '../utils/haptics';
+import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
 
 const AppContext = createContext(null);
 
@@ -46,29 +47,6 @@ const DEFAULT_HABITS = [
   { id: '3', name: 'Read for 20 minutes', icon: '📚', type: 'daily', volumeGoal: 1, createdAt: '2025-01-01' },
   { id: '4', name: 'Meditate', icon: '🧘', type: 'daily', volumeGoal: 1, createdAt: '2025-01-01' },
 ];
-
-const DEFAULT_REMINDERS = [
-  { id: 'morning', label: 'Morning Reminder', time: { hour12: 8, minute: 0, ampm: 'AM' }, enabled: true },
-  { id: 'evening', label: 'Evening Reminder', time: { hour12: 8, minute: 0, ampm: 'PM' }, enabled: true },
-];
-
-const DEFAULT_SETTINGS = {
-  notificationsEnabled: true,
-  reminders: DEFAULT_REMINDERS,
-  soundEnabled: true,
-  hapticsEnabled: true,
-  theme: 'system',
-  eveningReminderEnabled: false,
-  eveningReminderHour: 20,
-  eveningReminderMinute: 0,
-  // Streak forgiveness (#20): skips are { 'YYYY-MM-DD': [habitId] } the user chose to
-  // sit out; streakFreezes are whole days covered automatically (2 per month).
-  skips: {},
-  streakFreezes: [],
-  // Earned streak milestones: [{ id: 'streak-7', date }]. Big celebrations are
-  // reserved for these (and challenge completion); a perfect day is a small cheer.
-  milestones: [],
-};
 
 // Labels are translated on read so a locale change applies without a reload.
 export const STREAK_MILESTONES = [
@@ -110,50 +88,6 @@ export const TIER_STYLES = {
   copper:   { bg: '#FDE8D8', border: '#CD7F32', text: '#9A3412', badge: '🥉', trophy: '🥉' },
   none:     { bg: null, border: null, text: null, badge: '📋', trophy: '📋' },
 };
-
-function migrateSettings(s) {
-  if (!s) return DEFAULT_SETTINGS;
-  if (s.reminders && Array.isArray(s.reminders)) {
-    return {
-      ...DEFAULT_SETTINGS,
-      ...s,
-      skips: s.skips && typeof s.skips === 'object' ? s.skips : {},
-      streakFreezes: Array.isArray(s.streakFreezes) ? s.streakFreezes : [],
-      milestones: Array.isArray(s.milestones) ? s.milestones : [],
-      // Per-habit reminders used to be mirrored in here; habit.reminder is now the
-      // only source of truth, so drop any stale mirrors.
-      reminders: s.reminders.filter(r => !r.habitId).map(r => ({
-        ...r,
-        time: r.time || { hour12: 8, minute: 0, ampm: 'AM' },
-        enabled: r.enabled !== false,
-      })),
-    };
-  }
-  const migrateTime = (t, fallback) => {
-    if (!t) return fallback;
-    if (typeof t === 'object' && t.hour12 !== undefined) return t;
-    const parts = String(t).split(':');
-    const h = parseInt(parts[0]) || 8;
-    const m = parseInt(parts[1]) || 0;
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return { hour12, minute: m, ampm };
-  };
-  return {
-    ...DEFAULT_SETTINGS,
-    notificationsEnabled: s.notificationsEnabled ?? true,
-    soundEnabled: s.soundEnabled ?? true,
-    hapticsEnabled: s.hapticsEnabled ?? true,
-    theme: s.theme ?? 'system',
-    eveningReminderEnabled: s.eveningReminderEnabled ?? false,
-    eveningReminderHour: s.eveningReminderHour ?? 20,
-    eveningReminderMinute: s.eveningReminderMinute ?? 0,
-    reminders: [
-      { id: 'morning', label: 'Morning Reminder', time: migrateTime(s.morningTime, { hour12: 8, minute: 0, ampm: 'AM' }), enabled: true },
-      { id: 'evening', label: 'Evening Reminder', time: migrateTime(s.eveningTime, { hour12: 8, minute: 0, ampm: 'PM' }), enabled: true },
-    ],
-  };
-}
 
 // Every habit carries a normalised schedule (missing = every day, the pre-schedule
 // behaviour). Snapshots are rewritten the same way so history stays consistent.
@@ -385,14 +319,30 @@ export function AppProvider({ children }) {
   }, [habits, completions, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
   const backoffKey = JSON.stringify(missesByHabit);
 
+  // The OS notification permission ('granted' | 'undetermined' | 'denied'; null until
+  // first read). Refreshed on load and whenever the app comes back to the foreground,
+  // so Settings can show a stored-on reminder that cannot fire as "Off · Tap to allow".
+  const [notificationPermission, setNotificationPermission] = useState(null);
+  const refreshNotificationPermission = useCallback(async () => {
+    const state = await getPermissionState();
+    setNotificationPermission(state);
+    return state;
+  }, []);
+  useEffect(() => {
+    refreshNotificationPermission();
+    const sub = AppState.addEventListener('change', (s) => { if (s === 'active') refreshNotificationPermission(); });
+    return () => sub.remove();
+  }, [refreshNotificationPermission]);
+
   const remindersAppliedOnce = useRef(false);
   useEffect(() => {
     if (!loaded) return;
     // Never show the OS permission dialog from the launch pass; only after the user
     // changes a reminder (which is what the later runs of this effect represent).
+    // Re-runs when permission is granted, so already-stored reminders get scheduled.
     applyReminderSchedule(settings, habits, { prompt: false, missesByHabit, today: localDateKey() });
     remindersAppliedOnce.current = true;
-  }, [loaded, settings.notificationsEnabled, settings.reminders, habitReminderKey, backoffKey, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded, settings.notificationsEnabled, settings.reminders, habitReminderKey, backoffKey, clockTick, notificationPermission]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Notification permission priming ──────────────────────────────────────────
   // Screens call ensureNotificationPermission() before turning a reminder on. If the
@@ -402,6 +352,7 @@ export function AppProvider({ children }) {
   const primerResolve = useRef(null);
   const ensureNotificationPermission = useCallback(async () => {
     const state = await getPermissionState();
+    setNotificationPermission(state);
     if (state === 'granted') return true;
     if (state === 'denied') {
       Alert.alert(t('app.notificationsOff.title'), t('app.notificationsOff.body'), [
@@ -413,8 +364,10 @@ export function AppProvider({ children }) {
     const allow = await new Promise((resolve) => { primerResolve.current = resolve; setPrimerVisible(true); });
     setPrimerVisible(false);
     if (!allow) return false;
-    return requestOsPermission();
-  }, []);
+    const granted = await requestOsPermission();
+    refreshNotificationPermission();
+    return granted;
+  }, [refreshNotificationPermission]);
   const answerPrimer = useCallback((allow) => { primerResolve.current?.(allow); primerResolve.current = null; }, []);
 
   // ── Notification actions (Done / Snooze / tap) ───────────────────────────────
@@ -629,6 +582,8 @@ export function AppProvider({ children }) {
           setChallenges([]);
           setPastChallenges([]);
           setDailySnapshot({});
+          setSettings(DEFAULT_SETTINGS);
+          setHapticsEnabled(true);
         } else if (lastUserId !== null && lastUserId !== userId) {
           // Different user logged in on this device — wipe the previous user's local data.
           await storeClearAll();
@@ -643,6 +598,10 @@ export function AppProvider({ children }) {
           setChallenges([]);
           setPastChallenges([]);
           setDailySnapshot({});
+          // The previous user's settings must not carry over either: their reminders
+          // would show as on for an account that never granted anything (S-05).
+          setSettings(DEFAULT_SETTINGS);
+          setHapticsEnabled(true);
         }
         await saveData('lastUserId', userId);
 
@@ -1473,7 +1432,7 @@ export function AppProvider({ children }) {
       linkHabitToChallenge, unlinkHabitFromChallenge, linkAllHabitsToChallenge,
       completeOnboarding, resetAll, pushAllData, seedRandomHistory,
       lastBackupAt, markBackedUp, importBackup,
-      ensureNotificationPermission, notificationPrimer: { visible: primerVisible, answer: answerPrimer },
+      ensureNotificationPermission, notificationPermission, refreshNotificationPermission, notificationPrimer: { visible: primerVisible, answer: answerPrimer },
       isPro, refreshPro, paywall, openPaywall, closePaywall, canAddHabit, canAddReminder,
       getStreakForHabit, getOverallStreak, getBestStreak, getLast30Days, getLastNDays, getDaySummary,
       habitsOnDay, isSnapshotHabitDone,

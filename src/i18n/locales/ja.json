@@ -215,6 +215,14 @@
       "placeholder": "〜したあとで…（例：コーヒーを淹れたら、キッチンで）",
       "a11y": "%{name}のプラン",
       "start": "3日間キックスタートを始める 🚀"
+    },
+    "reminders": {
+      "title": "ちょうどいい時間にお知らせ",
+      "body": "時間帯を決めた習慣ごとに、1日1回リマインダーを送ります。設定からいつでも変更・オフにできます。",
+      "none": "リマインダーなし",
+      "turnOn": "リマインダーをオンにする",
+      "rowA11y": "%{name}：%{time}",
+      "notNowA11y": "今はしない、リマインダーなしで始める"
     }
   },
   "habits": {
@@ -563,6 +571,8 @@
     "smartSub": "習慣が未完了のときだけ%{time}に通知",
     "firesAt": "%{time}に通知",
     "notificationsDisabled": "通知は無効です",
+    "offTapToAllow": "オフ · タップして許可",
+    "allowA11y": "通知が許可されていないため、%{label}はオフです。タップして許可",
     "reminderLabelA11y": "リマインダーのラベル",
     "editLabelA11y": "リマインダーのラベルを編集、%{label}",
     "changeTimeA11y": "時刻を変更、現在は%{time}",

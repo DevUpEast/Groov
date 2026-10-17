@@ -233,8 +233,19 @@ function AppNavigator() {
     if (mockupParams.active) postToMockupHost({ type: 'mockup:statusbar', style: statusStyle });
   }, [statusStyle]);
 
+  // The primer sits above the onboarding gate: onboarding's reminders step awaits
+  // ensureNotificationPermission(), which only the primer's buttons resolve (S-05).
+  const primer = (
+    <NotificationPrimer
+      visible={notificationPrimer.visible}
+      theme={theme}
+      onAllow={() => notificationPrimer.answer(true)}
+      onLater={() => notificationPrimer.answer(false)}
+    />
+  );
+
   if (!hasOnboarded) {
-    return <OnboardingScreen />;
+    return <><OnboardingScreen />{primer}</>;
   }
 
   // The iOS mockup (web) lays out like iOS so the preview matches a real iPhone.
@@ -243,12 +254,7 @@ function AppNavigator() {
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={statusStyle} />
-      <NotificationPrimer
-        visible={notificationPrimer.visible}
-        theme={theme}
-        onAllow={() => notificationPrimer.answer(true)}
-        onLater={() => notificationPrimer.answer(false)}
-      />
+      {primer}
       <PaywallSheet
         visible={!!paywall}
         reason={paywall?.reason}

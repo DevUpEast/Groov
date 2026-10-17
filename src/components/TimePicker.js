@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { getCalendars } from 'expo-localization';
 import { lightImpact } from '../utils/haptics';
 import { timeToDate, from24h, formatTimeForClock } from '../utils/time';
+import { usesDevice24hClock } from '../utils/clock';
 import { themes } from '../theme/colors';
 import { t } from '../i18n';
 
@@ -15,14 +15,6 @@ import { t } from '../i18n';
 // - iOS: a spinner UIDatePicker inside the app's card with Cancel and Save. UIDatePicker follows
 //   the locale and the 24-hour setting on its own; expo-localization is read only for the preview.
 // - Web: Metro resolves TimePicker.web.js (the custom wheel), because the package has no web code.
-
-function usesDevice24hClock() {
-  try {
-    return getCalendars()[0]?.uses24hourClock === true;
-  } catch {
-    return false;
-  }
-}
 
 function AndroidTimePicker({ visible, hour12, minute, ampm, onClose, onSave }) {
   // Latest callbacks, so a parent re-render never re-opens the dialog.
