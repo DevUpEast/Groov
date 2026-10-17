@@ -58,8 +58,7 @@ function getDateString(offset = 0) {
   return d.toLocaleDateString(getLocale(), { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
-function hapticFillSequence(hapticsEnabled) {
-  if (!hapticsEnabled) return;
+function hapticFillSequence() {
   successNotification();
 }
 
@@ -245,7 +244,7 @@ export default function TodayScreen() {
 
       if (willAllBeDone && !allDoneCelebrated.current) {
         allDoneCelebrated.current = true;
-        hapticFillSequence(settings.hapticsEnabled);
+        hapticFillSequence();
         setCelebrating(true);
       }
     }
@@ -295,7 +294,7 @@ export default function TodayScreen() {
 
       if (!allDoneCelebrated.current) {
         allDoneCelebrated.current = true;
-        hapticFillSequence(settings.hapticsEnabled);
+        hapticFillSequence();
         setCelebrating(true);
       }
       if (anyComplete) {
@@ -537,7 +536,6 @@ export default function TodayScreen() {
       <TrophyCelebration
         visible={trophyCelebrating}
         onDone={() => { setTrophyCelebrating(false); setTimeout(() => maybeRequestReview('challenge-complete'), 800); }}
-        settings={settings}
         theme={theme}
       />
 

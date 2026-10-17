@@ -1,16 +1,22 @@
-import { Platform, Vibration } from 'react-native';
+import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
-// On Android, expo-haptics may not produce perceptible feedback on all devices.
-// We use the native Vibration API as a reliable fallback.
+// One gate for every haptic in the app: AppContext mirrors settings.hapticsEnabled
+// into setHapticsEnabled(), so callers never need to check the setting themselves.
+// There is no Vibration fallback: a buzzy vibrator pulse is worse than nothing.
+
+let hapticsEnabled = true;
+
+export function setHapticsEnabled(v) {
+  hapticsEnabled = v !== false;
+}
 
 async function tryHaptic(fn) {
-  if (Platform.OS === 'web') return;
+  if (!hapticsEnabled || Platform.OS === 'web') return;
   try {
     await fn();
   } catch {
-    // Fallback: basic device vibration
-    try { Vibration.vibrate(30); } catch {}
+    // Unsupported on this device: stay silent.
   }
 }
 

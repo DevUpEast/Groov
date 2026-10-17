@@ -5,7 +5,7 @@ import { heavyImpact, mediumImpact } from '../utils/haptics';
 import { useReducedMotion, announce } from '../utils/a11y';
 import { t } from '../i18n';
 
-export default function TrophyCelebration({ visible, onDone, settings, theme }) {
+export default function TrophyCelebration({ visible, onDone, theme }) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const orbitAnim = useRef(new Animated.Value(0)).current;
   const [showConfetti, setShowConfetti] = useState(false);
@@ -21,7 +21,7 @@ export default function TrophyCelebration({ visible, onDone, settings, theme }) 
     announce(t('trophy.announce'));
     if (reducedMotion) {
       scaleAnim.setValue(1);
-      if (settings?.hapticsEnabled) heavyImpact();
+      heavyImpact();
       const t = setTimeout(onDone, 2000);
       return () => clearTimeout(t);
     }
@@ -36,10 +36,8 @@ export default function TrophyCelebration({ visible, onDone, settings, theme }) 
       }).start(({ finished }) => {
         if (finished) {
           setShowConfetti(true);
-          if (settings?.hapticsEnabled) {
-            heavyImpact();
-            setTimeout(() => mediumImpact(), 200);
-          }
+          heavyImpact();
+          setTimeout(() => mediumImpact(), 200);
           setTimeout(onDone, 3500);
         }
       });
