@@ -51,7 +51,8 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 - **Expo SDK 54** / React Native 0.81.5 / React 19.1.0, JavaScript (tsconfig exists but all files are `.js`)
 - No file-based routing; no React Navigation library (custom pager in `App.js`)
 - **Supabase** for auth and cloud sync (`@supabase/supabase-js`), AsyncStorage as the local-first store
-- expo-audio (native) + Web Audio API in `src/utils/sounds.js`; chimes play on habit/challenge completion when `settings.soundEnabled`
+- expo-audio (native) + Web Audio API in `src/utils/sounds.js`; chimes play on habit/challenge completion when `settings.soundEnabled`. The audio mode is iOS ambient (`playsInSilentMode: false` + `mixWithOthers`), so the silent switch mutes chimes
+- Haptics go through `src/utils/haptics.js` only. AppContext mirrors `settings.hapticsEnabled` into `setHapticsEnabled()`, and every export is a no-op while it is off, so callers need no check of their own; there is no `Vibration` fallback
 - expo-notifications for local per-habit and global reminders. Categories give reminders Done / Snooze 1h buttons (handled in AppContext via `listenForNotificationResponses`); per-habit reminders back off after 3 consecutive missed days (`reminderDueWithBackoff`); the OS permission dialog is always preceded by `NotificationPrimer` via `ensureNotificationPermission()`; the app badge shows habits left today
 - react-native-svg for the progress ring; charts and heatmap are hand-built (no chart library installed)
 - expo-apple-authentication, expo-web-browser, expo-linking, expo-crypto for social sign-in
@@ -81,7 +82,7 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 
 **Components** (`src/components/`): `HabitCard`, `HabitDetailSheet` (per-habit grid/stats, opened from the Habits list), `ShareCards` (Progress → Share: streak / week / year-in-pixels cards captured with react-native-view-shot and handed to expo-sharing), `ProgressRing` (SVG), `TimePicker` (wheel-only modal), `BottomSheet`, `SheetHeader`, `EmptyCard`, `Slider`, `TrophyCelebration`, `CelebrationOverlay`, `CompletionCelebration`, `ChallengeRewardModal`
 
-**Utilities** (`src/utils/`): `storage.js` (AsyncStorage wrappers), `backup.js` (JSON backup build/validate/merge; `src/services/backup.js` does the share sheet / document picker, Settings → Backup), `supabase.js` (client, PKCE), `sounds.js`, `haptics.js`, `notifications.js`
+**Utilities** (`src/utils/`): `storage.js` (AsyncStorage wrappers), `backup.js` (JSON backup build/validate/merge; `src/services/backup.js` does the share sheet / document picker, Settings → Backup), `supabase.js` (client, PKCE), `sounds.js`, `haptics.js` (the single haptics gate), `notifications.js`
 
 **Groov Pro** (`src/services/entitlements.js`, `PaywallSheet`): `isPro` = `profiles.is_pro` (set by the `revenuecat-webhook` edge function, secret `REVENUECAT_WEBHOOK_SECRET`) or a live RevenueCat `pro` entitlement. `react-native-purchases` only initialises when `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` / `_IOS_KEY` are set; otherwise the paywall shows a "coming soon" note. Free limits in `FREE_LIMITS` (5 active habits, 1 global reminder); gate with `canAddHabit()` / `canAddReminder()` which open the paywall via `openPaywall(reason)`. AI quotas (`ai_usage`) use the same flag server-side.
 

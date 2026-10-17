@@ -21,7 +21,7 @@ export default function TrophyCelebration({ visible, onDone, settings, theme }) 
     announce(t('trophy.announce'));
     if (reducedMotion) {
       scaleAnim.setValue(1);
-      if (settings?.hapticsEnabled) heavyImpact();
+      heavyImpact();
       const t = setTimeout(onDone, 2000);
       return () => clearTimeout(t);
     }
@@ -36,10 +36,8 @@ export default function TrophyCelebration({ visible, onDone, settings, theme }) 
       }).start(({ finished }) => {
         if (finished) {
           setShowConfetti(true);
-          if (settings?.hapticsEnabled) {
-            heavyImpact();
-            setTimeout(() => mediumImpact(), 200);
-          }
+          heavyImpact();
+          setTimeout(() => mediumImpact(), 200);
           setTimeout(onDone, 3500);
         }
       });

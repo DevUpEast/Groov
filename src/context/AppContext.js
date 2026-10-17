@@ -32,6 +32,7 @@ import { initAnalytics, track, Events } from '../utils/analytics';
 import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup';
 import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocalUri, localIconExists } from '../services/icons';
 import { t, useLocale } from '../i18n';
+import { setHapticsEnabled } from '../utils/haptics';
 
 const AppContext = createContext(null);
 
@@ -321,6 +322,8 @@ export function AppProvider({ children }) {
   useEffect(() => { if (loaded) saveData('notes', notes); }, [notes, loaded]);
   useEffect(() => { if (loaded) saveData('moods', moods); }, [moods, loaded]);
   useEffect(() => { if (loaded) saveData('settings', settings); }, [settings, loaded]);
+  // One haptics gate for the whole app (src/utils/haptics.js); callers need no check.
+  useEffect(() => setHapticsEnabled(settings.hapticsEnabled !== false), [settings.hapticsEnabled]);
   useEffect(() => { if (loaded) saveData('dateOffset', dateOffset); }, [dateOffset, loaded]);
   useEffect(() => { if (loaded) saveData('challenges', challenges); }, [challenges, loaded]);
   useEffect(() => { if (loaded) saveData('hasOnboarded', hasOnboarded); }, [hasOnboarded, loaded]);

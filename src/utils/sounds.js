@@ -5,6 +5,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 // Short synthesised chimes. On web they are generated live with the Web Audio API;
 // on iOS/Android a tiny WAV is rendered once per tone, cached in the document
 // directory and played through expo-audio. Callers gate on settings.soundEnabled.
+// iOS uses the ambient category (playsInSilentMode false + mixWithOthers), so the
+// ring/silent switch mutes chimes and other apps' audio keeps playing.
 
 // ─── Web Audio API (browser) ──────────────────────────────────────────────────
 
@@ -93,7 +95,7 @@ let audioModePromise = null;
 function ensureAudioMode() {
   if (audioModePromise) return audioModePromise;
   audioModePromise = setAudioModeAsync({
-    playsInSilentMode: true,
+    playsInSilentMode: false, // iOS .ambient: the silent switch mutes chimes
     interruptionMode: 'mixWithOthers',
     allowsRecording: false,
     shouldPlayInBackground: false,
