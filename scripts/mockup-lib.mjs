@@ -17,6 +17,13 @@ export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 export const PROFILE_DIR = path.join(ROOT, '.mockup-profile');
 // Fixed so the localStorage origin (and with it the guest session) stays the same.
 export const SHOT_PORT = 8786;
+// Written into the profile once the demo seed has landed in the app's localStorage, so a
+// profile left half-seeded (a crash, or a --guest 0 / --demo 0 run) is seeded again.
+export const SEEDED_MARKER = '.groov-demo-seeded';
+
+const PROFILE_REMEDY = 'The profile is in use: another shot run, or an orphaned headless Chrome from a crashed run. '
+  + `Kill it (PowerShell): Get-CimInstance Win32_Process -Filter "Name='chrome.exe'" | ? CommandLine -like '*mockup-profile*' | % { Stop-Process $_.ProcessId -ErrorAction SilentlyContinue }`
+  + '  - or use --fresh for a throwaway profile.';
 
 // Minimal flag parser: `--key value`, `--flag` (= '1'); `--click` is repeatable.
 export function parseArgs(argv) {
@@ -46,35 +53,70 @@ export function findChrome() {
 }
 
 export function resetProfile() {
-  fs.rmSync(PROFILE_DIR, { recursive: true, force: true });
+  try {
+    fs.rmSync(PROFILE_DIR, { recursive: true, force: true, maxRetries: 2, retryDelay: 300 });
+  } catch (e) {
+    console.error(`reset-demo: cannot delete ${PROFILE_DIR} (${e.code || e.message}). ${PROFILE_REMEDY}`);
+    process.exit(1);
+  }
   console.error(`reset-demo: removed ${PROFILE_DIR}`);
 }
 
 // Serve mockup-dist/ (unless `base` is given) and launch Chrome.
 //   fresh: throwaway temp profile (first-run, onboarding, welcome shots)
-// Returns { browser, base, profile, freshProfile, close }. `freshProfile` is true when
-// the profile had no guest session yet, so the first load also runs the demo seed.
+// Returns { browser, base, profile, fresh, seeded, close }. `seeded` is true when the
+// profile carries the marker of a landed demo seed; otherwise call waitForDemo().
 export async function openMockup({ base, fresh = false, port } = {}) {
   let server = null;
   if (!base) {
     const p = Number(port || (fresh ? 8790 + Math.floor(Math.random() * 100) : SHOT_PORT));
     try { server = await startServer({ port: p }); }
-    catch (e) { console.error(`Cannot serve mockup-dist on port ${p} (${e.code || e.message}); is another shot run active?`); process.exit(1); }
+    catch (e) { console.error(`Cannot serve mockup-dist on port ${p} (${e.code || e.message}): another shot run, or another process on ${p} (netstat -ano | findstr ${p}).`); process.exit(1); }
     base = `http://localhost:${p}/Groov`;
   }
   const profile = fresh ? fs.mkdtempSync(path.join(os.tmpdir(), 'groov-mockup-')) : PROFILE_DIR;
-  const freshProfile = fresh || !fs.existsSync(profile);
+  const seeded = !fresh && fs.existsSync(path.join(profile, SEEDED_MARKER));
   fs.mkdirSync(profile, { recursive: true });
-  const browser = await puppeteer.launch({
-    executablePath: findChrome(), headless: true, userDataDir: profile,
-    args: ['--no-sandbox', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check'],
-  });
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      executablePath: findChrome(), headless: true, userDataDir: profile,
+      args: ['--no-sandbox', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check'],
+    });
+  } catch (e) {
+    if (server) server.close();
+    const msg = String(e && e.message || e).split(/\r?\n/)[0];
+    console.error(/already running|lock|in use/i.test(msg) ? `Cannot start Chrome on ${profile}. ${PROFILE_REMEDY}` : `Cannot start Chrome: ${msg}`);
+    process.exit(1);
+  }
   const close = async () => {
     await browser.close().catch(() => {});
     if (server) server.close();
     if (fresh) fs.rmSync(profile, { recursive: true, force: true });
   };
-  return { browser, base, profile, freshProfile, close };
+  return { browser, base, profile, fresh, seeded, close };
+}
+
+// Wait until the demo seed has landed in the app's localStorage (habits plus at least 5
+// days of completions), then mark the persistent profile as seeded. Returns at once when
+// the marker is already there. Polls instead of sleeping; gives up after `timeout` ms.
+export async function waitForDemo(appFrame, session, { timeout = 30000 } = {}) {
+  if (session.seeded) return true;
+  const landed = () => {
+    try {
+      const habits = JSON.parse(localStorage.getItem('habits') || '[]');
+      const completions = JSON.parse(localStorage.getItem('completions') || '{}');
+      return Array.isArray(habits) && habits.length > 0 && Object.keys(completions || {}).length >= 5;
+    } catch { return false; }
+  };
+  const ok = await appFrame.waitForFunction(landed, { timeout, polling: 250 }).then(() => true, () => false);
+  if (!ok) { console.error(`demo: the seed did not land within ${timeout / 1000}s; shots may show an unseeded app`); return false; }
+  await sleep(1500); // the seed re-applies the requested route and syncs; let it settle
+  if (!session.fresh) {
+    fs.writeFileSync(path.join(session.profile, SEEDED_MARKER), `${new Date().toISOString()}\n`);
+    session.seeded = true;
+  }
+  return true;
 }
 
 // Host page URL. demo/guest/lang are forwarded to the app by the host (mockup/mockup.js).

@@ -16,7 +16,7 @@
 // is a sheet, so it is shot last in each group. Nothing here clicks or mutates data.
 import path from 'node:path';
 import fs from 'node:fs';
-import { parseArgs, openMockup, hostUrl, attachDebug, loadHost, postToApp, resetProfile, sleep, ROOT } from './mockup-lib.mjs';
+import { parseArgs, openMockup, hostUrl, attachDebug, loadHost, postToApp, resetProfile, waitForDemo, sleep, ROOT } from './mockup-lib.mjs';
 
 const { args } = parseArgs(process.argv.slice(2));
 if (!args.label) { console.error('usage: node scripts/shot-matrix.mjs --label <ticket>/<before|after> [--reset-demo]'); process.exit(1); }
@@ -47,9 +47,10 @@ try {
   for (const g of GROUPS) {
     const startRoute = g.routes[0];
     const appFrame = await loadHost(page, hostUrl(session.base, { device: g.device, theme: g.themes[0], route: startRoute, demo: 1, guest: 1, lang: g.lang }));
-    // A new profile signs in and seeds 30 days of demo history on the first load.
-    await sleep(first && session.freshProfile ? 9000 : 2500);
+    // An unseeded profile signs in and seeds 30 days of demo history on the first load.
+    if (first) await waitForDemo(appFrame, session);
     first = false;
+    await sleep(2500);
     const shoot = async (theme, route) => {
       const file = path.join(outDir, name(g, theme, route));
       const phone = await page.$('#phone');

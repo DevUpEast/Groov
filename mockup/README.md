@@ -38,16 +38,16 @@ Uses the locally installed Chrome (or Edge) through `puppeteer-core`, serves `mo
 
 `--demo 0|1`, `--guest 0|1` and `--lang <code>` are forwarded to the app (without them the `apps.json` params apply).
 
-**One reusable guest session.** The shot tools launch Chrome with the persistent profile `.mockup-profile/` (gitignored) and serve `mockup-dist/` on the fixed port 8786, so the Supabase guest session and the demo data in localStorage survive between runs: only the first run calls `signInAnonymously()` and seeds the demo (allow ~9 s, done automatically when the profile is new). This keeps shot runs far below Supabase's anonymous sign-in rate limit.
+**One reusable guest session.** The shot tools launch Chrome with the persistent profile `.mockup-profile/` (gitignored) and serve `mockup-dist/` on the fixed port 8786, so the Supabase guest session and the demo data in localStorage survive between runs: only the first run calls `signInAnonymously()` and seeds the demo. The tools wait until the seed has landed in localStorage and then write the marker `.mockup-profile/.groov-demo-seeded`; a profile without it (a crash mid-seed, or a `--guest 0` / `--demo 0` run) is waited on again. This keeps shot runs far below Supabase's anonymous sign-in rate limit.
 - `--fresh` uses a throwaway temp profile (and a random port): first-run, onboarding and welcome shots, or anything that clicks and mutates data.
 - `--reset-demo` deletes `.mockup-profile/` first (on its own, without `--out`, it only resets). Run it before a ticket's "before" shots so before and after start from the same freshly seeded demo.
-- Only one shot run at a time can use the shared profile and port.
+- Only one shot run at a time can use the shared profile and port. A profile still held by an orphaned headless Chrome makes the tools exit with the PowerShell command that kills it.
 
 ### Shot matrix
 
-`node scripts/shot-matrix.mjs --label <ticket>/<before|after> [--reset-demo] [--debug 1] [--lang ja] [--out-dir .shots]`
+`node scripts/shot-matrix.mjs --label <ticket>/<before|after> [--reset-demo] [--debug 1] [--lang ja] [--out-dir .shots] [--wait 1400] [--base <url>]`
 
-Writes 28 PNGs to `.shots/<label>/` through one browser, one page and one guest session: iPhone 16 Pro and iPhone SE, light and dark, for `today`, `progress`, `challenges`, `habits`, `settings` and `habits/new` (24), plus iPhone 16 Pro light in German for `today`, `progress`, `settings` and `habits/new` (4; `--lang` swaps the language). Each device/language group loads the page once; routes and themes switch with `mockup:navigate` / `mockup:theme` messages. Names are `<route>_<theme>_<device>[_<lang>].png`.
+Writes 28 PNGs to `.shots/<label>/` through one browser, one page and one guest session: iPhone 16 Pro and iPhone SE, light and dark, for `today`, `progress`, `challenges`, `habits`, `settings` and `habits/new` (24), plus iPhone 16 Pro light in German for `today`, `progress`, `settings` and `habits/new` (4; `--lang` swaps the language). Each device/language group loads the page once; routes and themes switch with `mockup:navigate` / `mockup:theme` messages. Names are `<route>_<theme>_<device>[_<lang>].png`. `--wait` is the settle time in ms after each navigation (default 1400); `--base` shoots an already-served host (e.g. the live Pages URL) instead of serving `mockup-dist/`.
 
 ### Pixel and motion tools
 

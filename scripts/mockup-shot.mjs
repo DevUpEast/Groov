@@ -14,7 +14,7 @@
 // so only the first run signs in anonymously and seeds the demo.
 import path from 'node:path';
 import fs from 'node:fs';
-import { parseArgs, openMockup, hostUrl, attachDebug, loadHost, resetProfile, sleep } from './mockup-lib.mjs';
+import { parseArgs, openMockup, hostUrl, attachDebug, loadHost, resetProfile, waitForDemo, sleep } from './mockup-lib.mjs';
 
 const { args, clicks } = parseArgs(process.argv.slice(2));
 if (args['reset-demo']) {
@@ -37,8 +37,9 @@ try {
   const counter = attachDebug(page, args.debug);
   await page.setViewport({ width: 1100, height: 1300, deviceScaleFactor: scale });
   const appFrame = await loadHost(page, url);
-  // A new profile signs in and seeds the demo on this load; give the seed time to land.
-  await sleep(session.freshProfile && args.demo !== '0' ? Math.max(wait, 9000) : wait);
+  // An unseeded profile signs in and seeds the demo on this load; wait until it lands.
+  if (args.demo !== '0' && args.guest !== '0') await waitForDemo(appFrame, session);
+  await sleep(wait);
   for (const sel of clicks) {
     try {
       if (sel.startsWith('text=')) {

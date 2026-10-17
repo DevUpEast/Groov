@@ -115,7 +115,8 @@ export function initLocale() {
       .then(() => storage().loadData(LOCALE_STORAGE_KEY))
       .then(saved => {
         // iOS mockup host (web, `?lang=de`): render this page load in that language without
-        // persisting it. Required lazily so native and Jest never load the mockup module.
+        // persisting it. Only web reads the param: on native (and in Jest) `mockupParams.lang`
+        // is null, so the saved choice applies unchanged. Required lazily, like storage().
         let override = null;
         try { override = matchSupportedLocale(require('../utils/mockup').mockupParams.lang); } catch {}
         apply(override || (typeof saved === 'string' ? saved : null));
