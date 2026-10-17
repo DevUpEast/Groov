@@ -31,3 +31,45 @@ describe('formatTime12', () => {
     expect(formatTime12(null)).toBe('-');
   });
 });
+
+describe('native picker conversions', () => {
+  const { timeToDate, from24h, formatTimeForClock } = require('../time');
+
+  it('timeToDate sets the local hour and minute and keeps the base day', () => {
+    const base = new Date(2026, 9, 17, 14, 3, 27, 500);
+    const d = timeToDate({ hour12: 7, minute: 45, ampm: 'AM' }, base);
+    expect([d.getFullYear(), d.getMonth(), d.getDate()]).toEqual([2026, 9, 17]);
+    expect([d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds()]).toEqual([7, 45, 0, 0]);
+    expect(timeToDate({ hour12: 12, minute: 0, ampm: 'AM' }, base).getHours()).toBe(0);
+    expect(timeToDate({ hour12: 12, minute: 30, ampm: 'PM' }, base).getHours()).toBe(12);
+  });
+
+  it('defaults to a fixed date with no DST transition', () => {
+    const d = timeToDate({ hour12: 2, minute: 30, ampm: 'AM' });
+    expect([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()]).toEqual([2000, 0, 1, 2, 30]);
+  });
+
+  it('from24h maps a picker Date back to the stored shape', () => {
+    expect(from24h(new Date(2026, 0, 1, 7, 45))).toEqual({ hour12: 7, minute: 45, ampm: 'AM' });
+    expect(from24h(new Date(2026, 0, 1, 0, 5))).toEqual({ hour12: 12, minute: 5, ampm: 'AM' });
+    expect(from24h(new Date(2026, 0, 1, 23, 59))).toEqual({ hour12: 11, minute: 59, ampm: 'PM' });
+    expect(from24h(13, 7)).toEqual({ hour12: 1, minute: 7, ampm: 'PM' });
+  });
+
+  it('round-trips every minute of the day through a Date', () => {
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m++) {
+        const stored = to12h(h, m);
+        expect(from24h(timeToDate(stored, new Date(2000, 0, 1)))).toEqual(stored);
+      }
+    }
+  });
+
+  it('formats the preview for 12- and 24-hour clocks', () => {
+    const t = { hour12: 7, minute: 45, ampm: 'AM' };
+    expect(formatTimeForClock(t, true)).toBe('07:45');
+    expect(formatTimeForClock(t, false)).toBe('7:45 AM');
+    expect(formatTimeForClock({ hour12: 12, minute: 0, ampm: 'AM' }, true)).toBe('00:00');
+    expect(formatTimeForClock(null, true)).toBe('-');
+  });
+});
