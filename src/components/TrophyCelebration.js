@@ -7,6 +7,8 @@ import { t } from '../i18n';
 
 // A tap (or the Android back key) dismisses the trophy once it has been up this long (CEL-2).
 export const TROPHY_SKIP_AFTER_MS = 1000;
+// Spring + orbit (600 + 1400 ms) + confetti hold (3500 ms), plus a margin.
+export const TROPHY_FALLBACK_MS = 600 + 1400 + 3500 + 500;
 
 // The trophy is a root Modal, so its scrim covers the tab bar and the back key reaches it
 // (it used to be an absolute overlay inside the Today pager slot).
@@ -46,6 +48,9 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
     finished.current = false;
     announce(t('trophy.announce'));
     later(() => setCanSkip(true), TROPHY_SKIP_AFTER_MS);
+    // Fallback: the normal auto-dismiss is scheduled when the orbit animation finishes, so an
+    // interrupted animation would leave the trophy up. This closes it a little after that path.
+    later(finish, TROPHY_FALLBACK_MS);
 
     if (reducedMotion) {
       scaleAnim.setValue(1);
@@ -90,7 +95,7 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
     <Modal
       visible
       transparent
-      animationType="fade"
+      animationType={reducedMotion ? 'none' : 'fade'}
       statusBarTranslucent
       onRequestClose={skip}
     >
@@ -101,14 +106,18 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
         accessibilityLabel={t('trophy.a11y')}
         accessibilityHint={canSkip ? t('trophy.tapToContinue') : undefined}
       >
-        <View style={styles.center}>
-          {!reducedMotion && <Animated.View style={[
-            styles.orbitDot,
-            { backgroundColor: theme.primary, transform: [{ translateX: orbitX }, { translateY: orbitY }] },
-          ]} />}
-          <Animated.Text style={[styles.emoji, { transform: [{ scale: scaleAnim }] }]}>🏆</Animated.Text>
+        {/* The hint sits in the same column as the trophy, directly under it, so it stays in
+            the middle of the screen and clear of the Undo toast at the bottom. */}
+        <View style={styles.column}>
+          <View style={styles.center}>
+            {!reducedMotion && <Animated.View style={[
+              styles.orbitDot,
+              { backgroundColor: theme.primary, transform: [{ translateX: orbitX }, { translateY: orbitY }] },
+            ]} />}
+            <Animated.Text style={[styles.emoji, { transform: [{ scale: scaleAnim }] }]}>🏆</Animated.Text>
+          </View>
+          <Text style={[styles.hint, !canSkip && styles.hintHidden]}>{t('trophy.tapToContinue')}</Text>
         </View>
-        <Text style={[styles.hint, !canSkip && styles.hintHidden]}>{t('trophy.tapToContinue')}</Text>
         {showConfetti && <CelebrationOverlay visible={true} onDone={() => {}} />}
       </Pressable>
     </Modal>
@@ -117,9 +126,10 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
 
 const styles = StyleSheet.create({
   overlay: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.7)' },
+  column: { alignItems: 'center' },
   center: { alignItems: 'center', justifyContent: 'center', width: 160, height: 160 },
   emoji: { fontSize: 80 },
   orbitDot: { position: 'absolute', width: 14, height: 14, borderRadius: 7 },
-  hint: { marginTop: 32, color: '#FFFFFF', fontSize: 15, fontWeight: '600', opacity: 0.85 },
+  hint: { marginTop: 24, color: '#FFFFFF', fontSize: 15, fontWeight: '600', opacity: 0.85 },
   hintHidden: { opacity: 0 },
 });

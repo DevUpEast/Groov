@@ -1,6 +1,6 @@
 import {
   normalizeSchedule, isScheduledOn, describeSchedule, weekStart, dayStatus,
-  habitStreak, bestHabitStreak, habitsDueOn, remainingThisWeek,
+  habitStreak, bestHabitStreak, habitsDueOn, remainingThisWeek, gridDayStatus,
 } from '../schedule';
 
 // 2026-10-12 is a Monday.
@@ -124,5 +124,28 @@ describe('habitsDueOn / remainingThisWeek', () => {
     expect(remainingThisWeek(pw, WED, doneSet(MON))).toBe(2);
     expect(remainingThisWeek(pw, WED, doneSet(MON, TUE, WED))).toBe(0);
     expect(remainingThisWeek({ type: 'daily' }, WED, doneSet())).toBe(0);
+  });
+});
+
+describe('gridDayStatus (STA-4: today is pending, never missed)', () => {
+  const daily = { type: 'daily' };
+  it('today, scheduled and not done, is pending', () => {
+    expect(gridDayStatus(daily, SAT, SAT, doneSet())).toBe('pending');
+    expect(gridDayStatus({ type: 'weekdays', days: [6] }, SAT, SAT, doneSet())).toBe('pending');
+  });
+  it('a past missed day stays missed', () => {
+    expect(gridDayStatus(daily, THU, SAT, doneSet())).toBe('missed');
+  });
+  it('done, rest and excused days are unchanged, today included', () => {
+    expect(gridDayStatus(daily, SAT, SAT, doneSet(SAT))).toBe('done');
+    expect(gridDayStatus({ type: 'weekdays', days: [1] }, SAT, SAT, doneSet())).toBe('rest');
+    expect(gridDayStatus(daily, SAT, SAT, doneSet(), k => k === SAT)).toBe('rest');
+  });
+  it('matches dayStatus everywhere except today-missed', () => {
+    for (const key of [MON, TUE, WED, THU, SAT]) {
+      const plain = dayStatus(daily, key, SAT, doneSet(TUE));
+      const grid = gridDayStatus(daily, key, SAT, doneSet(TUE));
+      expect(grid).toBe(key === SAT && plain === 'missed' ? 'pending' : plain);
+    }
   });
 });

@@ -3,7 +3,7 @@
 const React = require('react');
 const TestRenderer = require('react-test-renderer');
 const { act } = TestRenderer;
-const { Modal } = require('react-native');
+const { Modal, Animated } = require('react-native');
 
 jest.mock('../../utils/haptics', () => ({ heavyImpact: jest.fn(), mediumImpact: jest.fn() }));
 let mockReduced = false;
@@ -11,7 +11,7 @@ jest.mock('../../utils/a11y', () => ({ useReducedMotion: () => mockReduced, anno
 jest.mock('../CelebrationOverlay', () => () => null);
 
 const TrophyCelebration = require('../TrophyCelebration').default;
-const { TROPHY_SKIP_AFTER_MS } = require('../TrophyCelebration');
+const { TROPHY_SKIP_AFTER_MS, TROPHY_FALLBACK_MS } = require('../TrophyCelebration');
 const { themes } = require('../../theme/colors');
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -64,6 +64,23 @@ describe('TrophyCelebration (CEL-2)', () => {
     act(() => { jest.advanceTimersByTime(TROPHY_SKIP_AFTER_MS + 10); });
     back(r);
     expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes by the fallback timer when the orbit animation never finishes', () => {
+    const timing = jest.spyOn(Animated, 'timing').mockReturnValue({ start: () => {}, stop: () => {}, reset: () => {} });
+    const onDone = jest.fn();
+    mount(onDone);
+    act(() => { jest.advanceTimersByTime(TROPHY_FALLBACK_MS - 10); });
+    expect(onDone).not.toHaveBeenCalled();
+    act(() => { jest.advanceTimersByTime(20); });
+    expect(onDone).toHaveBeenCalledTimes(1);
+    timing.mockRestore();
+  });
+
+  it('does not fade the Modal in under reduced motion', () => {
+    mockReduced = true;
+    const r = mount(jest.fn());
+    expect(r.root.findByType(Modal).props.animationType).toBe('none');
   });
 
   it('still auto-dismisses with reduced motion, exactly once', () => {

@@ -91,10 +91,11 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           styles.card,
           { backgroundColor: theme.surface, borderColor: done ? accent : theme.border },
           // Opaque, pre-mixed tints with no elevation: Android draws the shadow through a
-          // translucent fill, which framed every done card in a dark border (CHK-8).
+          // translucent fill, which framed every done card in a dark border (CHK-8). A skipped
+          // card is translucent through `opacity`, so it drops elevation for the same reason.
           done && { backgroundColor: habit.color ? mixHex(habit.color, theme.surface, 0x1F / 255) : theme.primaryLight },
           overLimit && { borderColor: theme.danger, backgroundColor: mixHex(theme.danger, theme.surface, 0x14 / 255) },
-          (done || overLimit) && styles.flat,
+          (done || overLimit || skipped) && styles.flat,
           skipped && { opacity: 0.6, borderStyle: 'dashed' },
         ]}
         onPress={handleCardPress}

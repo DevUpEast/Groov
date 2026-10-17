@@ -16,6 +16,13 @@ describe('mixHex', () => {
     expect(mixHex('#fff', '#000', 0.5)).toBe('#808080');
   });
 
+  it('composes the alpha byte of an 8-digit colour and treats an 8-digit background as opaque', () => {
+    expect(mixHex('#000000FF', '#FFFFFF', 0.5)).toBe('#808080');
+    expect(mixHex('#00000080', '#FFFFFF', 1)).toBe(mixHex('#000000', '#FFFFFF', 0x80 / 255));
+    expect(mixHex('#00000000', '#FFFFFF', 1)).toBe('#FFFFFF');
+    expect(mixHex('#000000', '#FFFFFF80', 0)).toBe('#FFFFFF');
+  });
+
   it('clamps alpha and falls back to the background on bad input', () => {
     expect(mixHex('#000000', '#FFFFFF', 2)).toBe('#000000');
     expect(mixHex('#000000', '#FFFFFF', -1)).toBe('#FFFFFF');

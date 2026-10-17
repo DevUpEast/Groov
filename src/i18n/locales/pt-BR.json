@@ -395,7 +395,7 @@
     "hint": "Toque em qualquer dia passado para corrigi-lo",
     "cellA11y": "%{date}: %{status}",
     "status": { "future": "futuro", "done": "concluído", "rest": "descanso", "missed": "perdido", "none": "nenhum", "pending": "pendente" },
-    "legend": { "done": "Feito", "partial": "Parcial", "missed": "Perdido", "skippedFrozen": "Pulado / congelado", "rest": "Descanso" },
+    "legend": { "done": "Feito", "partial": "Parcial", "missed": "Perdido", "pending": "A fazer hoje", "skippedFrozen": "Pulado / congelado", "rest": "Descanso" },
     "byWeekday": "Por dia da semana",
     "since": "Taxa de conclusão desde %{date}",
     "weekdayA11y": "%{day}: %{percent} por cento",

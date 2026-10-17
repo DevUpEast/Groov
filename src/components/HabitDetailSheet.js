@@ -7,7 +7,7 @@ import { SheetDragHandle } from './SheetHeader';
 import { useApp } from '../context/AppContext';
 import { addDays, parseDateKey } from '../utils/dates';
 import {
-  dayStatus, bestHabitStreak, describeSchedule, weekStart, weekdayLabels,
+  dayStatus, gridDayStatus, bestHabitStreak, describeSchedule, weekStart, weekdayLabels,
 } from '../utils/schedule';
 import { lightImpact } from '../utils/haptics';
 import HabitIcon from './HabitIcon';
@@ -86,9 +86,8 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
         const key = addDays(start, i);
         const future = key > today;
         const before = isHabitDoneOnDay(habit, key, completions) === 'before' || !!(accountCreatedAt && key < accountCreatedAt);
-        const status = future || before ? 'none' : dayStatus(habit.schedule, key, today, isDone, excused);
-        const pending = key === today && status === 'missed';
-        days.push({ key, future, before, status, pending, count: (completions[key] || {})[habit.id] || 0 });
+        const status = future || before ? 'none' : gridDayStatus(habit.schedule, key, today, isDone, excused);
+        days.push({ key, future, before, status, count: (completions[key] || {})[habit.id] || 0 });
       }
       const m = parseDateKey(start).getMonth();
       monthLabels.push(m !== lastMonth ? parseDateKey(start).toLocaleDateString(getLocale(), { month: 'short' }) : '');
@@ -132,7 +131,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
     if (d.future || d.before) return 'transparent';
     if (d.status === 'done') return theme.primary;
     if (d.count > 0) return PARTIAL_COLOR;
-    if (d.pending) return 'transparent';
+    if (d.status === 'pending') return 'transparent';
     if (d.status === 'rest') return isHabitSkippedOn(habit.id, d.key) || excused(d.key) ? FROZEN_COLOR : theme.progressBarBg;
     return MISSED_COLOR;
   };
@@ -228,11 +227,11 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
                   onPress={() => onCellPress(d)}
                   activeOpacity={d.future || d.before ? 1 : 0.6}
                   accessibilityRole="button"
-                  accessibilityLabel={t('habitDetail.cellA11y', { date: d.key, status: t(`habitDetail.status.${d.future ? 'future' : d.pending ? 'pending' : d.status}`) })}
+                  accessibilityLabel={t('habitDetail.cellA11y', { date: d.key, status: t(`habitDetail.status.${d.future ? 'future' : d.status}`) })}
                   style={{
                     width: cell, height: cell, marginBottom: GRID_GAP, borderRadius: 3,
                     backgroundColor: colorFor(d),
-                    borderWidth: d.key === today ? 1.5 : 0, borderColor: d.pending ? PENDING_OUTLINE : theme.text,
+                    borderWidth: d.key === today ? 1.5 : 0, borderColor: d.status === 'pending' ? PENDING_OUTLINE : theme.text,
                   }}
                 />
               ))}
@@ -242,10 +241,11 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
         <View style={styles.legend}>
           {[
             { c: theme.primary, l: t('habitDetail.legend.done') }, { c: PARTIAL_COLOR, l: t('habitDetail.legend.partial') },
-            { c: MISSED_COLOR, l: t('habitDetail.legend.missed') }, { c: FROZEN_COLOR, l: t('habitDetail.legend.skippedFrozen') }, { c: theme.progressBarBg, l: t('habitDetail.legend.rest') },
+            { c: MISSED_COLOR, l: t('habitDetail.legend.missed') }, { c: 'transparent', o: PENDING_OUTLINE, l: t('habitDetail.legend.pending') },
+            { c: FROZEN_COLOR, l: t('habitDetail.legend.skippedFrozen') }, { c: theme.progressBarBg, l: t('habitDetail.legend.rest') },
           ].map(x => (
             <View key={x.l} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: x.c }]} />
+              <View style={[styles.legendDot, { backgroundColor: x.c }, x.o && { borderWidth: 1.5, borderColor: x.o }]} />
               <Text style={[styles.legendText, { color: theme.textMuted }]}>{x.l}</Text>
             </View>
           ))}

@@ -122,6 +122,14 @@ export function dayStatus(schedule, key, today, isDoneOnDate, isExcused) {
   return 'missed';
 }
 
+// The per-habit history grid's status for one day: dayStatus, except that today, scheduled
+// and not yet done, is 'pending' (outlined neutral), never 'missed' (STA-4). Past days keep
+// their dayStatus.
+export function gridDayStatus(schedule, key, today, isDoneOnDate, isExcused) {
+  const status = dayStatus(schedule, key, today, isDoneOnDate, isExcused);
+  return status === 'missed' && key === today ? 'pending' : status;
+}
+
 // Walk back from `startKey` counting the streak for one habit.
 //   - `done` days extend the streak
 //   - `rest` days are skipped without breaking it
