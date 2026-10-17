@@ -4,7 +4,7 @@
 import { loadData, saveData } from '../utils/storage';
 import { localDateKey } from '../utils/dates';
 import { isScheduledOn, isSatisfiedOn, normalizeSchedule } from '../utils/schedule';
-import { isGoalMet } from '../utils/habits';
+import { isHabitDoneOnDay } from '../utils/dayStatus';
 
 export const WIDGET_NAME = 'GroovToday';
 export const MAX_WIDGET_ROWS = 8;
@@ -32,7 +32,7 @@ export function buildTodayModel(habits, completions, settings, today) {
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
   const rows = active.map(h => {
     const count = todayMap[h.id] || 0;
-    const doneOn = (k) => isGoalMet(h, (completions[k] || {})[h.id]);
+    const doneOn = (k) => isHabitDoneOnDay(h, k, completions) === true;
     return {
       id: h.id,
       name: h.name,

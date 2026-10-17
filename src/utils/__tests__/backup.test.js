@@ -17,7 +17,8 @@ describe('backup round trip', () => {
     expect(b.format).toBe(BACKUP_FORMAT);
     const v = validateBackup(JSON.stringify(b));
     expect(v.ok).toBe(true);
-    expect(v.data.habits).toEqual(state.habits);
+    // An undated habit is dated from its first logged day on import (S-08 review m1).
+    expect(v.data.habits).toEqual([{ ...state.habits[0], createdAt: '2026-10-13' }]);
     expect(v.data.completions).toEqual(state.completions);
     expect(v.data.notes).toEqual(state.notes);
     expect(v.data.accountCreatedAt).toBe('2026-10-01');
@@ -42,7 +43,7 @@ describe('backup round trip', () => {
       },
     });
     expect(v.ok).toBe(true);
-    expect(v.data.habits).toEqual([{ id: 'a', name: 'ok' }]);
+    expect(v.data.habits).toEqual([{ id: 'a', name: 'ok', createdAt: '2026-10-13' }]); // dated from its first logged day
     expect(v.data.completions).toEqual({ '2026-10-13': { a: 1 } });
     expect(v.data.notes).toEqual({});
     expect(v.data.dailySnapshot).toEqual({ '2026-10-13': [{ id: 'a' }] });

@@ -81,6 +81,14 @@ describe('mergeSnapshots', () => {
     expect(Object.keys(out)).toEqual(['2026-10-13', '2026-10-14']);
     expect(out['2026-10-14']).toHaveLength(2);
   });
+
+  it("never overwrites today's local snapshot (a stale row from another device, STA-2)", () => {
+    const local = { '2026-10-17': [{ id: 'h1' }, { id: 'h2' }] };
+    const rows = [{ date: '2026-10-17', snapshot: [] }, { date: '2026-10-16', snapshot: [{ id: 'h1' }] }];
+    const out = mergeSnapshots(local, rows, '2026-10-17');
+    expect(out['2026-10-17']).toBe(local['2026-10-17']);
+    expect(out['2026-10-16']).toEqual([{ id: 'h1' }]);
+  });
 });
 
 import { mergeNotes } from '../mergeSync';

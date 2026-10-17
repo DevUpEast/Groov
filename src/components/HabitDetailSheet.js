@@ -11,7 +11,8 @@ import {
 } from '../utils/schedule';
 import { lightImpact } from '../utils/haptics';
 import HabitIcon from './HabitIcon';
-import { describeGoal, isGoalMet } from '../utils/habits';
+import { describeGoal } from '../utils/habits';
+import { isHabitDoneOnDay } from '../utils/dayStatus';
 import { t, getLocale, useLocale } from '../i18n';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -66,7 +67,6 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
   const today = todayStr();
   const WEEKDAY_LABELS = weekdayLabels();
   const isDone = useCallback((k) => (habit ? isHabitDoneOn(habit, k) : false), [habit, isHabitDoneOn]);
-  void isGoalMet;
   const excused = useCallback((k) => (habit ? isExcused(k, habit.id) : false), [habit, isExcused]);
 
   // Grid: WEEKS columns ending with the current week, rows Monday..Sunday.
@@ -82,7 +82,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
       for (let i = 0; i < 7; i++) {
         const key = addDays(start, i);
         const future = key > today;
-        const before = (habit.createdAt && key < habit.createdAt) || (accountCreatedAt && key < accountCreatedAt);
+        const before = isHabitDoneOnDay(habit, key, completions) === 'before' || !!(accountCreatedAt && key < accountCreatedAt);
         const status = future || before ? 'none' : dayStatus(habit.schedule, key, today, isDone, excused);
         days.push({ key, future, before, status, count: (completions[key] || {})[habit.id] || 0 });
       }
