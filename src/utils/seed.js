@@ -122,3 +122,65 @@ export function buildPerfectStreak({ habits, completions, snapshot, skips, miles
     milestones: (milestones || []).filter(m => !(m.days > n)),
   };
 }
+
+// ── C-09 dev tools (Settings → Dev tools) ─────────────────────────────────────
+// Freezes reconcile on the real date, so the date offset cannot exercise them; these work on
+// the real date instead (plan C-09, Critic A item 6). Pure: the caller applies the result.
+
+// Drop `ids`' counts on `day` (the day disappears when nothing is left). Returns the new map
+// and the [day, habitId] pairs that were cleared (the cloud rows to zero).
+function clearDay(completions, day, ids) {
+  const next = { ...(completions || {}) };
+  const cleared = [];
+  const kept = {};
+  Object.entries(next[day] || {}).forEach(([id, n]) => {
+    if (ids.has(id)) { if (n) cleared.push([day, id]); } else kept[id] = n;
+  });
+  if (Object.keys(kept).length > 0) next[day] = kept; else delete next[day];
+  return { completions: next, cleared };
+}
+
+/**
+ * "Simulate missed yesterday": clear yesterday's counts for the current habits and move
+ * lastSeen back to two days ago (knowing every freeze except one on yesterday), so the next
+ * since-last-open check sees yesterday as a day that passed while the app was away: a freeze
+ * covers it if one is left this month (the freeze card), else the streak ends (the reset card).
+ */
+export function planMissedYesterday({ completions, habits, today, freezes, lastSeen }) {
+  const yesterday = addDays(today, -1);
+  const { completions: next, cleared } = clearDay(completions, yesterday, new Set(habits.map(h => h.id)));
+  const before = lastSeen && typeof lastSeen === 'object' ? lastSeen : {};
+  return {
+    yesterday,
+    completions: next,
+    cleared,
+    lastSeen: {
+      ...before,
+      date: addDays(today, -2),
+      freezesUsed: (freezes || []).filter(f => f !== yesterday),
+    },
+  };
+}
+
+/**
+ * "Use up freezes this month": this month's freezes become the 1st and the 2nd, with their
+ * counts cleared, so both are genuinely missed days a freeze covers and the reconcile keeps
+ * them; freezesLeftInMonth then reads 0 and a later missed day ends the streak. Any other
+ * freeze this month is released (on yesterday, it no longer covers the day). Needs two earlier
+ * days of the month: null on the 1st and 2nd.
+ */
+export function planUseUpFreezes({ completions, habits, today, freezes }) {
+  if (Number(today.slice(8, 10)) < 3) return null;
+  const month = today.slice(0, 7);
+  const days = [`${month}-01`, `${month}-02`];
+  const ids = new Set(habits.map(h => h.id));
+  let next = completions;
+  const cleared = [];
+  days.forEach((day) => {
+    const r = clearDay(next, day, ids);
+    next = r.completions;
+    cleared.push(...r.cleared);
+  });
+  const others = (freezes || []).filter(f => f.slice(0, 7) !== month);
+  return { days, completions: next, cleared, freezes: [...others, ...days].sort() };
+}

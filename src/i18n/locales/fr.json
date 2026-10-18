@@ -151,6 +151,7 @@
     "beats": { "a11y": { "one": "%{count} dernier jour : %{done} réussis, %{rest} de repos, %{missed} manqués", "other": "%{count} derniers jours : %{done} réussis, %{rest} de repos, %{missed} manqués" } },
     "sticky": { "hint": "Revient en haut" },
     "hint": { "longPress": "Astuce : appuie longuement sur une habitude (ou touche ⋯) pour sauter un jour, corriger hier ou ajouter une note.", "longPressA11y": "Astuce : appuie longuement sur une habitude, ou utilise son bouton Plus d'options, pour sauter un jour, corriger hier ou ajouter une note." },
+    "streakNews": { "freezeYesterday": { "one": "Un gel a couvert la journée d'hier. Ta série de %{count} jour tient.", "other": "Un gel a couvert la journée d'hier. Ta série de %{count} jours tient." }, "freezeDay": { "one": "Un gel a couvert %{day}. Ta série de %{count} jour tient.", "other": "Un gel a couvert %{day}. Ta série de %{count} jours tient." }, "freezeDate": { "one": "Un gel a couvert le %{date}. Ta série de %{count} jour tient.", "other": "Un gel a couvert le %{date}. Ta série de %{count} jours tient." }, "freezeMany": { "one": "Des gels ont couvert %{days} jours. Ta série de %{count} jour tient.", "other": "Des gels ont couvert %{days} jours. Ta série de %{count} jours tient." }, "reset": { "one": "Ta série s'est arrêtée à %{count} jour. Une nouvelle commence aujourd'hui.", "other": "Ta série s'est arrêtée à %{count} jours. Une nouvelle commence aujourd'hui." }, "start": "Commence la première habitude du jour", "firstUp": "D'abord : %{name}", "backOnBeat": "Te revoilà dans le rythme." },
     "empty": {
       "title": "Trouve ton rythme",
       "body": "Ajoute ta première habitude",
@@ -608,6 +609,8 @@
     "enableSub": "Interrupteur général de tous les rappels",
     "smartCheckin": "Bilan intelligent",
     "smartSub": "Se déclenche à %{time} uniquement s'il reste des habitudes à faire",
+    "streakNews": "Nouvelles de ta série",
+    "streakNewsSub": "Un mot le matin quand un gel couvre un jour ou qu'une série s'arrête",
     "firesAt": "Se déclenche à %{time}",
     "notificationsDisabled": "Notifications désactivées",
     "offTapToAllow": "Désactivé · Appuie pour autoriser",
@@ -638,6 +641,8 @@
       "sent": { "title": "Envoyée", "body": "Notification de test envoyée. Regarde dans ton centre de notifications." },
       "seed": { "title": "Générer 30 jours d'historique", "body": "Cela remplit les 30 derniers jours avec des validations aléatoires ; les jours déjà enregistrés sont conservés. La date de début de tes habitudes est aussi reculée de 31 jours pour que l'historique compte. Les modifications sont synchronisées avec le cloud et ne peuvent pas être annulées.", "generate": "Générer", "done": "30 jours d'historique aléatoire ajoutés.", "sub": "Validations aléatoires pour les 30 derniers jours" },
       "perfectStreak": { "title": "Générer une série parfaite", "sub": "N jours parfaits jusqu'à hier, aujourd'hui vidé", "body": "Pour tes habitudes actuelles : chaque habitude prévue atteint son objectif chacun des N derniers jours, la date de début passe au premier d'entre eux, les validations d'aujourd'hui sont effacées et les paliers au-delà de N sont oubliés. Synchronisé avec le cloud.", "option": { "one": "%{count} jour", "other": "%{count} jours" } },
+      "missedYesterday": { "title": "Simuler hier manqué", "sub": "Efface les validations d'hier (date réelle) et recule la dernière ouverture de deux jours", "done": "Hier est vidé. Aujourd'hui montre l'effet d'un jour manqué." },
+      "useUpFreezes": { "title": "Épuiser les gels du mois", "sub": "Le 1er et le 2 deviennent les gels du mois, leurs validations effacées", "disabled": "Il faut deux jours plus tôt ce mois-ci ; disponible à partir du 3", "done": "Plus aucun gel ce mois-ci." },
       "crash": { "title": "Tester un plantage", "body": "Cela déclenche une erreur d'affichage pour que tu puisses vérifier l'écran de plantage et Sentry.", "crash": "Planter", "sub": "Déclenche une erreur pour tester l'écran de plantage" },
       "feedbackLog": { "title": "Journal des retours", "sub": "Les 50 derniers retours haptiques et sons, avec leur délai depuis le toucher", "empty": "Rien pour l’instant. Coche une habitude, puis reviens.", "clear": "Effacer" },
       "choreography": { "title": "Chorégraphie de la validation", "sub": "Vibrations, sons et animations en rythme, pas de bandeau pour une seule habitude cochée. Désactivée = l’ancien rythme" },
@@ -968,6 +973,7 @@
     "reminderTitle": "🔔 Rappel",
     "eveningTitle": "🌙 Bilan des habitudes",
     "eveningBody": "Il te reste des habitudes à accomplir aujourd'hui. Garde ta série en vie !",
+    "streakNewsTitle": "Nouvelles de ta série",
     "testBody": "Rappel de test. Appuie sur Fait pour le valider d'ici.",
     "finishTitle": "Terminer les habitudes"
   },

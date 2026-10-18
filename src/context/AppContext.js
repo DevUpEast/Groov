@@ -19,20 +19,23 @@ import {
   syncSettings, writeBackSettings,
 } from '../services/sync';
 import {
-  requestReminderSchedule, clearRemindersOnSignOut, requestEveningCheckIn,
+  requestReminderSchedule, clearRemindersOnSignOut, requestEveningCheckIn, requestStreakNews,
   getPermissionState, requestOsPermission, listenForNotificationResponses, snoozeNotification, setBadge,
   ACTION_DONE, ACTION_SNOOZE, BACKOFF_AFTER_MISSES,
 } from '../utils/notifications';
 import { localDateKey, todayKey, addDays } from '../utils/dates';
 import { createTabScope } from '../utils/tabScope';
 import { deriveAccountCreatedAt } from '../utils/accountCreatedAt';
-import { overallStreak, bestOverallStreak, overallDayStatus, reconcileFreezes, freezesLeftInMonth } from '../utils/streaks';
+import {
+  overallStreak, bestOverallStreak, overallDayStatus, reconcileFreezes, freezesLeftInMonth,
+  sinceLastOpen, sameLastSeen, streakNewsTonight,
+} from '../utils/streaks';
 import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak } from '../utils/schedule';
 import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
 import { snapshotOf, isHabitDoneOnDay, makeDayRules, stampCreatedAt, earliestCreatedAt } from '../utils/dayStatus';
-import { buildSeed, buildPerfectStreak, SEED_STREAK_DAYS, applySeedCompletions, applySeedSnapshot, backdateCreatedAt, seededRandom, DEMO_SEED } from '../utils/seed';
+import { buildSeed, buildPerfectStreak, planMissedYesterday, planUseUpFreezes, SEED_STREAK_DAYS, applySeedCompletions, applySeedSnapshot, backdateCreatedAt, seededRandom, DEMO_SEED } from '../utils/seed';
 import { mergeBackup } from '../utils/backup';
 import { initAnalytics, track, Events } from '../utils/analytics';
 import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup';
@@ -212,6 +215,12 @@ export function AppProvider({ children }) {
   // null until the login-time full pull has completed.
   const lastPulledAtRef = useRef(null);
   const pullInFlightRef = useRef(false);
+  // Bumped when a foreground pull settles (C-09: the since-last-open check waits for it, so a
+  // day another device filled in never reads as missed here).
+  const [pullsSettled, setPullsSettled] = useState(0);
+  // C-09 review m1: true once a pull has succeeded this session. A failed (offline) login pull
+  // still opens `cloudSynced`, but the since-last-open check waits for real cloud data.
+  const [pullOk, setPullOk] = useState(false);
 
   // Bumped when the app returns to the foreground and at local midnight, so everything
   // derived from todayStr() re-evaluates when the calendar date changes while the app
@@ -759,6 +768,7 @@ export function AppProvider({ children }) {
           setPastChallenges([]);
           setDailySnapshot({});
           settleAccountCreatedAt(null, null);
+          setPullOk(true);
           return;
         }
 
@@ -801,6 +811,7 @@ export function AppProvider({ children }) {
           settleAccountCreatedAt(stateRef.current.completions, stateRef.current.habits);
         }
         lastPulledAtRef.current = pulledAt;
+        setPullOk(true);
       } catch (e) {
         if (__DEV__) console.warn('Cloud sync error:', e.message);
       } finally {
@@ -861,9 +872,10 @@ export function AppProvider({ children }) {
           writeBackSettings(userId, delta.settings, merged, { hasExtrasColumn: !!delta.settingsHasExtras }).catch(() => {});
         }
         lastPulledAtRef.current = startedAt;
+        setPullOk(true);
       })
       .catch((e) => { if (__DEV__) console.warn('Foreground pull failed:', e.message); })
-      .finally(() => { pullInFlightRef.current = false; });
+      .finally(() => { pullInFlightRef.current = false; setPullsSettled(n => n + 1); });
   }, [clockTick, loaded, userId]);
 
   // ── Completion helpers ───────────────────────────────────────────────────────
@@ -1633,15 +1645,122 @@ export function AppProvider({ children }) {
   // changes, cover up to two missed days per month in the last week. A frozen day
   // that is later filled in (edit yesterday) releases its freeze. Uses the real
   // date, not the dev offset, so simulated days never burn real freezes.
-  useEffect(() => {
-    if (!loaded) return;
-    const today = localDateKey();
+  // The freezes list as the reconcile wants it on `today` (same reference when it holds).
+  const reconciledFreezes = (today) => {
     const raw = (k) => overallDayStatus(k, today, habitsOnDay, isSnapshotHabitDone, (key, id) => isHabitSkippedOn(id, key));
     // Never spend a freeze on a day before any habit existed (or before the account).
     const floor = [accountCreatedAt, earliestCreatedAt(allHabits)].filter(Boolean).sort().pop();
-    const next = reconcileFreezes(settings.streakFreezes, today, raw, { floor: floor || undefined });
+    return reconcileFreezes(settings.streakFreezes, today, raw, { floor: floor || undefined });
+  };
+  useEffect(() => {
+    if (!loaded) return;
+    const next = reconciledFreezes(localDateKey());
     if (next !== settings.streakFreezes) updateSettings({ streakFreezes: next });
   }, [loaded, clockTick, completions, dailySnapshot, habits, allHabits, settings.skips, settings.streakFreezes, accountCreatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Since last open (C-09) ───────────────────────────────────────────────────
+  // One-time Today cards: "A freeze covered yesterday" and "Your streak ended at N days"
+  // (src/utils/streaks.js sinceLastOpen), compared with deviceSettings.lastSeen, which is
+  // device-local, so a cloud pull never moves it and never fires a card. The check runs on
+  // the real date (like the freezes) once the data is settled: after a successful pull this
+  // session (an offline start waits), after any foreground pull that is still running, and
+  // once the freeze reconcile has applied
+  // (a run that would still change the freezes waits for the next render). The first run on
+  // a device or account (no lastSeen) only records. A card lives in memory until dismissed;
+  // a reset also arms "Back on beat" (lastSeen.backOnBeat) for the next check-off on Today.
+  // The web mockup never runs it (its profile is reused across days; `?streakNews=` shows
+  // the cards for review stills).
+  const [streakNews, setStreakNews] = useState(null);
+  const dismissStreakNews = useCallback(() => setStreakNews(null), []);
+  useEffect(() => {
+    if (!loaded || !cloudSynced || !pullOk || pullInFlightRef.current || mockupParams.active) return;
+    const today = localDateKey();
+    if (reconciledFreezes(today) !== settings.streakFreezes) return;
+    const prev = getDeviceSetting('lastSeen') ?? null;
+    const streakFrom = (key) => overallStreak(key, today, habitsOnDay, isSnapshotHabitDone, { isExcused });
+    const { event, lastSeen } = sinceLastOpen(prev, {
+      date: today,
+      streak: habits.length > 0 ? streakFrom(today) : 0,
+      freezes: settings.streakFreezes || [],
+      statusOf: (k) => overallDayStatus(k, today, habitsOnDay, isSnapshotHabitDone, isExcused),
+      streakEndingOn: streakFrom,
+    });
+    // Written at once (review m3): the in-memory store updates synchronously, so a later run or
+    // takeBackOnBeat() never reads an older record; the AsyncStorage write itself is async.
+    if (!sameLastSeen(prev, lastSeen)) setDeviceSettings({ lastSeen });
+    if (event) setStreakNews({ ...event, date: today });
+  }, [loaded, cloudSynced, pullOk, pullsSettled, clockTick, completions, dailySnapshot, habits, allHabits, settings.skips, settings.streakFreezes, accountCreatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A card belongs to the day it was found on.
+  useEffect(() => {
+    if (streakNews && streakNews.date !== localDateKey()) setStreakNews(null);
+  }, [clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Back on beat." (C-09, tone rule 3): said once, on the first check-off on Today after a
+  // reset card. Returns true (and disarms) when it is due.
+  const takeBackOnBeat = useCallback(() => {
+    const seen = getDeviceSetting('lastSeen');
+    if (!seen || !seen.backOnBeat) return false;
+    const { backOnBeat, ...rest } = seen; // eslint-disable-line no-unused-vars
+    setDeviceSettings({ lastSeen: rest });
+    return true;
+  }, []);
+
+  // Opt-in "Streak news" notification (C-09, settings.extras.streakNewsEnabled): while today
+  // (real date) would end missed, tomorrow morning's note is scheduled with what the missed
+  // day will do: a freeze covers it if one is left this month, else the streak ends. A done
+  // or rest day cancels it. Check-offs through the widget do not reschedule it (the app
+  // reschedules on its next open).
+  const streakNewsEnabled = settings.extras?.streakNewsEnabled === true;
+  useEffect(() => {
+    if (!loaded) return;
+    const today = localDateKey();
+    let content = null;
+    if (streakNewsEnabled && settings.notificationsEnabled && habits.length > 0) {
+      const news = streakNewsTonight({
+        todayStatus: overallDayStatus(today, addDays(today, 1), habitsOnDay, isSnapshotHabitDone, isExcused),
+        streak: overallStreak(today, today, habitsOnDay, isSnapshotHabitDone, { isExcused }),
+        freezesLeft: freezesLeftInMonth(settings.streakFreezes, today),
+      });
+      if (news) {
+        content = {
+          title: t('notifications.streakNewsTitle'),
+          body: news.kind === 'freeze'
+            ? t('today.streakNews.freezeYesterday', { count: news.streak })
+            : t('today.streakNews.reset', { count: news.ended }),
+        };
+      }
+    }
+    afterMoment('streakNews', () => requestStreakNews(today, content));
+  }, [loaded, streakNewsEnabled, settings.notificationsEnabled, completions, dailySnapshot, habits, settings.skips, settings.streakFreezes, clockTick, locale]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Dev tools (C-09): deterministic forgiveness moments on the real date (freezes reconcile on
+  // the real date, so the date offset cannot reach them; src/utils/seed.js).
+  // "Simulate missed yesterday": yesterday's check-offs are cleared and lastSeen moves to two
+  // days ago, so the check above treats yesterday as passed while away.
+  const simulateMissedYesterday = useCallback(async () => {
+    const today = localDateKey();
+    const plan = planMissedYesterday({
+      completions: liveCompletions(), habits: allHabits, today,
+      freezes: settingsRef.current.streakFreezes, lastSeen: getDeviceSetting('lastSeen'),
+    });
+    await setDeviceSettings({ lastSeen: plan.lastSeen });
+    updateCompletions(plan.completions);
+    await saveData('completions', plan.completions);
+    plan.cleared.forEach(([day, id]) => upsertCount(day, id, 0));
+  }, [allHabits]); // eslint-disable-line react-hooks/exhaustive-deps
+  // "Use up freezes this month": the 1st and 2nd become this month's two freezes, with their
+  // check-offs cleared. Returns false on the 1st and 2nd (no two earlier days).
+  const spendFreezesThisMonth = useCallback(async () => {
+    const plan = planUseUpFreezes({
+      completions: liveCompletions(), habits: allHabits, today: localDateKey(), freezes: settingsRef.current.streakFreezes,
+    });
+    if (!plan) return false;
+    updateCompletions(plan.completions);
+    updateSettings({ streakFreezes: plan.freezes });
+    await saveData('completions', plan.completions);
+    plan.cleared.forEach(([day, id]) => upsertCount(day, id, 0));
+    return true;
+  }, [allHabits, updateSettings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // One day for Perfect Days, the heat map, the bar chart and the share cards, judged
   // by the shared rule (utils/dayStatus.js summarizeDay). Rest days and habits that
@@ -1714,6 +1833,7 @@ export function AppProvider({ children }) {
       getCompletedCount, isAllDone, isChallengeHabitsDone,
       incrementHabit, decrementHabit, setHabitCountOn, toggleHabitDoneOn,
       isHabitSkippedOn, toggleSkipHabitOn, isDayFrozen, isExcused, freezesLeft,
+      streakNews, dismissStreakNews, takeBackOnBeat, simulateMissedYesterday, spendFreezesThisMonth,
       pendingMilestone, clearPendingMilestone,
       addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit,
       getNote, setNote,

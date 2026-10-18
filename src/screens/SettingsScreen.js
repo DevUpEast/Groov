@@ -211,6 +211,7 @@ export default function SettingsScreen() {
     settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, seedPerfectStreak, devMode, setDevMode,
     allHabits, completions, notes, moods, challenges, pastChallenges, dailySnapshot, accountCreatedAt, lastBackupAt, markBackedUp, importBackup,
     ensureNotificationPermission, notificationPermission, isPro, openPaywall, canAddReminder,
+    updateExtras, simulateMissedYesterday, spendFreezesThisMonth,
   } = useApp();
   const { locale, preference: localePreference } = useLocale();
   const [langModal, setLangModal] = useState(false);
@@ -498,6 +499,10 @@ export default function SettingsScreen() {
   // Notifications are on in Groov but the OS has not allowed them: the master row is
   // the primary "Tap to allow" control (rows below also ask, but are dimmed).
   const masterBlocked = masterOn && !permitted;
+  const streakNewsOn = settings.extras?.streakNewsEnabled === true;
+  const streakNewsBlocked = masterOn && streakNewsOn && !permitted;
+  // C-09 dev tool: "Use up freezes this month" needs two earlier days of the month.
+  const canSpendFreezes = new Date().getDate() >= 3;
 
   const updateReminders = (newReminders) => updateSettings({ reminders: newReminders });
 
@@ -667,6 +672,32 @@ export default function SettingsScreen() {
             }}
             onTime={() => setTimeModal({ kind: 'evening' })}
           />
+
+          {/* C-09 "Streak news" (opt-in, synced in settings.extras): a morning note after an
+              unfinished day, saying whether a freeze covered it or the streak ended. */}
+          {Platform.OS !== 'web' && (
+            <Row
+              label={t('settings.streakNews')}
+              sublabel={!masterOn ? t('settings.notificationsDisabled') : streakNewsBlocked ? t('settings.offTapToAllow') : t('settings.streakNewsSub')}
+              sublabelColor={streakNewsBlocked ? theme.link : undefined}
+              onPress={streakNewsBlocked ? ensureNotificationPermission : undefined}
+              theme={theme}
+              right={
+                <Switch
+                  value={streakNewsOn && masterOn && permitted}
+                  onValueChange={async (v) => {
+                    if (!masterOn) return;
+                    if (v && !(await ensureNotificationPermission())) return;
+                    feedback.toggled(v);
+                    updateExtras({ streakNewsEnabled: v });
+                  }}
+                  {...switchColors(theme, streakNewsOn && masterOn && permitted, !(masterOn && permitted))}
+                  accessibilityLabel={t('settings.streakNews')}
+                  accessibilityState={{ disabled: !masterOn }}
+                />
+              }
+            />
+          )}
 
           {reminders.map((r, i) => (
             <ReminderBlock
@@ -850,6 +881,43 @@ export default function SettingsScreen() {
                 <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{t('settings.dev.perfectStreak.sub')}</Text>
               </View>
               <Ionicons name="flame-outline" size={20} color={theme.link} />
+            </TouchableOpacity>
+
+            {/* C-09: forgiveness moments on the real date (freezes ignore the date offset) */}
+            <TouchableOpacity
+              style={[styles.row, { borderBottomColor: theme.border }]}
+              onPress={async () => {
+                await simulateMissedYesterday();
+                Alert.alert(t('common.done'), t('settings.dev.missedYesterday.done'));
+              }}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.dev.missedYesterday.title')}
+            >
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.missedYesterday.title')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{t('settings.dev.missedYesterday.sub')}</Text>
+              </View>
+              <Ionicons name="play-skip-back-outline" size={20} color={theme.link} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.row, { borderBottomColor: theme.border }]}
+              onPress={async () => {
+                if (!canSpendFreezes) return;
+                if (await spendFreezesThisMonth()) Alert.alert(t('common.done'), t('settings.dev.useUpFreezes.done'));
+              }}
+              activeOpacity={canSpendFreezes ? 0.7 : 1}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.dev.useUpFreezes.title')}
+              accessibilityState={{ disabled: !canSpendFreezes }}
+            >
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowLabel, { color: canSpendFreezes ? theme.text : theme.onDisabled }]}>{t('settings.dev.useUpFreezes.title')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textSecondary }]}>
+                  {canSpendFreezes ? t('settings.dev.useUpFreezes.sub') : t('settings.dev.useUpFreezes.disabled')}
+                </Text>
+              </View>
+              <Ionicons name="snow-outline" size={20} color={canSpendFreezes ? theme.link : theme.onDisabled} />
             </TouchableOpacity>
 
             {/* Feedback log: what fired, and when, relative to the tap (plan §7.4) */}

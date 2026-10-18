@@ -54,6 +54,7 @@ function mockMakeCtx() {
     themeName: 'light', allHabits: s.habits, getOverallStreak: () => 0,
     habitsOnDay: () => s.habits, isSnapshotHabitDone: () => false, isExcused: () => false, isDayFrozen: () => false,
     getStreakForHabit: () => 0,
+    streakNews: null, dismissStreakNews: () => {}, takeBackOnBeat: () => false,
   };
 }
 
