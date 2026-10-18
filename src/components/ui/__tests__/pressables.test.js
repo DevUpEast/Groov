@@ -443,12 +443,42 @@ describe('IconButton disabled variant (C-02a)', () => {
     expect(s.backgroundColor).toBe('transparent');
     expect(s.borderColor).toBe(light.disabledContainer);
     expect(s.borderWidth).toBe(1.5);
-    expect(r.root.findAll(n => n.type === 'Ionicons')[0].props.color).toBe(light.onDisabled);
+    expect(r.root.findAll(n => n.type === 'Ionicons')[0].props.color).toBe(light.textTertiary);
   });
 
   it('enabled keeps the caller style', () => {
     const r = render(<IconButton icon="add" accessibilityLabel="Add one" theme={dark}
       style={{ borderWidth: 1.5, borderColor: dark.controlBorder }} />);
     expect(flatStyle(pressableOf(r)).borderColor).toBe(dark.controlBorder);
+  });
+});
+
+describe('Android borderless ripple and a theme switch (C-02a S1)', () => {
+  // A child that counts its mounts: a remount of the Pressable remounts it too.
+  let mounts = 0;
+  function Probe() { React.useEffect(() => { mounts += 1; }, []); return null; }
+  const el = (theme) => (
+    <IconButton icon="add" accessibilityLabel="Add one" theme={theme}
+      style={{ borderWidth: 1.5, backgroundColor: theme.action }}><Probe /></IconButton>
+  );
+
+  it('remounts on Android when the ripple colour changes, so the new fill and border apply', () => {
+    Platform.OS = 'android';
+    mounts = 0;
+    const r = render(el(light));
+    expect(mounts).toBe(1);
+    act(() => { r.update(el(light)); });
+    expect(mounts).toBe(1); // same theme: no remount
+    act(() => { r.update(el(dark)); });
+    expect(mounts).toBe(2);
+    expect(flatStyle(pressableOf(r)).backgroundColor).toBe(dark.action);
+  });
+
+  it('never remounts on iOS (the colours apply in place there)', () => {
+    Platform.OS = 'ios';
+    mounts = 0;
+    const r = render(el(light));
+    act(() => { r.update(el(dark)); });
+    expect(mounts).toBe(1);
   });
 });

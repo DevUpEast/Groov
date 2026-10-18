@@ -348,7 +348,7 @@
     "done": "Done",
     "streakClean": "%{count} days clean",
     "streak": "%{count}-day streak",
-    "weekDone": "✓ %{done}/%{target} this week",
+    "weekDone": "%{done}/%{target} this week",
     "week": "%{done}/%{target} this week",
     "skippedToday": "Skipped today",
     "timer": "⏱ %{time}",

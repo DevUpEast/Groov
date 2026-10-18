@@ -348,7 +348,7 @@
     "done": "Concluído",
     "streakClean": "%{count} dias limpo",
     "streak": "sequência de %{count} dias",
-    "weekDone": "✓ %{done}/%{target} esta semana",
+    "weekDone": "%{done}/%{target} esta semana",
     "week": "%{done}/%{target} esta semana",
     "skippedToday": "Pulado hoje",
     "timer": "⏱ %{time}",

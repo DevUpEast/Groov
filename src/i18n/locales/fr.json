@@ -348,7 +348,7 @@
     "done": "Faite",
     "streakClean": "%{count} jours sans craquer",
     "streak": "série de %{count} jours",
-    "weekDone": "✓ %{done}/%{target} cette semaine",
+    "weekDone": "%{done}/%{target} cette semaine",
     "week": "%{done}/%{target} cette semaine",
     "skippedToday": "Sautée aujourd'hui",
     "timer": "⏱ %{time}",

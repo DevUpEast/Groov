@@ -125,13 +125,13 @@ const { resolveAccent } = jest.requireActual('../../theme/accents');
 const flat = (node) => StyleSheet.flatten(node.props.style);
 const textOf = (r) => r.root.findAll(n => n.type === 'Text').map(n => [].concat(n.props.children).join(''));
 
-it('the disabled − is lighter than the +: no fill, a disabledContainer hairline, onDisabled glyph', () => {
+it('the disabled − is lighter than the +: no fill, a disabledContainer hairline, textTertiary glyph (a tone lighter than the enabled textSecondary)', () => {
   const { r } = render(counter);
   const minus = byLabel(r, /^Remove/);
   const s = flat(minus);
   expect(s.backgroundColor).toBe('transparent');
   expect(s.borderColor).toBe(themes.light.disabledContainer);
-  expect(minus.findAll(n => n.type === 'Ionicons')[0].props.color).toBe(themes.light.onDisabled);
+  expect(minus.findAll(n => n.type === 'Ionicons')[0].props.color).toBe(themes.light.textTertiary);
   // The enabled + keeps its accent ring and accent glyph.
   const plus = byLabel(r, /^Add/);
   const accent = resolveAccent(counter.color, 'light');
@@ -230,4 +230,42 @@ it('a running timer survives a re-render from a check on another card (no remoun
   act(() => { r.update(<HabitCard habit={{ ...timed }} onIncrement={jest.fn()} onDecrement={jest.fn()} />); });
   expect(byLabel(r, /^Stop timer/)).toBeTruthy();
   act(() => { r.unmount(); }); // clears the 1 s tick
+});
+
+describe('C-02a review round', () => {
+  const quit = { id: 'q1', name: 'No sugar', type: 'quit', volumeGoal: 1, createdAt: '2026-01-01' };
+
+  it('M1: a done quit habit reads "Avoided today · N days clean", never "Done"', () => {
+    mockDone = true; mockCount = 1; mockStreak = 5;
+    const lines = textOf(render(quit).r);
+    expect(lines).toContain('Avoided today · 5 days clean');
+    expect(lines.join(' ')).not.toMatch(/\bDone\b/);
+  });
+
+  it('S2: every card renders a sub-line, so the name keeps its y on check-off', () => {
+    // Open daily, no intention, no streak: the schedule fallback.
+    expect(textOf(render(daily).r)).toContain('Every day');
+    expect(textOf(render({ ...daily, schedule: { type: 'perWeek', target: 3 } }).r)).toContain('0/3 this week');
+    // Intention leads (D-00 "After coffee · 3-day streak").
+    mockStreak = 3;
+    expect(textOf(render({ ...daily, intention: 'coffee' }).r)).toContain('After I coffee · 3-day streak');
+    // Done replaces the intention.
+    mockDone = true;
+    expect(textOf(render({ ...daily, intention: 'coffee' }).r)).toContain('Done · 3-day streak');
+  });
+
+  it('m2: counter and timer sub-lines may wrap to 2 lines; daily stays on 1', () => {
+    mockCount = 3;
+    const sub = (r, re) => r.root.findAll(n => n.type === 'Text' && re.test([].concat(n.props.children).join('')))[0];
+    expect(sub(render(counter).r, /glasses/).props.numberOfLines).toBe(2);
+    expect(sub(render(daily).r, /Every day/).props.numberOfLines).toBe(1);
+  });
+
+  it('m1: the week label carries no text ✓', () => {
+    const en = require('../../i18n/locales/en.json');
+    for (const code of ['en', 'es', 'de', 'fr', 'pt-BR', 'ja']) {
+      expect(require(`../../i18n/locales/${code}.json`).habitCard.weekDone).not.toMatch(/✓/);
+    }
+    expect(en.habitCard.weekDone).toBe('%{done}/%{target} this week');
+  });
 });
