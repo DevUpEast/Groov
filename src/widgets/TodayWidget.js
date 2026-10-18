@@ -62,7 +62,7 @@ export function TodayWidget({ model, dark = false, maxRows = MAX_WIDGET_ROWS }) 
           </FlexWidget>
         );
       })}
-      {extra > 0 ? <TextWidget text={t('widget.more', { count: extra })} style={{ fontSize: 11, color: c.muted, marginTop: 6 }} /> : null}
+      {extra > 0 ? <TextWidget text={t('widget.more', { count: extra })} style={{ fontSize: 12, color: c.muted, marginTop: 6 }} /> : null}
     </FlexWidget>
   );
 }

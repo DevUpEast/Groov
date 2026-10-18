@@ -24,6 +24,7 @@ import { useAuth } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
 import { ACCENT_IDS, resolveAccent, storedHexFor } from '../theme/accents';
 import { BLANK_FORM, formFromHabit, habitFromForm, pickAccent, selectedAccentId, suggestedColor } from '../utils/habitForm';
+import AppText from '../components/ui/AppText';
 
 // Preset icons. The stored value is the emoji; `key` names it for screen readers (habits.icons.<key>).
 const ICONS = [
@@ -784,7 +785,7 @@ export default function HabitsScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
-          <Text style={[styles.heading, { color: theme.text }]}>{t('habits.title')}</Text>
+          <AppText variant="title" style={[styles.heading, { color: theme.text }]}>{t('habits.title')}</AppText>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {habits.length > 1 && (
               <TouchableOpacity
@@ -901,11 +902,11 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: 24, paddingBottom: 40 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  heading: { fontSize: 28, fontWeight: 'bold' },
+  heading: {},
   addBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   addBtnText: { fontWeight: '700', fontSize: 15 },
   reorderBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 10 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 10 },
   row: {
     flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1,
     padding: 14, marginBottom: 10, overflow: 'hidden',
@@ -941,7 +942,7 @@ const styles = StyleSheet.create({
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   sheetTitle: { fontSize: 20, fontWeight: 'bold' },
   sheetCloseBtn: { padding: 4 },
-  label: { fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 },
+  label: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 },
   magicBox: { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 20 },
   magicTitle: { fontSize: 12, fontWeight: '700', marginBottom: 8 },
   magicRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
@@ -973,7 +974,7 @@ const styles = StyleSheet.create({
   volMaxBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
   volMaxBtnText: { fontSize: 12, fontWeight: '700' },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  sliderLabelText: { fontSize: 11 },
+  sliderLabelText: { fontSize: 12 },
   saveBtn: { marginTop: 12, padding: 16, borderRadius: 14, alignItems: 'center' },
   saveBtnText: { fontSize: 16, fontWeight: '700' },
 });

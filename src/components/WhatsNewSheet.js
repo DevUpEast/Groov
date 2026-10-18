@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   entryHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   version: { fontSize: 16, fontWeight: '800' },
   pill: { borderRadius: 6, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2 },
-  pillText: { fontSize: 11, fontWeight: '700' },
+  pillText: { fontSize: 12, fontWeight: '700' },
   date: { fontSize: 12, marginLeft: 'auto' },
   item: { fontSize: 14, lineHeight: 22 },
 });

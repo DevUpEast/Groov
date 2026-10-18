@@ -74,6 +74,8 @@ import { useAnyOverlayOpen, setOverlayChangesStatusBar } from './src/utils/overl
 import { supabaseConfigError } from './src/utils/supabase';
 import { AppProvider, useApp } from './src/context/AppContext';
 import { themes } from './src/theme/colors';
+import { loadAppFonts } from './src/theme/fonts';
+import { type } from './src/theme/typography';
 import AuthScreen from './src/screens/AuthScreen';
 import TodayScreen from './src/screens/TodayScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
@@ -88,6 +90,10 @@ import DesignPreview from './src/screens/DesignPreview';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const NUM_TABS = 5;
 const SLIDE_DURATION = 180;
+
+// The longest tab label (characters) that keeps equal tabs: 10 characters fit a fifth of a
+// 375 pt phone at 12 pt, bold when focused; fr "Aujourd'hui" (11) already does not.
+const TAB_LABEL_EQUAL_MAX = 10;
 
 const TABS = [
   { key: 'today',     icon: 'home-outline' },
@@ -268,6 +274,8 @@ function AppNavigator() {
   }
 
   // The iOS mockup (web) lays out like iOS so the preview matches a real iPhone.
+  const tabLabels = TABS.map(tab => t(`app.tabs.${tab.key}`));
+  const tabsByLabel = tabLabels.some(l => l.length > TAB_LABEL_EQUAL_MAX);
   const TAB_BAR_HEIGHT = (Platform.OS === 'ios' || mockupParams.active) ? 49 + insets.bottom : 56;
 
   return (
@@ -304,6 +312,9 @@ function AppNavigator() {
         ))}
       </Animated.View>
 
+      {/* Equal tabs keep the icons on an even rhythm; a locale with a label too long for a
+          fifth of a phone at the 12 pt floor (de "Einstellungen", fr "Aujourd'hui") shares the
+          bar by label width instead, so nothing wraps or clips (until G-01's short labels). */}
       <View style={[
         styles.tabBar,
         {
@@ -315,11 +326,11 @@ function AppNavigator() {
       ]}>
         {TABS.map((tab, i) => {
           const focused = activeIndex === i;
-          const label = t(`app.tabs.${tab.key}`);
+          const label = tabLabels[i];
           return (
             <TouchableOpacity
               key={tab.key}
-              style={styles.tabBtn}
+              style={[styles.tabBtn, tabsByLabel && styles.tabBtnByLabel]}
               onPress={() => goToTab(i)}
               activeOpacity={0.7}
               accessibilityRole="tab"
@@ -331,7 +342,7 @@ function AppNavigator() {
                 size={focused ? 24 : 22}
                 color={focused ? theme.tabActive : theme.tabInactive}
               />
-              <Text style={[
+              <Text numberOfLines={1} style={[
                 styles.tabLabel,
                 { color: focused ? theme.tabActive : theme.tabInactive },
                 focused && styles.tabLabelFocused,
@@ -353,9 +364,15 @@ function AuthGate() {
   const scheme = useColorScheme();
   const theme = themes[scheme === 'dark' ? 'dark' : 'light'];
   useLocale();
-  // The persisted language choice is applied before anything localized is painted.
+  // The persisted language choice and the display face (Space Grotesk, bounded by a timeout,
+  // src/theme/fonts.js) are both ready before anything is painted, so numerals never flash
+  // in a fallback face.
   const [localeReady, setLocaleReady] = useState(false);
-  useEffect(() => { let on = true; initLocale().finally(() => { if (on) setLocaleReady(true); }); return () => { on = false; }; }, []);
+  useEffect(() => {
+    let on = true;
+    Promise.all([initLocale(), loadAppFonts()]).finally(() => { if (on) setLocaleReady(true); });
+    return () => { on = false; };
+  }, []);
 
   if (supabaseConfigError) {
     throw new Error(supabaseConfigError);
@@ -411,7 +428,7 @@ const crashStyles = StyleSheet.create({
   btnText: { fontSize: 16, fontWeight: '700' },
   devBox: { marginTop: 24, maxHeight: 260, alignSelf: 'stretch' },
   devText: { fontSize: 13, marginBottom: 8 },
-  devStack: { fontSize: 11 },
+  devStack: { fontSize: 12 },
 });
 
 const styles = StyleSheet.create({
@@ -430,13 +447,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
   },
+  // 4 + 24 icon + 1 + 16 line = 45 fits the 49 pt iOS bar.
   tabBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 8,
-    gap: 3,
+    paddingTop: 4,
+    paddingHorizontal: 2,
+    gap: 1,
   },
-  tabLabel: { fontSize: 11, fontWeight: '500' },
+  // Label-width sharing: basis = the label, then equal growth.
+  tabBtnByLabel: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto' },
+  tabLabel: { ...type.caption },
   tabLabelFocused: { fontWeight: '700' },
 });
