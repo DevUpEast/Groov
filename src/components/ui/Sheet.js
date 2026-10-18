@@ -43,6 +43,8 @@ import { useUiTheme } from './PressableScale';
  *   it stays pinned to the bottom of the window at `medium` too (it moves up with the visible
  *   edge), and the body gets the hidden height as bottom padding, so all of it can still be
  *   scrolled into view at `medium` (F-10).
+ * - `closeLabel`: the default header's close button name (default "Close"; the paywall says
+ *   "Not now").
  * - `backgroundColor` / `grabberColor`: a tinted sheet (a past challenge's tier colour); the
  *   default is the `raised` surface and the `controlBorder` grabber.
  * - `scroll` (default true): wrap `children` in a ScrollView (`keyboardShouldPersistTaps`).
@@ -114,6 +116,11 @@ export const keyboardLiftFor = (keyboardHeight, bottomInset, os = Platform.OS, v
 };
 
 
+/** The surface's bottom padding: the home indicator / nav bar inset, or a small gap above the keys. */
+export const surfaceBottomPad = (keyboardHeight, bottomInset) => (
+  keyboardHeight > 0 ? space.sm : Math.max(space.lg, bottomInset + space.xs)
+);
+
 function KeyboardLift({ style, lift, children }) {
   if (Platform.OS === 'ios') {
     return <KeyboardAvoidingView behavior="padding" style={style} pointerEvents="box-none">{children}</KeyboardAvoidingView>;
@@ -175,7 +182,7 @@ export function SheetFrame({
     ? { opacity: scrimOpacity, transform: [{ translateY: rest }] }
     : { transform: [{ translateY: value }] };
   const keyboardHeight = useKeyboardHeight();
-  const bottom = keyboardHeight > 0 ? space.sm : Math.max(space.lg, insets.bottom + space.xs);
+  const bottom = surfaceBottomPad(keyboardHeight, insets.bottom);
   return (
     <OverlayModal
       visible={visible}
@@ -230,7 +237,7 @@ export function SheetGrabber({ theme: themeProp, color }) {
 export default function Sheet({
   visible, onClose, onDismiss, title, header, detents = ['large'], initialDetent, dirty = false, footer, children,
   scroll = true, contentContainerStyle, accessibilityLabel, returnFocusRef, theme: themeProp, testID, ref,
-  backgroundColor, grabberColor,
+  backgroundColor, grabberColor, closeLabel,
 }) {
   const theme = useUiTheme(themeProp);
   const motion = useMotion();
@@ -242,7 +249,9 @@ export default function Sheet({
 
   const closed = r ? SHEET_FADE_RANGE : SHEET_OFFSCREEN;
   const value = useRef(new Animated.Value(closed)).current;
-  const [mounted, setMounted] = useState(!!visible);
+  // Starts unmounted even when first rendered visible: the visible effect then mounts it through
+  // the enter-on-onShow path, so the spring never runs before the Modal window exists (F-10 M2).
+  const [mounted, setMounted] = useState(false);
   const [detent, setDetent] = useState(firstDetent);
   const [confirming, setConfirming] = useState(false);
 
@@ -285,6 +294,7 @@ export default function Sheet({
   };
 
   // Open and close follow `visible`. A re-open during the exit springs back from where it is.
+  // (The `mountedRef` check reads the committed state: false on a first mount.)
   useEffect(() => {
     if (visible) {
       closing.current = false;
@@ -449,6 +459,17 @@ export default function Sheet({
   // down (clamped to the medium offset), so it stays on screen (F-10).
   const rest = restOffset(detent, detents, mediumOffset);
   const bodyPad = rest > 0 ? { paddingBottom: (StyleSheet.flatten(contentContainerStyle)?.paddingBottom ?? 0) + rest } : null;
+  // The lifted footer also covers the strip below it down to the window edge (the surface's
+  // bottom padding), or scrolled body rows would show under the button (F-10 M1).
+  const insets = useSafeAreaInsets();
+  const pad = surfaceBottomPad(keyboardHeight, insets.bottom);
+  const footerBacking = twoDetents ? {
+    backgroundColor: backgroundColor ?? theme.raised,
+    paddingBottom: pad,
+    marginBottom: -pad,
+    borderTopWidth: rest > 0 ? StyleSheet.hairlineWidth : 0,
+    borderTopColor: theme.border,
+  } : null;
   const footerLift = !twoDetents ? null : r
     ? { transform: [{ translateY: -rest }] }
     : { transform: [{ translateY: value.interpolate({ inputRange: [0, mediumOffset], outputRange: [0, -mediumOffset], extrapolate: 'clamp' }) }] };
@@ -474,7 +495,7 @@ export default function Sheet({
           {headerNode ?? (title ? (
             <View style={styles.titleRow}>
               <AppText ref={headerRef} variant="headline" style={[styles.title, { color: theme.text }]} accessibilityRole="header" numberOfLines={2}>{title}</AppText>
-              <IconButton icon="close" iconSize={24} theme={theme} onPress={requestClose} accessibilityLabel={t('common.close')} style={styles.closeBtn} />
+              <IconButton icon="close" iconSize={24} theme={theme} onPress={requestClose} accessibilityLabel={closeLabel ?? t('common.close')} style={styles.closeBtn} />
             </View>
           ) : null)}
         </View>
@@ -495,7 +516,7 @@ export default function Sheet({
       ) : (
         <View style={[fixedHeight ? styles.bodyFill : styles.bodyFit, bodyPad]}>{children}</View>
       )}
-      {footer ? <Animated.View style={[styles.footer, footerLift && { backgroundColor: backgroundColor ?? theme.raised }, footerLift]}>{footer}</Animated.View> : null}
+      {footer ? <Animated.View testID="sheet-footer" style={[styles.footer, footerBacking, footerLift]}>{footer}</Animated.View> : null}
       <Dialog
         visible={confirming}
         onClose={() => { pendingThen.current = null; setConfirming(false); }}
@@ -513,7 +534,11 @@ export default function Sheet({
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
+  // Phones: full width. Tablets and web: a centred column (n2).
   surface: {
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
     paddingHorizontal: space.lg,

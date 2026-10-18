@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Platform, TextInput, Linking,
 } from 'react-native';
@@ -289,6 +289,10 @@ export default function SettingsScreen() {
   // "Account linked" shows once the link sheet has gone (iOS cannot present an Alert over a
   // Modal that is still dismissing).
   const linkedAlert = useRef(false);
+  // True once the link sheet has gone (its onDismiss ran) until it opens again: a link that
+  // completes after the sheet was closed alerts at once (F-10 review m1).
+  const linkSheetGone = useRef(true);
+  useEffect(() => { if (linkSheet) linkSheetGone.current = false; }, [linkSheet]);
   // Apple/Google accounts have no Groov password to reset.
   const canResetPassword = authProvider === 'email';
 
@@ -1110,8 +1114,16 @@ export default function SettingsScreen() {
         visible={linkSheet}
         theme={theme}
         onClose={() => setLinkSheet(false)}
-        onLinked={() => { linkedAlert.current = true; setLinkSheet(false); }}
+        onLinked={() => {
+          if (linkSheetGone.current) {
+            Alert.alert(t('settings.account.linked.title'), t('settings.account.linked.body'));
+            return;
+          }
+          linkedAlert.current = true;
+          setLinkSheet(false);
+        }}
         onDismiss={() => {
+          linkSheetGone.current = true;
           if (!linkedAlert.current) return;
           linkedAlert.current = false;
           Alert.alert(t('settings.account.linked.title'), t('settings.account.linked.body'));

@@ -66,6 +66,7 @@ export default function PaywallSheet({ visible, reason: reasonProp, onClose, onU
       visible={!!visible}
       onClose={onClose}
       title={t('paywall.title')}
+      closeLabel={t('common.notNow')}
       detents={['medium', 'large']}
       footer={footer}
       theme={theme}

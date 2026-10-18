@@ -216,6 +216,25 @@ describe('Sheet lifecycle', () => {
   beforeEach(() => { jest.useFakeTimers(); mockReduced = false; });
   afterEach(() => { jest.useRealTimers(); jest.restoreAllMocks(); });
 
+  it('M2 (F-10): a first mount already visible waits for onShow before the enter spring', () => {
+    const springs = jest.spyOn(Animated, 'spring');
+    let r;
+    act(() => { r = TestRenderer.create(el({ visible: true, onClose: jest.fn() })); });
+    expect(sheetModal(r).props.visible).toBe(true); // the window is requested at once
+    expect(springs).not.toHaveBeenCalled(); // ...but nothing moves before it exists
+    act(() => sheetModal(r).props.onShow());
+    expect(springs).toHaveBeenCalledTimes(1);
+    expect(lastTo(springs)).toBe(0);
+  });
+
+  it('M2 (F-10): without onShow the first-mount enter still runs after the fallback', () => {
+    const springs = jest.spyOn(Animated, 'spring');
+    act(() => { TestRenderer.create(el({ visible: true, onClose: jest.fn() })); });
+    expect(springs).not.toHaveBeenCalled();
+    advance(400);
+    expect(springs).toHaveBeenCalledTimes(1);
+  });
+
   it('B1: a header touch during the exit cannot stop it; the Modal unmounts and onDismiss fires', () => {
     const p = { onClose: jest.fn(), onDismiss: jest.fn() };
     const r = mount(p);
@@ -387,6 +406,17 @@ describe('medium detent (F-10)', () => {
     expect(v).toBe(-offset); // the value starts off screen: clamped
   });
 
+  it('M1: the lifted footer is backed down to the window edge, with a hairline on top', () => {
+    const r = renderMedium({ initialDetent: 'medium' });
+    const footer = StyleSheet.flatten(r.root.findAll(n => n.props.testID === 'sheet-footer' && typeof n.type !== 'string')[0].props.style);
+    const { themes } = jest.requireActual('../../../theme/colors');
+    expect(footer.backgroundColor).toBe(themes.light.raised);
+    // The surface's bottom pad (no inset in this test) is covered by the footer.
+    expect(footer.paddingBottom).toBe(SheetModule.surfaceBottomPad(0, 0));
+    expect(footer.marginBottom).toBe(-SheetModule.surfaceBottomPad(0, 0));
+    expect(footer.borderTopWidth).toBeGreaterThan(0);
+  });
+
   it('a large-first sheet has no extra body padding', () => {
     const r = renderMedium({ initialDetent: 'large' });
     const scroll = r.root.findAllByType(ScrollView)[0];
@@ -409,6 +439,36 @@ describe('medium detent (F-10)', () => {
   });
 });
 
+// The opening tag of each <Modal / <OverlayModal: up to the first '>' outside braces and strings,
+// so a prop such as onRequestClose={() => close()} cannot end it early (review n1).
+function modalTags(src) {
+  const tags = [];
+  const re = /<(?:Overlay)?Modal\b/g;
+  let m;
+  while ((m = re.exec(src))) {
+    let depth = 0;
+    let quote = null;
+    let i = m.index + 1;
+    for (; i < src.length; i += 1) {
+      const c = src[i];
+      if (quote) { if (c === quote && src[i - 1] !== '\\') quote = null; continue; }
+      if (c === '"' || c === "'" || c === '`') quote = c;
+      else if (c === '{') depth += 1;
+      else if (c === '}') depth -= 1;
+      else if (c === '>' && depth === 0) break;
+    }
+    tags.push(src.slice(m.index, i + 1));
+  }
+  return tags;
+}
+
+describe('modalTags', () => {
+  it('reads past an arrow function in a prop', () => {
+    const [tag] = modalTags('<OverlayModal visible onRequestClose={() =>\n  close()} statusBarTranslucent navigationBarTranslucent>\n</OverlayModal>');
+    expect(tag).toMatch(/navigationBarTranslucent>$/);
+  });
+});
+
 // F-10: every remaining sheet is a ui/Sheet; every Modal is translucent; the old helpers are gone.
 describe('F-10 migration (source checks)', () => {
   const walk = (dir, out = []) => {
@@ -428,7 +488,7 @@ describe('F-10 migration (source checks)', () => {
       const src = fs.readFileSync(f, 'utf8');
       if (/animationType="slide"/.test(src)) slides.push(path.relative(ROOT, f));
       if (f.endsWith('OverlayModal.js')) return; // forwards its props to Modal
-      (src.match(/<(?:Overlay)?Modal\b[\s\S]*?>\s*\n/g) || []).forEach((tag) => {
+      modalTags(src).forEach((tag) => {
         tags += 1;
         if (!/statusBarTranslucent(?!=\{false\})/.test(tag) || !/navigationBarTranslucent(?!=\{false\})/.test(tag)) opaque.push(path.relative(ROOT, f));
       });
