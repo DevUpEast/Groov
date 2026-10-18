@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
 import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn, goalMet } from '../_shared/schedule.ts'
-import { AI_MODEL, COACH_SYSTEM, cachedSystem, consumeQuota, quotaExceeded, refundQuota, generateText, emptyReply } from '../_shared/ai.ts'
+import { AI_MODEL, COACH_SYSTEM, cachedSystem, consumeQuota, quotaExceeded, refundQuota, generateText, emptyReply, coachLocale, languageRule } from '../_shared/ai.ts'
 
 // Wildcard origin is intentional: CORS is a browser mechanism and does not apply to
 // native mobile clients. Supabase edge functions require this header for the OPTIONS
@@ -90,6 +90,8 @@ Deno.serve(async (req: Request) => {
     }
     const period: 'weekly' | 'monthly' = rawPeriod === 'monthly' ? 'monthly' : 'weekly'
     const days = period === 'monthly' ? 30 : 7
+    // The app's UI language (#201): the reply is written in it and cached under it.
+    const locale = coachLocale(body.locale)
 
     // Use the app-level accountCreatedAt if provided — it resets when the user clears data,
     // whereas user.created_at is permanently fixed to the Supabase Auth registration date.
@@ -125,6 +127,7 @@ Deno.serve(async (req: Request) => {
       .eq('user_id', user.id)
       .eq('period', period)
       .eq('period_start', periodStart)
+      .eq('locale', locale)
       .gte('generated_at', accountCreatedStr)
       .maybeSingle()
 
@@ -242,6 +245,7 @@ Deno.serve(async (req: Request) => {
         : `DATA WINDOW: ${accountActiveDays} days of data. Weekly and multi-week trends are appropriate.`
 
     const prompt = `Write a ${period} reflection summary (3-5 sentences) for a user based on the data below. Be specific and data-driven. Highlight the standout habit, address the one that needs attention, and give one concrete actionable tip. End on an encouraging note.
+${languageRule(locale)}
 
 ${timeSpanRule}
 IMPORTANT: Each habit shows its own expected days since it was created, based on its schedule (some habits are only due on certain days or N times a week). Use each habit's own denominator - never compare completedDays against the full ${days}-day period if the habit was created more recently or is not due every day. Do not reference days before the account or any habit was created.
@@ -286,8 +290,8 @@ Write the reflection:`
     const generatedAt = new Date().toISOString()
 
     await supabase.from('ai_reflections').upsert(
-      { user_id: user.id, period, period_start: periodStart, period_end: todayStr, message },
-      { onConflict: 'user_id,period,period_start' }
+      { user_id: user.id, period, period_start: periodStart, period_end: todayStr, locale, message },
+      { onConflict: 'user_id,period,period_start,locale' }
     )
 
     return new Response(

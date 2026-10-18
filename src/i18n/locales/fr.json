@@ -148,6 +148,8 @@
       "empty": "Touche une habitude"
     },
     "coach": "Coach IA",
+    "coachMore": "Voir plus",
+    "coachLess": "Voir moins",
     "beats": { "a11y": { "one": "%{count} dernier jour : %{done} réussis, %{rest} de repos, %{missed} manqués", "other": "%{count} derniers jours : %{done} réussis, %{rest} de repos, %{missed} manqués" } },
     "sticky": { "hint": "Revient en haut" },
     "hint": { "longPress": "Astuce : appuie longuement sur une habitude (ou touche ⋯) pour sauter un jour, corriger hier ou ajouter une note.", "longPressA11y": "Astuce : appuie longuement sur une habitude, ou utilise son bouton Plus d'options, pour sauter un jour, corriger hier ou ajouter une note." },
@@ -575,7 +577,8 @@
       "generatingWeekly": "Génération de ton bilan hebdomadaire...",
       "generatingMonthly": "Génération de ton bilan mensuel...",
       "generated": "Généré le %{date}",
-      "failed": "La génération a échoué. Réessaie.",
+      "unavailable": "Ton coach ne peut pas écrire de bilan pour l'instant. Réessaie plus tard.",
+      "limitReached": "Tu as utilisé les bilans du jour. D'autres demain.",
       "seePro": "  Découvrir Groov Pro",
       "generateWeekly": "Générer le résumé hebdomadaire",
       "generateMonthly": "Générer le résumé mensuel"

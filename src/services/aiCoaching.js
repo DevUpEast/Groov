@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
 import { localDateKey } from '../utils/dates';
+import { getLocale } from '../i18n';
 
 function stripEmDashes(text) {
   if (!text) return text;
@@ -14,13 +15,14 @@ export function cleanMessage(data) {
   return { ...data, message: text || null };
 }
 
-async function readFunctionError(error) {
-  let detail = error.message;
-  try {
-    const body = await error.context?.json?.();
-    if (body?.error) detail = body.error;
-  } catch {}
-  return detail;
+// The function's error body as an Error carrying the server's `code` (quota_exceeded,
+// empty_reply), so screens pick their own localised copy instead of the server's text.
+async function functionError(error) {
+  let body = null;
+  try { body = await error.context?.json?.(); } catch {}
+  const err = new Error(body?.error || error?.message || 'AI coach unavailable');
+  err.code = body?.code ?? null;
+  return err;
 }
 
 // Explicitly attaches the current session token so the Edge Function always
@@ -40,13 +42,16 @@ export async function fetchDailyNudge(accountCreatedAt, displayName, today) {
       accountCreatedAt: accountCreatedAt || null,
       displayName: displayName || null,
       today: today ?? localDateKey(),
+      // #201: the coach answers in the UI language; the server caches per language.
+      locale: getLocale(),
     },
     headers: await authHeaders(),
   });
   if (error) {
-    const detail = await readFunctionError(error);
-    console.error('[AI Coach] nudge:', detail);
-    throw new Error(detail);
+    const err = await functionError(error);
+    // No nudge is a normal outcome (quota, empty reply, offline): Today just shows none.
+    console.warn('[AI Coach] nudge:', err.message);
+    throw err;
   }
   return cleanMessage(data);
 }
@@ -75,13 +80,14 @@ export async function fetchReflection(period = 'weekly', accountCreatedAt, displ
       accountCreatedAt: accountCreatedAt || null,
       displayName: displayName || null,
       today: today ?? localDateKey(),
+      locale: getLocale(),
     },
     headers: await authHeaders(),
   });
   if (error) {
-    const detail = await readFunctionError(error);
-    console.error('[AI Coach] reflection:', detail);
-    throw new Error(detail);
+    const err = await functionError(error);
+    console.warn('[AI Coach] reflection:', err.message);
+    throw err;
   }
   return cleanMessage(data);
 }

@@ -148,6 +148,8 @@
       "empty": "Tippe auf eine Gewohnheit"
     },
     "coach": "KI-Coach",
+    "coachMore": "Mehr",
+    "coachLess": "Weniger",
     "beats": { "a11y": { "one": "Letzter %{count} Tag: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst", "other": "Letzte %{count} Tage: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst" } },
     "sticky": { "hint": "Scrollt zurück nach oben" },
     "hint": { "longPress": "Tipp: Halte eine Gewohnheit gedrückt (oder tippe auf ⋯), um einen Tag zu überspringen, gestern nachzutragen oder eine Notiz hinzuzufügen.", "longPressA11y": "Tipp: Halte eine Gewohnheit gedrückt oder nutze ihre Taste „Weitere Optionen“, um einen Tag zu überspringen, gestern nachzutragen oder eine Notiz hinzuzufügen." },
@@ -575,7 +577,8 @@
       "generatingWeekly": "Dein Wochenrückblick wird erstellt...",
       "generatingMonthly": "Dein Monatsrückblick wird erstellt...",
       "generated": "Erstellt am %{date}",
-      "failed": "Erstellung fehlgeschlagen. Bitte versuche es erneut.",
+      "unavailable": "Dein Coach kann gerade keinen Rückblick schreiben. Versuch es später noch einmal.",
+      "limitReached": "Die Rückblicke für heute sind aufgebraucht. Morgen gibt es neue.",
       "seePro": "  Groov Pro ansehen",
       "generateWeekly": "Wochenzusammenfassung erstellen",
       "generateMonthly": "Monatszusammenfassung erstellen"

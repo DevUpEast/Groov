@@ -148,6 +148,8 @@
       "empty": "Tap a habit to start your day"
     },
     "coach": "AI Coach",
+    "coachMore": "More",
+    "coachLess": "Less",
     "beats": { "a11y": { "one": "Last %{count} day: %{done} complete, %{rest} rest, %{missed} missed", "other": "Last %{count} days: %{done} complete, %{rest} rest, %{missed} missed" } },
     "sticky": { "hint": "Scrolls back to the top" },
     "hint": { "longPress": "Tip: press and hold a habit (or tap ⋯) to skip a day, fix yesterday or add a note.", "longPressA11y": "Tip: press and hold a habit, or use its More options button, to skip a day, fix yesterday or add a note." },
@@ -575,7 +577,8 @@
       "generatingWeekly": "Generating your weekly reflection...",
       "generatingMonthly": "Generating your monthly reflection...",
       "generated": "Generated %{date}",
-      "failed": "Generation failed. Please try again.",
+      "unavailable": "Your coach can't write a reflection right now. Try again later.",
+      "limitReached": "You've used today's reflections. More tomorrow.",
       "seePro": "  See Groov Pro",
       "generateWeekly": "Generate weekly summary",
       "generateMonthly": "Generate monthly summary"

@@ -20,7 +20,7 @@ import ShareCards from '../components/ShareCards';
 import { useSnackbar, useSnackbarInset } from '../components/ui/Snackbar';
 import StreakNewsCard from '../components/StreakNewsCard';
 import Button from '../components/ui/Button';
-import PressableScale from '../components/ui/PressableScale';
+import PressableScale, { hitSlopFor } from '../components/ui/PressableScale';
 import Dialog from '../components/ui/Dialog';
 import { radius, size, space } from '../theme/tokens';
 import { timing, duration, beat as beats, celebration, snackbar as SNACK } from '../theme/motion';
@@ -59,6 +59,10 @@ const TIME_SECTIONS = ['morning', 'afternoon', 'evening', 'anytime'];
 // Ionicons for the time-of-day group labels (no emoji in section headers).
 const SECTION_ICONS = { morning: 'sunny-outline', afternoon: 'partly-sunny-outline', evening: 'moon-outline', anytime: 'time-outline' };
 const STICKY_H = 48;
+// The AI nudge shows at most 3 lines until "More" (#201); the link's text height.
+const NUDGE_LINES = 3;
+const NUDGE_LINE_H = 20;
+const NUDGE_MORE_H = 18;
 // Sample coach text for the web mockup's `?nudge=1` (review shots only; real nudges come from
 // the generate-nudge edge function).
 const MOCKUP_NUDGE = 'You hit your water goal on 5 of the last 7 days. Try stacking Meditate right after Move this morning: one cue, two habits.';
@@ -126,7 +130,7 @@ export default function TodayScreen() {
     getStreakForHabit, setHint,
     streakNews, dismissStreakNews, takeBackOnBeat,
   } = useApp();
-  useLocale();
+  const { locale } = useLocale();
   const device = useDeviceSettings();
   // C-06a: the check-off timeline (plan §4.1 / §4.2). `choreography` is the device-local dev
   // flag (Settings → Dev tools); off restores the pre-C-06a feedback calls and the per-check
@@ -284,7 +288,17 @@ export default function TodayScreen() {
 
   const [nudgeMessage, setNudgeMessage] = useState(null);
   const [nudgeLoading, setNudgeLoading] = useState(false);
-  const nudgeFetched = useRef(false);
+  const [nudgeExpanded, setNudgeExpanded] = useState(false);
+  const [nudgeClamped, setNudgeClamped] = useState(false);
+  // The UI language the nudge was fetched in (#201): a language change fetches it again.
+  const nudgeFetchedFor = useRef(null);
+  const nudgeRequest = useRef(0);
+  const nudgeHeights = useRef({ clamped: 0, full: 0 });
+  const measureNudge = (which, h) => {
+    nudgeHeights.current[which] = h;
+    const { clamped, full } = nudgeHeights.current;
+    if (clamped > 0 && full > 0) setNudgeClamped(full > clamped + 1);
+  };
 
   // Reset the "already celebrated today" flag whenever the date rolls over
   const today = todayStr();
@@ -319,15 +333,21 @@ export default function TodayScreen() {
   // Fetch daily nudge once when habits are available, but only from day 2 onwards
   // so the coach always works from at least one full day of completed history.
   // Requires an authenticated session — skip silently if not logged in.
+  // Any failure (quota, an empty reply, offline) just means no card: never an error card.
   useEffect(() => {
-    if (!user || habits.length === 0 || nudgeFetched.current || !canShowNudge) return;
-    nudgeFetched.current = true;
+    if (!user || habits.length === 0 || nudgeFetchedFor.current === locale || !canShowNudge) return;
+    nudgeFetchedFor.current = locale;
+    // Only the latest request (the current language) may set the card.
+    const req = ++nudgeRequest.current;
+    const latest = () => nudgeRequest.current === req;
+    setNudgeMessage(null);
+    setNudgeExpanded(false);
     setNudgeLoading(true);
     fetchDailyNudge(accountCreatedAt, displayName, coachToday)
-      .then((data) => { if (data?.message) setNudgeMessage(data.message); })
+      .then((data) => { if (latest()) setNudgeMessage(typeof data?.message === 'string' && data.message.trim() ? data.message : null); })
       .catch(() => {})
-      .finally(() => setNudgeLoading(false));
-  }, [user, habits.length, canShowNudge]); // eslint-disable-line react-hooks/exhaustive-deps
+      .finally(() => { if (latest()) setNudgeLoading(false); });
+  },[user, habits.length, canShowNudge, locale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The smart evening check-in is scheduled from AppContext (real date, not the dev offset).
   const allDone = isAllDone();
@@ -450,7 +470,41 @@ export default function TodayScreen() {
         {nudgeLoading && !shownNudge ? (
           <ActivityIndicator size="small" color={theme.link} style={{ marginTop: space.xxs }} />
         ) : (
-          <Text style={[styles.nudgeText, { color: theme.text }]}>{shownNudge}</Text>
+          <View>
+            {/* #201: clamped to 3 lines so the first cards stay above the fold; "More" opens it. */}
+            <Text
+              style={[styles.nudgeText, { color: theme.text }]}
+              numberOfLines={nudgeExpanded ? undefined : NUDGE_LINES}
+              onLayout={(e) => { if (!nudgeExpanded) measureNudge('clamped', e.nativeEvent.layout.height); }}
+            >
+              {shownNudge}
+            </Text>
+            {/* An invisible full copy decides whether the clamp hides anything (any font scale). */}
+            <Text
+              style={[styles.nudgeText, styles.nudgeMeasure]}
+              onLayout={(e) => measureNudge('full', e.nativeEvent.layout.height)}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              aria-hidden
+            >
+              {shownNudge}
+            </Text>
+            {nudgeClamped ? (
+              <PressableScale
+                onPress={() => setNudgeExpanded((v) => !v)}
+                ripple={false}
+                hitSlop={hitSlopFor(space.xxl, NUDGE_MORE_H)}
+                accessibilityRole="button"
+                accessibilityLabel={nudgeExpanded ? t('today.coachLess') : t('today.coachMore')}
+                accessibilityState={{ expanded: nudgeExpanded }}
+                style={styles.nudgeMore}
+              >
+                <Text style={[typeScale.footnoteStrong, { color: theme.link }]}>
+                  {nudgeExpanded ? t('today.coachLess') : t('today.coachMore')}
+                </Text>
+              </PressableScale>
+            ) : null}
+          </View>
         )}
       </View>
     </View>
@@ -1142,7 +1196,9 @@ const styles = StyleSheet.create({
   hintText: { ...typeScale.footnote, flex: 1 },
   hintBtn: { paddingHorizontal: space.sm },
   nudgeLabel: { marginBottom: space.xxs },
-  nudgeText: { fontSize: 13, lineHeight: 20 },
+  nudgeText: { fontSize: 13, lineHeight: NUDGE_LINE_H },
+  nudgeMeasure: { position: 'absolute', top: 0, left: 0, right: 0, opacity: 0 },
+  nudgeMore: { alignSelf: 'flex-start', marginTop: space.xxs },
   empty: {
     borderWidth: 2, borderStyle: 'dashed', borderRadius: radius.card,
     padding: 36, alignItems: 'center', marginTop: space.lg,
