@@ -16,6 +16,7 @@ import { t, useLocale, getLocale } from '../i18n';
 import { resolveAccent } from '../theme/accents';
 import { type, numeric } from '../theme/typography';
 import { space, radius, size } from '../theme/tokens';
+import { FLAGS } from '../utils/flags';
 
 // The sub-line parts joined with " · ", first letter capitalised for the locale: the streak
 // strings are lower case so they read naturally after "Done ·" (G-01: "Día completo · racha
@@ -27,7 +28,23 @@ export function joinSubLine(parts, locale) {
   return first.toLocaleUpperCase(locale) + line.slice(first.length);
 }
 
-export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkipToggle }) {
+// What a tap on the card body does (C-02b, BTN-6):
+//   daily / quit -> 'toggle' (done / not done)
+//   counter (volume, timed, at most) -> 'detail' (opens the habit's detail sheet) when
+//     FLAGS.counterBodyOpensDetail is on and the screen can show one, else 'increment' (+step).
+export function bodyPressAction(habit, { opensDetail = FLAGS.counterBodyOpensDetail, canOpenDetail = false } = {}) {
+  if (!usesCounter(habit)) return 'toggle';
+  return opensDetail && canOpenDetail ? 'detail' : 'increment';
+}
+
+// The finished counter collapses to one pill (C-02b, CHK-7): volume and timed habits at goal,
+// unless a timer is still running (its stop button must stay reachable). "At most" habits are
+// "done" from 0, so they keep their − / + controls.
+export function showsDonePill(habit, { done, timerRunning = false } = {}) {
+  return usesCounter(habit) && habit.type !== 'atMost' && !!done && !timerRunning;
+}
+
+export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkipToggle, onOpenDetail }) {
   const {
     getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, themeName, todayStr,
     isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, getNote,
@@ -103,16 +120,25 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   const handleLongPress = () => setMenuOpen(true);
   // The counter and timer buttons are part of the card: a long hold on them opens the same menu.
   const holdForOptions = { onLongPress: handleLongPress, delayLongPress: LONG_PRESS_MS };
+  const removeAmount = Math.min(step, count);
   const menuOptions = [
     { label: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip'), onPress: () => { toggleSkipHabitOn(habit.id, today); onSkipToggle?.(habit); } },
     { label: yesterdayDone ? t('habitCard.longPress.undoYesterday') : t('habitCard.longPress.markYesterday'), onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
+    // The − is hidden once a counter reaches its goal (the done pill), so the decrement lives
+    // here too (C-02b acceptance d; C-03 keeps this option).
+    // The label says what is removed: a step, or what is left when that is less (count floors
+    // at 0, code review m3).
+    ...(isVolume && count > 0 ? [{ label: removeAmount > 1 ? t('habitCard.longPress.minusMany', { count: removeAmount }) : t('habitCard.longPress.minusOne'), onPress: () => onDecrement(removeAmount) }] : []),
     ...(onNote ? [{ label: note ? t('habitCard.longPress.editNote') : t('habitCard.longPress.addNote'), onPress: () => onNote(habit, today) }] : []),
   ];
 
-  // Tapping anywhere on the card:
-  //   daily  → toggle done/undone
-  //   volume → add 1 (ignored when already maxed)
-  const handleCardPress = isLimit
+  // Tapping anywhere on the card: see bodyPressAction.
+  const bodyAction = bodyPressAction(habit, { canOpenDetail: !!onOpenDetail });
+  const opensDetail = bodyAction === 'detail';
+  const donePill = showsDonePill(habit, { done, timerRunning: !!timerStart });
+  const handleCardPress = opensDetail
+    ? () => onOpenDetail(habit)
+    : isLimit
     ? () => { onIncrement(step); announce(t('habitCard.announce.countMax', { name: habit.name, count: count + step, goal: habit.volumeGoal })); }
     : isVolume
       ? () => { onIncrement(step); announce(t('habitCard.announce.count', { name: habit.name, count: count + step, goal: habit.volumeGoal })); }
@@ -141,7 +167,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         accessibilityRole={isVolume ? 'button' : 'checkbox'}
         accessibilityState={isVolume ? undefined : { checked: done }}
         accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
-        accessibilityHint={t('habitCard.a11y.hint')}
+        accessibilityHint={opensDetail ? t('habitCard.a11y.openDetail') : t('habitCard.a11y.hint')}
       >
         {/* The icon sits in a neutral 40 px well; the accent lives only in the check (CHK-4/5). */}
         <View style={[styles.well, { backgroundColor: theme.well }]}>
@@ -159,21 +185,29 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           <Text style={[styles.sub, { color: theme.textSecondary }]} numberOfLines={isVolume ? 2 : 1}>{subLine}</Text>
         </View>
 
-        {isVolume ? (
+        {donePill ? (
+          /* Done counter (C-02b, D-00): the − / + / ▶ collapse to one filled accent pill
+             "8 ✓". 36 tall like the buttons it replaces, so reaching the goal never changes
+             the card height; it ends 12 from the edge like the check disc. A tap adds a step
+             (counts may exceed the goal); a long hold opens the options (with "−1"). */
+          <PressableScale
+            testID="habit-done-pill"
+            style={[styles.pill, { backgroundColor: accent.fill }]}
+            onPress={() => {
+              onIncrement(step);
+              announce(t('habitCard.announce.count', { name: habit.name, count: count + step, goal: habit.volumeGoal }));
+            }}
+            {...holdForOptions}
+            hitSlop={hitSlopFor(PILL_MIN_W, COUNTER_BTN)}
+            accessibilityRole="button"
+            accessibilityLabel={t('habitCard.doneCount', { name: habit.name, count, goal: habit.volumeGoal })}
+            accessibilityHint={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
+          >
+            <Text style={[styles.pillNum, { color: accent.onFill }]} numberOfLines={1}>{count}</Text>
+            <CheckMark color={accent.onFill} size={16} />
+          </PressableScale>
+        ) : isVolume ? (
           <View style={styles.counter}>
-            {/* − is the only way to subtract for volume habits */}
-            {isTimed && (
-              <IconButton
-                size={COUNTER_BTN}
-                icon={timerStart ? 'stop' : 'play'}
-                iconSize={16}
-                color={timerStart ? theme.onDanger : accent.fill}
-                style={[styles.counterBtn, { borderColor: timerStart ? theme.dangerFill : accent.ring, backgroundColor: timerStart ? theme.dangerFill : 'transparent' }]}
-                onPress={toggleTimer}
-                {...holdForOptions}
-                accessibilityLabel={timerStart ? t('habitCard.a11y.stopTimer') : t('habitCard.a11y.startTimer')}
-              />
-            )}
             {/* At 0 the − is disabled: IconButton's disabled variant (a disabledContainer hairline
                 and an onDisabled glyph, lighter than the +), still focusable; a tap plays
                 `refused`, a long hold opens the options. */}
@@ -189,19 +223,34 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.removeMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.removeOne', { unit: unitLabel(habit) })).trim()}
             />
 
-            {/* The count is text (4.5:1): it stays `text` on the done tint; the filled + carries done. */}
+            {/* The count is text (4.5:1). */}
             <Text style={[styles.counterNum, { color: overLimit ? theme.dangerText : theme.text }]} numberOfLines={1}>{count}</Text>
 
-            <IconButton
-              size={COUNTER_BTN}
-              icon="add"
-              iconSize={20}
-              color={done && !isLimit ? accent.onFill : isLimit ? theme.textSecondary : accent.fill}
-              style={[styles.counterBtn, done && !isLimit ? { borderColor: accent.fill, backgroundColor: accent.fill } : { borderColor: isLimit ? theme.controlBorder : accent.ring, backgroundColor: 'transparent' }]}
-              onPress={() => onIncrement(step)}
-              {...holdForOptions}
-              accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
-            />
+            {/* A timed habit's ▶ / ■ takes the + slot until it is done (CHK-7: one primary
+                control per card); its minutes come from the timer, the detail sheet or the pill. */}
+            {isTimed ? (
+              <IconButton
+                size={COUNTER_BTN}
+                icon={timerStart ? 'stop' : 'play'}
+                iconSize={16}
+                color={timerStart ? theme.onDanger : accent.fill}
+                style={[styles.counterBtn, { borderColor: timerStart ? theme.dangerFill : accent.ring, backgroundColor: timerStart ? theme.dangerFill : 'transparent' }]}
+                onPress={toggleTimer}
+                {...holdForOptions}
+                accessibilityLabel={timerStart ? t('habitCard.a11y.stopTimer') : t('habitCard.a11y.startTimer')}
+              />
+            ) : (
+              <IconButton
+                size={COUNTER_BTN}
+                icon="add"
+                iconSize={20}
+                color={isLimit ? theme.textSecondary : accent.fill}
+                style={[styles.counterBtn, { borderColor: isLimit ? theme.controlBorder : accent.ring, backgroundColor: 'transparent' }]}
+                onPress={() => onIncrement(step)}
+                {...holdForOptions}
+                accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
+              />
+            )}
           </View>
         ) : (
           /* Daily and quit: a visual-only check in the fixed 48 dp trailing slot; the whole card
@@ -237,6 +286,9 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
 const COUNTER_BTN = 36;
 const LONG_PRESS_MS = 350;
 const COUNTER_GAP = 2 * hitSlopFor(COUNTER_BTN).left;
+// The done pill: 36 tall like the counter buttons (the card height is unchanged at goal) and
+// at least 48 wide, so its own width already meets the touch minimum.
+const PILL_MIN_W = 48;
 
 // Anatomy (D-00 frame): 16 | 40 well | 12 | info | 48 trailing slot | 4. The well, the info
 // column and the slot keep the same x on every card; the 32 check is centred in the slot (12
@@ -274,4 +326,13 @@ const styles = StyleSheet.create({
   counter: { flexDirection: 'row', alignItems: 'center', gap: COUNTER_GAP, marginRight: space.xs },
   counterBtn: { borderWidth: 1.5 },
   counterNum: { ...type.numericSmall, minWidth: 20, textAlign: 'center' },
+  // Ends 12 from the card edge, like the counter cluster and the check disc.
+  pill: {
+    height: COUNTER_BTN, minWidth: PILL_MIN_W, borderRadius: radius.pill, paddingHorizontal: space.sm,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xxs,
+    marginRight: space.xs, overflow: 'hidden',
+  },
+  // 19 bold is WCAG large text (>= 18.66 px bold), so the 3:1 accent fill / onFill pair holds
+  // for the digits too (light sky is 4.10:1, under the 4.5 a 16 px count would need).
+  pillNum: { ...type.numericSmall, fontSize: 19, lineHeight: 22, fontWeight: '700' },
 });

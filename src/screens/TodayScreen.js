@@ -18,6 +18,8 @@ import Button from '../components/ui/Button';
 import PressableScale from '../components/ui/PressableScale';
 import { radius } from '../theme/tokens';
 import NoteModal from '../components/NoteModal';
+import HabitDetailSheet from '../components/HabitDetailSheet';
+import { routeLeavesTab } from '../utils/links';
 import MoodCheckIn from '../components/MoodCheckIn';
 import { isGoalMet, usesCounter, countAfterIncrement, markRestLeavesOutCounters } from '../utils/habits';
 import feedback, { EVENTS } from '../services/feedback';
@@ -75,7 +77,7 @@ export default function TodayScreen() {
     completeChallengeImmediately, markRestDone, planMarkRest, restoreHabitCounts,
     isHabitSatisfiedWith, getTodayCompletions,
     pendingChallengeRewards, clearPendingChallengeRewards,
-    setRequestedTab, getNote, setNote,
+    setRequestedTab, getNote, setNote, setModalOpen, openRoute, pendingRoute,
     pendingMilestone, clearPendingMilestone,
     moods, setMood,
   } = useApp();
@@ -96,6 +98,23 @@ export default function TodayScreen() {
 
   const [toast, setToast] = useState(null);
   const [noteTarget, setNoteTarget] = useState(null);
+  // C-02b (BTN-6): a counter's body tap opens its detail sheet here, over Today, from local
+  // state: no pending route and no tab jump. Only the habit id is kept, so the sheet always
+  // shows the live habit.
+  const [detailHabitId, setDetailHabitId] = useState(null);
+  const detailHabit = detailHabitId ? habits.find(h => h.id === detailHabitId) || null : null;
+  const openDetail = useCallback((habit) => setDetailHabitId(habit.id), []);
+  const closeDetail = useCallback(() => setDetailHabitId(null), []);
+  // Edit lives in the Habits form: the sheet has closed (F-05 completion callback), then the
+  // same route a deep link uses switches tab and opens the form.
+  const editFromDetail = useCallback((habit) => openRoute({ tab: 3, habitId: habit.id, action: 'edit' }), [openRoute]);
+  // Lock the pager swipe while the sheet is up, like the Habits screen does.
+  useEffect(() => { setModalOpen(!!detailHabitId); }, [detailHabitId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The habit vanished while its sheet was open (deleted elsewhere and pulled in, archived):
+  // the sheet has unmounted, so clear its id and release the swipe lock (code review m1).
+  useEffect(() => { if (detailHabitId && !detailHabit) setDetailHabitId(null); }, [detailHabitId, detailHabit]);
+  // A deep link to another tab drops the sheet so it does not cover the target.
+  useEffect(() => { if (routeLeavesTab(pendingRoute, 0)) setDetailHabitId(null); }, [pendingRoute]);
 
   const openNote = useCallback((habit, key) => {
     setNoteTarget({
@@ -326,6 +345,16 @@ export default function TodayScreen() {
     }
   }, [decrementHabit, effectiveChallenges, challenges, dueHabits, getHabitCount, unmarkChallengeDay, todayStr, cancelQueuedFor]);
 
+  // Today's cell in the detail sheet (code review M1): set today's count through the same
+  // handlers as a card, so challenge claims / un-claims, the Mark-the-rest queue, the toast,
+  // celebrations and feedback all run. "Set 20 (done)" on a timed habit is the manual way to
+  // log a session done away from the in-app timer.
+  const setTodayFromSheet = useCallback((habit, target) => {
+    const delta = target - getHabitCount(habit.id);
+    if (delta > 0) handleIncrement(habit, delta);
+    else if (delta < 0) handleDecrement(habit, -delta);
+  }, [getHabitCount, handleIncrement, handleDecrement]);
+
   // Skipping (or un-skipping) a linked habit inside the window cancels the queued
   // completion and un-marks that challenge's day.
   const handleSkipToggle = useCallback((habit) => {
@@ -487,6 +516,7 @@ export default function TodayScreen() {
                       onDecrement={(a) => handleDecrement(habit, a)}
                       onNote={openNote}
                       onSkipToggle={handleSkipToggle}
+                      onOpenDetail={openDetail}
                     />
                   ))}
                 </View>
@@ -498,6 +528,7 @@ export default function TodayScreen() {
                   onDecrement={(a) => handleDecrement(habit, a)}
                   onNote={openNote}
                   onSkipToggle={handleSkipToggle}
+                  onOpenDetail={openDetail}
                 />
               ))}
               {markRestCount > 0 && (
@@ -574,6 +605,8 @@ export default function TodayScreen() {
           const h = tst?.habit; const a = tst?.amount || 1; setToast(null); if (h) handleDecrement(h, a, { undo: true });
         }}
       />
+
+      <HabitDetailSheet habit={detailHabit} onClose={closeDetail} onEdit={editFromDetail} onSetToday={setTodayFromSheet} />
 
       <NoteModal
         target={noteTarget}

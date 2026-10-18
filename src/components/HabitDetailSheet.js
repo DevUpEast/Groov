@@ -34,7 +34,11 @@ function pct(n, d) {
 
 // Per-habit insight sheet: contribution grid (tap a past day to toggle it),
 // completion rate, current/best streak and a weekday breakdown.
-export default function HabitDetailSheet({ habit, onClose, onEdit }) {
+// `onSetToday(habit, count)`: the host's check-off pipeline for today's cell (C-02b review
+// M1). Today passes its handlers, so a set / clear from here claims and un-claims challenge
+// days, cancels queued Mark-the-rest completions, celebrates and plays feedback exactly like
+// a card check-off. Without it (the Habits tab) today's cell only says where to log it.
+export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday }) {
   const {
     theme, todayStr, completions, isHabitDoneOn, getStreakForHabit,
     isExcused, toggleHabitDoneOn, setHabitCountOn, accountCreatedAt, isHabitSkippedOn,
@@ -141,24 +145,40 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
     return MISSED_COLOR;
   };
 
+  const dateLabel = (key) => parseDateKey(key).toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
+  const isCounter = (habit.type === 'volume' || habit.type === 'timed' || habit.type === 'atMost') && habit.volumeGoal >= 1;
   const onCellPress = (d) => {
     if (d.future || d.before) return;
-    if ((habit.type === 'volume' || habit.type === 'timed' || habit.type === 'atMost') && habit.volumeGoal >= 1) {
+    const isToday = d.key === today;
+    if (isToday && !onSetToday) {
+      // No check-off pipeline here (Habits tab): today is logged on Today, where the claim,
+      // undo and celebration logic lives. A pressable that explains, rather than a silent cell.
+      Alert.alert(dateLabel(d.key), t('habitDetail.todayOnToday'), [{ text: t('common.close') }]);
+      return;
+    }
+    // Today goes through the host's handlers; past days are history edits.
+    const apply = isToday ? (value) => onSetToday(habit, value) : (value) => setHabitCountOn(habit.id, d.key, value);
+    if (isCounter) {
       // Counter habits: offer the meaningful values rather than a blind toggle.
       const isLimit = habit.type === 'atMost';
       Alert.alert(
-        parseDateKey(d.key).toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric' }),
+        dateLabel(d.key),
         isLimit
           ? t('habitDetail.fix.bodyMax', { name: habit.name, count: d.count, goal: habit.volumeGoal })
           : t('habitDetail.fix.body', { name: habit.name, count: d.count, goal: habit.volumeGoal }),
         [
-          { text: t('habitDetail.fix.clear'), onPress: () => setHabitCountOn(habit.id, d.key, 0) },
+          { text: t('habitDetail.fix.clear'), onPress: () => apply(0) },
           isLimit
-            ? { text: t('habitDetail.fix.setOver', { value: habit.volumeGoal + 1 }), onPress: () => setHabitCountOn(habit.id, d.key, habit.volumeGoal + 1) }
-            : { text: t('habitDetail.fix.setDone', { value: habit.volumeGoal }), onPress: () => setHabitCountOn(habit.id, d.key, habit.volumeGoal) },
+            ? { text: t('habitDetail.fix.setOver', { value: habit.volumeGoal + 1 }), onPress: () => apply(habit.volumeGoal + 1) }
+            : { text: t('habitDetail.fix.setDone', { value: habit.volumeGoal }), onPress: () => apply(habit.volumeGoal) },
           { text: t('common.cancel'), style: 'cancel' },
         ],
       );
+      return;
+    }
+    if (isToday) {
+      // Daily / quit today: the host's toggle plays the check-off feedback itself.
+      apply(isHabitDoneOn(habit, d.key) ? 0 : 1);
       return;
     }
     // History editing is not the check-off moment: haptic only, no chime.
