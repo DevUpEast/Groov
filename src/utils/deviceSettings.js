@@ -14,7 +14,9 @@ import { loadData, saveData } from './storage';
 //   one account, so clearUserScopedDeviceSettings() drops it on an account switch.
 // - `appOpens` (C-03): how many times this install has been opened (each AppProvider load,
 //   plus a return after 30 min in the background; src/utils/hints.js). One-time tips use it
-//   to wait for the 2nd open. It describes the device, so it survives an account switch.
+//   to wait for the 2nd open. It describes the device, so it survives an account switch and
+//   Reset; the seen flags are per account (settings.extras), so after a Reset or for a second
+//   account on this device a tip shows at once.
 // Unknown keys (written by a newer app version) are kept on every write.
 
 export const DEVICE_SETTINGS_KEY = 'deviceSettings';

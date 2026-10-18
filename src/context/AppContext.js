@@ -272,6 +272,10 @@ export function AppProvider({ children }) {
       loadDeviceSettings(),
     ]);
 
+    // C-03: this load is one app open (device-local; one-time tips start on the 2nd open).
+    // Written (the emit is synchronous) before any state below lets Today render, so on the
+    // 2nd open the tip is there in Today's first frame instead of pushing the cards down.
+    setDeviceSettings({ appOpens: nextAppOpens(device?.appOpens) });
     if (h) setHabits(migrateHabits(h, c || {}));
     if (c) updateCompletions(c);
     if (n) setNotes(n);
@@ -308,8 +312,6 @@ export function AppProvider({ children }) {
     // an undefined flag. An existing install (stored settings) keeps the badge on.
     const badgePatch = migrateBadgeFlag(device, s !== null);
     if (badgePatch) await setDeviceSettings(badgePatch);
-    // C-03: this load is one app open (device-local; one-time tips start on the 2nd open).
-    await setDeviceSettings({ appOpens: nextAppOpens(device?.appOpens) });
     setLoaded(true);
   }
 

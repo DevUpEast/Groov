@@ -136,6 +136,21 @@ describe('ActionSheet (C-03): haptic and afterClose', () => {
     act(() => { r.root.findAll(n => n.type === Sheet)[0].props.onDismiss(); });
     expect(options[3].onPress).toHaveBeenCalledTimes(1);
   });
+
+  it('a reopen before the exit finishes drops the pending afterClose option', () => {
+    const options = [...makeOptions(), { label: 'Habit details', onPress: jest.fn(), afterClose: true }];
+    const props = { title: 'T', options, onCancel: jest.fn() };
+    const r = render({ ...props, visible: true });
+    act(() => { buttons(r).find(b => b.props.accessibilityLabel === 'Habit details').props.onPress(); });
+    act(() => { r.update(React.createElement(ActionSheet, { ...props, visible: false })); });
+    // Reopened mid-exit: the Sheet springs back and never dismisses.
+    act(() => { r.update(React.createElement(ActionSheet, { ...props, visible: true })); });
+    // The next close is a Cancel; its dismiss must not run the earlier pick.
+    act(() => { buttons(r).find(b => b.props.accessibilityLabel === 'Cancel').props.onPress(); });
+    act(() => { r.update(React.createElement(ActionSheet, { ...props, visible: false })); });
+    act(() => { r.root.findAll(n => n.type === Sheet)[0].props.onDismiss(); });
+    expect(options[3].onPress).not.toHaveBeenCalled();
+  });
 });
 
 describe('ActionSheet (iOS)', () => {

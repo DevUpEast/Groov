@@ -24,6 +24,7 @@ function toneColor(theme, tone) {
  * - `accessibilityLabel` is **required** (a jest source check fails on an `<IconButton`
  *   without one); `accessibilityRole` is `button`.
  * - `size` is the visual diameter (default 40). `hitSlop` grows it to the touch minimum
+ *   (a caller may pass its own `hitSlop`, e.g. to move slop from one side to another)
  *   (48 dp Android, 44 pt iOS): `max(0, (touchMin - size) / 2)` per side.
  * - Android: a borderless ripple the size of the touch target.
  * - `disabled`: it stays focusable, announces disabled, and a tap calls `onDisabledPress` or
@@ -56,6 +57,7 @@ export default function IconButton({
   theme: themeProp,
   testID,
   children,
+  hitSlop,
 }) {
   const theme = useUiTheme(themeProp);
   if (__DEV__ && !accessibilityLabel) console.warn(`[IconButton] "${icon}" needs an accessibilityLabel`);
@@ -73,7 +75,7 @@ export default function IconButton({
       onDisabledLongPress={onDisabledLongPress}
       disabled={disabled}
       onDisabledPress={handleDisabled}
-      hitSlop={hitSlopFor(size)}
+      hitSlop={hitSlop || hitSlopFor(size)}
       ripple="borderless"
       rippleRadius={Math.max(size, touchMinimum()) / 2}
       accessibilityRole="button"

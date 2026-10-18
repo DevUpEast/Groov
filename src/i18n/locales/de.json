@@ -389,7 +389,11 @@
       "count": "%{name}, %{count} von %{goal}",
       "unchecked": "%{name} zurückgesetzt",
       "avoided": "%{name} heute vermieden",
-      "done": "%{name} erledigt"
+      "done": "%{name} erledigt",
+      "skipped": "%{name} heute übersprungen",
+      "unskipped": "%{name} heute nicht mehr übersprungen",
+      "yesterdayDone": "%{name} gestern als erledigt markiert",
+      "yesterdayUndone": "%{name} für gestern zurückgesetzt"
     },
     "a11y": {
       "count": ", %{count} von %{goal}",

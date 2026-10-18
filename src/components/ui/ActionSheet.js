@@ -52,6 +52,9 @@ export default function ActionSheet({ visible, title, message, options = [], onC
   useEffect(() => {
     if (!visible) return;
     fired.current = false;
+    // A reopen during the exit (Sheet springs back, no dismiss) drops an afterClose option
+    // picked before it, so it can never run on a later Cancel.
+    pending.current = null;
     if (haptic) feedback.play(EVENTS.longPress);
     if (!native) return;
     const opts = latest.current.options;

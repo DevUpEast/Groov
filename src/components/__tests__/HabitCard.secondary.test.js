@@ -40,6 +40,7 @@ jest.mock('../ui/CheckMark', () => (props) => require('react').createElement('Ch
 jest.mock('@expo/vector-icons', () => ({ Ionicons: (props) => require('react').createElement('Ionicons', props) }));
 
 const HabitCard = require('../HabitCard').default;
+const { announce } = require('../../utils/a11y');
 const { secondaryActions } = require('../HabitCard');
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -75,8 +76,12 @@ it('every card has a "⋯" named "More options for <habit>", 32 visual, slop to 
     expect(b.props.accessibilityLabel).toBe(`More options for ${h.name}`);
     expect(b.props.accessibilityRole).toBe('button');
     expect(flat(b)).toMatchObject({ width: 32, height: 32 });
-    // 44 pt here (the jest platform is iOS); 48 dp on Android.
-    expect(b.props.hitSlop.left * 2 + 32).toBeGreaterThanOrEqual(44);
+    // 44 pt here (the jest platform is iOS); 48 dp on Android. Only 4 of the vertical slop is
+    // above, so it does not cover the end of a truncated name (review m2).
+    const { left, right, top, bottom } = b.props.hitSlop;
+    expect(left + right + 32).toBeGreaterThanOrEqual(44);
+    expect(top).toBe(4);
+    expect(top + bottom + 32).toBeGreaterThanOrEqual(44);
   }
 });
 
@@ -132,11 +137,14 @@ it('screen readers get every option as a custom action, plus the long press', ()
     { name: 'longpress', label: 'More options' },
   ]);
   const run = (actionName) => act(() => { card.props.onAccessibilityAction({ nativeEvent: { actionName } }); });
+  announce.mockClear();
   run('skip');
   expect(mockToggleSkip).toHaveBeenCalledWith('h2', '2026-10-17');
   expect(onSkipToggle).toHaveBeenCalledWith(counter);
+  expect(announce).toHaveBeenLastCalledWith('Water skipped today');
   run('yesterday');
   expect(mockToggleDoneOn).toHaveBeenCalledWith('h2', '2026-10-16');
+  expect(announce).toHaveBeenLastCalledWith('Water marked done yesterday');
   run('note');
   expect(onNote).toHaveBeenCalledWith(counter, '2026-10-17');
   run('minus');

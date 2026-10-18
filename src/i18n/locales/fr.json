@@ -389,7 +389,11 @@
       "count": "%{name}, %{count} sur %{goal}",
       "unchecked": "%{name} décochée",
       "avoided": "%{name} évitée aujourd'hui",
-      "done": "%{name} faite"
+      "done": "%{name} faite",
+      "skipped": "%{name} sautée aujourd'hui",
+      "unskipped": "%{name} n'est plus sautée aujourd'hui",
+      "yesterdayDone": "%{name} marquée comme faite hier",
+      "yesterdayUndone": "%{name} décochée pour hier"
     },
     "a11y": {
       "count": ", %{count} sur %{goal}",

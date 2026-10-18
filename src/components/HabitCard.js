@@ -241,8 +241,16 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   }));
   const runAction = (key) => {
     switch (key) {
-      case 'skip': toggleSkipHabitOn(habit.id, today); onSkipToggle?.(habit); break;
-      case 'yesterday': toggleHabitDoneOn(habit.id, yesterday); break;
+      // Skip and yesterday give a screen-reader user no other confirmation (yesterday is not on
+      // the card, and a custom action closes no sheet), so say what happened (code review n7).
+      case 'skip':
+        toggleSkipHabitOn(habit.id, today); onSkipToggle?.(habit);
+        announce(t(skipped ? 'habitCard.announce.unskipped' : 'habitCard.announce.skipped', { name: habit.name }));
+        break;
+      case 'yesterday':
+        toggleHabitDoneOn(habit.id, yesterday);
+        announce(t(yesterdayDone ? 'habitCard.announce.yesterdayUndone' : 'habitCard.announce.yesterdayDone', { name: habit.name }));
+        break;
       case 'note': onNote?.(habit, today); break;
       case 'minus': onDecrement(removeAmount); sayCount(count - removeAmount); break;
       case 'details': onOpenDetail?.(habit); break;
@@ -334,6 +342,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
               icon="ellipsis-horizontal"
               iconSize={18}
               style={styles.more}
+              hitSlop={moreSlop()}
               onPress={() => openMenu('tap')}
               accessibilityLabel={t('habitCard.more', { name: habit.name })}
             />
@@ -460,6 +469,15 @@ const LONG_PRESS_MS = 350;
 // vertical margin keeps the sub-line row at the text's height, so the card height (72 min)
 // does not change; the slop still reaches 24 above and below its centre.
 const MORE_BTN = 32;
+// Its slop is asymmetric (code review m2): only 4 above, so it does not cover the end of a
+// long, truncated name on the row above (a tap there checks the card off); the rest goes
+// below, so the target is still the touch minimum tall.
+const MORE_SLOP_TOP = 4;
+function moreSlop() {
+  const s = hitSlopFor(MORE_BTN);
+  const top = Math.min(s.top, MORE_SLOP_TOP);
+  return { ...s, top, bottom: s.bottom + (s.top - top) };
+}
 const COUNTER_GAP = 2 * hitSlopFor(COUNTER_BTN).left;
 // The done pill: 36 tall like the counter buttons (the card height is unchanged at goal) and
 // at least 48 wide, so its own width already meets the touch minimum.

@@ -389,7 +389,11 @@
       "count": "%{name}, %{count} de %{goal}",
       "unchecked": "%{name} desmarcado",
       "avoided": "%{name} evitado hoje",
-      "done": "%{name} concluído"
+      "done": "%{name} concluído",
+      "skipped": "%{name} pulado hoje",
+      "unskipped": "%{name} não está mais pulado hoje",
+      "yesterdayDone": "%{name} marcado como feito ontem",
+      "yesterdayUndone": "%{name} desmarcado ontem"
     },
     "a11y": {
       "count": ", %{count} de %{goal}",

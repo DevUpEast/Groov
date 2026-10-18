@@ -389,7 +389,11 @@
       "count": "%{name}、%{goal}のうち%{count}",
       "unchecked": "%{name}のチェックを外しました",
       "avoided": "%{name}、今日は我慢できました",
-      "done": "%{name}を完了しました"
+      "done": "%{name}を完了しました",
+      "skipped": "%{name}を今日はスキップしました",
+      "unskipped": "%{name}の今日のスキップを解除しました",
+      "yesterdayDone": "%{name}を昨日完了にしました",
+      "yesterdayUndone": "%{name}の昨日のチェックを外しました"
     },
     "a11y": {
       "count": "、%{goal}のうち%{count}",
