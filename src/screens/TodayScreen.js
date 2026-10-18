@@ -44,7 +44,8 @@ import { mockupParams } from '../utils/mockup';
 import { announce } from '../utils/a11y';
 import useCheckoffMoment from '../hooks/useCheckoffMoment';
 import { KINDS as BEAT, ladderIndex, MOMENT_MS } from '../utils/beats';
-import { findBeat } from '../utils/beatBus';
+import { useTabActive } from '../utils/tabScope';
+import useCelebrationQueue from '../hooks/useCelebrationQueue';
 import { useDevFlag } from '../utils/devFlags';
 
 // Today list sections. Habits without a time of day go under "Anytime", which is
@@ -181,37 +182,21 @@ export default function TodayScreen() {
     if (frameLogOn()) logMark('commit', at);
   });
   const [fullCelebration, setFullCelebration] = useState(false);
-  const [trophyCelebrating, setTrophyCelebrating] = useState(false);
-  // The trophy opens on the beat grid (C-07): at the downbeat (+500) after a single check-off
-  // that completed a challenge, or once the day-complete moment has played (+1500) when the
-  // same check also completed the day; +125 with the choreography flag off.
-  const trophyTimer = useRef(null);
-  const openTrophyAt = useCallback((tapAt, at) => {
-    clearTimeout(trophyTimer.current);
-    trophyTimer.current = setTimeout(() => setTrophyCelebrating(true), Math.max(0, tapAt + at - Date.now()));
-  }, []);
-  useEffect(() => () => clearTimeout(trophyTimer.current), []);
-  // A streak milestone (set by AppContext once the day is complete) waits for the end of the
-  // check-off moment (resolution + burst: +1500), and for the trophy to close when one is up
-  // (the close-callback chain); outside a moment (the flag off, a pull) a beat after the
-  // credit would have landed (+875).
-  const afterTrophy = useRef(false);
+  // The trophy and the streak milestone, in order on the beat grid (C-07; useCelebrationQueue):
+  // the trophy at +500 (+1500 when the check also completed the day, +125 with the flag off),
+  // the milestone at the end of the moment, after the trophy, and only while Today is shown.
   const milestoneRing = useRef('ring');
-  useEffect(() => {
-    if (!pendingMilestone || trophyCelebrating) return undefined;
-    const hit = findBeat({ beat: 'resolution' });
-    const wait = hit ? Math.max(0, hit.item.tapAt + MOMENT_MS - Date.now()) : (afterTrophy.current ? 0 : beats.b4b8b16);
-    afterTrophy.current = false;
-    const timer = setTimeout(() => {
-      // The milestone circle grows from the ring that is showing (the sticky one when scrolled).
-      milestoneRing.current = stuckRef.current ? 'ringSticky' : 'ring';
-      setMilestoneShown(pendingMilestone);
-      setFullCelebration(true);
-      feedback.play(EVENTS.milestone);
-      clearPendingMilestone();
-    }, wait);
-    return () => clearTimeout(timer);
-  }, [pendingMilestone, trophyCelebrating]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tabActive = useTabActive();
+  const showMilestone = useCallback((milestone) => {
+    // The milestone circle grows from the ring that is showing (the sticky one when scrolled).
+    milestoneRing.current = stuckRef.current ? 'ringSticky' : 'ring';
+    setMilestoneShown(milestone);
+    setFullCelebration(true);
+    feedback.play(EVENTS.milestone);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const { trophyCelebrating, setTrophyCelebrating, openTrophyAt, trophyDone } = useCelebrationQueue({
+    pendingMilestone, clearPendingMilestone, active: tabActive, onMilestone: showMilestone,
+  });
   const [rewardModalVisible, setRewardModalVisible] = useState(false);
   const [rewardsToShow, setRewardsToShow] = useState([]);
   const rewardModalShown = useRef(false);
@@ -851,7 +836,7 @@ export default function TodayScreen() {
 
       <TrophyCelebration
         visible={trophyCelebrating}
-        onDone={() => { afterTrophy.current = true; setTrophyCelebrating(false); setTimeout(() => maybeRequestReview('challenge-complete'), 800); }}
+        onDone={() => { trophyDone(); setTimeout(() => maybeRequestReview('challenge-complete'), 800); }}
         theme={theme}
       />
 

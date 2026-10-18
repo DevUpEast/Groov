@@ -482,3 +482,27 @@ describe('Android borderless ripple and a theme switch (C-02a S1)', () => {
     expect(mounts).toBe(1);
   });
 });
+
+describe('PressableScale: stateChange (C-07, C-06b carry S2)', () => {
+  afterEach(() => { Platform.OS = originalOS; mockReduced = false; });
+  it('Android: no ripple and no overlay in full motion; the scale stays', () => {
+    Platform.OS = 'android';
+    const r = render(<PressableScale accessibilityLabel="Card" onPress={jest.fn()} stateChange />);
+    expect(pressableOf(r).props.android_ripple).toBeUndefined();
+    expect(overlayOf(r)).toBeUndefined();
+    pressIn(r);
+    expect(scaleOf(pressableOf(r)).__getValue()).toBe(PRESS_SCALE);
+  });
+  it('iOS: no overlay in full motion', () => {
+    Platform.OS = 'ios';
+    const r = render(<PressableScale accessibilityLabel="Card" onPress={jest.fn()} stateChange />);
+    expect(overlayOf(r)).toBeUndefined();
+  });
+  it('reduced motion: the overlay is the press feedback, still no ripple', () => {
+    Platform.OS = 'android';
+    mockReduced = true;
+    const r = render(<PressableScale accessibilityLabel="Card" onPress={jest.fn()} stateChange />);
+    expect(pressableOf(r).props.android_ripple).toBeUndefined();
+    expect(overlayOf(r)).toBeDefined();
+  });
+});

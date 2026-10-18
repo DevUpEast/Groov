@@ -331,12 +331,20 @@ export function play(event, opts = {}) {
   // A user with haptics and sound both off has no moment to protect (review n1).
   if (enabled.haptics || enabled.sound) lastPlayAt = now;
   const delay = typeof opts.delay === 'number' ? opts.delay : spec.offset;
-  if (enabled.haptics && Platform.OS !== 'web') {
-    const pulses = Platform.OS === 'android' ? spec.android : spec.ios;
-    if (pulses.length) handle.later(() => runPattern(handle, event, pulses, 0, calledAt, delay), delay + pulses[0].at - late);
-  }
-  if (enabled.sound && spec.sound && opts.sound !== false) {
-    handle.later(() => fireSound(event, opts.tone, calledAt, delay + spec.soundAt), delay + spec.soundAt - late);
+  const pulses = enabled.haptics && Platform.OS !== 'web' ? (Platform.OS === 'android' ? spec.android : spec.ios) : [];
+  const haptic = pulses.length ? () => runPattern(handle, event, pulses, 0, calledAt, delay) : null;
+  const sound = enabled.sound && spec.sound && opts.sound !== false
+    ? () => fireSound(event, opts.tone, calledAt, delay + spec.soundAt) : null;
+  const hapticIn = haptic ? delay + pulses[0].at - late : null;
+  const soundIn = sound ? delay + spec.soundAt - late : null;
+  if (haptic && sound && hapticIn === soundIn) {
+    // Same deadline: one timer, the haptic first. Two timers due together run in no set
+    // order on Android, and starting a sound costs JS time, so the haptic landed ~20 ms late
+    // behind its own chord (C-07 review M2).
+    handle.later(() => { haptic(); sound(); }, hapticIn);
+  } else {
+    if (haptic) handle.later(haptic, hapticIn);
+    if (sound) handle.later(sound, soundIn);
   }
   return handle;
 }

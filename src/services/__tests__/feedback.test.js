@@ -631,3 +631,18 @@ describe('F-04b call sites', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('C-07 review M2: a haptic and a sound due together', () => {
+  test('day.complete on Android: one timer at +750, the Confirm before the chord', () => {
+    setPlatform('android', 34);
+    configure({ haptics: true, sound: true });
+    const before = jest.getTimerCount();
+    play(EVENTS.dayComplete, { delay: 750 });
+    expect(jest.getTimerCount() - before).toBe(1);
+    jest.advanceTimersByTime(750);
+    expect(Haptics.performAndroidHapticsAsync).toHaveBeenCalledTimes(1);
+    expect(sounds.playSound).toHaveBeenCalledTimes(1);
+    expect(Haptics.performAndroidHapticsAsync.mock.invocationCallOrder[0])
+      .toBeLessThan(sounds.playSound.mock.invocationCallOrder[0]);
+  });
+});

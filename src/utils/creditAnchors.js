@@ -4,27 +4,31 @@
 //
 // Keys: `check:<habitId>` (a Today card's check disc or done pill), `ring` and `strip` (the
 // header ring and its brand strip), `ringSticky` and `sticky` (the sticky bar's ring and the
-// bar). Pure module state, no React.
+// bar). Module state; `useAnchor` is the per-instance callback ref components use.
+import { useCallback, useRef } from 'react';
 
 const nodes = new Map();
-const refs = new Map();
 
 export const checkKey = (habitId) => `check:${habitId}`;
 
-export function setAnchor(key, node) {
+/**
+ * Register `node` under `key`, or with `node` null, release `prev`: the key is only dropped
+ * while `prev` is still the registered node, so when two views share a key (the token
+ * preview's extra headers) the one that detaches cannot delete the other (C-07 review m3).
+ */
+export function setAnchor(key, node, prev = null) {
   if (node) nodes.set(key, node);
-  else nodes.delete(key);
+  else if (prev == null || nodes.get(key) === prev) nodes.delete(key);
 }
 
-/** A stable callback ref for `key` (the same function every render, so memo props hold). */
-export function anchorRef(key) {
-  let ref = refs.get(key);
-  if (!ref) {
-    // React detaches a ref before it attaches the next one in a commit, so a remount ends set.
-    ref = (node) => setAnchor(key, node);
-    refs.set(key, ref);
-  }
-  return ref;
+/** A per-instance callback ref for `key`, stable while the key is (memo props hold). */
+export function useAnchor(key) {
+  const mine = useRef(null);
+  return useCallback((node) => {
+    const prev = mine.current;
+    mine.current = node;
+    setAnchor(key, node, prev);
+  }, [key]);
 }
 
 /** Measures a view in window coordinates: `{ x, y, width, height }`, or null. */
@@ -72,5 +76,4 @@ export const EDGE_X = 0.75;
 
 export function __resetAnchorsForTests() {
   nodes.clear();
-  refs.clear();
 }

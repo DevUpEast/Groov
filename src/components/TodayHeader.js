@@ -16,7 +16,7 @@ import { t, useLocale } from '../i18n';
 import { summarizeBeats } from '../utils/weekBeats';
 import PressableScale, { hitSlopFor } from './ui/PressableScale';
 import { subscribeBeats } from '../utils/beatBus';
-import { anchorRef, setAnchor } from '../utils/creditAnchors';
+import { useAnchor } from '../utils/creditAnchors';
 
 const GREETING_LINE = 32; // title 28 on a 32 pt line (D-00), one line of the header budget
 
@@ -490,6 +490,7 @@ export function useHeaderMoment({ state, completed, total, streak, beats, challe
 export function RingPulse({ live, anchorKey, children }) {
   const m = useMotion();
   const scale = useRef(new Animated.Value(1)).current;
+  const anchor = useAnchor(anchorKey);
   const liveRef = useRef(live);
   liveRef.current = live;
   useEffect(() => subscribeBeats(({ type, item }) => {
@@ -500,7 +501,7 @@ export function RingPulse({ live, anchorKey, children }) {
     ]).start();
   }), [m, scale]);
   return (
-    <Animated.View ref={anchorRef(anchorKey)} collapsable={false} style={{ transform: [{ scale }] }}>
+    <Animated.View ref={anchor} collapsable={false} style={{ transform: [{ scale }] }}>
       {children}
     </Animated.View>
   );
@@ -527,10 +528,11 @@ export default function TodayHeader({
   const ringLabel = state === 'progress' ? t('today.ring.a11y', { completed, total }) : liveLine;
   const shownState = state ? (shown.state || state) : null;
   // The strip is TodayScreen's (layout, header budget) and the credit's departure edge (C-07).
+  const stripAnchor = useAnchor('strip');
   const setStrip = useCallback((node) => {
     if (stripRef) stripRef.current = node;
-    setAnchor('strip', node);
-  }, [stripRef]);
+    stripAnchor(node);
+  }, [stripRef, stripAnchor]);
   return (
     <View>
       <AppText variant="footnote" style={[styles.date, { color: theme.textSecondary }]}>{date}</AppText>
@@ -581,11 +583,12 @@ export default function TodayHeader({
 export function TodayStickyBar({ theme, state, completed, total, greeting, streak, frozen = false, onPress, a11yLabel }) {
   useLocale();
   const shown = useHeaderMoment({ state, completed, total, streak, beats: null, challenges: null });
+  const barAnchor = useAnchor('sticky');
   if (!state) return null;
   const shownState = shown.state || state;
   return (
     <Pressable
-      ref={anchorRef('sticky')}
+      ref={barAnchor}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={a11yLabel}

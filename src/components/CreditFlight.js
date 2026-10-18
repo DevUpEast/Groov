@@ -26,6 +26,7 @@ import { frameLogOn } from '../hooks/useTween';
 
 const SIZE = amount.creditSize;
 const STEPS = 16;
+const FRAME_MS = 16;
 const linear = (x) => x;
 
 /**
@@ -130,7 +131,9 @@ export default function CreditFlight({ theme, targets }) {
       dx.setValue(end.x - start.x);
       dy.setValue(end.y - start.y);
       // Land on the resolution beat whatever the measuring cost (at least LATE_MIN_MS of flight).
-      const left = item.tapAt + item.at + item.duration - Date.now();
+      // It lands a frame early: its end event then never shares the +750 frame with the
+      // day.complete haptic and chord (C-07 review M2); the dot waits in the ring anyway.
+      const left = item.tapAt + item.at + item.duration - Date.now() - FRAME_MS;
       const length = Math.max(LATE_MIN_MS, left);
       t.setValue(0);
       v.current.vis.setValue(1);

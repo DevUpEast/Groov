@@ -42,6 +42,8 @@ test('a check plays each feedback item with its beat as the delay and the tap ti
   ]);
 });
 
+const { VISUAL_AFTER_FEEDBACK_MS } = require('../useCheckoffMoment');
+
 test('visual beats reach onBeat at their offset from the tap', () => {
   const seen = [];
   const { api } = mount((item) => seen.push([item.beat, Date.now()]));
@@ -50,7 +52,9 @@ test('visual beats reach onBeat at their offset from the tap', () => {
   expect(seen.map(s => s[0])).toEqual(['confirm']);
   jest.advanceTimersByTime(875);
   expect(seen.map(([b, t]) => [b, t - t0])).toEqual([
-    ['confirm', 0], ['progress', 125], ['creditDeparts', 500], ['resolution', 750], ['streakTick', 875],
+    // The resolution shares +750 with the day.complete haptic + chord: it fires just after them
+    // (C-07 review M2).
+    ['confirm', 0], ['progress', 125], ['creditDeparts', 500], ['resolution', 750 + VISUAL_AFTER_FEEDBACK_MS], ['streakTick', 875],
   ]);
 });
 

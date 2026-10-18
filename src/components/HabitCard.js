@@ -21,7 +21,7 @@ import RollingNumber from './ui/RollingNumber';
 import useTween from '../hooks/useTween';
 import { findBeat, matchesBeat, subscribeBeats } from '../utils/beatBus';
 import { amount, duration as durations, easing as easings, useMotion } from '../theme/motion';
-import { anchorRef, checkKey } from '../utils/creditAnchors';
+import { useAnchor, checkKey } from '../utils/creditAnchors';
 
 // C-06b (plan §4.1): the card's part of the check-off moment, on the beats useCheckoffMoment
 // emits (src/utils/beatBus.js). Outside a moment (a sync pull, the widget, the choreography
@@ -123,6 +123,9 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   // C-06b motion (see the top of the file).
   const m = useMotion();
   const fade = useDoneFade(done, habit.id);
+  // The day-complete credit leaves from this card's check (C-07); only one of the check disc
+  // and the done pill is rendered at a time.
+  const checkAnchor = useAnchor(checkKey(habit.id));
   // Native driver, started at the commit over the full 200 ms (fromCommit, round 1 M2).
   const draw = useTween(m.reduced || done ? 1 : 0, {
     beat: confirmMatch(habit.id), onlyOnBeat: true, fromCommit: true, easing: easings.emphasizedDecel, useNativeDriver: true,
@@ -298,7 +301,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           >
             <RollingNumber value={count} {...countRoll} style={[styles.pillNum, { color: accent.onFill }]} numberOfLines={1} />
             {/* The credit leaves from this ✓ when the goal step completes the day (C-07). */}
-            <View ref={anchorRef(checkKey(habit.id))} collapsable={false}>
+            <View ref={checkAnchor} collapsable={false}>
               <CheckMark color={accent.onFill} size={16} progress={draw} />
             </View>
           </PressableScale>
@@ -356,7 +359,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
             <View
               testID="habit-check"
               // The day-complete credit leaves from here (C-07, CreditFlight).
-              ref={anchorRef(checkKey(habit.id))}
+              ref={checkAnchor}
               collapsable={false}
               style={[
                 styles.checkbox,

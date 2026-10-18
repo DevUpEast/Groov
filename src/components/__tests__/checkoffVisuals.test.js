@@ -185,9 +185,10 @@ describe('useHeaderMoment converges and never contradicts the ring', () => {
     expect(s.shown).toMatchObject({ state: 'progress', completed: 4, line: '4 of 5 done · 1 to go', streak: 3 });
     advance(125);
     expect(s.shown).toMatchObject({ state: 'progress', completed: 5, line: '5 of 5 done', streak: 3 });
-    advance(625);
+    // The resolution fires just after the day.complete feedback it shares +750 with (C-07 M2).
+    advance(625 + 2);
     expect(s.shown).toMatchObject({ state: 'complete', line: 'Day complete · 4-day streak', streak: 3 });
-    advance(125);
+    advance(125 - 2);
     expect(s.shown).toMatchObject({ state: 'complete', streak: 4 });
   });
 
