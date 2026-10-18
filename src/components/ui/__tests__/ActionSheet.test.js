@@ -115,6 +115,29 @@ describe('ActionSheet (Android)', () => {
   });
 });
 
+describe('ActionSheet (C-03): haptic and afterClose', () => {
+  beforeEach(() => { Platform.OS = 'android'; });
+  const Sheet = require('../Sheet').default;
+
+  it('haptic={false} (opened from a plain button) plays nothing on open', () => {
+    render({ visible: true, haptic: false, title: 'T', options: makeOptions(), onCancel: jest.fn() });
+    expect(feedback.play).not.toHaveBeenCalled();
+  });
+
+  it('an afterClose option runs once the sheet has gone, not in the tap', () => {
+    const options = [...makeOptions(), { label: 'Habit details', onPress: jest.fn(), afterClose: true }];
+    const onCancel = jest.fn();
+    const props = { title: 'T', options, onCancel };
+    const r = render({ ...props, visible: true });
+    act(() => { buttons(r).find(b => b.props.accessibilityLabel === 'Habit details').props.onPress(); });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(options[3].onPress).not.toHaveBeenCalled();
+    act(() => { r.update(React.createElement(ActionSheet, { ...props, visible: false })); });
+    act(() => { r.root.findAll(n => n.type === Sheet)[0].props.onDismiss(); });
+    expect(options[3].onPress).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('ActionSheet (iOS)', () => {
   it('uses the native sheet with Cancel as cancelButtonIndex and routes the choice', () => {
     Platform.OS = 'ios';

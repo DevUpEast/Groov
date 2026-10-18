@@ -14,6 +14,7 @@
     "error": "Error",
     "notNow": "Ahora no",
     "undo": "Deshacer",
+    "gotIt": "Entendido",
     "slider": "Control deslizante",
     "shortDays": "%{count} d",
     "charCount": { "one": "%{count} de %{max} caracteres", "other": "%{count} de %{max} caracteres" },
@@ -149,6 +150,7 @@
     "coach": "Coach IA",
     "beats": { "a11y": { "one": "Último %{count} día: %{done} completos, %{rest} de descanso, %{missed} perdidos", "other": "Últimos %{count} días: %{done} completos, %{rest} de descanso, %{missed} perdidos" } },
     "sticky": { "hint": "Vuelve al principio" },
+    "hint": { "longPress": "Consejo: mantén pulsado un hábito (o toca ⋯) para omitir un día, corregir ayer o añadir una nota.", "longPressA11y": "Consejo: mantén pulsado un hábito, o usa su botón Más opciones, para omitir un día, corregir ayer o añadir una nota." },
     "empty": {
       "title": "Entra en ritmo",
       "body": "Añade tu primer hábito",
@@ -368,6 +370,8 @@
     "skippedToday": "Omitido hoy",
     "timer": "⏱ %{time}",
     "doneCount": "%{name}, %{count} de %{goal}, hecho",
+    "more": "Más opciones para %{name}",
+    "moreShort": "Más opciones",
     "longPress": {
       "body": "Son cosas de la vida. Elige una opción:",
       "unskip": "Dejar de omitir hoy",
@@ -377,7 +381,8 @@
       "minusOne": "Quitar uno",
       "minusMany": "Quitar %{count}",
       "editNote": "Editar nota",
-      "addNote": "Añadir una nota"
+      "addNote": "Añadir una nota",
+      "details": "Detalles del hábito"
     },
     "announce": {
       "countMax": "%{name}, %{count} de %{goal} como máximo",

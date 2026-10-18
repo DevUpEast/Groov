@@ -120,11 +120,14 @@ export async function waitForDemo(appFrame, session, { timeout = 30000 } = {}) {
 }
 
 // Host page URL. demo/guest/lang are forwarded to the app by the host (mockup/mockup.js).
-export function hostUrl(base, { app = 'groov', device = 'iphone16pro', theme = 'light', route = '', frame = false, demo, guest, lang } = {}) {
+export function hostUrl(base, { app = 'groov', device = 'iphone16pro', theme = 'light', route = '', frame = false, demo, guest, lang, extra = {} } = {}) {
   let url = `${base}/index.html?app=${app}&device=${device}&theme=${theme}&route=${encodeURIComponent(route)}&chrome=0&frame=${frame ? 1 : 0}&scale=1`;
   if (demo !== undefined) url += `&demo=${encodeURIComponent(demo)}`;
   if (guest !== undefined) url += `&guest=${encodeURIComponent(guest)}`;
   if (lang) url += `&lang=${encodeURIComponent(lang)}`;
+  // Review-state params the host forwards to the app (src/utils/mockup.js): nudge, streak,
+  // challenges, hint.
+  for (const [k, v] of Object.entries(extra)) if (v !== undefined) url += `&${k}=${encodeURIComponent(v)}`;
   return url;
 }
 

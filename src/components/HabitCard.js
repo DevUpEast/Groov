@@ -96,10 +96,26 @@ export function showsDonePill(habit, { done, timerRunning = false } = {}) {
   return usesCounter(habit) && habit.type !== 'atMost' && !!done && !timerRunning;
 }
 
+// The card's secondary actions in sheet order (C-03, plan): Skip today / Unskip, Mark yesterday
+// / Undo yesterday, Add note / Edit note, −1 (counters with a count), Habit details. Cancel is
+// the sheet's own row.
+export function secondaryActions({ skipped, yesterdayDone, note, isCounter, count, removeAmount, canNote = true, canDetail = true }) {
+  return [
+    { key: 'skip', label: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip') },
+    { key: 'yesterday', label: yesterdayDone ? t('habitCard.longPress.undoYesterday') : t('habitCard.longPress.markYesterday') },
+    ...(canNote ? [{ key: 'note', label: note ? t('habitCard.longPress.editNote') : t('habitCard.longPress.addNote') }] : []),
+    // The − is hidden once a counter reaches its goal (the done pill), so the decrement lives
+    // here too (C-02b acceptance d). The label says what is removed: a step, or what is left
+    // when that is less (count floors at 0).
+    ...(isCounter && count > 0 ? [{ key: 'minus', label: removeAmount > 1 ? t('habitCard.longPress.minusMany', { count: removeAmount }) : t('habitCard.longPress.minusOne') }] : []),
+    ...(canDetail ? [{ key: 'details', label: t('habitCard.longPress.details') }] : []),
+  ];
+}
+
 export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkipToggle, onOpenDetail }) {
   const {
     getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, themeName, todayStr,
-    isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, getNote,
+    isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, getNote, setHint,
   } = useApp();
   useLocale();
   // The habit's curated accent for this theme (C-01): legacy, unknown and missing colours are
@@ -194,26 +210,54 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   ];
   const subLine = joinSubLine(parts, getLocale()) || describeSchedule(habit.schedule);
 
-  // Long-press: forgiveness actions (skip today keeps the streak; fix yesterday).
+  // The secondary actions (C-03, BTN-5): skip today, fix yesterday, a note, −1 on a counter
+  // and the habit's details. Reached three ways: a long press on the card (or on its counter
+  // buttons), the visible "⋯" on the sub-line row, and the screen reader's actions menu.
   const yesterday = addDays(today, -1);
   const yesterdayDone = isHabitDoneOn(habit, yesterday);
   // An ActionSheet, not a system alert: Android alerts show at most 3 buttons (Cancel was dropped)
-  // and ignore back. The sheet plays the long-press haptic itself.
-  const [menuOpen, setMenuOpen] = useState(false);
-  const handleLongPress = () => setMenuOpen(true);
+  // and ignore back. `menuOpen` is how it opened: 'hold' plays the long-press haptic, a tap on
+  // "⋯" is a plain button press and stays silent (§2.10).
+  const [menuOpen, setMenuOpen] = useState(null);
+  const openMenu = (how) => {
+    setMenuOpen(how);
+    // Opening the options shows the user has found them: the one-time tip is not needed.
+    setHint?.('longPress');
+  };
+  const handleLongPress = () => openMenu('hold');
   // The counter and timer buttons are part of the card: a long hold on them opens the same menu.
   const holdForOptions = { onLongPress: handleLongPress, delayLongPress: LONG_PRESS_MS };
   const removeAmount = Math.min(step, count);
-  const menuOptions = [
-    { label: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip'), onPress: () => { toggleSkipHabitOn(habit.id, today); onSkipToggle?.(habit); } },
-    { label: yesterdayDone ? t('habitCard.longPress.undoYesterday') : t('habitCard.longPress.markYesterday'), onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
-    // The − is hidden once a counter reaches its goal (the done pill), so the decrement lives
-    // here too (C-02b acceptance d; C-03 keeps this option).
-    // The label says what is removed: a step, or what is left when that is less (count floors
-    // at 0, code review m3).
-    ...(isVolume && count > 0 ? [{ label: removeAmount > 1 ? t('habitCard.longPress.minusMany', { count: removeAmount }) : t('habitCard.longPress.minusOne'), onPress: () => { onDecrement(removeAmount); sayCount(count - removeAmount); } }] : []),
-    ...(onNote ? [{ label: note ? t('habitCard.longPress.editNote') : t('habitCard.longPress.addNote'), onPress: () => onNote(habit, today) }] : []),
+  const menuOptions = secondaryActions({
+    habit, skipped, yesterdayDone, note, isCounter: isVolume, count, removeAmount,
+    canNote: !!onNote, canDetail: !!onOpenDetail,
+  }).map((a) => ({
+    key: a.key,
+    label: a.label,
+    // The note dialog and the detail sheet open once the options sheet has gone (one overlay
+    // at a time, chained on the close callback).
+    afterClose: a.key === 'note' || a.key === 'details',
+    onPress: () => runAction(a.key),
+  }));
+  const runAction = (key) => {
+    switch (key) {
+      case 'skip': toggleSkipHabitOn(habit.id, today); onSkipToggle?.(habit); break;
+      case 'yesterday': toggleHabitDoneOn(habit.id, yesterday); break;
+      case 'note': onNote?.(habit, today); break;
+      case 'minus': onDecrement(removeAmount); sayCount(count - removeAmount); break;
+      case 'details': onOpenDetail?.(habit); break;
+      default: break;
+    }
+  };
+  // The same actions for TalkBack / VoiceOver (custom actions), plus the long press itself.
+  const a11yActions = [
+    ...menuOptions.map((o) => ({ name: o.key, label: o.label })),
+    { name: 'longpress', label: t('habitCard.moreShort') },
   ];
+  const onA11yAction = ({ nativeEvent }) => {
+    if (nativeEvent.actionName === 'longpress') handleLongPress();
+    else runAction(nativeEvent.actionName);
+  };
 
   // Tapping anywhere on the card: see bodyPressAction.
   const bodyAction = bodyPressAction(habit, { canOpenDetail: !!onOpenDetail });
@@ -254,6 +298,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         accessibilityState={isVolume ? undefined : { checked: done }}
         accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
         accessibilityHint={opensDetail ? t('habitCard.a11y.openDetail') : t('habitCard.a11y.hint')}
+        accessibilityActions={a11yActions}
+        onAccessibilityAction={onA11yAction}
       >
         {/* C-06b: the previous look fading out over the new one (useDoneFade). */}
         {fade.from ? (
@@ -275,9 +321,22 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           {/* Always rendered (schedule fallback). Counter and timer cards have a narrow info
               column beside 3 or 4 controls, so their sub-line may wrap to a second line rather
               than cut the streak off (code review m2). */}
-          <View>
-            <Animated.View pointerEvents="none" style={[styles.subFlash, { backgroundColor: theme.signatureTint, opacity: streakFlash }]} />
-            <Animated.Text style={[styles.sub, { color: theme.textSecondary, transform: [{ scale: streakPulse }], transformOrigin: 'left center' }]} numberOfLines={isVolume ? 2 : 1}>{subLine}</Animated.Text>
+          {/* The sub-line row ends in the "⋯" (C-03): on the second line, so the name keeps
+              the full width and the button never competes with the check or the counter. */}
+          <View style={styles.subRow}>
+            <View style={styles.subText}>
+              <Animated.View pointerEvents="none" style={[styles.subFlash, { backgroundColor: theme.signatureTint, opacity: streakFlash }]} />
+              <Animated.Text style={[styles.sub, { color: theme.textSecondary, transform: [{ scale: streakPulse }], transformOrigin: 'left center' }]} numberOfLines={isVolume ? 2 : 1}>{subLine}</Animated.Text>
+            </View>
+            <IconButton
+              testID="habit-more"
+              size={MORE_BTN}
+              icon="ellipsis-horizontal"
+              iconSize={18}
+              style={styles.more}
+              onPress={() => openMenu('tap')}
+              accessibilityLabel={t('habitCard.more', { name: habit.name })}
+            />
           </View>
         </View>
 
@@ -382,11 +441,12 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         )}
       </PressableScale>
       <ActionSheet
-        visible={menuOpen}
+        visible={!!menuOpen}
+        haptic={menuOpen === 'hold'}
         title={habit.name}
         message={t('habitCard.longPress.body')}
         options={menuOptions}
-        onCancel={() => setMenuOpen(false)}
+        onCancel={() => setMenuOpen(null)}
       />
     </>
   );
@@ -396,6 +456,10 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
 // the gap is two slops (12 dp / 8 pt), so neighbouring targets meet without overlapping.
 const COUNTER_BTN = 36;
 const LONG_PRESS_MS = 350;
+// The "⋯" (C-03): 32 visual, hitSlop 8 to the 48 dp target (6 to 44 pt on iOS). Its negative
+// vertical margin keeps the sub-line row at the text's height, so the card height (72 min)
+// does not change; the slop still reaches 24 above and below its centre.
+const MORE_BTN = 32;
 const COUNTER_GAP = 2 * hitSlopFor(COUNTER_BTN).left;
 // The done pill: 36 tall like the counter buttons (the card height is unchanged at goal) and
 // at least 48 wide, so its own width already meets the touch minimum.
@@ -428,6 +492,9 @@ const styles = StyleSheet.create({
   info: { flex: 1, minWidth: 0, paddingVertical: space.xs },
   // footnote 13/18; tabular, so the running timer ("0:03") and counts change without jitter.
   sub: { ...type.footnote, marginTop: 2, ...numeric },
+  subRow: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
+  subText: { flex: 1, minWidth: 0 },
+  more: { marginVertical: -(MORE_BTN - type.footnote.lineHeight) / 2 },
   slot: { width: size.trailingSlot, alignItems: 'center', justifyContent: 'center' },
   // C-06b fade layers: they cover the border too (the card clips them to its rounded box).
   subFlash: { position: 'absolute', top: 1, bottom: -1, left: -space.xxs, right: 0, borderRadius: radius.cell },

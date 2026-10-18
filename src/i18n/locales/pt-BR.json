@@ -14,6 +14,7 @@
     "error": "Erro",
     "notNow": "Agora não",
     "undo": "Desfazer",
+    "gotIt": "Entendi",
     "slider": "Controle deslizante",
     "shortDays": "%{count}d",
     "charCount": { "one": "%{count} de %{max} caracteres", "other": "%{count} de %{max} caracteres" },
@@ -149,6 +150,7 @@
     "coach": "Coach de IA",
     "beats": { "a11y": { "one": "Último %{count} dia: %{done} completos, %{rest} de descanso, %{missed} não feitos", "other": "Últimos %{count} dias: %{done} completos, %{rest} de descanso, %{missed} não feitos" } },
     "sticky": { "hint": "Volta ao topo" },
+    "hint": { "longPress": "Dica: toque e segure um hábito (ou toque em ⋯) para pular um dia, corrigir ontem ou adicionar uma nota.", "longPressA11y": "Dica: toque e segure um hábito, ou use o botão Mais opções, para pular um dia, corrigir ontem ou adicionar uma nota." },
     "empty": {
       "title": "Entre no Ritmo",
       "body": "Adicione seu primeiro hábito",
@@ -368,6 +370,8 @@
     "skippedToday": "Pulado hoje",
     "timer": "⏱ %{time}",
     "doneCount": "%{name}, %{count} de %{goal}, concluído",
+    "more": "Mais opções para %{name}",
+    "moreShort": "Mais opções",
     "longPress": {
       "body": "A vida acontece. Escolha uma opção:",
       "unskip": "Não pular hoje",
@@ -377,7 +381,8 @@
       "minusOne": "Remover um",
       "minusMany": "Remover %{count}",
       "editNote": "Editar nota",
-      "addNote": "Adicionar uma nota"
+      "addNote": "Adicionar uma nota",
+      "details": "Detalhes do hábito"
     },
     "announce": {
       "countMax": "%{name}, %{count} de %{goal} no máximo",

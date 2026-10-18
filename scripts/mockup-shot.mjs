@@ -7,6 +7,7 @@
 //            --debug 1 (print console errors, page errors, failed requests and each
 //                       anonymous sign-in to stderr, plus a sign-in count at the end)
 //            --demo 0|1 --guest 0|1 --lang de (forwarded to the app; default: apps.json params)
+//            --nudge 1 --streak 12|frozen --challenges 2 --hint longPress (review states, forwarded)
 //            --fresh (throwaway Chrome profile: first-run, onboarding, welcome shots)
 //            --reset-demo (delete .mockup-profile/ first; alone, without --out, it only resets)
 // Without --base, serves ./mockup-dist on port 8786 (run scripts/build-mockup.sh first).
@@ -31,7 +32,8 @@ const wait = Number(args.wait || 2500);
 const out = path.resolve(args.out || `mockup-${app}-${route || 'home'}-${theme}.png`);
 
 const session = await openMockup({ base: args.base, fresh: args.fresh === '1' });
-const url = hostUrl(session.base, { app, device, theme, route, frame, demo: args.demo, guest: args.guest, lang: args.lang });
+const extra = { nudge: args.nudge, streak: args.streak, challenges: args.challenges, hint: args.hint };
+const url = hostUrl(session.base, { app, device, theme, route, frame, demo: args.demo, guest: args.guest, lang: args.lang, extra });
 try {
   const page = await session.browser.newPage();
   const counter = attachDebug(page, args.debug);

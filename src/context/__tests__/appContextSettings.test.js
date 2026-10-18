@@ -146,7 +146,15 @@ test('badge migration runs inside the load: an existing install starts with the 
   Object.assign(mockStore, { habits: READ, settings: withExtras({}) });
   const r = await mount();
   expect(firstRenderBadge).toBe(true);
-  expect(mockStore.deviceSettings).toEqual({ badgeEnabled: true });
+  // The load is also the first app open (C-03).
+  expect(mockStore.deviceSettings).toEqual({ badgeEnabled: true, appOpens: 1 });
+  act(() => r.unmount());
+});
+
+test('each load counts one app open on this device (C-03 tips wait for the 2nd)', async () => {
+  Object.assign(mockStore, { habits: READ, settings: withExtras({}), deviceSettings: { badgeEnabled: true, appOpens: 1 } });
+  const r = await mount();
+  expect(mockStore.deviceSettings).toEqual({ badgeEnabled: true, appOpens: 2 });
   act(() => r.unmount());
 });
 
