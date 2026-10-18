@@ -41,7 +41,7 @@ import feedback, { EVENTS as FEEDBACK } from '../services/feedback';
 import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
 import { afterMoment, flushMoment, dropMoment } from '../utils/afterMoment';
 import { announce } from '../utils/a11y';
-import { queueUpsert, queueUpserts, withoutPendingRows, configurePendingUpserts, resendPendingUpserts, overlayPendingUpserts } from '../utils/completionUpserts';
+import { queueUpsert, queueUpserts, withoutPendingRows, configurePendingUpserts, resendPendingUpserts, retryPendingUpserts, overlayPendingUpserts, dropPendingUpserts } from '../utils/completionUpserts';
 
 import { createLiveCompletions } from '../utils/liveCompletions';
 import { ThemeContext } from '../theme/ThemeContext';
@@ -648,6 +648,7 @@ export function AppProvider({ children }) {
           // Different user logged in on this device — wipe the previous user's local data.
           // Nothing queued for the previous user may be written after the wipe (m2).
           dropMoment();
+          dropPendingUpserts();
           await storeClearAll();
           stateRef.current = emptyState;
           storedAca = null;
@@ -737,6 +738,8 @@ export function AppProvider({ children }) {
     const since = lastPulledAtRef.current;
     if (!since || pullInFlightRef.current) return;
     pullInFlightRef.current = true;
+    // Rows whose upload failed since launch go up again (round 2 review m1).
+    retryPendingUpserts(syncCompletion, userId);
     const startedAt = Date.now();
     // Generous margin for client/server clock skew; re-applying unchanged rows is harmless.
     const sinceIso = new Date(since - 10 * 60 * 1000).toISOString();
@@ -1288,6 +1291,7 @@ export function AppProvider({ children }) {
   const resetAll = useCallback(async () => {
     const today = localDateKey();
     dropMoment();
+    dropPendingUpserts();
     await storeClearAll();
     if (userId) await deleteAllUserData(userId).catch(e => console.warn('deleteAllUserData:', e));
     saveData('lastUserId', userId);

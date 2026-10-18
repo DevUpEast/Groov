@@ -18,3 +18,12 @@ test('pending cloud upserts are re-sent before the login pull', () => {
   expect(resend).toBeGreaterThan(0);
   expect(resend).toBeLessThan(pull);
 });
+
+test('every local wipe also drops the pending upserts (round 2 review M1)', () => {
+  const auth = fs.readFileSync(path.resolve(__dirname, '../AuthContext.js'), 'utf8');
+  for (const s of [src, auth]) {
+    const drops = (s.match(/dropMoment\(\);/g) || []).length;
+    expect(drops).toBeGreaterThan(0);
+    expect((s.match(/dropMoment\(\);[^\n]*\n\s*dropPendingUpserts\(\);/g) || []).length).toBe(drops);
+  }
+});

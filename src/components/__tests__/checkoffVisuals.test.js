@@ -107,7 +107,24 @@ describe('useTween anticipate is provisional (round 1 B1)', () => {
     const res = { key: 'visual:resolution', beat: 'resolution', at: 750, duration: 200, tapAt: Date.now() - 750 };
     act(() => { bus.emitBeat(res); });
     act(() => { r.update(<T target={0} opts={opts} out={out} />); });
-    advance(1000);
+    // Before the beat's end a render does not reconcile (a slow confirm may still come), and
+    // without a commit after it nothing does until the fallback.
+    advance(250);
+    expect(out.v.__getValue()).toBe(1);
+    // With no further render, the fallback one moment later does.
+    advance(2000);
+    expect(out.v.__getValue()).toBe(0);
+  });
+
+  it('the first commit after the beat end reconciles (round 2 review m4)', () => {
+    const out = {};
+    let r;
+    act(() => { r = TestRenderer.create(<T target={0} opts={opts} out={out} />); });
+    const res = { key: 'visual:resolution', beat: 'resolution', at: 750, duration: 200, tapAt: Date.now() - 750 };
+    act(() => { bus.emitBeat(res); });
+    advance(250);
+    expect(out.v.__getValue()).toBe(1);
+    act(() => { r.update(<T target={0} opts={opts} out={out} />); });
     expect(out.v.__getValue()).toBe(0);
   });
 

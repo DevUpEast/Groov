@@ -29,6 +29,7 @@ import { duration as durations, easing as easings, reducedDuration } from '../th
 import { useReducedMotion } from '../utils/a11y';
 import { findBeat, matchesBeat, remainingOf, rideLength, subscribeBeats } from '../utils/beatBus';
 import { logFrames } from '../services/feedback';
+import { MOMENT_MS } from '../utils/beats';
 
 // Less than a frame left: show the end state instead of a one-frame tween.
 const FRAME_MS = 16;
@@ -76,6 +77,7 @@ export default function useTween(target, opts = {}) {
   const waiting = useRef(false);
   const provisional = useRef(null); // an anticipated target no render has confirmed yet
   const reconcileTimer = useRef(null);
+  const reconcileAt = useRef(0);
   const anim = useRef(null);
   const cfg = useRef(opts);
   cfg.current = { ms, easing, useNativeDriver, from, log, onlyOnBeat, reduced, anticipate, fromCommit };
@@ -104,8 +106,11 @@ export default function useTween(target, opts = {}) {
   };
 
   // An anticipated target that no render confirmed (round 1 B1: the day broke before the
-  // resolution beat, so `complete` never changed): go back to the real target.
+  // resolution beat, so `complete` never changed): go back to the real target. Checked on the
+  // first commit after the beat's end (so a slow confirming render is never beaten to it,
+  // round 2 review m4), with a timer one moment later for a screen that never re-renders.
   const reconcile = () => {
+    clearTimeout(reconcileTimer.current);
     reconcileTimer.current = null;
     if (provisional.current == null) return;
     provisional.current = null;
@@ -135,6 +140,11 @@ export default function useTween(target, opts = {}) {
     run(hit ? hit.item : null, { full: !!(hit && cfg.current.fromCommit) });
   }, [target]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Every commit: a provisional target past its beat's end that this render did not confirm.
+  useLayoutEffect(() => {
+    if (provisional.current != null && Date.now() >= reconcileAt.current) reconcile();
+  });
+
   const matchKey = keyOf(match);
   useEffect(() => {
     if (!match) return undefined;
@@ -151,8 +161,9 @@ export default function useTween(target, opts = {}) {
         last.current = to;
         provisional.current = to;
         run(item);
+        reconcileAt.current = Date.now() + rideLength(item) + FRAME_MS;
         clearTimeout(reconcileTimer.current);
-        reconcileTimer.current = setTimeout(reconcile, rideLength(item) + FRAME_MS);
+        reconcileTimer.current = setTimeout(reconcile, rideLength(item) + MOMENT_MS);
         return;
       }
       if (type === 'fire') { run(item); return; }

@@ -54,13 +54,19 @@ export default function ProgressRing({
     const g = typeof gold === 'number' ? new Animated.Value(Math.min(Math.max(gold, 0), 1)) : gold;
     const goldOn = g.interpolate({ inputRange: [0, 0.001], outputRange: [0, 1], extrapolate: 'clamp' });
     const plain = len(shown);
-    const rest = len(Animated.subtract(shown, g));
+    const left = Animated.subtract(shown, g);
+    const rest = len(left);
+    // The green that is left goes as soon as it is no longer than the stroke is wide: its round
+    // caps would otherwise sit as a green dot at 12 o'clock for the sweep's slow tail (design
+    // r2 N1). A cut, not a fade, so it never blends.
+    const capFrac = strokeWidth / circ;
+    rest.opacity = left.interpolate({ inputRange: [capFrac, capFrac + 0.0001], outputRange: [0, 1], extrapolate: 'clamp' });
     return {
       green: { offset: plain.offset, opacity: Animated.multiply(plain.opacity, Animated.subtract(1, goldOn)) },
       rest: { offset: rest.offset, opacity: Animated.multiply(rest.opacity, goldOn) },
       gold: len(g),
     };
-  }, [shown, gold, circ]);
+  }, [shown, gold, circ, strokeWidth]);
   const arcProps = {
     cx: size / 2, cy: size / 2, r, strokeWidth, fill: 'none', strokeLinecap: 'round',
     rotation: '-90', origin: `${size / 2}, ${size / 2}`, strokeDasharray: circ,

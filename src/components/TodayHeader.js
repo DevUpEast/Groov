@@ -327,7 +327,7 @@ function BeatRow({ beats, theme, inline = false }) {
 // C-06b (§4.1): the props are the held values of useHeaderMoment, so they change on the beat.
 // - The green arc tweens on the progress beat (+125, 300 ms).
 // - On the resolution beat (+750) a gold arc sweeps clockwise over it (200 ms,
-//   emphasizedDecel), the numeral fades out and a ✓ draws in. No green/gold cross-fade:
+//   easing.standard), the numeral fades out and a ✓ draws in. No green/gold cross-fade:
 //   pixels go from green to gold at the sweep edge, never through olive (round 1 M1).
 // - Leaving complete (an un-check) is a cut: gold, ✓, numeral and caption switch in the one
 //   frame with the line, and only the arc tweens back (round 1 M3).
@@ -350,7 +350,8 @@ export function TodayRing({ state, completed, total, theme, ringSize, stroke, ca
   // held state), so they land on +750; provisional until that render confirms them.
   const toComplete = (item) => (item.beat === 'resolution' && live.current ? 1 : null);
   const sweep = useTween(complete ? 1 : 0, m.reduced ? { onlyOnBeat: true } : {
-    beat: RESOLUTION_BEAT, onlyOnBeat: true, easing: m.easing.emphasizedDecel, log: bare ? null : 'gold', anticipate: toComplete,
+    // easing.standard (design r2): emphasizedDecel filled ~85 % in two frames and read as a snap.
+    beat: RESOLUTION_BEAT, onlyOnBeat: true, easing: m.easing.standard, log: bare ? null : 'gold', anticipate: toComplete,
   });
   // The numeral / ✓ swap (native): a fade on the resolution beat (150 ms reduced), a cut back.
   const swap = useTween(complete ? 1 : 0, {
