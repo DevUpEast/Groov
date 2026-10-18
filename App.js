@@ -10,6 +10,8 @@ import { initSentry, captureException, wrapRoot } from './src/utils/sentry';
 import { t, useLocale, initLocale } from './src/i18n';
 import { duration, spring, timing, springTo } from './src/theme/motion';
 import { isReducedMotion } from './src/utils/a11y';
+import PressableScale from './src/components/ui/PressableScale';
+import feedback, { EVENTS } from './src/services/feedback';
 
 // Crash reporting is a no-op until EXPO_PUBLIC_SENTRY_DSN is set (see src/utils/sentry.js).
 initSentry();
@@ -319,11 +321,12 @@ function AppNavigator() {
           const focused = activeIndex === i;
           const label = tabLabels[i];
           return (
-            <TouchableOpacity
+            // Press scale + ripple (F-06); switching tabs is a `selection` tick (§2.10), a re-tap
+            // of the current tab is silent.
+            <PressableScale
               key={tab.key}
               style={[styles.tabBtn, tabsByLabel && styles.tabBtnByLabel]}
-              onPress={() => goToTab(i)}
-              activeOpacity={0.7}
+              onPress={() => { if (!focused) feedback.play(EVENTS.selection); goToTab(i); }}
               accessibilityRole="tab"
               accessibilityState={{ selected: focused }}
               accessibilityLabel={label}
@@ -340,7 +343,7 @@ function AppNavigator() {
               ]}>
                 {label}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           );
         })}
       </View>

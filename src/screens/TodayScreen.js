@@ -4,7 +4,6 @@ import {
 } from 'react-native';
 import SafeAreaView from '../components/SafeAreaView';
 import Svg, { Path, Rect } from 'react-native-svg';
-import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import HabitCard from '../components/HabitCard';
@@ -15,6 +14,9 @@ import CompletionCelebration from '../components/CompletionCelebration';
 import TrophyCelebration from '../components/TrophyCelebration';
 import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import UndoToast from '../components/UndoToast';
+import Button from '../components/ui/Button';
+import PressableScale from '../components/ui/PressableScale';
+import { radius } from '../theme/tokens';
 import NoteModal from '../components/NoteModal';
 import MoodCheckIn from '../components/MoodCheckIn';
 import { isGoalMet, usesCounter, countAfterIncrement, markRestLeavesOutCounters } from '../utils/habits';
@@ -437,15 +439,13 @@ export default function TodayScreen() {
                 theme={theme}
                 style={{ backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }}
               >
-                <TouchableOpacity
-                  style={[styles.addHabitBtn, { backgroundColor: theme.action, shadowColor: theme.shadow }]}
+                <Button
+                  block
+                  icon="add"
+                  style={[styles.addHabitBtn, { shadowColor: theme.shadow }]}
                   onPress={() => setRequestedTab(3)}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
                   accessibilityLabel={t('today.empty.addA11y')}
-                >
-                  <Ionicons name="add" size={28} color={theme.onAction} />
-                </TouchableOpacity>
+                />
               </EmptyCard>
               {effectiveChallenges.length === 0 && (
                 <TouchableOpacity
@@ -501,7 +501,7 @@ export default function TodayScreen() {
                 />
               ))}
               {markRestCount > 0 && (
-                <TouchableOpacity
+                <PressableScale
                   onPress={handleMarkRest}
                   style={styles.markRestBtn}
                   accessibilityRole="button"
@@ -513,7 +513,7 @@ export default function TodayScreen() {
                   {markRestPartial && (
                     <Text style={[styles.markRestNote, { color: theme.textSecondary }]}>{t('today.markRestNote')}</Text>
                   )}
-                </TouchableOpacity>
+                </PressableScale>
               )}
             </>
           )}
@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase',
   },
-  markRestBtn: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, marginTop: 4 },
+  markRestBtn: { alignSelf: 'center', minHeight: 48, borderRadius: radius.control, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, marginTop: 4 },
   markRestText: { fontSize: 15, fontWeight: '700' },
   markRestNote: { fontSize: 13, marginTop: 2, textAlign: 'center' },
   timeLabel: { fontSize: 12, fontWeight: '700', marginTop: 6, marginBottom: 8 },
@@ -667,13 +667,10 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 40, marginBottom: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
   emptyBody: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  // Button (block, primary) gives the fill, radius and 48 min height; this adds the lift.
   addHabitBtn: {
-    alignSelf: 'stretch',
     marginTop: 8,
-    paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    minHeight: 56,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.18,
     shadowRadius: 6,

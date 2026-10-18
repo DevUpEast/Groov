@@ -39,6 +39,7 @@ import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocal
 import { t, useLocale } from '../i18n';
 import feedback, { EVENTS as FEEDBACK } from '../services/feedback';
 import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
+import { ThemeContext } from '../theme/ThemeContext';
 
 // The one feedback gate (src/services/feedback.js): callers never check these settings.
 const applyFeedbackSettings = (s) => feedback.configure({ haptics: s?.hapticsEnabled !== false, sound: s?.soundEnabled !== false });
@@ -1444,6 +1445,8 @@ export function AppProvider({ children }) {
     ? (systemScheme === 'dark' ? 'dark' : 'light')
     : (settings.theme === 'dark' ? 'dark' : 'light'));
   const theme = themes[themeName];
+  // The ui primitives read this small memoized context instead of the whole AppContext.
+  const themeValue = useMemo(() => ({ theme, themeName }), [theme, themeName]);
   useEffect(() => {
     if (mockupParams.active && loaded) postToMockupHost({ type: 'mockup:ready' });
   }, [loaded]);
@@ -1482,7 +1485,9 @@ export function AppProvider({ children }) {
       habitsOnDay, isSnapshotHabitDone,
       todayStr,
     }}>
-      {children}
+      <ThemeContext.Provider value={themeValue}>
+        {children}
+      </ThemeContext.Provider>
     </AppContext.Provider>
   );
 }

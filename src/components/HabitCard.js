@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { completionsInWeek } from '../utils/schedule';
 import { addDays } from '../utils/dates';
@@ -7,6 +7,8 @@ import feedback from '../services/feedback';
 import { announce } from '../utils/a11y';
 import HabitIcon from './HabitIcon';
 import ActionSheet from './ui/ActionSheet';
+import PressableScale, { hitSlopFor } from './ui/PressableScale';
+import IconButton from './ui/IconButton';
 import { usesCounter, countStep, describeProgress, unitLabel } from '../utils/habits';
 import { t, useLocale } from '../i18n';
 import { resolveAccent } from '../theme/accents';
@@ -46,6 +48,9 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
     return () => clearInterval(tickRef.current);
   }, [timerStart]);
   const elapsedSec = timerStart ? Math.floor((Date.now() - timerStart) / 1000) : 0;
+  // Start/stop plays toggle.on / toggle.off: Android only. On iOS the timer button is silent by
+  // design (F-06, F-04a n5): §2.10 gives toggles no iOS haptic ("native": only a real Switch has
+  // one) and a plain press is silent; a stop that logs minutes still gets counter.step/habit.done.
   const toggleTimer = () => {
     if (!timerStart) { feedback.toggled(true); setTimerStart(Date.now()); return; }
     const mins = Math.round(elapsedSec / 60);
@@ -73,6 +78,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   // and ignore back. The sheet plays the long-press haptic itself.
   const [menuOpen, setMenuOpen] = useState(false);
   const handleLongPress = () => setMenuOpen(true);
+  // The counter and timer buttons are part of the card: a long hold on them opens the same menu.
+  const holdForOptions = { onLongPress: handleLongPress, delayLongPress: LONG_PRESS_MS };
   const menuOptions = [
     { label: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip'), onPress: () => { toggleSkipHabitOn(habit.id, today); onSkipToggle?.(habit); } },
     { label: yesterdayDone ? t('habitCard.longPress.undoYesterday') : t('habitCard.longPress.markYesterday'), onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
@@ -90,7 +97,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
 
   return (
     <>
-      <TouchableOpacity
+      {/* PressableScale: 0.97 press scale, ripple on Android, overlay on iOS/web (F-06). */}
+      <PressableScale
         style={[
           styles.card,
           { backgroundColor: theme.surface, borderColor: done ? accent.fill : theme.border },
@@ -104,8 +112,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         ]}
         onPress={handleCardPress}
         onLongPress={handleLongPress}
-        delayLongPress={350}
-        activeOpacity={0.7}
+        delayLongPress={LONG_PRESS_MS}
         accessibilityRole={isVolume ? 'button' : 'checkbox'}
         accessibilityState={isVolume ? undefined : { checked: done }}
         accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
@@ -128,36 +135,46 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           <View style={styles.counter}>
             {/* − is the only way to subtract for volume habits */}
             {isTimed && (
-              <TouchableOpacity
+              <IconButton
+                size={COUNTER_BTN}
+                icon={timerStart ? 'stop' : 'play'}
+                iconSize={16}
+                color={timerStart ? theme.onDanger : accent.fill}
                 style={[styles.counterBtn, { borderColor: timerStart ? theme.dangerFill : accent.ring, backgroundColor: timerStart ? theme.dangerFill : 'transparent' }]}
                 onPress={toggleTimer}
-                accessibilityRole="button"
+                {...holdForOptions}
                 accessibilityLabel={timerStart ? t('habitCard.a11y.stopTimer') : t('habitCard.a11y.startTimer')}
-              >
-                <Text style={[styles.counterBtnText, { color: timerStart ? theme.onDanger : accent.fill, fontSize: 13 }]}>{timerStart ? '■' : '▶'}</Text>
-              </TouchableOpacity>
+              />
             )}
-            <TouchableOpacity
-              style={[styles.counterBtn, { borderColor: theme.controlBorder }]}
+            {/* At 0 the − is disabled: a filled disabledContainer disc with an onDisabled glyph
+                (§2.2), still focusable; a tap plays `refused`, a long hold opens the options. */}
+            <IconButton
+              size={COUNTER_BTN}
+              icon="remove"
+              iconSize={20}
+              style={[styles.counterBtn, count <= 0
+                ? { borderColor: theme.disabledContainer, backgroundColor: theme.disabledContainer }
+                : { borderColor: theme.controlBorder }]}
               onPress={() => onDecrement(step)}
-              accessibilityRole="button"
+              {...holdForOptions}
+              onDisabledLongPress={handleLongPress}
+              disabled={count <= 0}
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.removeMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.removeOne', { unit: unitLabel(habit) })).trim()}
-              accessibilityState={{ disabled: count <= 0 }}
-            >
-              <Text style={[styles.counterBtnText, { color: theme.textSecondary }]}>−</Text>
-            </TouchableOpacity>
+            />
 
             {/* The count is text (4.5:1): it stays `text` on the done tint; the filled + carries done. */}
             <Text style={[styles.counterNum, { color: overLimit ? theme.dangerText : theme.text }]}>{count}</Text>
 
-            <TouchableOpacity
+            <IconButton
+              size={COUNTER_BTN}
+              icon="add"
+              iconSize={20}
+              color={done && !isLimit ? accent.onFill : theme.textSecondary}
               style={[styles.counterBtn, done && !isLimit ? { borderColor: accent.fill, backgroundColor: accent.fill } : { borderColor: isLimit ? theme.controlBorder : accent.ring }]}
               onPress={() => onIncrement(step)}
-              accessibilityRole="button"
+              {...holdForOptions}
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
-            >
-              <Text style={[styles.counterBtnText, { color: done && !isLimit ? accent.onFill : theme.textSecondary }]}>+</Text>
-            </TouchableOpacity>
+            />
           </View>
         ) : (
           /* Daily habit: visual-only checkbox; the whole card handles the tap */
@@ -169,7 +186,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
             {done ? <Text style={[styles.check, { color: accent.onFill }]}>{isQuit ? '🛡' : '✓'}</Text> : skipped ? <Text style={{ fontSize: 13 }}>💤</Text> : null}
           </View>
         )}
-      </TouchableOpacity>
+      </PressableScale>
       <ActionSheet
         visible={menuOpen}
         title={habit.name}
@@ -180,6 +197,12 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
     </>
   );
 }
+
+// Counter ± and timer buttons: 36 visual, hitSlop 6 to the 48 dp target (4 to 44 pt on iOS);
+// the gap is two slops (12 dp / 8 pt), so neighbouring targets meet without overlapping.
+const COUNTER_BTN = 36;
+const LONG_PRESS_MS = 350;
+const COUNTER_GAP = 2 * hitSlopFor(COUNTER_BTN).left;
 
 const styles = StyleSheet.create({
   card: {
@@ -205,11 +228,7 @@ const styles = StyleSheet.create({
     borderWidth: 2, alignItems: 'center', justifyContent: 'center',
   },
   check: { fontSize: 14, fontWeight: 'bold' },
-  counter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  counterBtn: {
-    width: 30, height: 30, borderRadius: 15, borderWidth: 1.5,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  counterBtnText: { fontSize: 18, fontWeight: '600', lineHeight: 22 },
+  counter: { flexDirection: 'row', alignItems: 'center', gap: COUNTER_GAP },
+  counterBtn: { borderWidth: 1.5 },
   counterNum: { ...type.numericSmall, minWidth: 20, textAlign: 'center' },
 });
