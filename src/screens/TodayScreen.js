@@ -18,6 +18,7 @@ import TrophyCelebration from '../components/TrophyCelebration';
 import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import ShareCards from '../components/ShareCards';
 import UndoToast from '../components/UndoToast';
+import StreakNewsCard from '../components/StreakNewsCard';
 import Button from '../components/ui/Button';
 import PressableScale from '../components/ui/PressableScale';
 import Dialog from '../components/ui/Dialog';
@@ -123,6 +124,7 @@ export default function TodayScreen() {
     moods, setMood,
     themeName, allHabits, getOverallStreak, habitsOnDay, isSnapshotHabitDone, isExcused, isDayFrozen,
     getStreakForHabit, setHint,
+    streakNews, dismissStreakNews, takeBackOnBeat,
   } = useApp();
   useLocale();
   const device = useDeviceSettings();
@@ -211,6 +213,19 @@ export default function TodayScreen() {
     if (!hold) bannerTimer.current = setTimeout(() => setBeatBanner(null), celebration.smallBeatHold);
   }, []);
   useEffect(() => () => clearTimeout(bannerTimer.current), []);
+  // C-09 "Back on beat." (tone rule 3): only after a check-off that follows a reset card, as
+  // recognition of what the user just did. It takes the strip line like a small beat, once the
+  // check has landed (b4, after the ring has moved), with no sound or haptic of its own.
+  const backTimer = useRef(null);
+  useEffect(() => () => clearTimeout(backTimer.current), []);
+  const BACK_ON_BEAT = useRef({ days: 'back', icon: 'musical-notes', text: '' }).current;
+  const maybeBackOnBeat = useCallback(() => {
+    if (!takeBackOnBeat()) return;
+    // The user has started: the reset card has done its job.
+    dismissStreakNews();
+    clearTimeout(backTimer.current);
+    backTimer.current = setTimeout(() => showBeat({ ...BACK_ON_BEAT, text: t('today.streakNews.backOnBeat') }), beats.b4);
+  }, [takeBackOnBeat, dismissStreakNews, showBeat]); // eslint-disable-line react-hooks/exhaustive-deps
   // The live streak, for the guards below (set once it is computed further down).
   const streakNowRef = useRef(0);
   const showMilestone = useCallback((milestone) => {
@@ -236,6 +251,11 @@ export default function TodayScreen() {
     if (m.small) showBeat(m, { hold: true });
     else { setMilestoneShown(m); setFullCelebration(true); }
   }, [mockCelebrate, showBeat]);
+  // `?streakNews=back` holds "Back on beat." in the strip (C-09 review stills).
+  const mockNews = mockupParams.streakNews;
+  useEffect(() => {
+    if (mockNews === 'back') showBeat({ ...BACK_ON_BEAT, text: t('today.streakNews.backOnBeat') }, { hold: true });
+  }, [mockNews, showBeat]); // eslint-disable-line react-hooks/exhaustive-deps
   const [rewardModalVisible, setRewardModalVisible] = useState(false);
   const [rewardsToShow, setRewardsToShow] = useState([]);
   const rewardModalShown = useRef(false);
@@ -310,7 +330,7 @@ export default function TodayScreen() {
   const headerState = habits.length === 0 ? null : total === 0 ? 'rest' : completed >= total ? 'complete' : 'progress';
   // A small beat leaves with the day it celebrated: an un-check takes it down at once.
   useEffect(() => {
-    if (headerState === 'progress' && beatBanner && mockCelebrate == null) {
+    if (headerState === 'progress' && beatBanner && mockCelebrate == null && mockNews == null) {
       clearTimeout(bannerTimer.current);
       setBeatBanner(null);
     }
@@ -448,6 +468,27 @@ export default function TodayScreen() {
 
   const scrollToTop = useCallback(() => scrollRef.current?.scrollTo?.({ y: 0, animated: true }), []);
 
+  // C-09: the one-time card for what happened to the streak since the last open (AppContext
+  // streakNews), above the first habit card. The mockup's `?streakNews=` shows a sample.
+  const mockNewsCard = React.useMemo(() => {
+    if (!mockNews || mockNews === 'back') return null;
+    const count = mockStreak && mockStreak.count > 0 ? mockStreak.count : 12;
+    if (mockNews === 'reset') return { kind: 'reset', ended: 12, date: today };
+    if (mockNews === 'freezeMany') return { kind: 'freeze', covered: addDays(today, -1), count: 2, streak: count, date: today };
+    return { kind: 'freeze', covered: addDays(today, mockNews === 'freezeDay' ? -2 : -1), count: 1, streak: count, date: today };
+  }, [mockNews, today]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [mockNewsDismissed, setMockNewsDismissed] = useState(false);
+  const shownNews = mockNewsCard ? (mockNewsDismissed ? null : mockNewsCard) : streakNews;
+  const newsCard = habits.length > 0 && shownNews ? (
+    <StreakNewsCard
+      key={`${shownNews.kind}-${shownNews.date}`}
+      news={shownNews}
+      theme={theme}
+      canStart={dueHabits.length > 0}
+      onDismiss={mockNewsCard ? () => setMockNewsDismissed(true) : dismissStreakNews}
+    />
+  ) : null;
+
   // Completions queued by "Mark the rest done": { challengeId, claimedAt, token }.
   // They run when that action's toast hides (or the app backgrounds / the screen
   // unmounts), so Undo can still take the claim back before anything is archived.
@@ -556,6 +597,7 @@ export default function TodayScreen() {
     const breaksDay = !justCompleted && !willAllBeDone;
     if (breaksDay) { allDoneCelebrated.current = false; burstRef.current?.stop(); }
     if (justCompleted) {
+      maybeBackOnBeat();
 
       // A single check-off completes a challenge immediately, with its trophy.
       const { claimedIds, completedNowIds } = autoClaimChallenges(after);
@@ -592,7 +634,7 @@ export default function TodayScreen() {
         tapAt,
       });
     }
-  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, getHabitCount, getTodayCompletions, choreography, moment, getStreakForHabit, openTrophyAt]);
+  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, getHabitCount, getTodayCompletions, choreography, moment, getStreakForHabit, openTrophyAt, maybeBackOnBeat]);
 
   // `undo`: the toast Undo, which always reads as an un-check.
   const handleDecrement = useCallback((habit, amount = 1, { undo = false } = {}) => {
@@ -669,6 +711,7 @@ export default function TodayScreen() {
     const dayKey = todayStr();
     const plan = markRestDone();
     if (plan.changedIds.length === 0) return;
+    maybeBackOnBeat();
     // Completion is deferred until the undo window closes (S-02).
     const { claimedIds } = autoClaimChallenges(plan.next, { defer: true, token: id });
     setToast({
@@ -694,7 +737,7 @@ export default function TodayScreen() {
     const order = grouped ? grouped.flatMap(sec => sec.habits) : dueHabits;
     const creditFrom = order.filter(h => plan.changedIds.includes(h.id)).map(h => h.id);
     if (choreography) moment.run({ kind: BEAT.markRest, claimedIds, dayComplete, creditFrom, tapAt: id });
-  }, [markRestDone, autoClaimChallenges, dueHabits, grouped, isHabitSatisfiedWith, todayStr, choreography, moment]);
+  }, [markRestDone, autoClaimChallenges, dueHabits, grouped, isHabitSatisfiedWith, todayStr, choreography, moment, maybeBackOnBeat]);
 
   // Undo for Mark the rest, on the day the action ran (tst.dayKey): drop its queued
   // completions, revert the habits it marked that are still at 1, and un-mark exactly
@@ -749,6 +792,7 @@ export default function TodayScreen() {
 
         {/* Habits */}
         <View style={styles.content}>
+          {newsCard}
           {!compactRing && nudgeCard}
 
           {habits.length === 0 ? (

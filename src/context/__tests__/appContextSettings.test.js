@@ -26,7 +26,7 @@ jest.mock('../../services/sync', () => {
   };
 });
 jest.mock('../../utils/notifications', () => ({
-  requestReminderSchedule: jest.fn(), clearRemindersOnSignOut: jest.fn(), requestEveningCheckIn: jest.fn(),
+  requestReminderSchedule: jest.fn(), clearRemindersOnSignOut: jest.fn(), requestEveningCheckIn: jest.fn(), requestStreakNews: jest.fn(),
   getPermissionState: jest.fn(() => Promise.resolve('granted')), requestOsPermission: jest.fn(() => Promise.resolve(true)),
   listenForNotificationResponses: jest.fn(() => () => {}), snoozeNotification: jest.fn(), setBadge: jest.fn(),
   ACTION_DONE: 'done', ACTION_SNOOZE: 'snooze', BACKOFF_AFTER_MISSES: 3,
@@ -147,14 +147,16 @@ test('badge migration runs inside the load: an existing install starts with the 
   const r = await mount();
   expect(firstRenderBadge).toBe(true);
   // The load is also the first app open (C-03).
-  expect(mockStore.deviceSettings).toEqual({ badgeEnabled: true, appOpens: 1 });
+  // (C-09 also records lastSeen in the same object.)
+  expect(mockStore.deviceSettings).toMatchObject({ badgeEnabled: true, appOpens: 1 });
   act(() => r.unmount());
 });
 
 test('each load counts one app open on this device (C-03 tips wait for the 2nd)', async () => {
   Object.assign(mockStore, { habits: READ, settings: withExtras({}), deviceSettings: { badgeEnabled: true, appOpens: 1 } });
   const r = await mount();
-  expect(mockStore.deviceSettings).toEqual({ badgeEnabled: true, appOpens: 2 });
+  // (C-09 also records lastSeen in the same object.)
+  expect(mockStore.deviceSettings).toMatchObject({ badgeEnabled: true, appOpens: 2 });
   act(() => r.unmount());
 });
 

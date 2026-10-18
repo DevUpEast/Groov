@@ -151,6 +151,7 @@
     "beats": { "a11y": { "one": "Letzter %{count} Tag: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst", "other": "Letzte %{count} Tage: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst" } },
     "sticky": { "hint": "Scrollt zurück nach oben" },
     "hint": { "longPress": "Tipp: Halte eine Gewohnheit gedrückt (oder tippe auf ⋯), um einen Tag zu überspringen, gestern nachzutragen oder eine Notiz hinzuzufügen.", "longPressA11y": "Tipp: Halte eine Gewohnheit gedrückt oder nutze ihre Taste „Weitere Optionen“, um einen Tag zu überspringen, gestern nachzutragen oder eine Notiz hinzuzufügen." },
+    "streakNews": { "freezeYesterday": { "one": "Ein Freeze hat gestern abgedeckt. Deine Serie von %{count} Tag bleibt.", "other": "Ein Freeze hat gestern abgedeckt. Deine %{count}-Tage-Serie bleibt." }, "freezeDay": { "one": "Ein Freeze hat %{day} abgedeckt. Deine Serie von %{count} Tag bleibt.", "other": "Ein Freeze hat %{day} abgedeckt. Deine %{count}-Tage-Serie bleibt." }, "freezeMany": { "one": "Freezes haben %{days} Tage abgedeckt. Deine Serie von %{count} Tag bleibt.", "other": "Freezes haben %{days} Tage abgedeckt. Deine %{count}-Tage-Serie bleibt." }, "reset": { "one": "Deine Serie endete bei %{count} Tag. Heute beginnt eine neue.", "other": "Deine Serie endete bei %{count} Tagen. Heute beginnt eine neue." }, "start": "Starte die erste Gewohnheit von heute", "backOnBeat": "Wieder im Takt." },
     "empty": {
       "title": "Finde deinen Rhythmus",
       "body": "Füge deine erste Gewohnheit hinzu",
@@ -608,6 +609,8 @@
     "enableSub": "Hauptschalter für alle Erinnerungen",
     "smartCheckin": "Smarter Check-in",
     "smartSub": "Kommt um %{time}, nur wenn noch Gewohnheiten offen sind",
+    "streakNews": "Neues zu deiner Serie",
+    "streakNewsSub": "Eine Nachricht am Morgen, wenn ein Freeze einen Tag abdeckt oder eine Serie endet",
     "firesAt": "Kommt um %{time}",
     "notificationsDisabled": "Benachrichtigungen deaktiviert",
     "offTapToAllow": "Aus · Tippen zum Erlauben",
@@ -638,6 +641,8 @@
       "sent": { "title": "Gesendet", "body": "Testbenachrichtigung ausgelöst. Schau in deinen Benachrichtigungen nach." },
       "seed": { "title": "30-Tage-Verlauf erzeugen", "body": "Dadurch werden die letzten 30 Tage mit zufälligen Erledigungen gefüllt; bereits erfasste Tage bleiben erhalten. Außerdem wird das Startdatum deiner Gewohnheiten um 31 Tage zurückgesetzt, damit der Verlauf zählt. Die Änderungen werden mit der Cloud synchronisiert und lassen sich nicht rückgängig machen.", "generate": "Erzeugen", "done": "30 Tage zufälliger Verlauf hinzugefügt.", "sub": "Zufällige Erledigungen für die letzten 30 Tage" },
       "perfectStreak": { "title": "Perfekte Serie erzeugen", "sub": "N perfekte Tage bis gestern, heute geleert", "body": "Für deine aktuellen Gewohnheiten: Jede geplante Gewohnheit erreicht an jedem der letzten N Tage ihr Ziel, das Startdatum rückt auf den ersten davon, die heutigen Häkchen werden gelöscht und Meilensteine über N vergessen. Wird mit der Cloud synchronisiert.", "option": { "one": "%{count} Tag", "other": "%{count} Tage" } },
+      "missedYesterday": { "title": "Gestern verpasst simulieren", "sub": "Löscht die Häkchen von gestern (echtes Datum) und setzt das letzte Öffnen zwei Tage zurück", "done": "Gestern ist leer. Heute zeigt, was ein verpasster Tag bewirkt." },
+      "useUpFreezes": { "title": "Freezes des Monats aufbrauchen", "sub": "Der 1. und 2. werden die Freezes des Monats, ihre Häkchen gelöscht", "disabled": "Braucht zwei frühere Tage in diesem Monat; ab dem 3. verfügbar", "done": "Keine Freezes mehr in diesem Monat." },
       "crash": { "title": "Absturz testen", "body": "Dies löst einen Darstellungsfehler aus, damit du den Absturzbildschirm und Sentry prüfen kannst.", "crash": "Absturz", "sub": "Löst einen Fehler aus, um den Absturzbildschirm zu testen" },
       "feedbackLog": { "title": "Feedback-Protokoll", "sub": "Die letzten 50 Haptik- und Tonsignale mit ihrer Verzögerung ab dem Tippen", "empty": "Noch nichts. Hake eine Gewohnheit ab und komm zurück.", "clear": "Leeren" },
       "choreography": { "title": "Choreografie beim Abhaken", "sub": "Haptik, Töne und Animationen im Takt, kein Hinweis beim Abhaken einer einzelnen Gewohnheit. Aus = das alte Timing" },
@@ -968,6 +973,7 @@
     "reminderTitle": "🔔 Erinnerung",
     "eveningTitle": "🌙 Gewohnheits-Check-in",
     "eveningBody": "Du hast heute noch Gewohnheiten offen. Halte deine Serie am Laufen!",
+    "streakNewsTitle": "Neues zu deiner Serie",
     "testBody": "Testerinnerung. Tippe auf Erledigt, um sie direkt hier zu erfassen.",
     "finishTitle": "Gewohnheiten abschließen"
   },

@@ -151,6 +151,7 @@
     "beats": { "a11y": { "one": "Last %{count} day: %{done} complete, %{rest} rest, %{missed} missed", "other": "Last %{count} days: %{done} complete, %{rest} rest, %{missed} missed" } },
     "sticky": { "hint": "Scrolls back to the top" },
     "hint": { "longPress": "Tip: press and hold a habit (or tap ⋯) to skip a day, fix yesterday or add a note.", "longPressA11y": "Tip: press and hold a habit, or use its More options button, to skip a day, fix yesterday or add a note." },
+    "streakNews": { "freezeYesterday": { "one": "A freeze covered yesterday. Your %{count}-day streak holds.", "other": "A freeze covered yesterday. Your %{count}-day streak holds." }, "freezeDay": { "one": "A freeze covered %{day}. Your %{count}-day streak holds.", "other": "A freeze covered %{day}. Your %{count}-day streak holds." }, "freezeMany": { "one": "Freezes covered %{days} days. Your %{count}-day streak holds.", "other": "Freezes covered %{days} days. Your %{count}-day streak holds." }, "reset": { "one": "Your streak ended at %{count} day. Today starts a new one.", "other": "Your streak ended at %{count} days. Today starts a new one." }, "start": "Start today's first habit", "backOnBeat": "Back on beat." },
     "empty": {
       "title": "Get into Rhythm",
       "body": "Add your first habit",
@@ -608,6 +609,8 @@
     "enableSub": "Master toggle for all reminders",
     "smartCheckin": "Smart Check-in",
     "smartSub": "Fires at %{time} only if habits are still unfinished",
+    "streakNews": "Streak news",
+    "streakNewsSub": "A morning note when a freeze covers a day or a streak ends",
     "firesAt": "Fires at %{time}",
     "notificationsDisabled": "Notifications disabled",
     "offTapToAllow": "Off · Tap to allow",
@@ -638,6 +641,8 @@
       "sent": { "title": "Sent", "body": "Test notification fired. Check your notification tray." },
       "seed": { "title": "Generate 30-Day History", "body": "This fills the last 30 days with random completions; days you already logged are kept. It also moves your habits' start dates back 31 days so the history counts. The changes sync to the cloud and cannot be undone.", "generate": "Generate", "done": "30 days of random history added.", "sub": "Random completions for the past 30 days" },
       "perfectStreak": { "title": "Seed perfect streak", "sub": "N perfect days ending yesterday, today cleared", "body": "For your current habits: every scheduled habit meets its goal on each of the last N days, start dates move to the first of them, today's check-offs are cleared and milestones above N are forgotten. Syncs to the cloud.", "option": { "one": "%{count} day", "other": "%{count} days" } },
+      "missedYesterday": { "title": "Simulate missed yesterday", "sub": "Clears yesterday's check-offs (real date) and moves the last open back two days", "done": "Yesterday is cleared. Today shows what a missed day does." },
+      "useUpFreezes": { "title": "Use up freezes this month", "sub": "The 1st and 2nd become this month's freezes, their check-offs cleared", "disabled": "Needs two earlier days this month; available from the 3rd", "done": "No freezes left this month." },
       "crash": { "title": "Test Crash", "body": "This throws a render error so you can check the crash screen and Sentry.", "crash": "Crash", "sub": "Throws an error to exercise the crash screen" },
       "feedbackLog": { "title": "Feedback log", "sub": "The last 50 haptics and sounds, with their delay from the tap", "empty": "Nothing yet. Check off a habit, then come back.", "clear": "Clear" },
       "choreography": { "title": "Check-off choreography", "sub": "Haptics, sounds and animations on the beat, no toast for a single check-off. Off = the old timing" },
@@ -968,6 +973,7 @@
     "reminderTitle": "🔔 Reminder",
     "eveningTitle": "🌙 Habit Check-in",
     "eveningBody": "You still have habits left to complete today. Keep that streak going!",
+    "streakNewsTitle": "Streak news",
     "testBody": "Test reminder. Tap Done to log it from here.",
     "finishTitle": "Finish Habits"
   },

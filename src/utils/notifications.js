@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { dateAt } from './dates';
+import { dateAt, addDays } from './dates';
 import { to24h } from './time';
 import { t } from '../i18n';
 import { palette } from '../theme/tokens';
@@ -14,9 +14,13 @@ const habitTint = (habit) => resolveAccent(habit?.color, 'light').fill;
 //   reminder-<id>        daily, from settings.reminders (global reminders)
 //   habit-<habitId>      daily, from habit.reminder (per-habit reminders)
 //   evening-habit-<date> one-off smart check-in for a given day
+//   streak-news-<date>   one-off "Streak news" (C-09, opt-in) on the morning of <date>
 const REMINDER_PREFIX = 'reminder-';
 const HABIT_PREFIX = 'habit-';
 const EVENING_PREFIX = 'evening-habit-';
+const STREAK_NEWS_PREFIX = 'streak-news-';
+// "Streak news" arrives the morning after an unfinished day, at this hour (local time).
+export const STREAK_NEWS_HOUR = 9;
 const LEGACY_IDS = ['morning-reminder', 'evening-reminder'];
 const SNOOZE_PREFIX = 'snooze-';
 
@@ -219,6 +223,7 @@ let pendingArgs = null;
 let pendingWaiters = [];
 
 let eveningGeneration = 0;
+let streakNewsGeneration = 0;
 
 // Append a task to the single scheduling chain. A task that throws is logged and the
 // chain carries on.
@@ -293,10 +298,52 @@ export function requestEveningCheckIn(today, { schedule, hour = 20, minute = 0 }
 export function clearRemindersOnSignOut(today) {
   cancelPendingReminderSchedule();
   eveningGeneration++;
+  streakNewsGeneration++;
   return enqueue(async () => {
     await applyReminderSchedule({ notificationsEnabled: false }, [], { prompt: false });
     if (today) await cancelEveningHabitReminder(today);
+    if (today) await cancelStreakNews(today);
   });
+}
+
+// "Streak news" (C-09, opt-in, settings.extras.streakNewsEnabled): while today is unfinished,
+// a one-off notification for tomorrow at STREAK_NEWS_HOUR tells what tonight's missed day
+// will do to the streak ("A freeze covered yesterday. Your 12-day streak holds." / "Your
+// streak ended at 12 days. Today starts a new one."). `content` is { title, body } to
+// schedule, or null to cancel. Serialized on the scheduling chain with its own generation,
+// like the evening check-in, so the latest state wins.
+export function requestStreakNews(today, content) {
+  const gen = ++streakNewsGeneration;
+  const isStale = () => gen !== streakNewsGeneration;
+  return enqueue(async () => {
+    if (isStale()) return;
+    if (content) await scheduleStreakNews(today, content, { isStale });
+    else await cancelStreakNews(today);
+  });
+}
+
+export async function scheduleStreakNews(today, { title, body }, { isStale = () => false } = {}) {
+  if (Platform.OS === 'web') return;
+  const tomorrow = addDays(today, 1);
+  const identifier = `${STREAK_NEWS_PREFIX}${tomorrow}`;
+  await cancel(identifier);
+  // Never prompts: the Settings switch asked through the primer when it was turned on.
+  const granted = await requestPermissions({ prompt: false });
+  if (!granted || isStale()) return;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: { title, body, sound: true, color: ACCENT, data: { kind: 'streakNews' } },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: dateAt(tomorrow, STREAK_NEWS_HOUR, 0) },
+    });
+  } catch (e) {
+    console.warn('scheduleStreakNews failed:', e);
+  }
+}
+
+export async function cancelStreakNews(today) {
+  if (Platform.OS === 'web') return;
+  await cancel(`${STREAK_NEWS_PREFIX}${addDays(today, 1)}`);
 }
 
 // Re-deliver a notification's content in `minutes` (Snooze action).

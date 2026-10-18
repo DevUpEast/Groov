@@ -151,6 +151,7 @@
     "beats": { "a11y": { "one": "Último %{count} día: %{done} completos, %{rest} de descanso, %{missed} perdidos", "other": "Últimos %{count} días: %{done} completos, %{rest} de descanso, %{missed} perdidos" } },
     "sticky": { "hint": "Vuelve al principio" },
     "hint": { "longPress": "Consejo: mantén pulsado un hábito (o toca ⋯) para omitir un día, corregir ayer o añadir una nota.", "longPressA11y": "Consejo: mantén pulsado un hábito, o usa su botón Más opciones, para omitir un día, corregir ayer o añadir una nota." },
+    "streakNews": { "freezeYesterday": { "one": "Una congelación cubrió ayer. Tu racha de %{count} día sigue.", "other": "Una congelación cubrió ayer. Tu racha de %{count} días sigue." }, "freezeDay": { "one": "Una congelación cubrió el %{day}. Tu racha de %{count} día sigue.", "other": "Una congelación cubrió el %{day}. Tu racha de %{count} días sigue." }, "freezeMany": { "one": "Las congelaciones cubrieron %{days} días. Tu racha de %{count} día sigue.", "other": "Las congelaciones cubrieron %{days} días. Tu racha de %{count} días sigue." }, "reset": { "one": "Tu racha terminó en %{count} día. Hoy empieza una nueva.", "other": "Tu racha terminó en %{count} días. Hoy empieza una nueva." }, "start": "Empieza el primer hábito de hoy", "backOnBeat": "De vuelta al ritmo." },
     "empty": {
       "title": "Entra en ritmo",
       "body": "Añade tu primer hábito",
@@ -608,6 +609,8 @@
     "enableSub": "Interruptor general de todos los recordatorios",
     "smartCheckin": "Registro inteligente",
     "smartSub": "Se envía a las %{time} solo si aún quedan hábitos sin terminar",
+    "streakNews": "Novedades de tu racha",
+    "streakNewsSub": "Un aviso por la mañana cuando una congelación cubre un día o una racha termina",
     "firesAt": "Se envía a las %{time}",
     "notificationsDisabled": "Notificaciones desactivadas",
     "offTapToAllow": "Desactivado · Toca para permitir",
@@ -638,6 +641,8 @@
       "sent": { "title": "Enviada", "body": "Se envió la notificación de prueba. Revisa tu bandeja de notificaciones." },
       "seed": { "title": "Generar historial de 30 días", "body": "Esto llena los últimos 30 días con registros aleatorios; los días que ya registraste se conservan. También mueve 31 días atrás la fecha de inicio de tus hábitos para que el historial cuente. Los cambios se sincronizan con la nube y no se pueden deshacer.", "generate": "Generar", "done": "Se añadieron 30 días de historial aleatorio.", "sub": "Registros aleatorios de los últimos 30 días" },
       "perfectStreak": { "title": "Generar racha perfecta", "sub": "N días perfectos hasta ayer; hoy queda vacío", "body": "Para tus hábitos actuales: cada hábito programado cumple su meta en cada uno de los últimos N días, la fecha de inicio pasa al primero de ellos, se borran las marcas de hoy y se olvidan los hitos por encima de N. Se sincroniza con la nube.", "option": { "one": "%{count} día", "other": "%{count} días" } },
+      "missedYesterday": { "title": "Simular ayer sin hacer", "sub": "Borra las marcas de ayer (fecha real) y lleva la última apertura dos días atrás", "done": "Ayer quedó vacío. Hoy muestra lo que pasa con un día sin hacer." },
+      "useUpFreezes": { "title": "Gastar las congelaciones del mes", "sub": "El 1 y el 2 pasan a ser las congelaciones del mes, con sus marcas borradas", "disabled": "Necesita dos días anteriores este mes; disponible desde el día 3", "done": "No quedan congelaciones este mes." },
       "crash": { "title": "Probar fallo", "body": "Esto provoca un error de renderizado para que puedas comprobar la pantalla de fallo y Sentry.", "crash": "Provocar fallo", "sub": "Lanza un error para probar la pantalla de fallo" },
       "feedbackLog": { "title": "Registro de respuesta", "sub": "Las últimas 50 vibraciones y sonidos, con su retraso desde el toque", "empty": "Nada todavía. Marca un hábito y vuelve.", "clear": "Borrar" },
       "choreography": { "title": "Coreografía al marcar", "sub": "Vibraciones, sonidos y animaciones a tiempo, sin aviso al marcar un solo hábito. Desactivada = el ritmo anterior" },
@@ -968,6 +973,7 @@
     "reminderTitle": "🔔 Recordatorio",
     "eveningTitle": "🌙 Revisión de hábitos",
     "eveningBody": "Aún te quedan hábitos por completar hoy. ¡Mantén esa racha!",
+    "streakNewsTitle": "Novedades de tu racha",
     "testBody": "Recordatorio de prueba. Toca Hecho para registrarlo desde aquí.",
     "finishTitle": "Terminar hábitos"
   },
