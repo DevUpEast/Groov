@@ -135,7 +135,7 @@ describe('ActionSheet (iOS)', () => {
     act(() => { cancelCallback(3); });
     expect(onCancel).toHaveBeenCalledTimes(2);
     expect(options[0].onPress).not.toHaveBeenCalled();
-    r2.unmount();
+    act(() => { r2.unmount(); });
   });
 });
 

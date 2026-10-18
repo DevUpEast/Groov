@@ -634,8 +634,8 @@ export default function ChallengeScreen() {
 
         {/* Tip: only shown before the user has any past challenges */}
         {effectiveChallenges.length > 0 && effectiveChallenges.length < 3 && effectivePastChallenges.length === 0 && (
-          <View style={[styles.card, { backgroundColor: theme.selection, borderColor: theme.selectionBorder }]}>
-            <Text style={[styles.tipTitle, { color: theme.onSelection }]}>{t('challenges.tip.title')}</Text>
+          <View style={[styles.card, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
+            <Text style={[styles.tipTitle, { color: theme.link }]}>{t('challenges.tip.title')}</Text>
             <Text style={[styles.tipBody, { color: theme.text }]}>
               {t('challenges.tip.body')}
             </Text>

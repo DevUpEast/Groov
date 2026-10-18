@@ -405,12 +405,12 @@ export default function TodayScreen() {
         <View style={styles.content}>
           {/* AI Coach Nudge — hidden on day 1; coach needs prior-day data */}
           {canShowNudge && (nudgeLoading || nudgeMessage) && (
-            <View style={[styles.nudgeCard, { backgroundColor: theme.selection, borderColor: theme.selectionBorder }]}>
+            <View style={[styles.nudgeCard, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
               <Text style={styles.nudgeEmoji}>✨</Text>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.nudgeLabel, { color: theme.onSelection }]}>{t('today.coach')}</Text>
+                <Text style={[styles.nudgeLabel, { color: theme.link }]}>{t('today.coach')}</Text>
                 {nudgeLoading ? (
-                  <ActivityIndicator size="small" color={theme.onSelection} style={{ marginTop: 4 }} />
+                  <ActivityIndicator size="small" color={theme.link} style={{ marginTop: 4 }} />
                 ) : (
                   <Text style={[styles.nudgeText, { color: theme.text }]}>{nudgeMessage}</Text>
                 )}

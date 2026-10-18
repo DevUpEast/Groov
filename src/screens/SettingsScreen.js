@@ -26,13 +26,16 @@ import { t, getLocale, useLocale, setLocale, SUPPORTED_LOCALES } from '../i18n';
 const DEV_CODE = 'devmode';
 
 // Switch colours (F-02): the on track is the action fill and its thumb the onAction colour
-// (ink on #818CF8 in dark, 5.98:1; a white thumb there is 2.98:1); off is a white thumb on the
-// control-boundary track.
+// (ink on #818CF8 in dark, 5.98:1; a white thumb there is 2.98:1); off is switchThumb on
+// switchTrackOff (white on slate in light, a muted #CBD5E1 on #334155 in dark, so an off row
+// does not outshine an on one). react-native-web ignores thumbColor for the on state and
+// draws its own teal unless activeThumbColor is set.
 export function switchColors(theme, on) {
   return {
-    trackColor: { false: theme.controlBorder, true: theme.action },
+    trackColor: { false: theme.switchTrackOff, true: theme.action },
     thumbColor: on ? theme.onAction : theme.switchThumb,
-    ios_backgroundColor: theme.controlBorder,
+    activeThumbColor: theme.onAction,
+    ios_backgroundColor: theme.switchTrackOff,
   };
 }
 

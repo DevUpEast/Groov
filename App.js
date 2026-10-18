@@ -70,7 +70,7 @@ function ThemedErrorBoundary({ children }) {
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { mockupParams, postToMockupHost } from './src/utils/mockup';
-import { useAnyOverlayOpen } from './src/utils/overlayStatus';
+import { useAnyOverlayOpen, setOverlayChangesStatusBar } from './src/utils/overlayStatus';
 import { supabaseConfigError } from './src/utils/supabase';
 import { AppProvider, useApp } from './src/context/AppContext';
 import { themes } from './src/theme/colors';
@@ -245,6 +245,9 @@ function AppNavigator() {
     ? 'light' // OnboardingScreen renders the same style on its brand ground (indigo / deep indigo)
     : (activeIndex === 0 ? onActionStatus : (themeName === 'dark' ? 'light' : 'dark'));
   const statusStyle = themeName === 'dark' && (overlayOpen || modalOpen) ? 'light' : baseStatus;
+  // Tells OverlayModal whether an overlay opened now would flip the style (and so must wait for
+  // it on Android). Set during render so it is current before any tap can open a sheet.
+  setOverlayChangesStatusBar(themeName === 'dark' && baseStatus !== 'light');
   useEffect(() => {
     if (mockupParams.active) postToMockupHost({ type: 'mockup:statusbar', style: statusStyle });
   }, [statusStyle]);

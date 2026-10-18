@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Platform } from 'react-native';
-import { overlayOpened } from '../../utils/overlayStatus';
+import { overlayOpened, overlayChangesStatusBar } from '../../utils/overlayStatus';
 
 /**
  * React Native's `Modal`, plus the status-bar rule for scrimmed overlays (F-02).
@@ -10,20 +10,27 @@ import { overlayOpened } from '../../utils/overlayStatus';
  *
  * Android: the Modal's dialog window copies the activity's status-bar appearance once, when it
  * is created (ReactModalHostView.updateSystemAppearance), so the activity must already be light
- * by then. The overlay is registered at once and the Modal is shown two frames later, after the
- * StatusBar update has reached the activity. Closing is immediate. iOS and web show at once.
+ * by then. When opening would change the style (`overlayChangesStatusBar()`, dark Today), the
+ * overlay is registered at once and the Modal is shown two frames (~32 ms) later, after the
+ * StatusBar update has reached the activity. Every other open (light mode, dark screens whose
+ * icons are already light) is immediate, as on iOS and web. Closing is always immediate.
+ *
+ * The deferred gap: for those ~32 ms no dialog window exists yet, so an Android back press
+ * reaches App's BackHandler instead of the Modal's onRequestClose (on a non-Today tab it goes to
+ * Today; on Today it leaves the app). The window opens right after a tap, so this is accepted.
  */
-const DEFER = Platform.OS === 'android';
+const ANDROID = Platform.OS === 'android';
+const mustDefer = () => ANDROID && overlayChangesStatusBar();
 
 export default function OverlayModal({ visible, ...props }) {
   const want = !!visible;
-  const [shown, setShown] = useState(want && !DEFER);
+  const [shown, setShown] = useState(() => want && !mustDefer());
 
   useEffect(() => (want ? overlayOpened() : undefined), [want]);
 
   useEffect(() => {
     if (!want) { setShown(false); return undefined; }
-    if (!DEFER) { setShown(true); return undefined; }
+    if (!mustDefer()) { setShown(true); return undefined; }
     let raf2;
     const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(() => setShown(true)); });
     return () => { cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2); };

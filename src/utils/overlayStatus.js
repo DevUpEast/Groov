@@ -23,6 +23,13 @@ export function overlayOpened() {
 export const anyOverlayOpen = () => open > 0;
 export const openOverlayCount = () => open;
 
+// Whether opening an overlay would change the status-bar style right now (dark mode on a
+// screen whose icons are ink, i.e. dark Today). App.js keeps it current; OverlayModal only
+// defers the Android open when it is true, so every other sheet opens at once.
+let changesStatusBar = false;
+export function setOverlayChangesStatusBar(value) { changesStatusBar = !!value; }
+export const overlayChangesStatusBar = () => changesStatusBar;
+
 function subscribe(listener) {
   listeners.add(listener);
   return () => listeners.delete(listener);

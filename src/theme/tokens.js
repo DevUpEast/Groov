@@ -62,8 +62,8 @@ const light = {
   onMeter: '#FFFFFF',
   // Label on a challenge-tier colour (banner, badges); X-02 replaces the tier palette.
   onTier: '#0F172A',
-  // Glyph on a habit accent fill (check, counter +): white in light, ink in dark (§2.3)
-  onAccent: '#FFFFFF',
+  // Glyph on a habit accent fill (check, counter +): ACCENT_ON_FILL from accents.js (§2.3)
+  onAccent: ACCENT_ON_FILL.light,
   // Success: the ring arc, the heat-map ramp and "Logged" text only
   success: '#15803D',
   onSuccess: '#FFFFFF',
@@ -91,8 +91,10 @@ const light = {
   // Full-screen celebration (trophy, challenge rewards): its own darker scrim, white text
   onCelebration: '#FFFFFF',
   onCelebrationSecondary: '#CBD5E1',
-  // Switch thumb (both states; the track carries the state)
+  // Switch, off state: the thumb and its track (on = onAction thumb on the action track).
+  // Dark mutes the off thumb so an off row does not outshine an on one (F-02 S3).
   switchThumb: '#FFFFFF',
+  switchTrackOff: '#7C8BA0',
   // Sign in with Apple button (Apple HIG: black on light, white on dark)
   appleButton: '#000000',
   onAppleButton: '#FFFFFF',
@@ -143,7 +145,7 @@ const dark = {
   meter: '#818CF8',
   onMeter: '#0F172A',
   onTier: '#0F172A',
-  onAccent: '#0F172A',
+  onAccent: ACCENT_ON_FILL.dark,
   success: '#4ADE80',
   onSuccess: '#0F172A',
   successText: '#4ADE80',
@@ -164,7 +166,8 @@ const dark = {
   onDisabled: '#A3B1C5',
   onCelebration: '#FFFFFF',
   onCelebrationSecondary: '#CBD5E1',
-  switchThumb: '#FFFFFF',
+  switchThumb: '#CBD5E1',
+  switchTrackOff: '#334155',
   appleButton: '#FFFFFF',
   onAppleButton: '#000000',
   sprout: '#F5C518',
@@ -321,6 +324,12 @@ export const pairs = [
   P('light', 'link on overlay', 'link', 'overlay', TEXT, 7.9),
   P('light', 'reward subtitle on celebrationScrim over bg', 'onCelebrationSecondary', 'celebrationScrim', TEXT, 5.89, 'bg'),
   P('light', 'onAppleButton on appleButton', 'onAppleButton', 'appleButton', TEXT, 21),
+  P('light', 'Today hero ring: onAction arc vs actionTrack', 'onAction', 'actionTrack', LARGE, 3.78),
+  P('light', 'off Switch: switchThumb vs switchTrackOff', 'switchThumb', 'switchTrackOff', LARGE, 3.47),
+  P('light', 'onAccent (check) on the default accent (selectionBorder)', 'onAccent', 'selectionBorder', TEXT, 6.29),
+  P('light', 'sprout on the action hero (decorative)', 'sprout', 'action', null, 3.86),
+  P('light', 'brand card: link (title) on brandSurface', 'link', 'brandSurface', TEXT, 6.41),
+  P('light', 'brand card: text on brandSurface', 'text', 'brandSurface', TEXT, 14.49),
   // ── Dark ──
   P('dark', 'text on bg', 'text', 'bg', TEXT, 17.06),
   P('dark', 'text on surface', 'text', 'surface', TEXT, 13.98),
@@ -389,4 +398,10 @@ export const pairs = [
   P('dark', 'link on overlay', 'link', 'overlay', TEXT, 5.01),
   P('dark', 'reward subtitle on celebrationScrim over bg', 'onCelebrationSecondary', 'celebrationScrim', TEXT, 13.57, 'bg'),
   P('dark', 'onAppleButton on appleButton', 'onAppleButton', 'appleButton', TEXT, 21),
+  P('dark', 'Today hero ring: onAction (ink) arc vs actionTrack', 'onAction', 'actionTrack', LARGE, 8.14),
+  P('dark', 'off Switch: switchThumb vs switchTrackOff', 'switchThumb', 'switchTrackOff', LARGE, 6.97),
+  P('dark', 'off Switch thumb vs surface', 'switchThumb', 'surface', LARGE, 9.85),
+  P('dark', 'onAccent (ink check) on the default accent (selectionBorder)', 'onAccent', 'selectionBorder', TEXT, 5.98),
+  P('dark', 'sprout on the action hero (decorative)', 'sprout', 'action', null, 1.83),
+  P('dark', 'brand card: link (title) on brandSurface', 'link', 'brandSurface', TEXT, 8.02),
 ];

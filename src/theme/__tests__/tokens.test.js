@@ -155,3 +155,23 @@ describe('colors.js legacy adapter (plan §2.1)', () => {
     }
   });
 });
+
+describe('F-02 role pairs kept outside `pairs`', () => {
+  it('derives onAccent from ACCENT_ON_FILL (one source for the accent glyph)', () => {
+    expect(palette.light.onAccent).toBe(accentOnFill.light);
+    expect(palette.dark.onAccent).toBe(accentOnFill.dark);
+  });
+
+  it('passes onTier (ink) on every challenge-tier colour in TIER_STYLES', () => {
+    // TIER_STYLES lives in AppContext until X-02 moves it into tokens; read its hexes from source.
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.resolve(__dirname, '../../context/AppContext.js'), 'utf8');
+    const block = src.slice(src.indexOf('TIER_STYLES'), src.indexOf('};', src.indexOf('TIER_STYLES')));
+    const borders = [...block.matchAll(/border:\s*'(#[0-9A-Fa-f]{6})'/g)].map(m => m[1]);
+    expect(borders.length).toBe(4);
+    for (const theme of ['light', 'dark']) {
+      for (const b of borders) expect([theme, b, contrastRatio(palette[theme].onTier, b) >= TEXT]).toEqual([theme, b, true]);
+    }
+  });
+});

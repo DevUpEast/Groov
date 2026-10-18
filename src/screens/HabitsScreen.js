@@ -203,6 +203,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
   // Magic Fill: describe the habit in words, the AI fills the form.
   const [magicText, setMagicText] = useState('');
   const [magicBusy, setMagicBusy] = useState(false);
+  const magicTooShort = !magicBusy && magicText.trim().length < 3;
   const [magicError, setMagicError] = useState('');
   const runMagic = async () => {
     if (magicBusy || magicText.trim().length < 3) return;
@@ -327,8 +328,8 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
             <View onStartShouldSetResponder={dismissKeyboardOnBlankTap}>
               <View>
                 {!editingId && !!user && (
-                  <View style={[styles.magicBox, { backgroundColor: theme.selection, borderColor: theme.selectionBorder }]}>
-                    <Text style={[styles.magicTitle, { color: theme.onSelection }]}>{t('habits.form.magicTitle')}</Text>
+                  <View style={[styles.magicBox, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
+                    <Text style={[styles.magicTitle, { color: theme.link }]}>{t('habits.form.magicTitle')}</Text>
                     <View style={styles.magicRow}>
                       <TextInput
                         style={[styles.magicInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
@@ -341,15 +342,16 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                         onSubmitEditing={runMagic}
                         accessibilityLabel={t('habits.form.magicA11y')}
                       />
+                      {/* Too short to fill: the disabled pair (F-02 S2); busy keeps the action fill with a spinner. */}
                       <TouchableOpacity
-                        style={[styles.magicBtn, { backgroundColor: theme.action, opacity: magicBusy || magicText.trim().length < 3 ? 0.5 : 1 }]}
+                        style={[styles.magicBtn, { backgroundColor: magicTooShort ? theme.disabledContainer : theme.action }]}
                         onPress={runMagic}
-                        disabled={magicBusy || magicText.trim().length < 3}
+                        disabled={magicBusy || magicTooShort}
                         accessibilityRole="button"
                         accessibilityLabel={t('habits.form.magicFillA11y')}
-                        accessibilityState={{ disabled: magicBusy, busy: magicBusy }}
+                        accessibilityState={{ disabled: magicBusy || magicTooShort, busy: magicBusy }}
                       >
-                        {magicBusy ? <ActivityIndicator color={theme.onAction} size="small" /> : <Text style={[styles.magicBtnText, { color: theme.onAction }]}>{t('habits.form.fill')}</Text>}
+                        {magicBusy ? <ActivityIndicator color={theme.onAction} size="small" /> : <Text style={[styles.magicBtnText, { color: magicTooShort ? theme.onDisabled : theme.onAction }]}>{t('habits.form.fill')}</Text>}
                       </TouchableOpacity>
                     </View>
                     {!!magicError && <Text style={[styles.magicError, { color: theme.dangerText }]}>{magicError}</Text>}
