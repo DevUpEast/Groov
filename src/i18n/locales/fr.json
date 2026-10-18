@@ -1005,6 +1005,7 @@
     "archived": "%{name} archivée",
     "restored": "%{name} restaurée",
     "deleted": "Supprimé : %{name}",
-    "undone": "Annulé"
+    "undone": "Annulé",
+    "actionA11y": "%{action} : %{message}"
   }
 }

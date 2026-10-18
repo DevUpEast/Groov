@@ -117,7 +117,7 @@ export default function TodayScreen() {
     isChallengeHabitsDone, settings, theme, markChallengeDay, unmarkChallengeDay,
     getHabitCount, dateOffset, todayStr, accountCreatedAt, displayName, devMode,
     completeChallengeImmediately, markRestDone, planMarkRest, restoreHabitCounts,
-    isHabitSatisfiedWith, getTodayCompletions, setSkipHabitOn,
+    isHabitSatisfiedWith, getTodayCompletions, setSkipHabitOn, setHabitCountOn,
     pendingChallengeRewards, clearPendingChallengeRewards,
     setRequestedTab, getNote, setNote, setModalOpen, openRoute, pendingRoute,
     pendingMilestone, clearPendingMilestone,
@@ -718,26 +718,29 @@ export default function TodayScreen() {
     // A tap during the burst still lands (the layer takes no touches); an un-check ends the
     // burst with the day it celebrated.
     if (unchecks) burstRef.current?.stop();
+    // The challenge days this un-check took back (a silent Undo marks them again).
+    return unclaimed;
   }, [decrementHabit, effectiveChallenges, challenges, dueHabits, getHabitCount, unmarkChallengeDay, todayStr, cancelQueuedFor, choreography, moment]);
 
   // Today's cell in the detail sheet (code review M1): set today's count through the same
   // handlers as a card, so challenge claims / un-claims, the Mark-the-rest queue, the reset snackbar,
   // celebrations and feedback all run. "Set 20 (done)" on a timed habit is the manual way to
   // log a session done away from the in-app timer.
-  const setTodayFromSheet = useCallback((habit, target, { undo = false } = {}) => {
+  const setTodayFromSheet = useCallback((habit, target) => {
     const before = getHabitCount(habit.id);
     const delta = target - before;
+    let unclaimed = [];
     if (delta > 0) handleIncrement(habit, delta);
-    else if (delta < 0) handleDecrement(habit, -delta);
+    else if (delta < 0) unclaimed = handleDecrement(habit, -delta) || [];
     if (delta === 0) return;
-    // A counter cleared to 0 is a reset (C-10): it gets a snackbar with Undo, which puts the
-    // count back. The snackbar announces itself.
-    if (!undo && usesCounter(habit) && target === 0) {
+    // A counter cleared to 0 is a reset (C-10): it gets a snackbar whose Undo quietly puts the
+    // count and the challenge days back. The snackbar announces itself.
+    if (usesCounter(habit) && target === 0) {
       snackbar.show({
         kind: 'reset',
         message: t('snackbar.cleared', { name: habit.name }),
         actionLabel: t('common.undo'),
-        onAction: () => live.current.restoreCount(habit.id, before, (h) => live.current.setTodayFromSheet(h, before, { undo: true })),
+        onAction: () => live.current.restoreCount(habit.id, before, unclaimed),
       });
       return;
     }
@@ -748,13 +751,17 @@ export default function TodayScreen() {
   // Skip / unskip from a card's options (C-10): the skip lands, a linked habit's queued
   // Mark-the-rest completion is cancelled (and that challenge's day un-marked), and a
   // snackbar offers Undo, which sets the skip back for the same day.
+  // Inside the Mark-the-rest window (its snackbar is up) a skip only announces itself: a skip
+  // snackbar would replace Mark the rest's and take its Undo away (review m1).
   const handleSkip = useCallback((habit, skip) => {
     const day = todayStr();
     setSkipHabitOn(habit.id, day, skip);
     cancelQueuedFor(habit.id, true);
+    const message = t(skip ? 'habitCard.announce.skipped' : 'habitCard.announce.unskipped', { name: habit.name });
+    if (snackbar.showing('markRest')) { announce(message); return; }
     snackbar.show({
       kind: 'skip',
-      message: t(skip ? 'habitCard.announce.skipped' : 'habitCard.announce.unskipped', { name: habit.name }),
+      message,
       actionLabel: t('common.undo'),
       onAction: () => {
         live.current.setSkipHabitOn(habit.id, day, !skip, { undo: true });
@@ -764,25 +771,34 @@ export default function TodayScreen() {
   }, [todayStr, setSkipHabitOn, cancelQueuedFor, snackbar]);
 
   // "−1" (or "−N") from a counter card's options (C-10): the decrement, plus a snackbar whose
-  // Undo adds the same amount back.
+  // Undo quietly puts the count back.
   const handleMenuMinus = useCallback((habit, amount) => {
-    handleDecrement(habit, amount);
+    const before = getHabitCount(habit.id);
+    const unclaimed = handleDecrement(habit, amount) || [];
     snackbar.show({
       kind: 'minus',
       message: t('snackbar.minus', { count: amount, name: habit.name }),
       actionLabel: t('common.undo'),
-      onAction: () => live.current.restoreCount(habit.id, null, (h) => live.current.handleIncrement(h, amount)),
+      onAction: () => live.current.restoreCount(habit.id, before, unclaimed),
     });
-  }, [handleDecrement, snackbar]);
+  }, [getHabitCount, handleDecrement, snackbar]);
 
-  // An Undo runs on the live habit (still on Today's list) through the normal handlers, so
-  // claims, the Mark-the-rest queue and the cloud upserts follow. Nothing to restore when the
-  // habit has gone (archived, deleted) or, with `count`, it is already back at that count.
-  const restoreCount = useCallback((habitId, count, apply) => {
+  // The Undo of "−1" or of a reset (review m5): a restore, not a check-off. Today's count goes
+  // back through setHabitCountOn (same per-habit upsert key) and the challenge days the change
+  // un-marked are marked again; no feedback, no moment, no confetti, no claim of anything new
+  // and no trophy. A Mark-the-rest completion the change cancelled is not re-queued (the
+  // challenge is archived by the expiry check instead). Nothing happens when the habit has gone
+  // (archived, deleted) or already has that count.
+  const restoreCount = useCallback((habitId, count, reclaimIds = []) => {
     const h = dueHabits.find(x => x.id === habitId);
-    if (!h || (count != null && getHabitCount(habitId) === count)) return;
-    apply(h);
-  }, [dueHabits, getHabitCount]);
+    if (!h || getHabitCount(habitId) === count) return;
+    const day = todayStr();
+    setHabitCountOn(habitId, day, count);
+    reclaimIds.forEach((id) => { if (effectiveChallenges.some(c => c.id === id && !c.completedDays.includes(day))) markChallengeDay(id); });
+    // The day is back to what it was: do not celebrate it again on the next tap.
+    const after = { ...getTodayCompletions(), [habitId]: count };
+    if (dueHabits.length > 0 && dueHabits.every(x => isHabitSatisfiedWith(x, after))) allDoneCelebrated.current = true;
+  }, [dueHabits, getHabitCount, todayStr, setHabitCountOn, effectiveChallenges, markChallengeDay, getTodayCompletions, isHabitSatisfiedWith]);
 
   // Untouched daily/quit habits the button would mark ("Mark the rest done (N)").
   const markRestCount = planMarkRest().changedIds.length;

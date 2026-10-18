@@ -17,20 +17,27 @@ import PressableScale, { hitSlopFor } from './PressableScale';
 // - One at a time: a new snackbar replaces the one on screen, which "bumps" (scale 1.03 -> 1);
 //   the replaced one's window closes (its onHide runs with 'replaced').
 // - It hides itself after `duration` (snackbar.standard, 8 s; snackbar.screenReader, 10 s, with
-//   TalkBack / VoiceOver on). The timer pauses while the bar is touched and while a sheet or a
-//   dialog is open (it sits under them), and resumes with the time that was left.
+//   TalkBack / VoiceOver on). The timer pauses while the bar is touched (on the web also while
+//   the mouse is over it) and while a sheet or a dialog is open (it sits under them), and
+//   resumes with the time that was left.
 // - The message is announced. The action is a real button that screen readers reach.
 // - `endsOnBackground` items hide when the app goes to the background (Mark the rest: S-02).
 // - onAction runs when the action is pressed; onHide(reason) runs when it goes any other way:
-//   'timeout', 'replaced', 'dismissed', 'background' or 'unmount'. A deferred commit (delete)
-//   belongs in onHide; the Undo in onAction.
+//   'timeout', 'replaced', 'dismissed', 'background', 'flush' or 'unmount'. A deferred commit
+//   (delete) belongs in onHide; the Undo in onAction. 'unmount' is the provider going away
+//   (sign-out has already cleared the session): a deferred delete must do nothing then.
+// - flush(): ends what is showing now as 'flush' and resolves with its onHide's result (a
+//   delete returns its sync promise). Settings awaits it before signing out or deleting the
+//   account, so a pending delete commits while the session is alive.
+// - showing(kind): whether the item on screen has that `kind` (Today: a skip inside the
+//   Mark-the-rest window announces instead of replacing its Undo).
 // - `hold`: no timeout (the web mockup's review stills only).
 //
 // Layout: Android gets a full-width bar (8 dp margins, text left, action right, M3); iOS and
 // the web mockup a floating pill. Screens pad their content by `useSnackbarInset()` while one
 // shows, so the list-end buttons are never under it.
 
-const NOOP_API = { show: () => null, dismiss: () => false };
+const NOOP_API = { show: () => null, dismiss: () => false, flush: () => Promise.resolve(), showing: () => false };
 const ApiContext = createContext(NOOP_API);
 const StateContext = createContext({ item: null, inset: 0, act: () => {}, hold: () => {}, setHeight: () => {} });
 
@@ -46,7 +53,8 @@ export function SnackbarProvider({ children }) {
   const [item, setItem] = useState(null);
   const current = useRef(null);
   const [height, setHeight] = useState(0);
-  const [touching, setTouching] = useState(false);
+  // What holds the timer: { touch, hover } (hover: a mouse over the bar on the web).
+  const [holds, setHolds] = useState({});
   const overlayOpen = useAnyOverlayOpen();
   const [reader, setReader] = useState(isScreenReaderOn);
   useEffect(() => subscribeScreenReader(setReader), []);
@@ -55,9 +63,9 @@ export function SnackbarProvider({ children }) {
     if (current.current !== cur) return;
     current.current = null;
     setItem(null);
-    setTouching(false);
-    if (reason === 'action') cur.onAction?.();
-    else cur.onHide?.(reason);
+    setHolds({});
+    if (reason === 'action') return cur.onAction?.();
+    return cur.onHide?.(reason);
   }, []);
 
   const show = useCallback((input) => {
@@ -81,6 +89,14 @@ export function SnackbarProvider({ children }) {
     return true;
   }, [finish]);
 
+  const flush = useCallback(() => {
+    const cur = current.current;
+    if (!cur) return Promise.resolve();
+    return Promise.resolve(finish(cur, 'flush')).catch(() => {});
+  }, [finish]);
+
+  const showing = useCallback((kind) => current.current?.kind === kind, []);
+
   const act = useCallback(() => {
     const cur = current.current;
     if (!cur) return;
@@ -91,7 +107,7 @@ export function SnackbarProvider({ children }) {
   // The timer: a fresh window per item, paused while touched or under an overlay.
   const remaining = useRef(0);
   useEffect(() => { remaining.current = item ? snackbarDuration(item, reader) : 0; }, [item]); // eslint-disable-line react-hooks/exhaustive-deps
-  const paused = touching || overlayOpen;
+  const paused = !!(holds.touch || holds.hover) || overlayOpen;
   useEffect(() => {
     if (!item || paused || item.hold) return undefined;
     const started = Date.now();
@@ -113,14 +129,17 @@ export function SnackbarProvider({ children }) {
     };
   }, [dismiss]);
 
-  const api = useMemo(() => ({ show, dismiss }), [show, dismiss]);
+  const api = useMemo(() => ({ show, dismiss, flush, showing }), [show, dismiss, flush, showing]);
+  const hold = useCallback((source, on) => setHolds(prev => (!!prev[source] === on ? prev : { ...prev, [source]: on })), []);
   const state = useMemo(() => ({
     item,
-    inset: item && height > 0 ? height + SNACK.gap : 0,
+    // Kept while the bar animates out (SnackbarView resets the height once the exit ends), so
+    // the list does not jump under a leaving bar.
+    inset: height > 0 ? height + SNACK.gap : 0,
     act,
-    hold: setTouching,
+    hold,
     setHeight,
-  }), [item, height, act]);
+  }), [item, height, act, hold]);
   return (
     <ApiContext.Provider value={api}>
       <StateContext.Provider value={state}>{children}</StateContext.Provider>
@@ -128,8 +147,8 @@ export function SnackbarProvider({ children }) {
   );
 }
 
-// { show(item) -> id, dismiss(match?, reason?) -> bool }. Stable: it never re-renders the
-// caller. item: { message, actionLabel?, onAction?, onHide?(reason), duration?, kind?,
+// { show(item) -> id, dismiss(match?, reason?) -> bool, flush() -> Promise, showing(kind) -> bool }.
+// Stable: it never re-renders the caller. item: { message, actionLabel?, onAction?, onHide?(reason), duration?, kind?,
 // endsOnBackground? }.
 export function useSnackbar() {
   return useContext(ApiContext);
@@ -147,6 +166,7 @@ const ACTION_HEIGHT = 36;
 const ACTION_SLOP = hitSlopFor(0, ACTION_HEIGHT);
 const OFFSET = 80; // starts this far below its resting place
 const ANDROID = Platform.OS === 'android';
+const WEB = Platform.OS === 'web';
 
 // The bar itself, rendered once by App.js above the tab bar (`bottom` = tab bar height).
 // Enters over duration.value (emphasized decel) and leaves in duration.exit(value) (emphasized
@@ -222,9 +242,10 @@ export function SnackbarView({ bottom = 0, theme: themeProp }) {
           { backgroundColor: theme.toast, borderColor: theme.toastEdge, shadowColor: theme.shadow },
         ]}
         onLayout={(e) => setHeight(Math.round(e.nativeEvent.layout.height))}
-        onTouchStart={() => hold(true)}
-        onTouchEnd={() => hold(false)}
-        onTouchCancel={() => hold(false)}
+        onTouchStart={() => hold('touch', true)}
+        onTouchEnd={() => hold('touch', false)}
+        onTouchCancel={() => hold('touch', false)}
+        {...(WEB ? { onMouseEnter: () => hold('hover', true), onMouseLeave: () => hold('hover', false) } : null)}
       >
         <AppText variant="callout" style={[styles.msg, { color: theme.onToast }]} numberOfLines={2}>{shown.message}</AppText>
         {hasAction && (
@@ -234,7 +255,7 @@ export function SnackbarView({ bottom = 0, theme: themeProp }) {
             style={styles.action}
             hitSlop={{ top: ACTION_SLOP.top, bottom: ACTION_SLOP.bottom, left: 4, right: 4 }}
             accessibilityRole="button"
-            accessibilityLabel={shown.actionA11y || shown.actionLabel}
+            accessibilityLabel={shown.actionA11y || t('snackbar.actionA11y', { action: shown.actionLabel, message: shown.message })}
           >
             <AppText variant="callout" style={[styles.actionText, { color: theme.toastAction }]}>{shown.actionLabel}</AppText>
           </PressableScale>

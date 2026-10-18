@@ -1005,6 +1005,7 @@
     "archived": "%{name}をアーカイブしました",
     "restored": "%{name}を復元しました",
     "deleted": "%{name}を削除しました",
-    "undone": "元に戻しました"
+    "undone": "元に戻しました",
+    "actionA11y": "%{action}：%{message}"
   }
 }

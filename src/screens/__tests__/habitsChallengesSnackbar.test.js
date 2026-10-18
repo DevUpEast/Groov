@@ -23,8 +23,9 @@ jest.mock('../../context/AppContext', () => {
       pendingHabitLinkChallenge: null, setPendingHabitLinkChallenge: jest.fn(), linkHabitToChallenge: jest.fn(),
       ensureNotificationPermission: jest.fn(), pendingRoute: null, clearPendingRoute: jest.fn(), canAddHabit: () => true,
       setModalOpen: jest.fn(), setRequestedTab: jest.fn(),
-      challenges: mock.challenges, effectiveChallenges: mock.challenges, effectivePastChallenges: [],
+      challenges: mock.challenges, effectiveChallenges: mock.challenges.filter(c => !mock.pendingChallengeDeletes.includes(c.id)), effectivePastChallenges: [],
       editChallenge: jest.fn(), createChallenge: jest.fn(), deleteChallenge: mock.deleteChallenge,
+      pendingChallengeDeletes: mock.pendingChallengeDeletes, holdChallengeDelete: mock.holdChallengeDelete,
       getHabitCount: () => 0, isHabitDoneOn: () => false, getNote: () => '', settings: { skips: {} },
     }),
     getChallengeTier: () => 'none',
@@ -84,8 +85,10 @@ beforeEach(() => {
     updateHabit: jest.fn((id, patch) => setHabit(id, patch)),
     archiveHabit: jest.fn((id) => setHabit(id, { archived: true, reminder: undefined })),
     unarchiveHabit: jest.fn((id) => setHabit(id, { archived: false })),
-    deleteHabit: jest.fn((id) => { mock.habits = mock.habits.filter(h => h.id !== id); }),
-    deleteChallenge: jest.fn((id) => { mock.challenges = mock.challenges.filter(c => c.id !== id); }),
+    deleteHabit: jest.fn((id) => { mock.habits = mock.habits.filter(h => h.id !== id); return Promise.resolve('synced'); }),
+    pendingChallengeDeletes: [],
+    holdChallengeDelete: jest.fn((id, on) => { mock.pendingChallengeDeletes = on ? [...mock.pendingChallengeDeletes, id] : mock.pendingChallengeDeletes.filter(x => x !== id); }),
+    deleteChallenge: jest.fn((id) => { mock.challenges = mock.challenges.filter(c => c.id !== id); mock.pendingChallengeDeletes = mock.pendingChallengeDeletes.filter(x => x !== id); return Promise.resolve(); }),
   };
 });
 afterEach(() => { act(() => { jest.runOnlyPendingTimers(); }); jest.useRealTimers(); jest.restoreAllMocks(); });
@@ -113,7 +116,7 @@ function setup(Screen) {
     rerender();
   };
   const undo = () => {
-    const b = bar().findAll(n => n.props.accessibilityLabel === 'Undo' && typeof n.props.onPress === 'function')[0];
+    const b = bar().findAll(n => String(n.props.accessibilityLabel || '').startsWith('Undo: ') && typeof n.props.onPress === 'function')[0];
     act(() => { b.props.onPress(); });
     rerender();
   };
@@ -183,6 +186,60 @@ describe('C-10 Habits screen', () => {
     t.choose('Delete');
     act(() => { appStateListeners.slice().forEach(fn => fn('background')); });
     expect(mock.deleteHabit).toHaveBeenCalledWith('r');
+  });
+});
+
+describe('C-10 review M1: sign-out with a pending delete', () => {
+  function withApi(Screen) {
+    const ref = {};
+    const { useSnackbar } = require('../../components/ui/Snackbar');
+    function Probe() { ref.api = useSnackbar(); return null; }
+    let r;
+    act(() => {
+      r = TestRenderer.create(
+        <SnackbarProvider><Screen /><Probe /><SnackbarView theme={themes.light} /></SnackbarProvider>,
+      );
+    });
+    const alertChoose = (text) => { const b = alerts.at(-1).buttons.find(x => x.text === text); act(() => { b.onPress(); }); };
+    const press = (label) => { const el = r.root.findAll(n => n.props.accessibilityLabel === label && typeof n.props.onPress === 'function')[0]; act(() => { el.props.onPress(); }); };
+    return { r, ref, alertChoose, press };
+  }
+
+  it('flush() commits a pending habit delete and resolves with its cloud sync', async () => {
+    const t = withApi(HabitsScreen);
+    t.press('Delete habit permanently');
+    t.alertChoose('Delete');
+    expect(mock.deleteHabit).not.toHaveBeenCalled();
+    let result;
+    await act(async () => { result = await t.ref.api.flush(); });
+    expect(mock.deleteHabit).toHaveBeenCalledWith('o');
+    expect(result).toBe('synced');
+  });
+
+  it('a provider unmount (sign-out without a flush) never half-commits: the habit stays archived', () => {
+    const t = withApi(HabitsScreen);
+    t.press('Archive or delete habit');
+    t.alertChoose('Delete forever');
+    t.alertChoose('Delete');
+    expect(mock.habits.find(h => h.id === 'r').archived).toBe(true);
+    act(() => { t.r.unmount(); });
+    expect(mock.deleteHabit).not.toHaveBeenCalled();
+    expect(mock.habits.find(h => h.id === 'r').archived).toBe(true);
+  });
+
+  it('a pending challenge delete: flush commits it; unmount leaves the challenge alone', async () => {
+    const t = withApi(ChallengeScreen);
+    t.press('Delete challenge');
+    t.alertChoose('Delete');
+    expect(mock.holdChallengeDelete).toHaveBeenCalledWith('c1', true);
+    await act(async () => { await t.ref.api.flush(); });
+    expect(mock.deleteChallenge).toHaveBeenCalledWith('c1');
+    mock.challenges = [{ ...mock.challenges[0] || {}, id: 'c2', name: 'Two', description: '', days: 3, icon: '🏁', completedDays: [], completed: false, startDate: TODAY, linkedHabitIds: [] }];
+    const t2 = withApi(ChallengeScreen);
+    t2.press('Delete challenge');
+    t2.alertChoose('Delete');
+    act(() => { t2.r.unmount(); });
+    expect(mock.deleteChallenge).toHaveBeenCalledTimes(1);
   });
 });
 

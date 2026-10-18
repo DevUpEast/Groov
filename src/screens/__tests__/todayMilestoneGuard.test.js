@@ -91,7 +91,7 @@ jest.mock('../../components/ChallengeRewardModal', () => mockStub('ChallengeRewa
 // The Snackbar host (C-10): a recording fake; `mockItems` holds every item shown.
 jest.mock('../../components/ui/Snackbar', () => {
   const items = [];
-  const api = { show: (it) => { items.push(it); return items.length; }, dismiss: () => false };
+  const api = { show: (it) => { items.push(it); return items.length; }, dismiss: () => false, flush: () => Promise.resolve(), showing: () => false };
   return { __esModule: true, mockItems: items, useSnackbar: () => api, useSnackbarInset: () => 0 };
 });
 jest.mock('../../components/ui/Button', () => mockStub('Button')());

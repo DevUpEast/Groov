@@ -764,7 +764,13 @@ export default function HabitsScreen() {
         unpend(id);
         if (active) live.current.updateHabit(id, { archived: false, reminder });
       },
-      onHide: () => { live.current.deleteHabit(id); unpend(id); },
+      // 'unmount': the provider is going away with a dead session (sign-out already flushed
+      // what it could); the habit simply stays archived, which is safe.
+      onHide: (reason) => {
+        if (reason === 'unmount') return undefined;
+        unpend(id);
+        return live.current.deleteHabit(id);
+      },
     });
   };
 

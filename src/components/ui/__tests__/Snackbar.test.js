@@ -94,7 +94,8 @@ describe('Snackbar', () => {
     s.show(it1);
     expect(s.texts()).toEqual(['Read skipped today', 'Undo']);
     expect(announce).toHaveBeenCalledWith('Read skipped today');
-    expect(s.action().props.accessibilityLabel).toBe('Undo');
+    // The action's name carries the message for a screen reader that reaches it later.
+    expect(s.action().props.accessibilityLabel).toBe('Undo: Read skipped today');
     s.advance(SNACK.standard - 1);
     expect(it1.onHide).not.toHaveBeenCalled();
     s.advance(1);
@@ -241,7 +242,7 @@ describe('Snackbar', () => {
     expect(s.ref.inset).toBe(0); // not measured yet
     act(() => { s.surface().props.onLayout({ nativeEvent: { layout: { height: 52 } } }); });
     expect(s.ref.inset).toBe(52 + SNACK.gap);
-    act(() => { s.ref.api.dismiss(); });
+    act(() => { s.ref.api.dismiss(); }); // the exit is mocked to finish at once
     expect(s.ref.inset).toBe(0);
   });
 
@@ -261,10 +262,77 @@ describe('Snackbar', () => {
     expect(bar.backgroundColor).toBe(themes.light.toast);
   });
 
+  it('flush() ends what shows as "flush" and resolves with its onHide result (Settings, before sign-out)', async () => {
+    const s = render();
+    const it1 = item({ onHide: jest.fn(() => Promise.resolve('synced')) });
+    s.show(it1);
+    let result;
+    await act(async () => { result = await s.ref.api.flush(); });
+    expect(it1.onHide).toHaveBeenCalledWith('flush');
+    expect(result).toBe('synced');
+    await act(async () => { result = await s.ref.api.flush(); }); // nothing showing
+    expect(result).toBeUndefined();
+  });
+
+  it('showing(kind) names what is on screen', () => {
+    const s = render();
+    expect(s.ref.api.showing('markRest')).toBe(false);
+    s.show(item({ kind: 'markRest' }));
+    expect(s.ref.api.showing('markRest')).toBe(true);
+    expect(s.ref.api.showing('skip')).toBe(false);
+  });
+
+  it('keeps the inset until the exit animation has finished (no jump under a leaving bar)', () => {
+    const s = render();
+    s.show(item());
+    act(() => { s.surface().props.onLayout({ nativeEvent: { layout: { height: 52 } } }); });
+    holdExit = true;
+    act(() => { s.ref.api.dismiss(); });
+    expect(s.ref.inset).toBe(52 + SNACK.gap);
+    act(() => { pendingExit.splice(0).forEach(f => f()); });
+    expect(s.ref.inset).toBe(0);
+  });
+
   it('without a provider, show is a no-op (screens render in isolation)', () => {
     let api;
     function Lone() { api = useSnackbar(); return null; }
     act(() => { TestRenderer.create(<Lone />); });
     expect(api.show({ message: 'x' })).toBeNull();
+  });
+});
+
+describe('Snackbar on the web', () => {
+  it('pauses while the mouse is over the bar', () => {
+    jest.isolateModules(() => {
+      // A fresh module graph (Platform.OS is read at import), with its own React + renderer.
+      const R = require('react');
+      const TR = require('react-test-renderer');
+      const RN = require('react-native');
+      const os = RN.Platform.OS;
+      RN.Platform.OS = 'web';
+      try {
+        const Web = require('../Snackbar');
+        const webThemes = require('../../../theme/colors').themes;
+        const ref = {};
+        function Probe() { ref.api = Web.useSnackbar(); return null; }
+        let r;
+        TR.act(() => {
+          r = TR.create(R.createElement(Web.SnackbarProvider, null,
+            R.createElement(Probe), R.createElement(Web.SnackbarView, { theme: webThemes.light })));
+        });
+        const it1 = item();
+        TR.act(() => { ref.api.show(it1); });
+        const surface = r.root.findAll(n => typeof n.props.onMouseEnter === 'function')[0];
+        expect(surface).toBeTruthy();
+        TR.act(() => { surface.props.onMouseEnter(); });
+        TR.act(() => { jest.advanceTimersByTime(30000); });
+        expect(it1.onHide).not.toHaveBeenCalled();
+        TR.act(() => { surface.props.onMouseLeave(); });
+        TR.act(() => { jest.advanceTimersByTime(SNACK.standard); });
+        expect(it1.onHide).toHaveBeenCalledWith('timeout');
+      } finally {
+        RN.Platform.OS = os;
+      }
+    });
   });
 });

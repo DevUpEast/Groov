@@ -188,6 +188,15 @@ export function AppProvider({ children }) {
   skipsStateRef.current = settings.skips;
   const [challenges, setChallenges] = useState([]);
   const [pastChallenges, setPastChallenges] = useState([]);
+  // C-10: challenges deleted from the Challenges screen whose Snackbar Undo window is still
+  // open. They are left out of effectiveChallenges (claims, Mark-the-rest flush, Today's chips)
+  // and of the expiry archive until the delete commits or Undo puts them back.
+  const [pendingChallengeDeletes, setPendingChallengeDeletes] = useState([]);
+  const holdChallengeDelete = useCallback((id, pending) => {
+    setPendingChallengeDeletes(prev => (pending
+      ? (prev.includes(id) ? prev : [...prev, id])
+      : (prev.includes(id) ? prev.filter(x => x !== id) : prev)));
+  }, []);
   const [hasOnboarded, setHasOnboarded] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [dailySnapshot, setDailySnapshot] = useState({});
@@ -258,18 +267,19 @@ export function AppProvider({ children }) {
   // active, and history only shows challenges archived on or before the simulated date.
   const effectiveChallenges = useMemo(() => {
     const today = todayStr();
-    const active = challenges.map(ch => {
+    const live = (ch) => !pendingChallengeDeletes.includes(ch.id);
+    const active = challenges.filter(live).map(ch => {
       const days = (ch.completedDays || []).filter(d => d <= today);
       return { ...ch, completedDays: days, completed: days.length >= ch.days };
     });
     const reverted = pastChallenges
-      .filter(ch => ch.archivedAt && ch.archivedAt > today)
+      .filter(ch => ch.archivedAt && ch.archivedAt > today && live(ch))
       .map(ch => {
         const days = (ch.completedDays || []).filter(d => d <= today);
         return { ...ch, completedDays: days, completed: false };
       });
     return [...active, ...reverted];
-  }, [challenges, pastChallenges, todayStr]);
+  }, [challenges, pastChallenges, todayStr, pendingChallengeDeletes]);
 
   const effectivePastChallenges = useMemo(() => {
     const today = todayStr();
@@ -1114,10 +1124,18 @@ export function AppProvider({ children }) {
     setHabits(prev => prev.filter(h => h.id !== id));
     const unlink = (ch) => ({ ...ch, linkedHabitIds: (ch.linkedHabitIds || []).filter(hid => hid !== id) });
     setChallenges(prev => prev.map(unlink));
-    if (userId) {
-      deleteHabitSync(userId, id);
-      (live.challenges || challenges).forEach(ch => syncChallenge(userId, unlink(ch)));
-    }
+    // stateRef at once too: Settings' sign-out pushes stateRef right after a flushed delete,
+    // before React has committed, and must not upsert the habit back.
+    stateRef.current = {
+      ...live,
+      habits: (live.habits || allHabits).filter(h => h.id !== id),
+      challenges: (live.challenges || challenges).map(unlink),
+    };
+    if (!userId) return Promise.resolve();
+    return Promise.all([
+      deleteHabitSync(userId, id),
+      ...(live.challenges || challenges).map(ch => syncChallenge(userId, unlink(ch))),
+    ]).catch(() => {});
   }, [challenges, userId, allHabits]);
 
   const updateSettings = useCallback((updates) => {
@@ -1245,18 +1263,26 @@ export function AppProvider({ children }) {
 
   const deleteChallenge = useCallback((challengeId) => {
     // The latest committed challenge (a Snackbar's deferred delete, C-10; see deleteHabit).
-    const ch = (stateRef.current.challenges || challenges).find(c => c.id === challengeId);
+    const live = stateRef.current;
+    const ch = (live.challenges || challenges).find(c => c.id === challengeId);
+    let sync = Promise.resolve();
     if (ch) {
       const tier = getChallengeTier(ch.completedDays.length, ch.days);
       const archived = { ...ch, archivedAt: todayStr(), tier };
       setPastChallenges(prev => [archived, ...prev]);
+      stateRef.current = {
+        ...live,
+        challenges: (live.challenges || challenges).filter(c => c.id !== challengeId),
+        pastChallenges: [archived, ...(live.pastChallenges || [])],
+      };
       if (userId) {
-        deleteChallengeSync(userId, challengeId);
-        syncPastChallenge(userId, archived);
+        sync = Promise.all([deleteChallengeSync(userId, challengeId), syncPastChallenge(userId, archived)]).catch(() => {});
       }
     }
     setChallenges(prev => prev.filter(c => c.id !== challengeId));
-  }, [challenges, todayStr, userId]);
+    holdChallengeDelete(challengeId, false);
+    return sync;
+  }, [challenges, todayStr, userId, holdChallengeDelete]);
 
   // `key`: the day being claimed (defaults to today; a deferred Mark-the-rest
   // completion passes the day the action ran).
@@ -1343,9 +1369,11 @@ export function AppProvider({ children }) {
     if (!loaded) return;
     const today = todayStr();
     challenges.forEach(ch => {
+      // A challenge waiting out its delete Undo is not archived (or rewarded) meanwhile.
+      if (pendingChallengeDeletes.includes(ch.id)) return;
       if (isChallengeExpired(ch, today)) archiveExpiredChallenge(ch.id);
     });
-  }, [loaded, challenges, todayStr, archiveExpiredChallenge]);
+  }, [loaded, challenges, todayStr, archiveExpiredChallenge, pendingChallengeDeletes]);
 
   const clearPendingChallengeRewards = useCallback(() => {
     setPendingChallengeRewards([]);
@@ -1853,6 +1881,7 @@ export function AppProvider({ children }) {
       getNote, setNote,
       updateSettings, setHint, updateExtras,
       markChallengeDay, unmarkChallengeDay, editChallenge, createChallenge, deleteChallenge,
+      pendingChallengeDeletes, holdChallengeDelete,
       archiveExpiredChallenge, completeChallengeImmediately,
       markRestDone, planMarkRest, restoreHabitCounts, isHabitSatisfiedWith,
       linkHabitToChallenge, unlinkHabitFromChallenge, linkAllHabitsToChallenge,

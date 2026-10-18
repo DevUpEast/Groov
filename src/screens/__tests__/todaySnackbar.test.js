@@ -45,7 +45,7 @@ function mockMakeCtx() {
       s.counts = { ...s.counts, ...Object.fromEntries(changedIds.map(id => [id, 1])) };
       return { before, next, changedIds };
     },
-    restoreHabitCounts: s.restoreHabitCounts, setSkipHabitOn: s.setSkipHabitOn,
+    restoreHabitCounts: s.restoreHabitCounts, setSkipHabitOn: s.setSkipHabitOn, setHabitCountOn: s.setHabitCountOn,
     getTodayCompletions: () => ({ ...s.counts }),
     pendingChallengeRewards: [], clearPendingChallengeRewards: jest.fn(),
     setRequestedTab: jest.fn(), getNote: () => null, setNote: jest.fn(),
@@ -119,6 +119,7 @@ function setup({ habits, counts = {}, challenges = [] }) {
     unmarkChallengeDay: jest.fn((id) => { mock.challenges = mock.challenges.map(c => (c.id === id ? { ...c, completedDays: c.completedDays.filter(d => d !== TODAY) } : c)); }),
     restoreHabitCounts: jest.fn((before, changedIds) => { changedIds.forEach((id) => { mock.counts = { ...mock.counts, [id]: (before || {})[id] || 0 }; }); }),
     setSkipHabitOn: jest.fn(),
+    setHabitCountOn: jest.fn((id, key, n) => { mock.counts = { ...mock.counts, [id]: n }; }),
   };
   const tree = () => (
     <SnackbarProvider>
@@ -138,7 +139,7 @@ function setup({ habits, counts = {}, challenges = [] }) {
     return b.findAll(n => typeof n.props.children === 'string' && n.props.variant === 'callout')[0]?.props.children;
   };
   const undo = () => {
-    const b = bar().findAll(n => n.type === 'PressableScale' && n.props.accessibilityLabel === 'Undo')[0];
+    const b = bar().findAll(n => n.type === 'PressableScale' && String(n.props.accessibilityLabel || '').startsWith('Undo: '))[0];
     act(() => { b.props.onPress(); });
     rerender();
   };
@@ -216,15 +217,31 @@ describe('C-10 Snackbar on Today', () => {
     expect(t.bar()).toBeNull();
   });
 
-  it('a newer snackbar replaces Mark the rest, which closes its window (the completion runs)', () => {
+  it('a skip inside the Mark-the-rest window only announces: the Mark-the-rest Undo stays (review m1)', () => {
     const move = { ...read, id: 'm', name: 'Move' };
     const t = setup({ habits: [read, water, move], counts: { w: 8, m: 1 }, challenges: [lastDay(['r', 'w'])] });
     act(() => { t.markRestBtn().props.onPress(); });
     t.rerender();
-    expect(mock.completeChallengeImmediately).not.toHaveBeenCalled();
     act(() => { t.card('m').onSkip(move, false); });
     t.rerender();
-    expect(t.message()).toBe('Move no longer skipped today');
+    expect(mock.setSkipHabitOn).toHaveBeenLastCalledWith('m', TODAY, false);
+    expect(a11y.announce).toHaveBeenLastCalledWith('Move no longer skipped today');
+    expect(t.message()).toBe('Marked 1 habit done');
+    expect(mock.completeChallengeImmediately).not.toHaveBeenCalled();
+    t.undo();
+    expect(mock.restoreHabitCounts).toHaveBeenCalledWith({ w: 8, m: 1 }, ['r'], TODAY);
+    t.advance(20000);
+    expect(mock.completeChallengeImmediately).not.toHaveBeenCalled();
+  });
+
+  it('any other snackbar replaces Mark the rest, which closes its window (the completion runs)', () => {
+    const t = setup({ habits: [read, water], counts: { w: 8 }, challenges: [lastDay(['r'])] });
+    act(() => { t.markRestBtn().props.onPress(); });
+    t.rerender();
+    expect(mock.completeChallengeImmediately).not.toHaveBeenCalled();
+    act(() => { t.card('w').onMenuMinus(water, 1); });
+    t.rerender();
+    expect(t.message()).toBe('Removed 1 from Drink water');
     expect(mock.completeChallengeImmediately).toHaveBeenCalledWith('c1', TODAY);
   });
 
@@ -247,26 +264,36 @@ describe('C-10 Snackbar on Today', () => {
     expect(mock.setSkipHabitOn).toHaveBeenLastCalledWith('r', TODAY, true, { undo: true });
   });
 
-  it('"−1" from the options: the count drops, and Undo adds it back through the check-off path', () => {
-    const t = setup({ habits: [read, water], counts: { w: 8 }, challenges: [challenge({ linkedHabitIds: ['w'], completedDays: [TODAY] })] });
+  it('"−1" from the options: the count drops; Undo quietly puts the count and the claim back (review m5)', () => {
+    const t = setup({ habits: [read, water], counts: { w: 8, r: 1 }, challenges: [challenge({ linkedHabitIds: ['w'], completedDays: [TODAY] })] });
     act(() => { t.card('w').onMenuMinus(water, 1); });
     t.rerender();
     expect(mock.counts.w).toBe(7);
     expect(mock.unmarkChallengeDay).toHaveBeenCalledWith('c1');
     expect(t.message()).toBe('Removed 1 from Drink water');
+    feedback.play.mockClear();
     t.undo();
+    expect(mock.setHabitCountOn).toHaveBeenCalledWith('w', TODAY, 8);
     expect(mock.counts.w).toBe(8);
     expect(mock.markChallengeDay).toHaveBeenCalledWith('c1');
+    act(() => { jest.runOnlyPendingTimers(); });
+    // A restore, not a check-off: no haptic, chime, chord, burst or trophy.
+    expect(feedback.play).not.toHaveBeenCalled();
+    expect(mock.completeChallengeImmediately).not.toHaveBeenCalled();
   });
 
-  it('a counter cleared from the detail sheet is a reset: Undo puts the count back', () => {
+  it('a counter cleared from the detail sheet is a reset: Undo quietly puts the count back', () => {
     const t = setup({ habits: [read, water], counts: { w: 5 } });
     act(() => { t.sheet().onSetToday(water, 0); });
     t.rerender();
     expect(mock.counts.w).toBe(0);
     expect(t.message()).toBe('Drink water cleared for today');
+    feedback.play.mockClear();
     t.undo();
+    expect(mock.setHabitCountOn).toHaveBeenCalledWith('w', TODAY, 5);
     expect(mock.counts.w).toBe(5);
+    act(() => { jest.runOnlyPendingTimers(); });
+    expect(feedback.play).not.toHaveBeenCalled();
   });
 
   it('a daily habit un-checked from the sheet is a single check: no snackbar', () => {

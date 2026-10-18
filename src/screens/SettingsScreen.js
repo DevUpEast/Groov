@@ -24,6 +24,7 @@ import { t, getLocale, useLocale, setLocale, SUPPORTED_LOCALES } from '../i18n';
 import AppText from '../components/ui/AppText';
 import SectionLabel from '../components/ui/SectionLabel';
 import SegmentedControl from '../components/ui/SegmentedControl';
+import { useSnackbar } from '../components/ui/Snackbar';
 import { useDevFlag, setDevFlag } from '../utils/devFlags';
 import { space, radius } from '../theme/tokens';
 
@@ -297,6 +298,9 @@ export default function SettingsScreen() {
   useEffect(() => { if (linkSheet) linkSheetGone.current = false; }, [linkSheet]);
   // Apple/Google accounts have no Groov password to reset.
   const canResetPassword = authProvider === 'email';
+  // C-10 review M1: a delete waiting out its Snackbar Undo commits (and its cloud delete is
+  // awaited) before the session ends; after sign-out it would run with no session.
+  const snackbar = useSnackbar();
 
   const handleSignOut = () => {
     if (isAnonymous) {
@@ -308,7 +312,7 @@ export default function SettingsScreen() {
         [
           { text: t('common.cancel'), style: 'cancel' },
           { text: t('settings.account.signOutGuest.add'), onPress: () => setLinkSheet(true) },
-          { text: t('settings.account.signOutGuest.anyway'), style: 'destructive', onPress: () => signOut() },
+          { text: t('settings.account.signOutGuest.anyway'), style: 'destructive', onPress: async () => { await snackbar.flush(); signOut(); } },
         ],
       );
       return;
@@ -318,6 +322,7 @@ export default function SettingsScreen() {
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('settings.account.signOut'), style: 'destructive', onPress: async () => {
+          await snackbar.flush();
           try { await pushAllData(); } catch (e) {}
           signOut();
         },
@@ -347,6 +352,7 @@ export default function SettingsScreen() {
                   style: 'destructive',
                   onPress: async () => {
                     try {
+                      await snackbar.flush();
                       await deleteAccount();
                     } catch (e) {
                       Alert.alert(t('common.error'), e.message || t('settings.account.deleteAccount.failed'));
