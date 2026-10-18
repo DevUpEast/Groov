@@ -27,8 +27,9 @@ const CHART_H = 150;
 // The pre-§2.4 heat-map colours (same in both themes); V-02 moves the map onto the data ramp.
 const { heatPartial: PARTIAL_COLOR, heatFrozen: FROZEN_COLOR } = data.light;
 
-// Card inner width: screen − 48 (scroll padding) − 40 (card padding=20×2) − 2 (border)
-const HEAT_INNER = SCREEN_WIDTH - 90;
+// Card inner width: screen − 2 gutters (scroll padding) − 2 card paddings − 2 (1 px border × 2).
+const CARD_PAD = 20;
+const HEAT_INNER = SCREEN_WIDTH - 2 * space.gutter - 2 * CARD_PAD - 2;
 
 const PERIOD_CONFIG = [
   { key: 'd7',  days: 7,   cellsPerRow: 7,  gap: space.xxs },
@@ -493,8 +494,10 @@ export default function ProgressScreen() {
 
           <Text style={[styles.cardHint, { color: theme.textSecondary }]}>{t('progress.heatHint')}</Text>
 
-          {/* Grid: fixed-size cells for all periods, left-aligned so count grows from 1→N */}
-          <View style={[styles.heatGrid, { marginRight: -heatCfg.gap }]}>
+          {/* Grid: fixed-size cells for all periods, left-aligned so count grows from 1→N. The
+              block is exactly cellsPerRow cells wide and centred, so the slack cellSize's floor
+              leaves is split evenly and the left and right insets match (F-08). */}
+          <View style={[styles.heatGrid, { width: heatCfg.cellsPerRow * (cs + heatCfg.gap), marginRight: -heatCfg.gap, alignSelf: 'center' }]}>
             {heatDays.map(d => (
               <HeatmapCell
                 key={d.date}
@@ -717,7 +720,7 @@ const styles = StyleSheet.create({
   },
   statEmoji: { fontSize: 26 },
   statLabel: { fontSize: 12, textAlign: 'center', lineHeight: 14 },
-  card: { borderRadius: radius.card, borderWidth: 1, padding: 20, marginBottom: space.lg },
+  card: { borderRadius: radius.card, borderWidth: 1, padding: CARD_PAD, marginBottom: space.lg },
   cardTitle: { fontSize: 15, fontWeight: '700' },
   cardHint: { fontSize: 12, marginTop: 2, marginBottom: 6 },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.xxs },
@@ -749,7 +752,7 @@ const styles = StyleSheet.create({
   medalName: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
   heatLegend: { flexDirection: 'row', gap: 14, marginBottom: 2 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot: { width: 10, height: 10, borderRadius: radius.cell },
+  legendDot: { width: 10, height: 10, borderRadius: radius.cell / 2 },
   legendLabel: { fontSize: 12 },
   // Day detail modal
   overlay: { flex: 1, justifyContent: 'flex-end' },

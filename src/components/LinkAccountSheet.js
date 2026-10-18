@@ -111,7 +111,7 @@ export default function LinkAccountSheet({ visible, onClose, onLinked, theme }) 
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, padding: space.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 24 },
+  sheet: { borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, padding: space.lg, paddingBottom: Platform.OS === 'ios' ? 40 : space.lg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 20, fontWeight: 'bold' },
   closeBtn: { padding: space.xxs },

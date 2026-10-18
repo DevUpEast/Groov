@@ -87,7 +87,7 @@ function YearCard({ year, cells, displayName, today }) {
           {rowCols.map((col, i) => (
             <View key={i} style={{ marginRight: 2 }}>
               {col.map((c, j) => (
-                <View key={j} style={{ width: cellBig, height: cellBig, marginBottom: 2, borderRadius: radius.cell, backgroundColor: c === null ? 'transparent' : c >= 1 ? shareCard.cellPerfect : c > 0 ? shareCard.cellPartial : shareCard.cellNone }} />
+                <View key={j} style={{ width: cellBig, height: cellBig, marginBottom: 2, borderRadius: radius.cell / 2, backgroundColor: c === null ? 'transparent' : c >= 1 ? shareCard.cellPerfect : c > 0 ? shareCard.cellPartial : shareCard.cellNone }} />
               ))}
             </View>
           ))}
@@ -205,7 +205,7 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '92%' },
+  sheet: { borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: Platform.OS === 'ios' ? 40 : space.lg, maxHeight: '92%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.sm },
   title: { fontSize: 20, fontWeight: 'bold' },
   closeBtn: { padding: space.xxs },
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   weekLabel: { color: shareCard.fgSecondary, fontSize: 12, marginTop: space.xxs, fontWeight: '700' },
   legendRow: { flexDirection: 'row', gap: space.sm },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
-  legendDot: { width: 9, height: 9, borderRadius: radius.cell },
+  legendDot: { width: 9, height: 9, borderRadius: radius.cell / 2 },
   legendText: { color: shareCard.fgTertiary, fontSize: 12 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 },
   footerBrand: { color: shareCard.fg, fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },

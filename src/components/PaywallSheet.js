@@ -113,7 +113,7 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '92%' },
+  sheet: { borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: Platform.OS === 'ios' ? 40 : space.lg, maxHeight: '92%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   title: { fontSize: 22, fontWeight: 'bold' },
   closeBtn: { padding: space.xxs },

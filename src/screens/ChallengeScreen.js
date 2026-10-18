@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
   newBtn: { paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.pill },
   newBtnText: { fontWeight: '700', fontSize: 15 },
   sectionLabel: { marginBottom: space.xs },
-  card: { borderRadius: radius.card, borderWidth: 1, padding: 20, marginBottom: space.md },
+  card: { borderRadius: radius.card, borderWidth: 1, padding: 20, marginBottom: space.lg },
   challengeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: space.md, gap: 10 },
   trophy: { fontSize: 32 },
   challengeInfo: { flex: 1 },
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
   overlayBg: { ...StyleSheet.absoluteFillObject },
   sheet: {
     borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
-    paddingHorizontal: space.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    paddingHorizontal: space.lg, paddingBottom: Platform.OS === 'ios' ? 40 : space.lg,
     maxHeight: '92%',
   },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },

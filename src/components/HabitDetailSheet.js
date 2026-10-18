@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   hint: { fontSize: 12, marginTop: 2, marginBottom: space.xs },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
-  legendDot: { width: 10, height: 10, borderRadius: radius.cell },
+  legendDot: { width: 10, height: 10, borderRadius: radius.cell / 2 },
   legendText: { fontSize: 12 },
   weekdayRow: { flexDirection: 'row', gap: 6, height: 120, alignItems: 'flex-end' },
   weekdayCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
