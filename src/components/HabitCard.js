@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { completionsInWeek, describeSchedule } from '../utils/schedule';
 import { addDays } from '../utils/dates';
@@ -14,7 +14,7 @@ import CheckMark from './ui/CheckMark';
 import { usesCounter, countStep, describeProgress, unitLabel } from '../utils/habits';
 import { t, useLocale, getLocale } from '../i18n';
 import { resolveAccent } from '../theme/accents';
-import { type, numeric, bodyFor } from '../theme/typography';
+import { type, numeric } from '../theme/typography';
 import { space, radius, size } from '../theme/tokens';
 
 // The sub-line parts joined with " · ", first letter capitalised for the locale: the streak
@@ -33,12 +33,6 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
     isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, getNote,
   } = useApp();
   useLocale();
-  // Android (this RN build) scales fontSize with the system font scale but not lineHeight, so
-  // at 1.3 the descenders of the name and sub-line clip and a two-digit count wraps out of
-  // its line box (C-02a m3). iOS and web already scale both. lh() scales the line height to
-  // match; at scale 1 it is the token value.
-  const { fontScale } = useWindowDimensions();
-  const lh = (v) => (Platform.OS === 'android' && fontScale > 1 ? Math.ceil(v * fontScale) : v);
   // The habit's curated accent for this theme (C-01): legacy, unknown and missing colours are
   // remapped at read time. `ring` is the unchecked 2 px ring, `fill` + `onFill` the done check,
   // `tint` the opaque done-card ground; every pair is >= 3:1 (CHK-2, accents.test.js).
@@ -156,13 +150,13 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
 
         <View style={styles.info}>
           {/* Full `text` contrast in every state: done is carried by the check and tint (CHK-3). */}
-          <AppText variant="bodyStrong" style={{ color: theme.text, lineHeight: lh(BODY_LINE) }} numberOfLines={1}>
+          <AppText variant="bodyStrong" style={{ color: theme.text }} numberOfLines={1}>
             {habit.name}
           </AppText>
           {/* Always rendered (schedule fallback). Counter and timer cards have a narrow info
               column beside 3 or 4 controls, so their sub-line may wrap to a second line rather
               than cut the streak off (code review m2). */}
-          <Text style={[styles.sub, { color: theme.textSecondary, lineHeight: lh(type.footnote.lineHeight) }]} numberOfLines={isVolume ? 2 : 1}>{subLine}</Text>
+          <Text style={[styles.sub, { color: theme.textSecondary }]} numberOfLines={isVolume ? 2 : 1}>{subLine}</Text>
         </View>
 
         {isVolume ? (
@@ -196,7 +190,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
             />
 
             {/* The count is text (4.5:1): it stays `text` on the done tint; the filled + carries done. */}
-            <Text style={[styles.counterNum, { color: overLimit ? theme.dangerText : theme.text, lineHeight: lh(type.numericSmall.lineHeight) }]} numberOfLines={1}>{count}</Text>
+            <Text style={[styles.counterNum, { color: overLimit ? theme.dangerText : theme.text }]} numberOfLines={1}>{count}</Text>
 
             <IconButton
               size={COUNTER_BTN}
@@ -248,8 +242,6 @@ const COUNTER_GAP = 2 * hitSlopFor(COUNTER_BTN).left;
 // column and the slot keep the same x on every card; the 32 check is centred in the slot (12
 // from the edge) and the counter cluster ends there too (12).
 const WELL = 40;
-// bodyStrong's line height on this platform (iOS 22, Android and web 24; typography bodyFor).
-const BODY_LINE = bodyFor(Platform.OS).bodyStrong.lineHeight;
 
 const styles = StyleSheet.create({
   card: {

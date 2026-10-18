@@ -74,6 +74,7 @@
         }
       ],
       "expo-quick-actions",
+      "./plugins/withFontScaleConfigChange",
       [
         "react-native-android-widget",
         {
