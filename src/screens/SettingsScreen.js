@@ -12,7 +12,6 @@ import TimePicker from '../components/TimePicker';
 import Dialog from '../components/ui/Dialog';
 import { sendTestNotification } from '../utils/notifications';
 import feedback, { EVENTS, recent as recentFeedback, clearRecent as clearFeedbackLog } from '../services/feedback';
-import { playSuccessChime } from '../utils/sounds';
 import { to12h, to24h, formatTime12 as formatTime } from '../utils/time';
 import { exportBackup, pickBackup } from '../services/backup';
 import { openRateApp } from '../services/review';
@@ -713,7 +712,12 @@ export default function SettingsScreen() {
                 onValueChange={v => {
                   feedback.toggled(v);
                   updateSettings({ soundEnabled: v });
-                  if (v) playSuccessChime();
+                  if (v) {
+                    // The settings effect re-configures feedback a render later; open the sound
+                    // gate now so the preview of the newly enabled kit is heard.
+                    feedback.configure({ ...feedback.isEnabled(), sound: true });
+                    feedback.play(EVENTS.soundPreview);
+                  }
                 }}
                 {...switchColors(theme, settings.soundEnabled)}
                 accessibilityLabel={t('settings.sounds')}

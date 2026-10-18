@@ -15,9 +15,7 @@ jest.mock('expo-haptics', () => ({
     No_Haptics: 'no-haptics', Segment_Tick: 'segment-tick', Segment_Frequent_Tick: 'segment-frequent-tick',
   },
 }));
-jest.mock('../../utils/sounds', () => ({
-  playChime: jest.fn(), playSuccessChime: jest.fn(), playChallengeChime: jest.fn(), playHornFanfare: jest.fn(),
-}));
+jest.mock('../../utils/sounds', () => ({ playSound: jest.fn() }));
 
 const fs = require('fs');
 const path = require('path');
@@ -50,6 +48,7 @@ const SPEC = {
   'refused': { ios: [['notification', 'warning', 0]], android: [['reject', 'long-press', 0]] },
   'error': { ios: [['notification', 'error', 0]], android: [['reject', 'long-press', 0]] },
   'destructiveConfirm': { ios: [['notification', 'warning', 0]], android: [['reject', 'long-press', 0]] },
+  'sound.preview': { ios: [], android: [] },
 };
 const MIN_API = { 'confirm': 30, 'reject': 30, 'gesture-end': 30, 'segment-tick': 34, 'toggle-on': 34, 'toggle-off': 34 };
 const expectedAndroid = (event, api) =>
@@ -220,12 +219,12 @@ describe('gating', () => {
     configure({ haptics: true, sound: false });
     play(EVENTS.habitDone);
     expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
-    expect(sounds.playSuccessChime).not.toHaveBeenCalled();
+    expect(sounds.playSound).not.toHaveBeenCalled();
     jest.advanceTimersByTime(100);
     configure({ haptics: false, sound: true });
     play(EVENTS.habitDone);
     expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
-    expect(sounds.playSuccessChime).toHaveBeenCalledTimes(1);
+    expect(sounds.playSound).toHaveBeenCalledTimes(1);
   });
 
   test('only an explicit false disables', () => {
@@ -242,19 +241,67 @@ describe('gating', () => {
   });
 });
 
-describe('sound routing (existing chimes until F-04b)', () => {
+describe('sound routing (F-04b kit, plan §2.11)', () => {
   test.each([
-    ['habit.done', 'playSuccessChime'], ['counter.step', 'playChime'], ['markRest', 'playSuccessChime'],
-    ['challenge.claimed', 'playChallengeChime'], ['milestone', 'playHornFanfare'], ['trophy', 'playHornFanfare'],
-  ])('%s plays %s', (event, fn) => {
-    play(event, { delay: 0 });
-    expect(sounds[fn]).toHaveBeenCalledTimes(1);
+    ['habit.done', { n: 1 }, 'habit-1'], ['habit.done', { n: 3 }, 'habit-3'], ['habit.done', { step: 8, goal: 8 }, 'goal'],
+    ['counter.step', { step: 1, goal: 8 }, 'counter-0'], ['counter.step', { step: 9, goal: 8 }, 'over'],
+    ['habit.undone', undefined, 'undone'], ['challenge.claimed', undefined, 'challenge'], ['day.complete', undefined, 'chord'],
+    ['markRest', undefined, 'chord'], ['milestone', undefined, 'fanfare'], ['trophy', undefined, 'fanfare'],
+    ['sound.preview', undefined, 'habit-1'],
+  ])('%s %j plays %s', (event, tone, id) => {
+    play(event, { delay: 0, tone });
+    jest.advanceTimersByTime(1000);
+    expect(sounds.playSound).toHaveBeenCalledTimes(1);
+    expect(sounds.playSound).toHaveBeenCalledWith(id);
   });
 
   test('events without a sound stay silent', () => {
-    ['selection', 'toggle.on', 'toggle.off', 'refused', 'error', 'longPress', 'habit.undone', 'destructiveConfirm', 'press']
+    ['selection', 'toggle.on', 'toggle.off', 'refused', 'error', 'longPress', 'destructiveConfirm', 'press']
       .forEach(e => play(e, { delay: 0 }));
-    Object.values(sounds).forEach(fn => expect(fn).not.toHaveBeenCalled());
+    jest.advanceTimersByTime(1000);
+    expect(sounds.playSound).not.toHaveBeenCalled();
+  });
+
+  test('Mark the rest: Success haptic at 0, one chord at 750 (§4.1), cancellable', () => {
+    play(EVENTS.markRest);
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(749);
+    expect(sounds.playSound).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1);
+    expect(sounds.playSound).toHaveBeenCalledWith('chord');
+    const h = play(EVENTS.markRest);
+    h.cancel();
+    jest.advanceTimersByTime(1000);
+    expect(sounds.playSound).toHaveBeenCalledTimes(1);
+  });
+
+  test('sound.preview has no haptic of its own', () => {
+    setPlatform('android', 36);
+    play(EVENTS.soundPreview);
+    expect(Haptics.performAndroidHapticsAsync).not.toHaveBeenCalled();
+    expect(sounds.playSound).toHaveBeenCalledWith('habit-1');
+  });
+
+  test('tap sounds: at most one start per 60 ms; celebrations are never dropped', () => {
+    play(EVENTS.counterStep, { tone: { step: 1, goal: 8 } });
+    jest.advanceTimersByTime(59);
+    play(EVENTS.counterStep, { tone: { step: 2, goal: 8 } });
+    expect(sounds.playSound).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(1);
+    play(EVENTS.counterStep, { tone: { step: 3, goal: 8 } });
+    expect(sounds.playSound).toHaveBeenCalledTimes(2);
+    // The degree advanced with the dropped step: step 3 plays its own note.
+    expect(sounds.playSound).toHaveBeenLastCalledWith('counter-1');
+    play(EVENTS.dayComplete, { delay: 0 });
+    play(EVENTS.challengeClaimed, { delay: 0 });
+    expect(sounds.playSound).toHaveBeenCalledTimes(4);
+  });
+
+  test('sound off: the sounds module is never asked to play', () => {
+    configure({ haptics: true, sound: false });
+    Object.values(EVENTS).forEach(e => play(e, { delay: 0, tone: { n: 2 } }));
+    jest.advanceTimersByTime(2000);
+    expect(sounds.playSound).not.toHaveBeenCalled();
   });
 });
 
@@ -269,15 +316,15 @@ describe('rate limit and log', () => {
     jest.advanceTimersByTime(1);
     play(EVENTS.counterStep);
     expect(Haptics.selectionAsync).toHaveBeenCalledTimes(2);
-    // The sound is not rate limited here (F-04b owns the sound limits).
-    expect(sounds.playChime).toHaveBeenCalledTimes(4);
+    // Sounds have their own 60 ms limit: only the tap at 0 starts one (the others are within 60 ms).
+    expect(sounds.playSound).toHaveBeenCalledTimes(1);
   });
 
   test('the log keeps the last 50 entries with their offset from the tap', () => {
     setPlatform('android', 36);
     play(EVENTS.dayComplete, { delay: 0 });
     jest.advanceTimersByTime(125);
-    const [a, b] = recent();
+    const [a, b] = recent().filter(e => e.haptic);
     expect(a).toMatchObject({ event: 'day.complete', haptic: 'android:confirm', offset: 0 });
     expect(b).toMatchObject({ event: 'day.complete', haptic: 'android:confirm', offset: 125 });
 
@@ -396,7 +443,7 @@ describe('cancel and sound:false', () => {
     const handle = play(EVENTS.challengeClaimed);
     handle.cancel();
     jest.advanceTimersByTime(1000);
-    expect(sounds.playChallengeChime).not.toHaveBeenCalled();
+    expect(sounds.playSound).not.toHaveBeenCalled();
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     expect(() => play('nope').cancel()).not.toThrow();
     warn.mockRestore();
@@ -405,7 +452,7 @@ describe('cancel and sound:false', () => {
   test('sound:false plays the haptic only', () => {
     play(EVENTS.counterStep, { sound: false });
     expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
-    expect(sounds.playChime).not.toHaveBeenCalled();
+    expect(sounds.playSound).not.toHaveBeenCalled();
   });
 });
 
@@ -438,5 +485,33 @@ describe('call-site source checks (review M1/m1-m3)', () => {
           .toEqual({ file: rel, at: src.slice(0, i).split('\n').length, ok: true });
       }
     }
+  });
+});
+
+describe('F-04b call sites', () => {
+  const read = (rel) => fs.readFileSync(path.join(__dirname, '..', '..', rel), 'utf8').replace(/\r\n/g, '\n');
+
+  test('TodayScreen passes the ladder tone and keeps the Mark-the-rest chord cancellable', () => {
+    const src = read('screens/TodayScreen.js');
+    expect(src).toMatch(/feedback\.play\(justCompleted \? EVENTS\.habitDone : EVENTS\.counterStep, \{ tone \}\)/);
+    expect(src).toMatch(/keepPending\(feedback\.play\(EVENTS\.markRest\)\)/);
+  });
+
+  test('Settings previews Sounds through its own event, never a chime directly', () => {
+    const src = read('screens/SettingsScreen.js');
+    expect(src).toMatch(/feedback\.play\(EVENTS\.soundPreview\)/);
+    expect(src).not.toMatch(/utils\/sounds/);
+  });
+
+  test('only feedback.js loads the sounds module', () => {
+    const offenders = [];
+    const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).forEach(d => {
+      const p = path.join(dir, d.name);
+      if (d.isDirectory()) { if (d.name !== '__tests__') walk(p); return; }
+      if (!p.endsWith('.js') || p.endsWith(path.join('services', 'feedback.js'))) return;
+      if (/['"](\.\.?\/)+(utils\/)?sounds['"]/.test(fs.readFileSync(p, 'utf8'))) offenders.push(p);
+    });
+    walk(path.join(__dirname, '..', '..'));
+    expect(offenders).toEqual([]);
   });
 });
