@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Dimensions } from 'react-native';
-import { useReducedMotion } from '../utils/a11y';
+import { useMotion, celebration } from '../theme/motion';
+import { celebrationArt } from '../theme/tokens';
 
 const { width, height } = Dimensions.get('window');
-const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+const COLORS = celebrationArt.confettiPerfectDay;
 const PARTICLE_COUNT = 30;
 
 function Particle({ delay, color }) {
@@ -18,25 +19,25 @@ function Particle({ delay, color }) {
     Animated.sequence([
       Animated.delay(delay),
       Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 100, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: celebration.confettiFadeIn, useNativeDriver: true }),
         Animated.timing(y, {
           toValue: height * 0.7,
-          duration: 2000 + Math.random() * 1000,
+          duration: celebration.confettiFall + Math.random() * celebration.confettiFallJitter,
           useNativeDriver: true,
         }),
         Animated.timing(x, {
           toValue: targetX,
-          duration: 2000 + Math.random() * 1000,
+          duration: celebration.confettiFall + Math.random() * celebration.confettiFallJitter,
           useNativeDriver: true,
         }),
         Animated.timing(rotate, {
           toValue: Math.random() * 4 - 2,
-          duration: 2000,
+          duration: celebration.confettiFall,
           useNativeDriver: true,
         }),
         Animated.sequence([
-          Animated.delay(1500),
-          Animated.timing(opacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+          Animated.delay(celebration.confettiFadeOutAt),
+          Animated.timing(opacity, { toValue: 0, duration: celebration.confettiFadeOut, useNativeDriver: true }),
         ]),
       ]),
     ]).start();
@@ -59,10 +60,10 @@ function Particle({ delay, color }) {
 }
 
 export default function CelebrationOverlay({ visible, onDone }) {
-  const reducedMotion = useReducedMotion();
+  const { reduced: reducedMotion } = useMotion();
   useEffect(() => {
     if (visible) {
-      const t = setTimeout(onDone, reducedMotion ? 300 : 3000);
+      const t = setTimeout(onDone, reducedMotion ? celebration.overlayDoneReduced : celebration.overlayDone);
       return () => clearTimeout(t);
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -75,7 +76,7 @@ export default function CelebrationOverlay({ visible, onDone }) {
       {Array.from({ length: PARTICLE_COUNT }).map((_, i) => (
         <Particle
           key={i}
-          delay={Math.random() * 600}
+          delay={Math.random() * celebration.confettiSpread}
           color={COLORS[i % COLORS.length]}
         />
       ))}

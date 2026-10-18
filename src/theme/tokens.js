@@ -225,6 +225,21 @@ export const shareCard = {
   cellPerfect: '#818CF8',
 };
 
+// Celebration art, fixed in both themes: the confetti palettes and the milestone overlay's
+// type on the habit colour. Moved verbatim out of CelebrationOverlay and CompletionCelebration
+// (F-05); C-07 / C-08 redesign these moments.
+export const celebrationArt = {
+  confettiPerfectDay: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'],
+  confettiMilestone: [
+    '#818CF8', '#A78BFA', '#C4B5FD', '#E879F9', '#34D399',
+    '#FDE68A', '#FB923C', '#F472B6', '#60A5FA', '#FFFFFF',
+  ],
+  staticScrim: 'rgba(0,0,0,0.45)',
+  title: '#FFFFFF',
+  titleShadow: 'rgba(0,0,0,0.15)',
+  subtitle: 'rgba(255,255,255,0.9)',
+};
+
 // §2.6
 export const space = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 24, xl: 32, xxl: 48, gutter: 20 };
 

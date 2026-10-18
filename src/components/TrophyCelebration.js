@@ -2,14 +2,15 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Animated, StyleSheet, Text, Modal, Pressable } from 'react-native';
 import CelebrationOverlay from './CelebrationOverlay';
 import feedback, { EVENTS } from '../services/feedback';
-import { useReducedMotion, announce } from '../utils/a11y';
+import { announce } from '../utils/a11y';
+import { useMotion, celebration, spring } from '../theme/motion';
 import { t } from '../i18n';
 import OverlayModal from './ui/OverlayModal';
 
 // A tap (or the Android back key) dismisses the trophy once it has been up this long (CEL-2).
 export const TROPHY_SKIP_AFTER_MS = 1000;
 // Spring + orbit (600 + 1400 ms) + confetti hold (3500 ms), plus a margin.
-export const TROPHY_FALLBACK_MS = 600 + 1400 + 3500 + 500;
+export const TROPHY_FALLBACK_MS = celebration.trophyOrbitAt + celebration.trophyOrbit + celebration.trophyHoldAfterOrbit + 500;
 
 // The trophy is a root Modal, so its scrim covers the tab bar and the back key reaches it
 // (it used to be an absolute overlay inside the Today pager slot).
@@ -18,7 +19,7 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
   const orbitAnim = useRef(new Animated.Value(0)).current;
   const [showConfetti, setShowConfetti] = useState(false);
   const [canSkip, setCanSkip] = useState(false);
-  const reducedMotion = useReducedMotion();
+  const { reduced: reducedMotion } = useMotion();
   const timers = useRef([]);
   const finished = useRef(false);
   const onDoneRef = useRef(onDone);
@@ -57,24 +58,24 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
 
     if (reducedMotion) {
       scaleAnim.setValue(1);
-      later(finish, 2000);
+      later(finish, celebration.trophyStaticHold);
       return clearTimers;
     }
 
     Animated.spring(scaleAnim, {
-      toValue: 1, useNativeDriver: true, tension: 60, friction: 7,
+      toValue: 1, useNativeDriver: true, ...spring.celebrate,
     }).start();
 
     later(() => {
       Animated.timing(orbitAnim, {
-        toValue: 1, duration: 1400, useNativeDriver: true,
+        toValue: 1, duration: celebration.trophyOrbit, useNativeDriver: true,
       }).start(({ finished: done }) => {
         if (done && !finished.current) {
           setShowConfetti(true);
-          later(finish, 3500);
+          later(finish, celebration.trophyHoldAfterOrbit);
         }
       });
-    }, 600);
+    }, celebration.trophyOrbitAt);
     return clearTimers;
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 

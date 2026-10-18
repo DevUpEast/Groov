@@ -23,6 +23,7 @@ import { suggestHabit } from '../services/aiCoaching';
 import { useAuth } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
 import { ACCENT_IDS, resolveAccent, storedHexFor } from '../theme/accents';
+import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, handoff } from '../theme/motion';
 import { BLANK_FORM, formFromHabit, habitFromForm, pickAccent, selectedAccentId, suggestedColor } from '../utils/habitForm';
 import AppText from '../components/ui/AppText';
 
@@ -210,7 +211,7 @@ const VOLUME_MAX_OPTIONS = [
 ];
 
 function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme }) {
-  const translateY = useRef(new Animated.Value(700)).current;
+  const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
   const [internalVisible, setInternalVisible] = useState(false);
   const [volMax, setVolMax] = useState(10);
   const { user } = useAuth();
@@ -248,7 +249,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
   };
 
   const animateClose = useCallback((cb) => {
-    Animated.timing(translateY, { toValue: 700, duration: 220, useNativeDriver: true }).start(() => {
+    sheetOut(translateY).start(() => {
       setInternalVisible(false);
       cb?.();
     });
@@ -257,8 +258,8 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
   useEffect(() => {
     if (visible) {
       setInternalVisible(true);
-      translateY.setValue(700);
-      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+      translateY.setValue(SHEET_OFFSCREEN);
+      sheetIn(translateY).start();
     } else {
       animateClose(null);
     }
@@ -277,12 +278,12 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
       },
       onPanResponderRelease: (_, gs) => {
         if (gs.dy > 80) {
-          Animated.timing(translateY, { toValue: 700, duration: 220, useNativeDriver: true }).start(() => {
+          sheetOut(translateY).start(() => {
             setInternalVisible(false);
             onClose();
           });
         } else {
-          Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 80 }).start();
+          sheetSettle(translateY).start();
         }
       },
     })
@@ -703,7 +704,7 @@ export default function HabitsScreen() {
         if (h) setDetailHabit(h);
       }
       clearPendingRoute();
-    }, 350);
+    }, handoff.afterTabChange);
     return () => clearTimeout(t);
   }, [pendingRoute]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -714,7 +715,7 @@ export default function HabitsScreen() {
         setEditingId(null);
         setForm(BLANK);
         setModalVisible(true);
-      }, 400);
+      }, handoff.afterTabChange); // the challenge sheet has already closed (M5)
       return () => clearTimeout(t);
     }
   }, [pendingHabitLinkChallenge]);

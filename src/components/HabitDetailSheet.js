@@ -16,8 +16,9 @@ import { isHabitDoneOnDay } from '../utils/dayStatus';
 import { t, getLocale, useLocale } from '../i18n';
 import { data } from '../theme/tokens';
 import { numeric } from '../theme/typography';
+import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle } from '../theme/motion';
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const WEEKS = 15;                       // ~3.5 months of history in the grid
 const GRID_GAP = 3;
 const DAY_LABEL_W = 22;
@@ -40,19 +41,23 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
   } = useApp();
   useLocale();
 
-  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     if (habit) {
       setVisible(true);
-      translateY.setValue(SCREEN_HEIGHT);
-      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+      translateY.setValue(SHEET_OFFSCREEN);
+      sheetIn(translateY).start();
     }
   }, [habit]); // eslint-disable-line react-hooks/exhaustive-deps
-  const close = useCallback(() => {
-    Animated.timing(translateY, { toValue: SCREEN_HEIGHT, duration: 220, useNativeDriver: true }).start(() => {
+  // `then` runs once the exit has finished and the sheet's Modal is gone (a frame after the
+  // unmount commit), so the next overlay never opens over this one. Ignores non-function
+  // arguments (onPress / onRequestClose pass an event).
+  const close = useCallback((then) => {
+    sheetOut(translateY).start(() => {
       setVisible(false);
       onClose();
+      if (typeof then === 'function') requestAnimationFrame(() => then());
     });
   }, [translateY, onClose]);
   const closeRef = useRef(close);
@@ -63,7 +68,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
     onPanResponderMove: (_, gs) => { if (gs.dy > 0) translateY.setValue(gs.dy); },
     onPanResponderRelease: (_, gs) => {
       if (gs.dy > 80) closeRef.current();
-      else Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 80 }).start();
+      else sheetSettle(translateY).start();
     },
   })).current;
 
@@ -179,7 +184,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
             )}
           </View>
           {onEdit && (
-            <TouchableOpacity onPress={() => { close(); setTimeout(() => onEdit(habit), 250); }} style={[styles.editBtn, { borderColor: theme.border }]} accessibilityRole="button" accessibilityLabel={t('habitDetail.editA11y')}>
+            <TouchableOpacity onPress={() => close(() => onEdit(habit))} style={[styles.editBtn, { borderColor: theme.border }]} accessibilityRole="button" accessibilityLabel={t('habitDetail.editA11y')}>
               <Text style={[styles.editBtnText, { color: theme.link }]}>{t('common.edit')}</Text>
             </TouchableOpacity>
           )}

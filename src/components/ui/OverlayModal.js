@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Platform } from 'react-native';
 import { overlayOpened, overlayChangesStatusBar } from '../../utils/overlayStatus';
+import { useMotion } from '../../theme/motion';
 
 /**
  * React Native's `Modal`, plus the status-bar rule for scrimmed overlays (F-02).
@@ -18,12 +19,15 @@ import { overlayOpened, overlayChangesStatusBar } from '../../utils/overlayStatu
  * The deferred gap: for those ~32 ms no dialog window exists yet, so an Android back press
  * reaches App's BackHandler instead of the Modal's onRequestClose (on a non-Today tab it goes to
  * Today; on Today it leaves the app). The window opens right after a tap, so this is accepted.
+ *
+ * Reduced motion (F-05): `animationType="slide"` becomes a fade, so no sheet slides.
  */
 const ANDROID = Platform.OS === 'android';
 const mustDefer = () => ANDROID && overlayChangesStatusBar();
 
-export default function OverlayModal({ visible, ...props }) {
+export default function OverlayModal({ visible, animationType, ...props }) {
   const want = !!visible;
+  const { reduced } = useMotion();
   const [shown, setShown] = useState(() => want && !mustDefer());
 
   useEffect(() => (want ? overlayOpened() : undefined), [want]);
@@ -36,5 +40,6 @@ export default function OverlayModal({ visible, ...props }) {
     return () => { cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2); };
   }, [want]);
 
-  return <Modal visible={want && shown} {...props} />;
+  const animation = reduced && animationType === 'slide' ? 'fade' : animationType;
+  return <Modal visible={want && shown} animationType={animation} {...props} />;
 }

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, Alert, Platform,
-  PanResponder, Keyboard, Animated, Dimensions,
+  PanResponder, Keyboard, Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SafeAreaView from '../components/SafeAreaView';
@@ -20,8 +20,7 @@ import { t, getLocale, useLocale } from '../i18n';
 import OverlayModal from '../components/ui/OverlayModal';
 import AppText from '../components/ui/AppText';
 import { numeric } from '../theme/typography';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, useMotion } from '../theme/motion';
 
 const RANGE_OPTIONS = [
   { key: 'week', max: 7 },
@@ -34,19 +33,19 @@ const tierLabel = (tier) => t(`tier.${tier}`);
 // ── Shared bottom-sheet animation ─────────────────────────────────────────────
 
 function useSheetAnim() {
-  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
   const [internalVisible, setInternalVisible] = useState(false);
 
   const open = useCallback(() => {
     setInternalVisible(true);
-    translateY.setValue(SCREEN_HEIGHT);
-    Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+    translateY.setValue(SHEET_OFFSCREEN);
+    sheetIn(translateY).start();
   }, [translateY]);
 
   const close = useCallback((cb) => {
-    Animated.timing(translateY, { toValue: SCREEN_HEIGHT, duration: 220, useNativeDriver: true }).start(() => {
+    sheetOut(translateY).start(() => {
       setInternalVisible(false);
-      cb?.();
+      if (typeof cb === 'function') cb();
     });
   }, [translateY]);
 
@@ -62,7 +61,7 @@ function makeDragPanResponder(translateY, onClose) {
       if (gs.dy > 80) {
         onClose();
       } else {
-        Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 80 }).start();
+        sheetSettle(translateY).start();
       }
     },
   });
@@ -322,7 +321,8 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
 
         <TouchableOpacity
           style={[styles.addHabitInModalBtn, { borderColor: theme.border }]}
-          onPress={() => { doClose(); onAddHabit?.(); }}
+          // The tab change starts once the sheet has closed, not underneath it.
+          onPress={() => sheet.close(() => { onClose(); onAddHabit?.(); })}
           accessibilityRole="button"
           accessibilityLabel={t('challenges.form.addNewA11y')}
         >
@@ -348,6 +348,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
 
 function PastChallengeDetailModal({ challenge, onClose, theme }) {
   const sheet = useSheetAnim();
+  const motion = useMotion();
 
   useEffect(() => { if (challenge) sheet.open(); }, [challenge]);
 
@@ -369,7 +370,7 @@ function PastChallengeDetailModal({ challenge, onClose, theme }) {
     <OverlayModal visible={sheet.internalVisible} animationType="none" transparent onRequestClose={doClose}>
       <View style={styles.overlay}>
         <View style={[styles.overlayBg, { backgroundColor: theme.scrim }]} />
-        <Animated.View style={[styles.sheet, { backgroundColor: cardBg, transform: [{ translateY: sheet.translateY }] }]}>
+        <Animated.View style={[styles.sheet, { backgroundColor: cardBg }, motion.sheetStyle(sheet.translateY)]}>
           <SheetDragHandle panHandlers={pan.panHandlers} theme={theme} color={cardBorder} />
 
           <View style={styles.sheetHeader}>
