@@ -42,6 +42,20 @@ export function parseDeepLink(url) {
   return null;
 }
 
+// Dev-only routes (groov://dev/design) are dropped unless this is a dev build or the web
+// mockup, so a release build treats them like an unknown link (F-01 m1).
+export function isRouteAllowed(route, { dev = false, mockup = false } = {}) {
+  if (!route) return false;
+  if (route.action === 'designPreview') return !!(dev || mockup);
+  return true;
+}
+
+// A pending route sends the user away from `tab` only when it names a different tab;
+// a tab-less route (the design preview) never closes that screen's sheets.
+export function routeLeavesTab(route, tab) {
+  return !!route && route.tab != null && route.tab !== tab;
+}
+
 // Build a link for sharing / notifications / widgets.
 export function habitLink(habitId, action) {
   return `groov://habit/${habitId}${action ? `/${action}` : ''}`;

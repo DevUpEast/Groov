@@ -189,7 +189,7 @@ function DayDetailModal({ visible, day, onClose, theme }) {
           </View>
           {day.frozen && (
             <View style={styles.frozenRow}>
-              <Ionicons name="snow-outline" size={16} color={theme.textSecondary} />
+              <Ionicons name="snow-outline" size={16} color={theme.textSecondary} accessible={false} importantForAccessibility="no" aria-hidden />
               <Text style={[styles.sheetSub, styles.frozenText, { color: theme.textSecondary }]}>{t('progress.day.frozen')}</Text>
             </View>
           )}

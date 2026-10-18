@@ -1,7 +1,7 @@
 // Shared scanner for the colour ratchets (plan §2.1, §7.1): legacyTokens.test.js and
 // noHexLiterals.test.js. Not a test file itself (no `.test.js` suffix).
 //
-// Scope: every .js file under src/ plus App.js, except src/theme/ (where tokens live) and
+// Scope: every .js/.jsx/.ts/.tsx file under src/ plus App.js, except src/theme/ (where tokens live) and
 // __tests__ folders. Comments are stripped before counting, so issue numbers such as
 // "(#173)" in a comment are not counted as 3-digit hex.
 const fs = require('fs');
@@ -15,7 +15,7 @@ function walk(dir, out = []) {
     if (e.isDirectory()) {
       if (e.name === '__tests__' || e.name === 'node_modules') continue;
       walk(p, out);
-    } else if (e.name.endsWith('.js')) out.push(p);
+    } else if (/\.(jsx?|tsx?)$/.test(e.name)) out.push(p);
   }
   return out;
 }
@@ -68,18 +68,12 @@ function scan(re) {
   return counts;
 }
 
-// Compares counts with the committed baseline. Returns { grown, fallen } as readable lines.
-// A file not in the baseline has a baseline of 0. Set UPDATE_RATCHET=1 to rewrite the
-// baseline after lowering a count (the PR that lowers it commits the new file).
-function compare(counts, baselineFile) {
-  const file = path.join(__dirname, baselineFile);
-  if (process.env.UPDATE_RATCHET === '1') {
-    fs.writeFileSync(file, JSON.stringify(counts, null, 2) + '\n');
-  }
-  const baseline = JSON.parse(fs.readFileSync(file, 'utf8'));
+// Lines `file: was -> now` for every file whose count rose (grown) or fell (fallen).
+// A file not in the baseline has a baseline of 0.
+function diffCounts(counts, baseline) {
   const grown = [];
   const fallen = [];
-  for (const f of new Set([...Object.keys(baseline), ...Object.keys(counts)])) {
+  for (const f of [...new Set([...Object.keys(baseline), ...Object.keys(counts)])].sort()) {
     const was = baseline[f] || 0;
     const now = counts[f] || 0;
     if (now > was) grown.push(`${f}: ${was} -> ${now}`);
@@ -88,6 +82,34 @@ function compare(counts, baselineFile) {
   return { grown, fallen };
 }
 
+// The baseline an update may write: only lowered counts are taken, so it can never rise.
+// Returns null (write nothing) when any count grew.
+function loweredBaseline(counts, baseline) {
+  const { grown } = diffCounts(counts, baseline);
+  if (grown.length) return null;
+  const next = {};
+  for (const f of Object.keys(counts).sort()) next[f] = counts[f];
+  return next;
+}
+
+// Compares counts with the committed baseline and returns { grown, fallen }. With
+// UPDATE_RATCHET=1 it rewrites the baseline after a count fell, but refuses (and prints
+// the files that grew) when any count rose: the update command can only lower it.
+function compare(counts, baselineFile) {
+  const file = path.join(__dirname, baselineFile);
+  const baseline = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const result = diffCounts(counts, baseline);
+  if (process.env.UPDATE_RATCHET === '1' && result.fallen.length) {
+    const next = loweredBaseline(counts, baseline);
+    if (next) {
+      fs.writeFileSync(file, JSON.stringify(next, null, 2) + '\n');
+      return { grown: [], fallen: [] };
+    }
+    console.error(`UPDATE_RATCHET refused to rewrite ${baselineFile}; these counts grew:\n${result.grown.join('\n')}`);
+  }
+  return result;
+}
+
 const total = (counts) => Object.values(counts).reduce((a, b) => a + b, 0);
 
-module.exports = { sourceFiles, stripComments, scan, compare, total, COLOR_LITERAL };
+module.exports = { sourceFiles, stripComments, scan, compare, diffCounts, loweredBaseline, total, COLOR_LITERAL };

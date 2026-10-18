@@ -3,8 +3,7 @@
 // (theme.<role>, or src/theme/tokens.js for non-React code). Z-01a takes the count to 0.
 //
 // After lowering a count, refresh the baseline:  UPDATE_RATCHET=1 npx jest noHexLiterals
-const { scan, compare, total, stripComments, COLOR_LITERAL } = require('./ratchet');
-const baseline = require('./hex-baseline.json');
+const { scan, compare, stripComments, COLOR_LITERAL } = require('./ratchet');
 
 describe('colour literal ratchet', () => {
   const counts = scan(COLOR_LITERAL);
@@ -17,7 +16,6 @@ describe('colour literal ratchet', () => {
   it('has its baseline lowered when a count falls (so it cannot creep back up)', () => {
     const { fallen } = compare(counts, 'hex-baseline.json');
     if (fallen.length) throw new Error(`Counts fell; run UPDATE_RATCHET=1 npx jest noHexLiterals and commit hex-baseline.json:\n${fallen.join('\n')}`);
-    expect(total(counts)).toBe(total(baseline));
   });
 
   it('counts 3, 6 and 8-digit hex and rgb()/rgba(), ignoring comments', () => {

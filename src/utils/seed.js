@@ -5,6 +5,21 @@ import { snapshotOf } from './dayStatus';
 
 export const SEED_DAYS = 30;
 
+// Fixed seed for the mockup demo history, so before/after shot matrices see the same data.
+export const DEMO_SEED = 20261017;
+
+// mulberry32: a small deterministic PRNG returning floats in [0, 1), like Math.random.
+export function seededRandom(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 // Never move a habit's start later; only pull it back to `floor`.
 export function backdateCreatedAt(habit, floor) {
   return habit.createdAt && habit.createdAt < floor ? habit : { ...habit, createdAt: floor };

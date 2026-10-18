@@ -16,6 +16,7 @@ import TimePicker from '../components/TimePicker';
 import HabitDetailSheet from '../components/HabitDetailSheet';
 import HabitIcon from '../components/HabitIcon';
 import { lightImpact, mediumImpact } from '../utils/haptics';
+import { routeLeavesTab } from '../utils/links';
 import { describeSchedule, weekdayLabels, DEFAULT_SCHEDULE } from '../utils/schedule';
 import { getHabitTypes, describeGoal } from '../utils/habits';
 import { suggestHabit } from '../services/aiCoaching';
@@ -664,8 +665,9 @@ export default function HabitsScreen() {
 
   // Deep links: groov://habit/<id> opens the detail sheet, groov://habits/new the form.
   useEffect(() => {
-    if (!pendingRoute) return;
-    if (pendingRoute.tab !== 3) {
+    // A tab-less route (groov://dev/design) is not for this screen: leave it and any open sheet.
+    if (!pendingRoute || pendingRoute.tab == null) return;
+    if (routeLeavesTab(pendingRoute, 3)) {
       // Leaving this tab by link: drop any open sheet so it does not cover the target.
       setDetailHabit(null); setModalVisible(false); setReminderTarget(null);
       clearPendingRoute();

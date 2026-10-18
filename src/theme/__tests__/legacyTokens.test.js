@@ -4,9 +4,8 @@
 // and deletes the legacy keys.
 //
 // After lowering a count, refresh the baseline:  UPDATE_RATCHET=1 npx jest legacyTokens
-const { scan, compare, total } = require('./ratchet');
+const { scan, compare } = require('./ratchet');
 const { LEGACY_KEYS } = require('../colors');
-const baseline = require('./legacy-baseline.json');
 
 const LEGACY_READ = new RegExp(String.raw`\b(?:theme|scheme)\??\.(?:${LEGACY_KEYS.join('|')})\b`, 'g');
 
@@ -21,7 +20,6 @@ describe('legacy theme key ratchet', () => {
   it('has its baseline lowered when a count falls', () => {
     const { fallen } = compare(counts, 'legacy-baseline.json');
     if (fallen.length) throw new Error(`Counts fell; run UPDATE_RATCHET=1 npx jest legacyTokens and commit legacy-baseline.json:\n${fallen.join('\n')}`);
-    expect(total(counts)).toBe(total(baseline));
   });
 
   it('matches theme.<legacy> and theme?.<legacy> reads but not role keys', () => {

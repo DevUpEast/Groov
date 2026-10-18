@@ -99,11 +99,12 @@ const TABS = [
 const SCREENS = [TodayScreen, ProgressScreen, ChallengeScreen, HabitsScreen, SettingsScreen];
 
 function AppNavigator() {
-  const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen, notificationPrimer, paywall, closePaywall, refreshPro, pendingRoute } = useApp();
+  const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen, notificationPrimer, paywall, closePaywall, refreshPro, pendingRoute, clearPendingRoute } = useApp();
   // groov://dev/design opens the token preview, in dev builds and the web mockup only (F-01).
   const [designOpen, setDesignOpen] = useState(false);
   useEffect(() => {
-    if (pendingRoute?.action === 'designPreview' && (__DEV__ || mockupParams.active)) setDesignOpen(true);
+    // AppContext already drops this route outside dev builds and the mockup (isRouteAllowed).
+    if (pendingRoute?.action === 'designPreview') { setDesignOpen(true); clearPendingRoute(); }
   }, [pendingRoute]);
   useLocale();
   const insets = useSafeAreaInsets();

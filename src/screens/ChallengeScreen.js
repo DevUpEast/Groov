@@ -310,7 +310,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
 
             {selectedHabitIds.length === 0 && (
               <View style={styles.linkWarningRow}>
-                <Ionicons name="alert-circle-outline" size={16} color={theme.textSecondary} />
+                <Ionicons name="alert-circle-outline" size={16} color={theme.textSecondary} accessible={false} importantForAccessibility="no" aria-hidden />
                 <Text style={[styles.linkWarning, { color: theme.textSecondary }]}>
                   {t('challenges.form.selectOne')}
                 </Text>
