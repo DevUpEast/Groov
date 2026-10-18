@@ -7,6 +7,7 @@ import { themes } from '../theme/colors';
 import { palette, pairs, data, accents, accentOnFill, space, radius, RGBA_ROLES } from '../theme/tokens';
 import { contrastRatio } from '../theme/contrast';
 import ProgressRing from '../components/ProgressRing';
+import TodayHeader, { TodayStickyBar } from '../components/TodayHeader';
 import AppText from '../components/ui/AppText';
 import { t } from '../i18n';
 
@@ -15,6 +16,17 @@ import { t } from '../i18n';
 // Labels are token names, which are identifiers rather than UI copy, so they stay English.
 
 const resolve = (theme, key) => (key.startsWith('data.') ? data[theme][key.slice(5)] : palette[theme][key] ?? key);
+
+// The Today header states (C-04): rendered side by side for review, with fixed sample data.
+const BEATS = (today) => ['done', 'done', 'rest', 'done', 'done', 'done', today].map((status, i) => ({ key: `d${i}`, status, today: i === 6 }));
+const TODAY_HEADER_CASES = [
+  { id: 'progress', props: { name: 'Claude', state: 'progress', completed: 2, total: 4, streak: 11, beats: BEATS('open') } },
+  { id: 'complete', props: { name: 'Claude', state: 'complete', completed: 4, total: 4, streak: 12, beats: BEATS('complete') } },
+  { id: 'rest', props: { name: 'Claude', state: 'rest', completed: 0, total: 0, streak: 12, beats: BEATS('rest') } },
+  { id: 'empty', props: { name: 'Claude', state: 'progress', completed: 0, total: 4, streak: 0, beats: BEATS('open').slice(4) } },
+  { id: 'long-name', props: { name: 'Maximilian Mustermann-Schmidt', state: 'progress', completed: 2, total: 4, streak: 11, beats: BEATS('open') } },
+  { id: 'compact', props: { name: 'Claude', state: 'progress', completed: 2, total: 4, streak: 11, beats: BEATS('open'), compact: true } },
+];
 
 function Section({ title, theme, children }) {
   return (
@@ -57,6 +69,20 @@ export default function DesignPreview({ visible, onClose }) {
           </TouchableOpacity>
         </View>
         <ScrollView contentContainerStyle={styles.scroll}>
+          <Section title="Today header (C-04)" theme={theme}>
+            {TODAY_HEADER_CASES.map(c => (
+              <View key={c.id} style={styles.headerCase} testID={`today-header-${c.id}`}>
+                <Text style={[styles.swatchHex, { color: theme.textTertiary }]}>{c.id}</Text>
+                <TodayHeader theme={theme} isDark={shown === 'dark'} date="Thursday, October 15" greeting={t('today.greeting.evening')} compact={false} {...c.props} />
+              </View>
+            ))}
+            {TODAY_HEADER_CASES.slice(0, 3).map(c => (
+              <View key={`sticky-${c.id}`} style={styles.stickyCase}>
+                <TodayStickyBar theme={theme} greeting={t('today.greeting.evening')} {...c.props} />
+              </View>
+            ))}
+          </Section>
+
           <Text style={[styles.summary, { color: failing.length ? theme.dangerText : theme.successText }]}>
             {`${themePairs.length - failing.length}/${themePairs.length} pairs pass`}
           </Text>
@@ -173,6 +199,8 @@ export default function DesignPreview({ visible, onClose }) {
 }
 
 const styles = StyleSheet.create({
+  headerCase: { marginBottom: 16 },
+  stickyCase: { height: 48, marginBottom: 8 },
   ringRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   safe: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },

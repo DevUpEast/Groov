@@ -1,14 +1,16 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, AppState,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, AppState, Animated,
+  Platform, StatusBar, useWindowDimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import SafeAreaView from '../components/SafeAreaView';
-import Svg, { Path, Rect } from 'react-native-svg';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import HabitCard from '../components/HabitCard';
 import EmptyCard from '../components/EmptyCard';
-import ProgressRing from '../components/ProgressRing';
+import TodayHeader, { TodayStickyBar, dayLine } from '../components/TodayHeader';
+import SectionLabel from '../components/ui/SectionLabel';
 import CelebrationOverlay from '../components/CelebrationOverlay';
 import CompletionCelebration from '../components/CompletionCelebration';
 import TrophyCelebration from '../components/TrophyCelebration';
@@ -16,7 +18,8 @@ import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import UndoToast from '../components/UndoToast';
 import Button from '../components/ui/Button';
 import PressableScale from '../components/ui/PressableScale';
-import { radius } from '../theme/tokens';
+import { radius, size, space } from '../theme/tokens';
+import { timing, duration } from '../theme/motion';
 import NoteModal from '../components/NoteModal';
 import HabitDetailSheet from '../components/HabitDetailSheet';
 import { routeLeavesTab } from '../utils/links';
@@ -31,23 +34,19 @@ import {
   planChallengeClaims, routeClaims, cancelQueuedForHabit, planFlush, endMarkRestWindow,
 } from '../utils/challenges';
 import { t, getLocale, useLocale } from '../i18n';
+import { buildWeekBeats } from '../utils/weekBeats';
+import { overallDayStatus } from '../utils/streaks';
+import { earliestCreatedAt } from '../utils/dayStatus';
+import { mockupParams } from '../utils/mockup';
 
 // Today list sections. Habits without a time of day go under "Anytime", which is
 // omitted (plain list) when no habit has a time set at all.
 const TIME_SECTIONS = ['morning', 'afternoon', 'evening', 'anytime'];
-
-function SproutIcon({ size = 24, color }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 20 20">
-      {/* Stem — drawn first so leaves sit on top */}
-      <Rect x="9.25" y="3" width="1.5" height="16" rx="0.75" fill={color} />
-      {/* Left leaf — branches off the left side of the stem, curves up-left to a point */}
-      <Path d="M 10 13 C 5 12 1 8 3 5 C 5 3 9 5 10 9 Z" fill={color} />
-      {/* Right leaf — mirror image, branches right and curves up-right */}
-      <Path d="M 10 13 C 15 12 19 8 17 5 C 15 3 11 5 10 9 Z" fill={color} />
-    </Svg>
-  );
-}
+// Ionicons for the time-of-day group labels (no emoji in section headers).
+const SECTION_ICONS = { morning: 'sunny-outline', afternoon: 'partly-sunny-outline', evening: 'moon-outline', anytime: 'time-outline' };
+const STICKY_H = 48;
+// A little air under the Android status bar; iOS (and the mockup) start right under it (D-00).
+const HEADER_TOP = Platform.OS === 'android' ? space.xs : 0;
 
 function getGreeting(offset = 0) {
   const d = new Date();
@@ -80,6 +79,7 @@ export default function TodayScreen() {
     setRequestedTab, getNote, setNote, setModalOpen, openRoute, pendingRoute,
     pendingMilestone, clearPendingMilestone,
     moods, setMood,
+    themeName, allHabits, getOverallStreak, habitsOnDay, isSnapshotHabitDone, isExcused,
   } = useApp();
   useLocale();
 
@@ -199,7 +199,60 @@ export default function TodayScreen() {
 
   const completed = getCompletedCount();
   const total = dueHabits.length;
-  const progress = total > 0 ? completed / total : 0;
+
+  // ── Header (C-04) ──
+  // The strip's state: no strip before the first habit; a rest day when nothing is scheduled.
+  const headerState = habits.length === 0 ? null : total === 0 ? 'rest' : allDone ? 'complete' : 'progress';
+  const streak = habits.length > 0 ? getOverallStreak() : 0;
+  // The 7-day beat row, judged by the same day rules as the streak. Days before the first
+  // habit (or the account) are left out.
+  const beats = React.useMemo(() => {
+    if (!headerState) return [];
+    const floor = [accountCreatedAt, earliestCreatedAt(allHabits)].filter(Boolean).sort().pop() || null;
+    return buildWeekBeats({
+      today,
+      floor,
+      statusOf: (k) => overallDayStatus(k, today, habitsOnDay, isSnapshotHabitDone, isExcused),
+      todayState: headerState === 'progress' ? 'open' : headerState,
+    });
+  }, [headerState, today, accountCreatedAt, allHabits, habitsOnDay, isSnapshotHabitDone, isExcused]);
+  const { height: windowHeight } = useWindowDimensions();
+  const compactRing = windowHeight < size.ringTodayCompactBelow;
+  const greeting = getGreeting(dateOffset);
+
+  // Sticky bar: shown once the strip has scrolled under it. `stripBottom` is the strip's
+  // bottom edge in scroll-content coordinates.
+  const scrollRef = useRef(null);
+  const stripRef = useRef(null);
+  const [stripBottom, setStripBottom] = useState(0);
+  const [stuck, setStuck] = useState(false);
+  const stuckRef = useRef(false);
+  const stickyOpacity = useRef(new Animated.Value(0)).current;
+  const onScroll = useCallback((e) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const next = stripBottom > 0 && y > stripBottom - STICKY_H;
+    if (next !== stuckRef.current) {
+      stuckRef.current = next;
+      setStuck(next);
+      timing(stickyOpacity, { toValue: next ? 1 : 0, duration: duration.state }).start();
+    }
+  }, [stripBottom, stickyOpacity]);
+  const onStripLayout = useCallback((e) => {
+    const { y, height } = e.nativeEvent.layout;
+    // The strip sits inside the header block, which starts at the top of the scroll content.
+    setStripBottom(HEADER_TOP + y + height);
+    // Header budget (plan C-04): the strip's bottom edge as a share of the window height.
+    if (__DEV__ || mockupParams.active) {
+      stripRef.current?.measureInWindow?.((wx, wy, ww, wh) => {
+        // Android measures from below the status bar; the budget counts the status bar too.
+        const bottom = Math.round(wy + wh + (Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0));
+        const report = { stripBottom: bottom, windowHeight: Math.round(windowHeight), headerPct: Math.round((bottom / windowHeight) * 1000) / 10, compactRing };
+        if (__DEV__) console.log('[C-04] header budget', JSON.stringify(report)); // eslint-disable-line no-console
+        if (typeof window !== 'undefined' && mockupParams.active) window.__todayHeader = report;
+      });
+    }
+  }, [windowHeight, compactRing]);
+  const scrollToTop = useCallback(() => scrollRef.current?.scrollTo?.({ y: 0, animated: true }), []);
 
   // Completions queued by "Mark the rest done": { challengeId, claimedAt, token }.
   // They run when that action's toast hides (or the app backgrounds / the screen
@@ -402,44 +455,33 @@ export default function TodayScreen() {
   }, [restoreHabitCounts, unmarkChallengeDay]);
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.action }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
+      <View style={styles.body}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         style={{ backgroundColor: theme.bg }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.action, shadowColor: theme.shadow }]}>
-          <View style={styles.greetingRow}>
-            <Text style={[styles.greeting, { color: theme.onAction }]}>
-              {displayName ? t('today.greeting.withName', { greeting: getGreeting(dateOffset), name: displayName }) : getGreeting(dateOffset)}
-            </Text>
-            <SproutIcon size={26} color={theme.sprout} />
-          </View>
-          <Text style={[styles.date, { color: theme.onActionSecondary }]}>{getDateString(dateOffset)}</Text>
-
-          <View style={styles.ringRow} accessible={true} accessibilityLabel={t('today.ring.a11y', { completed, total })}>
-            <ProgressRing
-              progress={progress}
-              size={110}
-              strokeWidth={10}
-              color={theme.onAction}
-              bg={theme.actionTrack}
-              label={`${completed}/${total}`}
-              sublabel={t('today.ring.habits')}
-              sublabelColor={theme.onActionSecondary}
-            />
-            <View style={styles.ringLabels}>
-              <Text style={[styles.ringTitle, { color: theme.onAction }]}>
-                {allDone ? t('today.ring.allDone') : t('today.ring.remaining', { count: total - completed })}
-              </Text>
-              <Text style={[styles.ringSubtitle, { color: theme.onActionSecondary }]}>
-                {allDone
-                  ? t('today.ring.amazing')
-                  : t('today.ring.keepGoing', { percent: Math.round(progress * 100) })}
-              </Text>
-            </View>
-          </View>
+        {/* Header: date, greeting, brand strip (C-04) */}
+        <View style={styles.header}>
+          <TodayHeader
+            theme={theme}
+            isDark={themeName === 'dark'}
+            date={getDateString(dateOffset)}
+            greeting={greeting}
+            name={displayName || null}
+            state={headerState}
+            completed={completed}
+            total={total}
+            streak={streak}
+            beats={beats}
+            compact={compactRing}
+            onStripLayout={onStripLayout}
+            stripRef={stripRef}
+          />
         </View>
 
         {/* Habits */}
@@ -447,7 +489,7 @@ export default function TodayScreen() {
           {/* AI Coach Nudge — hidden on day 1; coach needs prior-day data */}
           {canShowNudge && (nudgeLoading || nudgeMessage) && (
             <View style={[styles.nudgeCard, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
-              <Text style={styles.nudgeEmoji}>✨</Text>
+              <Ionicons name="sparkles-outline" size={18} color={theme.link} style={styles.nudgeIcon} />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.nudgeLabel, { color: theme.link }]}>{t('today.coach')}</Text>
                 {nudgeLoading ? (
@@ -493,21 +535,18 @@ export default function TodayScreen() {
               )}
             </>
           ) : dueHabits.length === 0 ? (
-            <EmptyCard
-              emoji="🛋️"
-              title={t('today.restDay.title')}
-              body={t('today.restDay.body')}
-              theme={theme}
-              style={{ backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, marginTop: 0 }}
-            />
+            <View style={[styles.restCard, { backgroundColor: theme.surface, borderColor: theme.border }]} accessible>
+              <Ionicons name="moon-outline" size={22} color={theme.textSecondary} />
+              <View style={styles.restText}>
+                <Text style={[styles.restTitle, { color: theme.text }]}>{t('today.restDay.title')}</Text>
+                <Text style={[styles.restBody, { color: theme.textSecondary }]}>{t('today.restDay.body')}</Text>
+              </View>
+            </View>
           ) : (
             <>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('today.sectionHabits')}</Text>
-              </View>
               {grouped ? grouped.map(section => (
                 <View key={section.key}>
-                  <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>{t(`today.sections.${section.key}`)}</Text>
+                  <SectionLabel icon={SECTION_ICONS[section.key]} label={t(`today.sections.${section.key}`)} theme={theme} style={compactRing && styles.sectionCompact} />
                   {section.habits.map(habit => (
                     <HabitCard
                       key={habit.id}
@@ -520,7 +559,7 @@ export default function TodayScreen() {
                     />
                   ))}
                 </View>
-              )) : dueHabits.map(habit => (
+              )) : <View style={styles.plainList}>{dueHabits.map(habit => (
                 <HabitCard
                   key={habit.id}
                   habit={habit}
@@ -530,7 +569,7 @@ export default function TodayScreen() {
                   onSkipToggle={handleSkipToggle}
                   onOpenDetail={openDetail}
                 />
-              ))}
+              ))}</View>}
               {markRestCount > 0 && (
                 <PressableScale
                   onPress={handleMarkRest}
@@ -595,6 +634,26 @@ export default function TodayScreen() {
         </View>
       </ScrollView>
 
+      {/* Collapsed header (DEP-5): fades in once the strip has scrolled under it. */}
+      <Animated.View
+        style={[styles.stickyLayer, { opacity: stickyOpacity }]}
+        pointerEvents={stuck ? 'box-none' : 'none'}
+        accessibilityElementsHidden={!stuck}
+        importantForAccessibility={stuck ? 'auto' : 'no-hide-descendants'}
+      >
+        <TodayStickyBar
+          theme={theme}
+          state={headerState}
+          completed={completed}
+          total={total}
+          greeting={greeting}
+          streak={streak}
+          onPress={scrollToTop}
+          a11yLabel={headerState ? (headerState === 'progress' ? t('today.ring.a11y', { completed, total }) : dayLine({ state: headerState, completed, total, streak })) : undefined}
+        />
+      </Animated.View>
+      </View>
+
       <UndoToast
         toast={toast}
         theme={theme}
@@ -657,40 +716,32 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { paddingBottom: 32 },
-  header: {
-    padding: 24,
-    paddingTop: 16,
-    paddingBottom: 32,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  greeting: { fontSize: 22, fontWeight: 'bold' },
-  date: { fontSize: 13, marginTop: 2, marginBottom: 20 },
-  ringRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  ringLabels: { flex: 1 },
-  ringTitle: { fontSize: 18, fontWeight: 'bold' },
-  ringSubtitle: { fontSize: 13, marginTop: 4, lineHeight: 18 },
-  content: { padding: 20 },
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
-  },
+  body: { flex: 1 },
+  header: { paddingHorizontal: space.gutter, paddingTop: HEADER_TOP },
+  content: { paddingHorizontal: space.gutter },
+  plainList: { marginTop: space.md },
+  // Short windows (SE): 16 between groups instead of 24, so a third time-of-day group still
+  // leaves the fourth card above the tab bar.
+  sectionCompact: { marginTop: space.md },
   sectionLabel: {
     fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase',
   },
+  stickyLayer: { position: 'absolute', top: 0, left: 0, right: 0, height: STICKY_H },
+  restCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: space.sm,
+    borderWidth: 1, borderRadius: radius.card, padding: space.md, marginTop: space.lg,
+  },
+  restText: { flex: 1 },
+  restTitle: { fontSize: 17, lineHeight: 22, fontWeight: '600' },
+  restBody: { fontSize: 13, lineHeight: 18, marginTop: 2 },
   markRestBtn: { alignSelf: 'center', minHeight: 48, borderRadius: radius.control, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, marginTop: 4 },
   markRestText: { fontSize: 15, fontWeight: '700' },
   markRestNote: { fontSize: 13, marginTop: 2, textAlign: 'center' },
-  timeLabel: { fontSize: 12, fontWeight: '700', marginTop: 6, marginBottom: 8 },
   nudgeCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 16,
+    borderWidth: 1, borderRadius: 14, padding: 14, marginTop: space.md,
   },
-  nudgeEmoji: { fontSize: 18, marginTop: 1 },
+  nudgeIcon: { marginTop: 1 },
   nudgeLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 },
   nudgeText: { fontSize: 13, lineHeight: 20 },
   empty: {

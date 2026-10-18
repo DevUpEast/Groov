@@ -74,7 +74,7 @@ function ThemedErrorBoundary({ children }) {
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { mockupParams, postToMockupHost } from './src/utils/mockup';
-import { useAnyOverlayOpen, setOverlayChangesStatusBar } from './src/utils/overlayStatus';
+import { setOverlayChangesStatusBar } from './src/utils/overlayStatus';
 import { supabaseConfigError } from './src/utils/supabase';
 import { AppProvider, useApp } from './src/context/AppContext';
 import { themes } from './src/theme/colors';
@@ -233,20 +233,16 @@ function AppNavigator() {
 
   // Conditional return AFTER all hooks
   // Mirror the status-bar style to the iOS mockup host (web only).
-  // The Today hero sits on the action colour: white icons on light #4F46E5, ink icons on dark
-  // #818CF8, where white would be 2.98:1 (F-01, matching onAction).
-  // While a scrim covers the screen (a sheet, dialog or the habit form), dark mode always uses
-  // light icons: ink on the scrimmed #818CF8 hero is about 1.6:1 (F-02). Light mode keeps its
-  // style, which stays readable under the lighter light-mode scrim.
-  const overlayOpen = useAnyOverlayOpen();
-  const onActionStatus = themeName === 'dark' ? 'dark' : 'light';
+  // Every tab, Today included, starts on the theme background (C-04 replaced the indigo Today
+  // hero with the inset brand strip), so the icons follow the theme: ink in light, light in
+  // dark. Scrims only darken the screen, so the style never needs to change under an overlay.
   const baseStatus = !hasOnboarded
     ? 'light' // OnboardingScreen renders the same style on its brand ground (indigo / deep indigo)
-    : (activeIndex === 0 ? onActionStatus : (themeName === 'dark' ? 'light' : 'dark'));
-  const statusStyle = themeName === 'dark' && (overlayOpen || modalOpen) ? 'light' : baseStatus;
+    : (themeName === 'dark' ? 'light' : 'dark');
+  const statusStyle = baseStatus;
   // Tells OverlayModal whether an overlay opened now would flip the style (and so must wait for
-  // it on Android). Set during render so it is current before any tap can open a sheet.
-  setOverlayChangesStatusBar(themeName === 'dark' && baseStatus !== 'light');
+  // it on Android). With the theme-following style above it never does.
+  setOverlayChangesStatusBar(false);
   useEffect(() => {
     if (mockupParams.active) postToMockupHost({ type: 'mockup:statusbar', style: statusStyle });
   }, [statusStyle]);
