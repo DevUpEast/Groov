@@ -1,5 +1,10 @@
 // Expo config plugin: apply a system font-size change to the running app on Android (#190).
 //
+// TEMPORARY: delete this plugin (and its app.json entry and test) once the installed React
+// Native defaults `enableFontScaleChangesUpdatingLayout` to true for OSS stable builds
+// (ReactCommon/react/featureflags/ReactNativeFeatureFlagsDefaults.h). Keep the fontScale
+// configChanges entry only if that release still recreates the activity on a font change.
+//
 // Root cause. A cold start is always right: React Native scales both fontSize and lineHeight
 // with the system font scale (Android's own non-linear sp curve, TypedValue.applyDimension),
 // so the type tokens need no JS-side scaling. The bug is a font-size change while Groov is
@@ -38,21 +43,25 @@ const IMPORTS = [
   'import com.facebook.react.internal.featureflags.ReactNativeFeatureFlagsProvider',
 ];
 
-// Mirrors DefaultNewArchitectureEntryPoint.load() (the provider `loadReactNative` installed)
-// and changes only the one flag. Nothing has read a flag yet at this point, so the forced
-// override is equivalent to the one `load()` made; if something did, it is logged.
+// Mirrors DefaultNewArchitectureEntryPoint.load() (the provider `loadReactNative` installs on
+// the new architecture, the only case it overrides flags) and changes only the one flag. On
+// the old architecture `loadReactNative` installs no override, so the block is skipped and the
+// flag (a Fabric-only path) stays at its default. Nothing has read a flag yet at this point,
+// so the forced override is equivalent to the one `load()` made; if something did, it is logged.
 const OVERRIDE = `    ${MARKER}
-    val groovFlagBase: ReactNativeFeatureFlagsProvider = when (DefaultNewArchitectureEntryPoint.releaseLevel) {
-      ReleaseLevel.EXPERIMENTAL -> ReactNativeFeatureFlagsOverrides_RNOSS_Experimental_Android()
-      ReleaseLevel.CANARY -> ReactNativeFeatureFlagsOverrides_RNOSS_Canary_Android()
-      else -> ReactNativeFeatureFlagsOverrides_RNOSS_Stable_Android(true, true, true)
-    }
-    val groovFlagsReadEarly = ReactNativeFeatureFlags.dangerouslyForceOverride(
-        object : ReactNativeFeatureFlagsProvider by groovFlagBase {
-          override fun enableFontScaleChangesUpdatingLayout(): Boolean = true
-        })
-    if (!groovFlagsReadEarly.isNullOrEmpty()) {
-      Log.w("Groov", "Feature flags read before the font-scale override: $groovFlagsReadEarly")
+    if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
+      val groovFlagBase: ReactNativeFeatureFlagsProvider = when (DefaultNewArchitectureEntryPoint.releaseLevel) {
+        ReleaseLevel.EXPERIMENTAL -> ReactNativeFeatureFlagsOverrides_RNOSS_Experimental_Android()
+        ReleaseLevel.CANARY -> ReactNativeFeatureFlagsOverrides_RNOSS_Canary_Android()
+        else -> ReactNativeFeatureFlagsOverrides_RNOSS_Stable_Android(true, true, true)
+      }
+      val groovFlagsReadEarly = ReactNativeFeatureFlags.dangerouslyForceOverride(
+          object : ReactNativeFeatureFlagsProvider by groovFlagBase {
+            override fun enableFontScaleChangesUpdatingLayout(): Boolean = true
+          })
+      if (!groovFlagsReadEarly.isNullOrEmpty()) {
+        Log.w("Groov", "Feature flags read before the font-scale override: $groovFlagsReadEarly")
+      }
     }
 `;
 
