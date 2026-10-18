@@ -2,7 +2,7 @@
 // -> a structured habit the form can prefill. Quota-limited per user per day.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
-import { AI_MODEL, consumeQuota, quotaExceeded, cachedSystem } from '../_shared/ai.ts'
+import { AI_MODEL, consumeQuota, quotaExceeded, cachedSystem, refundQuota, generateText } from '../_shared/ai.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,27 +83,33 @@ Deno.serve(async (req: Request) => {
     const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! })
     // Structured outputs keep the reply schema-valid; if the SDK/model pair rejects
     // the parameter we fall back to plain JSON with a strict instruction.
-    const call = (withSchema: boolean) => anthropic.messages.create({
+    // generateText picks the text block by type and retries once if thinking used up
+    // the budget (#194).
+    const call = (withSchema: boolean) => generateText(anthropic, {
       model: AI_MODEL,
-      max_tokens: 400,
+      max_tokens: 1024,
       system: cachedSystem(withSchema ? SYSTEM : `${SYSTEM}
 Reply with ONLY a JSON object matching this schema, no prose: ${JSON.stringify(SCHEMA)}`),
       messages: [{ role: 'user', content: `Habit description: ${text}` }],
       ...(withSchema ? { output_config: { format: { type: 'json_schema', schema: SCHEMA } } } : {}),
-    } as Parameters<typeof anthropic.messages.create>[0])
-    let ai
+    }, 'suggest-habit')
+    let raw = ''
     try {
-      ai = await call(true)
+      try {
+        raw = await call(true)
+      } catch (e) {
+        console.warn('suggest-habit: structured output rejected, falling back:', (e as Error).message)
+        raw = await call(false)
+      }
     } catch (e) {
-      console.warn('suggest-habit: structured output rejected, falling back:', (e as Error).message)
-      ai = await call(false)
+      await refundQuota(admin, user.id, 'suggestions', todayStr)
+      throw e
     }
-    // Thinking blocks can precede the text block; pick the text block by type.
-    const textBlock = (ai as { content: Array<{ type: string; text?: string }> }).content.find((b) => b.type === 'text')
-    const raw = textBlock?.text ? textBlock.text : '{}'
     let habit: Record<string, unknown>
     try { habit = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)) } catch { habit = {} }
     if (typeof habit.name !== 'string' || !habit.name) {
+      // Nothing usable came back: do not charge for it.
+      await refundQuota(admin, user.id, 'suggestions', todayStr)
       console.warn('suggest-habit: unparsable reply:', raw.slice(0, 500))
       return new Response(JSON.stringify({ error: 'Could not understand that habit. Try a few more words.', debug: Deno.env.get('SUGGEST_DEBUG') === '1' ? raw.slice(0, 500) : undefined }), { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }

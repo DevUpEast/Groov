@@ -6,6 +6,14 @@ function stripEmDashes(text) {
   return text.replace(/\s*—\s*/g, ', ').replace(/\s*–\s*/g, ', ');
 }
 
+// A blank or whitespace-only message (an old empty cache row, #194) becomes null,
+// so callers that check `data.message` never render an empty card.
+export function cleanMessage(data) {
+  if (!data || typeof data !== 'object') return data;
+  const text = typeof data.message === 'string' ? stripEmDashes(data.message).trim() : '';
+  return { ...data, message: text || null };
+}
+
 async function readFunctionError(error) {
   let detail = error.message;
   try {
@@ -40,8 +48,7 @@ export async function fetchDailyNudge(accountCreatedAt, displayName, today) {
     console.error('[AI Coach] nudge:', detail);
     throw new Error(detail);
   }
-  if (data?.message) data.message = stripEmDashes(data.message);
-  return data;
+  return cleanMessage(data);
 }
 
 // Natural-language habit creation: returns { habit, remaining } or throws with a
@@ -76,6 +83,5 @@ export async function fetchReflection(period = 'weekly', accountCreatedAt, displ
     console.error('[AI Coach] reflection:', detail);
     throw new Error(detail);
   }
-  if (data?.message) data.message = stripEmDashes(data.message);
-  return data;
+  return cleanMessage(data);
 }
