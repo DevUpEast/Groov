@@ -16,7 +16,8 @@
     "undo": "Deshacer",
     "slider": "Control deslizante",
     "shortDays": "%{count} d",
-    "charCount": { "one": "%{count} de %{max} caracteres", "other": "%{count} de %{max} caracteres" }
+    "charCount": { "one": "%{count} de %{max} caracteres", "other": "%{count} de %{max} caracteres" },
+    "discardChanges": { "title": "¿Descartar los cambios?", "body": "Se perderán tus cambios.", "keep": "Seguir editando", "discard": "Descartar" }
   },
   "app": {
     "tabs": {
@@ -411,7 +412,8 @@
     "editA11y": "Editar hábito",
     "stats": { "current": "Actual", "best": "Mejor", "done": "Hechos", "total": "Total", "a11y": "%{label}: %{value}" },
     "history": "Historial",
-    "hint": "Toca cualquier día pasado para corregirlo",
+    "hintToday": "Toca un día para registrarlo o corregirlo",
+    "hintHabits": "Toca un día pasado para corregirlo. Registra hoy en la pestaña Hoy.",
     "todayOnToday": "Registra el progreso de hoy en la pestaña Hoy.",
     "cellA11y": "%{date}: %{status}",
     "status": { "future": "futuro", "done": "hecho", "rest": "descanso", "missed": "sin hacer", "none": "ninguno", "pending": "pendiente" },

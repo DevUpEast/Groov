@@ -1,11 +1,10 @@
 {
   "App.js": 3,
-  "src/components/BottomSheet.js": 1,
   "src/components/ChallengeRewardModal.js": 5,
   "src/components/CompletionCelebration.js": 1,
   "src/components/EmptyCard.js": 2,
   "src/components/HabitCard.js": 1,
-  "src/components/HabitDetailSheet.js": 13,
+  "src/components/HabitDetailSheet.js": 2,
   "src/components/LinkAccountSheet.js": 10,
   "src/components/MoodCheckIn.js": 3,
   "src/components/NoteModal.js": 4,

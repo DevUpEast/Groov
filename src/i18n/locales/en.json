@@ -16,7 +16,8 @@
     "undo": "Undo",
     "slider": "Slider",
     "shortDays": "%{count}d",
-    "charCount": { "one": "%{count} of %{max} characters", "other": "%{count} of %{max} characters" }
+    "charCount": { "one": "%{count} of %{max} characters", "other": "%{count} of %{max} characters" },
+    "discardChanges": { "title": "Discard changes?", "body": "Your edits will be lost.", "keep": "Keep editing", "discard": "Discard" }
   },
   "app": {
     "tabs": {
@@ -411,7 +412,8 @@
     "editA11y": "Edit habit",
     "stats": { "current": "Current", "best": "Best", "done": "Done", "total": "Total", "a11y": "%{label}: %{value}" },
     "history": "History",
-    "hint": "Tap any past day to fix it",
+    "hintToday": "Tap a day to log it or fix it",
+    "hintHabits": "Tap a past day to fix it. Log today on the Today tab.",
     "todayOnToday": "Log today's progress on the Today tab.",
     "cellA11y": "%{date}: %{status}",
     "status": { "future": "future", "done": "done", "rest": "rest", "missed": "missed", "none": "none", "pending": "pending" },

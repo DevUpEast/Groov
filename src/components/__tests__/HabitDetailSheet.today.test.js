@@ -30,8 +30,11 @@ jest.mock('../../context/AppContext', () => {
   };
 });
 jest.mock('../../services/feedback', () => ({ __esModule: true, default: { play: jest.fn() }, EVENTS: { habitDone: 'habit.done', habitUndone: 'habit.undone' } }));
-jest.mock('../BottomSheet', () => (props) => require('react').createElement('BottomSheet', props, props.children));
-jest.mock('../SheetHeader', () => ({ SheetDragHandle: () => null }));
+jest.mock('../ui/Sheet', () => ({ __esModule: true, default: (props) => require('react').createElement('Sheet', props, props.children) }));
+jest.mock('../ui/Button', () => () => null);
+jest.mock('../ui/IconButton', () => () => null);
+jest.mock('../ui/SectionLabel', () => () => null);
+jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 jest.mock('../HabitIcon', () => () => null);
 
 const HabitDetailSheet = require('../HabitDetailSheet').default;
@@ -46,7 +49,7 @@ function render(habit, props = {}) {
   act(() => { r = TestRenderer.create(<HabitDetailSheet habit={habit} onClose={jest.fn()} {...props} />); });
   return r;
 }
-const cell = (r, key) => r.root.findAll(n => typeof n.props.onPress === 'function' && (n.props.accessibilityLabel || '').startsWith(`${key}:`))[0];
+const cell = (r, key) => r.root.findAll(n => typeof n.props.onPress === 'function' && n.props.testID === `cell-${key}`)[0];
 // Press the Alert button whose text matches.
 const pressAlert = (re) => {
   const buttons = Alert.alert.mock.calls.at(-1)[2];
