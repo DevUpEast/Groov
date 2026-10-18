@@ -9,17 +9,18 @@ import HabitIcon from './HabitIcon';
 import ActionSheet from './ui/ActionSheet';
 import { usesCounter, countStep, describeProgress, unitLabel } from '../utils/habits';
 import { t, useLocale } from '../i18n';
-import { mixHex } from '../utils/color';
+import { resolveAccent } from '../theme/accents';
 
 export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkipToggle }) {
   const {
-    getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, todayStr,
+    getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, themeName, todayStr,
     isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, settings, getNote,
   } = useApp();
   useLocale();
-  // Per-habit accent colour falls back to the theme primary.
-  // No habit colour: the indigo selection pair (C-01 moves every card onto resolveAccent).
-  const accent = habit.color || theme.selectionBorder;
+  // The habit's curated accent for this theme (C-01): legacy, unknown and missing colours are
+  // remapped at read time. `ring` is the unchecked 2 px ring, `fill` + `onFill` the done check,
+  // `tint` the opaque done-card ground; every pair is >= 3:1 (CHK-2, accents.test.js).
+  const accent = resolveAccent(habit.color, themeName);
   const count = getHabitCount(habit.id);
   const done = isHabitDone(habit);
   const today = todayStr();
@@ -90,11 +91,11 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
       <TouchableOpacity
         style={[
           styles.card,
-          { backgroundColor: theme.surface, borderColor: done ? accent : theme.border },
+          { backgroundColor: theme.surface, borderColor: done ? accent.fill : theme.border },
           // Opaque, pre-mixed tints with no elevation: Android draws the shadow through a
           // translucent fill, which framed every done card in a dark border (CHK-8). A skipped
           // card is translucent through `opacity`, so it drops elevation for the same reason.
-          done && { backgroundColor: habit.color ? mixHex(habit.color, theme.surface, 0x1F / 255) : theme.selection },
+          done && { backgroundColor: accent.tint },
           overLimit && { borderColor: theme.dangerText, backgroundColor: theme.dangerTint },
           (done || overLimit || skipped) && styles.flat,
           skipped && { opacity: 0.6, borderStyle: 'dashed' },
@@ -108,7 +109,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
         accessibilityHint={t('habitCard.a11y.hint')}
       >
-        {habit.color ? <View style={[styles.stripe, { backgroundColor: habit.color }]} /> : null}
+        <View style={[styles.stripe, { backgroundColor: accent.fill }]} />
         <HabitIcon habit={habit} size={26} imageStyle={styles.iconImage} textStyle={styles.icon} />
 
         <View style={styles.info}>
@@ -126,16 +127,16 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
             {/* − is the only way to subtract for volume habits */}
             {isTimed && (
               <TouchableOpacity
-                style={[styles.counterBtn, { borderColor: timerStart ? theme.dangerFill : accent, backgroundColor: timerStart ? theme.dangerFill : 'transparent' }]}
+                style={[styles.counterBtn, { borderColor: timerStart ? theme.dangerFill : accent.ring, backgroundColor: timerStart ? theme.dangerFill : 'transparent' }]}
                 onPress={toggleTimer}
                 accessibilityRole="button"
                 accessibilityLabel={timerStart ? t('habitCard.a11y.stopTimer') : t('habitCard.a11y.startTimer')}
               >
-                <Text style={[styles.counterBtnText, { color: timerStart ? theme.onDanger : accent, fontSize: 13 }]}>{timerStart ? '■' : '▶'}</Text>
+                <Text style={[styles.counterBtnText, { color: timerStart ? theme.onDanger : accent.fill, fontSize: 13 }]}>{timerStart ? '■' : '▶'}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              style={[styles.counterBtn, { borderColor: theme.border }]}
+              style={[styles.counterBtn, { borderColor: theme.controlBorder }]}
               onPress={() => onDecrement(step)}
               accessibilityRole="button"
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.removeMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.removeOne', { unit: unitLabel(habit) })).trim()}
@@ -144,25 +145,26 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
               <Text style={[styles.counterBtnText, { color: theme.textSecondary }]}>−</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.counterNum, { color: overLimit ? theme.dangerText : done && !isLimit ? accent : theme.text }]}>{count}</Text>
+            {/* The count is text (4.5:1): it stays `text` on the done tint; the filled + carries done. */}
+            <Text style={[styles.counterNum, { color: overLimit ? theme.dangerText : theme.text }]}>{count}</Text>
 
             <TouchableOpacity
-              style={[styles.counterBtn, done && !isLimit ? { borderColor: accent, backgroundColor: accent } : { borderColor: theme.border }]}
+              style={[styles.counterBtn, done && !isLimit ? { borderColor: accent.fill, backgroundColor: accent.fill } : { borderColor: isLimit ? theme.controlBorder : accent.ring }]}
               onPress={() => onIncrement(step)}
               accessibilityRole="button"
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
             >
-              <Text style={[styles.counterBtnText, { color: done && !isLimit ? theme.onAccent : theme.textSecondary }]}>+</Text>
+              <Text style={[styles.counterBtnText, { color: done && !isLimit ? accent.onFill : theme.textSecondary }]}>+</Text>
             </TouchableOpacity>
           </View>
         ) : (
           /* Daily habit: visual-only checkbox; the whole card handles the tap */
           <View style={[
             styles.checkbox,
-            { borderColor: done ? accent : theme.border },
-            done && { backgroundColor: accent },
+            { borderColor: done ? accent.fill : accent.ring },
+            done && { backgroundColor: accent.fill },
           ]}>
-            {done ? <Text style={[styles.check, { color: theme.onAccent }]}>{isQuit ? '🛡' : '✓'}</Text> : skipped ? <Text style={{ fontSize: 13 }}>💤</Text> : null}
+            {done ? <Text style={[styles.check, { color: accent.onFill }]}>{isQuit ? '🛡' : '✓'}</Text> : skipped ? <Text style={{ fontSize: 13 }}>💤</Text> : null}
           </View>
         )}
       </TouchableOpacity>

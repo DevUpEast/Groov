@@ -1,7 +1,11 @@
 // Habit accents (plan §2.3): 7 curated hues with light and dark fills and opaque tints.
-// Data only for now (F-01). C-01 adds resolveAccent(hex, themeName) and moves every render
-// site onto it; until then src/theme/accentNames.js names the legacy dots from this map.
+// Every render site reads a habit's colour through resolveAccent(habit.color, themeName)
+// (C-01). Storage rule: a pick stores the accent's light-fill hex (never an id), so older app
+// versions, which render `habit.color` raw, keep working. Legacy and unknown hexes are
+// remapped at read time only; a stored colour is never rewritten.
 // Pure module: no React Native imports.
+
+import { hueOf, parseColor } from './contrast';
 
 // Light tint = the light fill at 14 % over #FFFFFF; dark tint = the dark fill at 22 % over
 // #1E293B (both pre-mixed and opaque, CHK-8). `hue` is the light / dark hue in degrees
@@ -37,6 +41,66 @@ export const LEGACY_ACCENT_MAP = {
   '#EC4899': 'pink',
 };
 
-// The legacy colour row of the habit form (null = the default indigo). C-01 replaces it with
-// the curated accents above; kept here so screens hold no colour literals.
-export const LEGACY_HABIT_COLORS = [null, '#EF4444', '#F97316', '#EAB308', '#22C55E', '#14B8A6', '#3B82F6', '#A855F7', '#EC4899'];
+// The hex a pick of `id` stores (the light fill, upper case).
+export function storedHexFor(id) {
+  return (ACCENTS[id] ?? ACCENTS[DEFAULT_ACCENT_ID]).light.fill;
+}
+
+// The colour a new custom habit starts with.
+export const DEFAULT_ACCENT_HEX = storedHexFor(DEFAULT_ACCENT_ID);
+
+const FILL_TO_ID = {};
+for (const id of ACCENT_IDS) {
+  FILL_TO_ID[ACCENTS[id].light.fill] = id;
+  FILL_TO_ID[ACCENTS[id].dark.fill] = id;
+}
+
+// HSL saturation (0-1) of an opaque colour.
+function saturationOf(rgb) {
+  const [r, g, b] = rgb.map(v => v / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return 0;
+  const d = max - min;
+  return l > 0.5 ? d / (2 - max - min) : d / (max + min);
+}
+
+const hueDistance = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+
+// Accent id for a stored habit colour:
+// - a curated fill (light or dark) is itself;
+// - a legacy HABIT_COLORS hex goes through LEGACY_ACCENT_MAP;
+// - any other hex goes to the nearest allowed hue (neutrals, saturation < 25 %, go to slate);
+// - null, an empty value or something unparseable is the default (sky).
+export function accentIdFor(color) {
+  if (typeof color !== 'string' || !color.trim()) return DEFAULT_ACCENT_ID;
+  const key = color.trim().toUpperCase();
+  if (FILL_TO_ID[key]) return FILL_TO_ID[key];
+  if (LEGACY_ACCENT_MAP[key]) return LEGACY_ACCENT_MAP[key];
+  const rgb = parseColor(key);
+  if (!rgb) return DEFAULT_ACCENT_ID;
+  const hue = hueOf(key);
+  if (hue === null || saturationOf(rgb.slice(0, 3)) < 0.25) return 'slate';
+  let best = DEFAULT_ACCENT_ID;
+  let bestD = Infinity;
+  for (const id of ACCENT_IDS) {
+    const h = ACCENTS[id].hue;
+    if (!h) continue;
+    const d = hueDistance(hue, h[0]);
+    if (d < bestD) { bestD = d; best = id; }
+  }
+  return best;
+}
+
+// The colours a habit draws with in `themeName` ('light' | 'dark'):
+// - fill: the done check fill, counter "+" when done, stripe, done-card border;
+// - onFill: the ✓ / + glyph on the fill;
+// - tint: the opaque done-card background;
+// - ring: the unchecked 2 px ring (>= 3:1 on the card surface, CHK-2).
+export function resolveAccent(color, themeName = 'light') {
+  const id = accentIdFor(color);
+  const mode = themeName === 'dark' ? 'dark' : 'light';
+  const v = ACCENTS[id][mode];
+  return { id, fill: v.fill, onFill: ACCENT_ON_FILL[mode], tint: v.tint, ring: v.fill };
+}

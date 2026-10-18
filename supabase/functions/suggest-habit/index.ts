@@ -9,13 +9,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// The 7 curated habit accents (light-fill hex, as the app stores them; src/theme/accents.js).
+const ACCENT_HEX: Record<string, string> = {
+  coral: '#C2410C', lime: '#4D7C0F', teal: '#0F766E', sky: '#0284C7', magenta: '#C026D3', pink: '#DB2777', slate: '#475569',
+}
+const ACCENT_LIST = Object.entries(ACCENT_HEX).map(([id, hex]) => `${hex} (${id})`).join(' ')
+
 const SYSTEM = `You turn a short description of a habit into a structured habit definition for the Groov app. Be literal about what the user asked for; fill gaps with sensible defaults. Rules:
 - type: "daily" (one tick a day), "volume" (count a number of units per day), "timed" (minutes per day), "quit" (avoid something), "atMost" (stay at or under a daily limit).
 - volumeGoal: units for volume, minutes for timed, the limit for atMost, 1 otherwise.
 - unit: short plural noun for volume/atMost (e.g. "glasses", "pages"), null otherwise.
 - schedule: {"type":"daily"} | {"type":"weekdays","days":[0-6]} (0 = Sunday) | {"type":"perWeek","target":1-6}.
 - timeOfDay: "anytime" | "morning" | "afternoon" | "evening".
-- icon: one emoji. color: one of #EF4444 #F97316 #EAB308 #22C55E #14B8A6 #3B82F6 #A855F7 #EC4899 or null.
+- icon: one emoji. color: one of ${ACCENT_LIST}, picked to suit the habit, or null.
 - intention: the cue after "After I ..." if the user gave one (no leading "After I"), else null.
 - name: 2-5 words, no trailing punctuation.`
 
@@ -106,6 +112,9 @@ Reply with ONLY a JSON object matching this schema, no prose: ${JSON.stringify(S
     if (s?.type === 'weekdays') habit.schedule = { type: 'weekdays', days: s.days ?? [1, 2, 3, 4, 5] }
     else if (s?.type === 'perWeek') habit.schedule = { type: 'perWeek', target: s.target ?? 3 }
     else habit.schedule = { type: 'daily' }
+    // Only a curated accent hex (or null) reaches the app.
+    const color = typeof habit.color === 'string' ? habit.color.trim().toUpperCase() : null
+    habit.color = color && Object.values(ACCENT_HEX).includes(color) ? color : (color && ACCENT_HEX[color.toLowerCase()]) || null
 
     return new Response(JSON.stringify({ habit, remaining: q.limit }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (err) {

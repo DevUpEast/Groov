@@ -3,15 +3,17 @@ import { FlexWidget, TextWidget } from 'react-native-android-widget';
 import { MAX_WIDGET_ROWS } from './widgetData';
 import { t } from '../i18n';
 import { palette } from '../theme/tokens';
+import { resolveAccent } from '../theme/accents';
 
 // Today's habits widget. Renders from the model built in widgetData.js. Every row
 // is tappable: the click action carries the habit id and the task handler toggles it.
 // Headless (no React context), so it reads the role tokens directly (§2.1). The count pill is a
 // meter when the day is complete (onMeter: ink on #818CF8 in dark, 5.98:1; white was 2.98:1)
-// and the selection pair otherwise; the row check uses the habit colour with onAccent.
+// and the selection pair otherwise; the row check is the habit accent (resolveAccent: the
+// ring when open, the fill plus its ✓ glyph when done, >= 3:1 each, CHK-2).
 const roles = (p) => ({
   bg: p.surface, text: p.text, muted: p.textSecondary, border: p.border,
-  meter: p.meter, onMeter: p.onMeter, selection: p.selection, onSelection: p.onSelection, onAccent: p.onAccent,
+  meter: p.meter, onMeter: p.onMeter, selection: p.selection, onSelection: p.onSelection,
 });
 const LIGHT = roles(palette.light);
 const DARK = roles(palette.dark);
@@ -38,6 +40,7 @@ export function TodayWidget({ model, dark = false, maxRows = MAX_WIDGET_ROWS }) 
       {rows.length === 0 ? (
         <TextWidget text={model.total === 0 && model.rows.length === 0 ? t('widget.restDay') : t('widget.addHabit')} style={{ fontSize: 13, color: c.muted }} />
       ) : rows.map(r => {
+        const accent = resolveAccent(r.color, dark ? 'dark' : 'light');
         const label = r.type === 'volume' || r.type === 'timed' || r.type === 'atMost'
           ? t('widget.rowCount', { name: r.name, count: r.count, goal: r.goal })
           : r.name;
@@ -53,8 +56,8 @@ export function TodayWidget({ model, dark = false, maxRows = MAX_WIDGET_ROWS }) 
             <FlexWidget style={{ flex: 1, width: 'match_parent', flexDirection: 'row', alignItems: 'center' }}>
               <TextWidget text={label} truncate="END" maxLines={1} style={{ width: 'match_parent', fontSize: 13, color: r.done ? c.muted : c.text, fontWeight: r.done ? 'normal' : '600' }} />
             </FlexWidget>
-            <FlexWidget style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: r.done ? (r.color || c.meter) : c.border, backgroundColor: r.done ? (r.color || c.meter) : c.bg, alignItems: 'center', justifyContent: 'center' }}>
-              {r.done ? <TextWidget text="✓" style={{ fontSize: 12, color: c.onAccent, fontWeight: 'bold' }} /> : null}
+            <FlexWidget style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: r.done ? accent.fill : accent.ring, backgroundColor: r.done ? accent.fill : c.bg, alignItems: 'center', justifyContent: 'center' }}>
+              {r.done ? <TextWidget text="✓" style={{ fontSize: 12, color: accent.onFill, fontWeight: 'bold' }} /> : null}
             </FlexWidget>
           </FlexWidget>
         );
