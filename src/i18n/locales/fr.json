@@ -345,11 +345,12 @@
     }
   },
   "habitCard": {
-    "streakClean": "🔥 %{count} jours sans craquer",
-    "streak": "🔥 Série de %{count} jours",
+    "done": "Faite",
+    "streakClean": "%{count} jours sans craquer",
+    "streak": "série de %{count} jours",
     "weekDone": "✓ %{done}/%{target} cette semaine",
     "week": "%{done}/%{target} cette semaine",
-    "skippedToday": "💤 Sautée aujourd'hui",
+    "skippedToday": "Sautée aujourd'hui",
     "timer": "⏱ %{time}",
     "longPress": {
       "body": "La vie est imprévisible. Choisis une option :",

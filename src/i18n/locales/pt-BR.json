@@ -345,11 +345,12 @@
     }
   },
   "habitCard": {
-    "streakClean": "🔥 %{count} dias limpo",
-    "streak": "🔥 Sequência de %{count} dias",
+    "done": "Concluído",
+    "streakClean": "%{count} dias limpo",
+    "streak": "sequência de %{count} dias",
     "weekDone": "✓ %{done}/%{target} esta semana",
     "week": "%{done}/%{target} esta semana",
-    "skippedToday": "💤 Pulado hoje",
+    "skippedToday": "Pulado hoje",
     "timer": "⏱ %{time}",
     "longPress": {
       "body": "A vida acontece. Escolha uma opção:",

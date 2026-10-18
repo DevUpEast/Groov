@@ -27,7 +27,10 @@ function toneColor(theme, tone) {
  *   (48 dp Android, 44 pt iOS): `max(0, (touchMin - size) / 2)` per side.
  * - Android: a borderless ripple the size of the touch target.
  * - `disabled`: the icon turns `onDisabled`; it stays focusable, announces disabled, and a tap
- *   calls `onDisabledPress` or plays `refused`.
+ *   calls `onDisabledPress` or plays `refused`. The disabled variant is always the lighter one
+ *   (C-02a): any fill the caller set is dropped and an outline turns the quiet
+ *   `disabledContainer` hairline, so a disabled control never looks heavier than its enabled
+ *   neighbour (the old filled grey − beside an outlined +).
  * - `onLongPress` / `delayLongPress`; `onDisabledLongPress` runs a long press while disabled.
  * - `children` replaces the icon (e.g. a text glyph).
  * Silent by default (§2.10); callers that change data play their own event.
@@ -75,7 +78,7 @@ export default function IconButton({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityState={accessibilityState}
-      style={[styles.base, { width: size, height: size, borderRadius: radius.pill }, style]}
+      style={[styles.base, { width: size, height: size, borderRadius: radius.pill }, style, disabled && { backgroundColor: 'transparent', borderColor: theme.disabledContainer }]}
     >
       {children ?? <Ionicons name={icon} size={iconSize} color={disabled ? theme.onDisabled : (color || toneColor(theme, tone))} />}
     </PressableScale>

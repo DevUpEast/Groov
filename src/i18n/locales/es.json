@@ -345,11 +345,12 @@
     }
   },
   "habitCard": {
-    "streakClean": "🔥 %{count} días sin recaer",
-    "streak": "🔥 Racha de %{count} días",
+    "done": "Hecho",
+    "streakClean": "%{count} días sin recaer",
+    "streak": "racha de %{count} días",
     "weekDone": "✓ %{done}/%{target} esta semana",
     "week": "%{done}/%{target} esta semana",
-    "skippedToday": "💤 Omitido hoy",
+    "skippedToday": "Omitido hoy",
     "timer": "⏱ %{time}",
     "longPress": {
       "body": "Son cosas de la vida. Elige una opción:",

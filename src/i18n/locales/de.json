@@ -345,11 +345,12 @@
     }
   },
   "habitCard": {
-    "streakClean": "🔥 %{count} Tage sauber",
-    "streak": "🔥 %{count}-Tage-Serie",
+    "done": "Erledigt",
+    "streakClean": "%{count} Tage sauber",
+    "streak": "%{count}-Tage-Serie",
     "weekDone": "✓ %{done}/%{target} diese Woche",
     "week": "%{done}/%{target} diese Woche",
-    "skippedToday": "💤 Heute übersprungen",
+    "skippedToday": "Heute übersprungen",
     "timer": "⏱ %{time}",
     "longPress": {
       "body": "Das Leben passiert. Wähle eine Option:",

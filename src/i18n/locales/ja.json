@@ -345,11 +345,12 @@
     }
   },
   "habitCard": {
-    "streakClean": "🔥 %{count}日間達成",
-    "streak": "🔥 %{count}日連続",
+    "done": "完了",
+    "streakClean": "%{count}日間達成",
+    "streak": "%{count}日連続",
     "weekDone": "✓ 今週 %{done}/%{target}",
     "week": "今週 %{done}/%{target}",
-    "skippedToday": "💤 今日はスキップ",
+    "skippedToday": "今日はスキップ",
     "timer": "⏱ %{time}",
     "longPress": {
       "body": "いろいろな日があります。選んでください。",

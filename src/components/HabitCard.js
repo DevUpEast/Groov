@@ -9,10 +9,23 @@ import HabitIcon from './HabitIcon';
 import ActionSheet from './ui/ActionSheet';
 import PressableScale, { hitSlopFor } from './ui/PressableScale';
 import IconButton from './ui/IconButton';
+import AppText from './ui/AppText';
+import CheckMark from './ui/CheckMark';
 import { usesCounter, countStep, describeProgress, unitLabel } from '../utils/habits';
-import { t, useLocale } from '../i18n';
+import { t, useLocale, getLocale } from '../i18n';
 import { resolveAccent } from '../theme/accents';
 import { type, numeric } from '../theme/typography';
+import { space, radius, size } from '../theme/tokens';
+
+// The sub-line parts joined with " · ", first letter capitalised for the locale: the streak
+// strings are lower case so they read naturally after "Done ·" (G-01: "Día completo · racha
+// de 12 días") and still start the line in upper case when they come first.
+export function joinSubLine(parts, locale) {
+  const line = parts.filter(Boolean).join(' · ');
+  if (!line) return '';
+  const first = String.fromCodePoint(line.codePointAt(0));
+  return first.toLocaleUpperCase(locale) + line.slice(first.length);
+}
 
 export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkipToggle }) {
   const {
@@ -64,12 +77,15 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   const weekDone = perWeek ? completionsInWeek(todayStr(), todayStr(), (k) => isHabitDoneOn(habit, k)) : 0;
   const weekLabel = perWeek ? (weekDone >= perWeek ? t('habitCard.weekDone', { done: weekDone, target: perWeek }) : t('habitCard.week', { done: weekDone, target: perWeek })) : null;
   const note = getNote(habit.id, today);
-  const subParts = [
+  // One done rule (D-00): a done card reads "Done · N-day streak". The count of a limit habit
+  // stays, because for "at most" the number is the point; other progress gives way to "Done".
+  const subLine = joinSubLine([
+    done ? t('habitCard.done') : null,
     skipped ? t('habitCard.skippedToday') : null,
-    describeProgress(habit, count),
+    !done || isLimit ? describeProgress(habit, count) : null,
     timerStart ? t('habitCard.timer', { time: `${Math.floor(elapsedSec / 60)}:${String(elapsedSec % 60).padStart(2, '0')}` }) : null,
     weekLabel, streakLabel, note ? '📝' : null,
-  ].filter(Boolean);
+  ], getLocale());
 
   // Long-press: forgiveness actions (skip today keeps the streak; fix yesterday).
   const yesterday = addDays(today, -1);
@@ -101,14 +117,16 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
       <PressableScale
         style={[
           styles.card,
-          { backgroundColor: theme.surface, borderColor: done ? accent.fill : theme.border },
-          // Opaque, pre-mixed tints with no elevation: Android draws the shadow through a
-          // translucent fill, which framed every done card in a dark border (CHK-8). A skipped
-          // card is translucent through `opacity`, so it drops elevation for the same reason.
-          done && { backgroundColor: accent.tint },
+          // borderStyle is always explicit: Android keeps a dashed border after the key is
+          // dropped, so an unskipped (or skipped-then-done) card would stay dashed.
+          { backgroundColor: theme.surface, borderColor: theme.border, borderStyle: 'solid' },
+          // Done: the opaque, pre-mixed accent tint (CHK-8) edge to edge. The border takes the
+          // tint too, so an all-done list is calm tinted blocks with no outlines (C-01 review);
+          // the filled check carries "done".
+          done && { backgroundColor: accent.tint, borderColor: accent.tint },
           overLimit && { borderColor: theme.dangerText, backgroundColor: theme.dangerTint },
-          (done || overLimit || skipped) && styles.flat,
-          skipped && { opacity: 0.6, borderStyle: 'dashed' },
+          // Skipped: a dashed controlBorder outline at full opacity, nothing faded (C-02a).
+          skipped && { borderColor: theme.controlBorder, borderStyle: 'dashed' },
         ]}
         onPress={handleCardPress}
         onLongPress={handleLongPress}
@@ -118,17 +136,19 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
         accessibilityHint={t('habitCard.a11y.hint')}
       >
-        <View style={[styles.stripe, { backgroundColor: accent.fill }]} />
-        <HabitIcon habit={habit} size={26} imageStyle={styles.iconImage} textStyle={styles.icon} />
+        {/* The icon sits in a neutral 40 px well; the accent lives only in the check (CHK-4/5). */}
+        <View style={[styles.well, { backgroundColor: theme.well }]}>
+          <HabitIcon habit={habit} size={22} imageStyle={styles.iconImage} textStyle={styles.icon} />
+        </View>
 
         <View style={styles.info}>
-          <Text style={[styles.name, { color: theme.text }, done && { color: theme.textSecondary }]}
-            numberOfLines={1}>
+          {/* Full `text` contrast in every state: done is carried by the check and tint (CHK-3). */}
+          <AppText variant="bodyStrong" style={{ color: theme.text }} numberOfLines={1}>
             {habit.name}
-          </Text>
-          {subParts.length > 0 && (
-            <Text style={[styles.sub, { color: theme.textSecondary }]}>{subParts.join(' · ')}</Text>
-          )}
+          </AppText>
+          {subLine ? (
+            <Text style={[styles.sub, { color: theme.textSecondary }]} numberOfLines={1}>{subLine}</Text>
+          ) : null}
         </View>
 
         {isVolume ? (
@@ -146,15 +166,14 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
                 accessibilityLabel={timerStart ? t('habitCard.a11y.stopTimer') : t('habitCard.a11y.startTimer')}
               />
             )}
-            {/* At 0 the − is disabled: a filled disabledContainer disc with an onDisabled glyph
-                (§2.2), still focusable; a tap plays `refused`, a long hold opens the options. */}
+            {/* At 0 the − is disabled: IconButton's disabled variant (a disabledContainer hairline
+                and an onDisabled glyph, lighter than the +), still focusable; a tap plays
+                `refused`, a long hold opens the options. */}
             <IconButton
               size={COUNTER_BTN}
               icon="remove"
               iconSize={20}
-              style={[styles.counterBtn, count <= 0
-                ? { borderColor: theme.disabledContainer, backgroundColor: theme.disabledContainer }
-                : { borderColor: theme.controlBorder }]}
+              style={[styles.counterBtn, { borderColor: theme.controlBorder }]}
               onPress={() => onDecrement(step)}
               {...holdForOptions}
               onDisabledLongPress={handleLongPress}
@@ -169,21 +188,28 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
               size={COUNTER_BTN}
               icon="add"
               iconSize={20}
-              color={done && !isLimit ? accent.onFill : theme.textSecondary}
-              style={[styles.counterBtn, done && !isLimit ? { borderColor: accent.fill, backgroundColor: accent.fill } : { borderColor: isLimit ? theme.controlBorder : accent.ring }]}
+              color={done && !isLimit ? accent.onFill : isLimit ? theme.textSecondary : accent.fill}
+              style={[styles.counterBtn, done && !isLimit ? { borderColor: accent.fill, backgroundColor: accent.fill } : { borderColor: isLimit ? theme.controlBorder : accent.ring, backgroundColor: 'transparent' }]}
               onPress={() => onIncrement(step)}
               {...holdForOptions}
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
             />
           </View>
         ) : (
-          /* Daily habit: visual-only checkbox; the whole card handles the tap */
-          <View style={[
-            styles.checkbox,
-            { borderColor: done ? accent.fill : accent.ring },
-            done && { backgroundColor: accent.fill },
-          ]}>
-            {done ? <Text style={[styles.check, { color: accent.onFill }]}>{isQuit ? '🛡' : '✓'}</Text> : skipped ? <Text style={{ fontSize: 13 }}>💤</Text> : null}
+          /* Daily and quit: a visual-only check in the fixed 48 dp trailing slot; the whole card
+             handles the tap. One done form for every type: the accent disc with the SVG ✓
+             (CHK-1; quit no longer draws 🛡). A skipped card's ring goes neutral. */
+          <View style={styles.slot}>
+            <View
+              testID="habit-check"
+              style={[
+                styles.checkbox,
+                { borderColor: done ? accent.fill : skipped ? theme.controlBorder : accent.ring },
+                done && { backgroundColor: accent.fill },
+              ]}
+            >
+              {done ? <CheckMark color={accent.onFill} /> : null}
+            </View>
           </View>
         )}
       </PressableScale>
@@ -204,31 +230,39 @@ const COUNTER_BTN = 36;
 const LONG_PRESS_MS = 350;
 const COUNTER_GAP = 2 * hitSlopFor(COUNTER_BTN).left;
 
+// Anatomy (D-00 frame): 16 | 40 well | 12 | info | 48 trailing slot | 4. The well, the info
+// column and the slot keep the same x on every card; the 32 check is centred in the slot (12
+// from the edge) and the counter cluster ends 16 from the edge.
+const WELL = 40;
+
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 14,
+    // §2.6: one minimum height for every Today card (72), so a check-off that adds the
+    // "Done · 2-day streak" line never changes the card height or shifts the list (CHK-6).
+    minHeight: size.todayCardMin,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    paddingLeft: space.md,
+    paddingRight: space.xxs,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
-    // Cards are border-only in light and tonal in dark (§2.8); no shadow.
+    gap: space.sm,
+    marginBottom: space.xs,
+    // Cards are border-only in light and tonal in dark (§2.8); no shadow. Clips the ripple.
     overflow: 'hidden',
   },
-  flat: { elevation: 0, shadowOpacity: 0 },
-  stripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
-  icon: { fontSize: 26, marginRight: 12 },
-  iconImage: { width: 32, height: 32, borderRadius: 6, marginRight: 12 },
-  info: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '600' },
-  // Tabular: the running timer ("0:03") and counts change in place without jitter.
-  sub: { fontSize: 12, marginTop: 2, ...numeric },
+  well: { width: WELL, height: WELL, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  icon: { fontSize: 22, lineHeight: 28, textAlign: 'center' },
+  iconImage: { width: WELL, height: WELL, borderRadius: radius.pill },
+  info: { flex: 1, minWidth: 0, paddingVertical: space.xs },
+  // footnote 13/18; tabular, so the running timer ("0:03") and counts change without jitter.
+  sub: { ...type.footnote, marginTop: 2, ...numeric },
+  slot: { width: size.trailingSlot, alignItems: 'center', justifyContent: 'center' },
   checkbox: {
-    width: 28, height: 28, borderRadius: 14,
+    width: size.checkCircle, height: size.checkCircle, borderRadius: radius.pill,
     borderWidth: 2, alignItems: 'center', justifyContent: 'center',
   },
-  check: { fontSize: 14, fontWeight: 'bold' },
-  counter: { flexDirection: 'row', alignItems: 'center', gap: COUNTER_GAP },
+  counter: { flexDirection: 'row', alignItems: 'center', gap: COUNTER_GAP, marginRight: space.md - space.xxs },
   counterBtn: { borderWidth: 1.5 },
   counterNum: { ...type.numericSmall, minWidth: 20, textAlign: 'center' },
 });

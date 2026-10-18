@@ -434,3 +434,21 @@ describe('source checks', () => {
     });
   });
 });
+
+describe('IconButton disabled variant (C-02a)', () => {
+  it('drops a caller fill and turns an outline into the disabledContainer hairline', () => {
+    const r = render(<IconButton icon="remove" accessibilityLabel="Remove one" theme={light} disabled
+      style={{ borderWidth: 1.5, borderColor: light.controlBorder, backgroundColor: light.action }} />);
+    const s = flatStyle(pressableOf(r));
+    expect(s.backgroundColor).toBe('transparent');
+    expect(s.borderColor).toBe(light.disabledContainer);
+    expect(s.borderWidth).toBe(1.5);
+    expect(r.root.findAll(n => n.type === 'Ionicons')[0].props.color).toBe(light.onDisabled);
+  });
+
+  it('enabled keeps the caller style', () => {
+    const r = render(<IconButton icon="add" accessibilityLabel="Add one" theme={dark}
+      style={{ borderWidth: 1.5, borderColor: dark.controlBorder }} />);
+    expect(flatStyle(pressableOf(r)).borderColor).toBe(dark.controlBorder);
+  });
+});
