@@ -33,6 +33,10 @@ export async function widgetTaskHandler(props) {
         // C-09 review B1: tomorrow's "Streak news" was predicted from the app's last view of
         // today; a check-off here can make it false ("Your streak ended" after the day was
         // finished from the widget). Drop it; the next app open schedules a fresh one.
+        // Why on *any* toggle, not only one that completes the day: the widget model has no
+        // skips, freezes or snapshots, so it cannot judge the day the way the streak does, and
+        // an un-check can change the prediction too. A missing note is harmless; a wrong one
+        // is the shame moment the tone rules forbid.
         await cancelStreakNews();
         await render(props);
       }
