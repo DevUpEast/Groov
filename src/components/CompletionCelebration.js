@@ -117,7 +117,12 @@ export default function CompletionCelebration({ visible, milestone, onDone, onSh
     wasVisible.current = !!visible;
     if (!was || visible) return undefined;
     hiddenPending.current = true;
-    if (Platform.OS === 'ios') return undefined; // the Modal's onDismiss calls handleHidden
+    if (Platform.OS === 'ios') {
+      // The Modal's onDismiss calls handleHidden. Fallback (review r2-m1): if it never comes,
+      // hand off once after celebration.hiddenFallback; handleHidden runs at most once.
+      const fallback = setTimeout(handleHidden, celebration.hiddenFallback);
+      return () => clearTimeout(fallback);
+    }
     let raf2;
     const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(handleHidden); });
     return () => { cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2); };
@@ -285,7 +290,8 @@ export default function CompletionCelebration({ visible, milestone, onDone, onSh
             <PressableScale
               onPress={() => close('share')}
               disabled={!canSkip}
-              style={[styles.share, { backgroundColor: theme.brandGroundCta }]}
+              // r2-n1: visibly inactive during the 1 s guard (the label stays readable).
+              style={[styles.share, { backgroundColor: theme.brandGroundCta }, !canSkip && styles.shareWaiting]}
               accessibilityLabel={t('today.milestone.share')}
               testID="milestone-share"
             >
@@ -326,4 +332,5 @@ const styles = StyleSheet.create({
   },
   continue: { marginTop: space.lg, paddingVertical: space.xs, paddingHorizontal: space.md },
   hidden: { opacity: 0 },
+  shareWaiting: { opacity: 0.5 },
 });

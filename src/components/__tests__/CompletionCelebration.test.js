@@ -135,3 +135,37 @@ test('m2: the message is not announced when accessibility focus can be set on th
   fnh.mockRestore();
   act(() => r.unmount());
 });
+
+test('r2-m1: on iOS, onHidden still runs once if onDismiss never comes, and a late onDismiss does nothing', async () => {
+  const { r, cb, rerender } = setup();
+  await flush();
+  rerender(false);
+  act(() => { jest.advanceTimersByTime(celebration.hiddenFallback - 50); });
+  expect(cb.onHidden).not.toHaveBeenCalled();
+  act(() => { jest.advanceTimersByTime(100); });
+  expect(cb.onHidden).toHaveBeenCalledTimes(1);
+  // The Modal is gone; a dismiss event arriving late cannot hand off twice.
+  expect(r.root.findAllByType('OverlayModal')).toHaveLength(0);
+  act(() => r.unmount());
+});
+
+test('r2-m1: onDismiss before the fallback hands off once; the fallback then does nothing', async () => {
+  const { r, cb, rerender } = setup();
+  await flush();
+  rerender(false);
+  act(() => { r.root.findByType('OverlayModal').props.onDismiss(); });
+  act(() => { jest.advanceTimersByTime(celebration.hiddenFallback * 2); });
+  expect(cb.onHidden).toHaveBeenCalledTimes(1);
+  act(() => r.unmount());
+});
+
+test('r2-n1: Share looks inactive during the 1 s guard', async () => {
+  const { StyleSheet } = require('react-native');
+  const { r } = setup();
+  await flush();
+  const opacity = () => StyleSheet.flatten(shareButton(r).props.style).opacity;
+  expect(opacity()).toBe(0.5);
+  act(() => { jest.advanceTimersByTime(celebration.milestoneSkipAfter + 50); });
+  expect(opacity()).toBeUndefined();
+  act(() => r.unmount());
+});

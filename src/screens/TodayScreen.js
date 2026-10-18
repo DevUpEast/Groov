@@ -211,7 +211,12 @@ export default function TodayScreen() {
     if (!hold) bannerTimer.current = setTimeout(() => setBeatBanner(null), celebration.smallBeatHold);
   }, []);
   useEffect(() => () => clearTimeout(bannerTimer.current), []);
+  // The live streak, for the guards below (set once it is computed further down).
+  const streakNowRef = useRef(0);
   const showMilestone = useCallback((milestone) => {
+    // An Undo (Mark the rest) or an un-check that landed after the milestone was queued has
+    // already taken the streak back below it: show nothing (emulator, C-08 r2).
+    if (streakNowRef.current < milestone.days) return;
     if (milestone.small) { showBeat(milestone); return; }
     // The milestone circle grows from the ring that is showing (the sticky one when scrolled).
     milestoneRing.current = stuckRef.current ? 'ringSticky' : 'ring';
@@ -311,6 +316,15 @@ export default function TodayScreen() {
     }
   }, [headerState]); // eslint-disable-line react-hooks/exhaustive-deps
   const liveStreak = habits.length > 0 ? getOverallStreak() : 0;
+  streakNowRef.current = liveStreak;
+  // An Undo processed after the milestone screen opened takes the streak back below it: close
+  // the screen (AppContext has already taken the record back). The mockup's held screen stays.
+  useEffect(() => {
+    if (fullCelebration && milestoneShown && mockCelebrate == null && liveStreak < milestoneShown.days) {
+      setFullCelebration(false);
+      setMilestoneShown(null);
+    }
+  }, [liveStreak, fullCelebration, milestoneShown]); // eslint-disable-line react-hooks/exhaustive-deps
   // C-05 chips. "Frozen": a freeze covered yesterday, so the streak stands on it today.
   // Freezes are spent on the missed day itself (reconcileFreezes looks back from day -1), so
   // today is never frozen.
