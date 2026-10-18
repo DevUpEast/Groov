@@ -53,7 +53,7 @@ function mockMakeCtx() {
     pendingMilestone: null, clearPendingMilestone: jest.fn(),
     moods: {}, setMood: jest.fn(),
     themeName: 'light', allHabits: s.habits, getOverallStreak: () => 0,
-    habitsOnDay: () => s.habits, isSnapshotHabitDone: () => false, isExcused: () => false,
+    habitsOnDay: () => s.habits, isSnapshotHabitDone: () => false, isExcused: () => false, isDayFrozen: () => false,
   };
 }
 
@@ -82,7 +82,8 @@ jest.mock('../../components/TrophyCelebration', () => mockStub('TrophyCelebratio
 jest.mock('../../components/ChallengeRewardModal', () => mockStub('ChallengeRewardModal')());
 jest.mock('../../components/UndoToast', () => mockStub('UndoToast')());
 jest.mock('../../components/ui/Button', () => mockStub('Button')());
-jest.mock('../../components/ui/PressableScale', () => mockStub('PressableScale')());
+jest.mock('../../components/ui/PressableScale', () => ({ __esModule: true, default: mockStub('PressableScale')(), hitSlopFor: () => ({}) }));
+jest.mock('../../components/ui/Dialog', () => mockStub('Dialog')());
 jest.mock('../../components/NoteModal', () => mockStub('NoteModal')());
 jest.mock('../../components/HabitDetailSheet', () => mockStub('HabitDetailSheet')());
 jest.mock('../../components/MoodCheckIn', () => mockStub('MoodCheckIn')());
@@ -181,7 +182,7 @@ describe("today's cell goes through Today's handlers (M1)", () => {
     // The last day of a 1-day challenge on Read + Water: Mark the rest claims it and queues
     // the completion for its undo window.
     const t = setup({ habits: [read, water], counts: { w: 8 }, challenges: [challenge({ days: 1, linkedHabitIds: ['r', 'w'] })] });
-    const markRest = t.r.root.findAll(n => n.type === 'PressableScale' && n.props.onPress && n.props.accessibilityRole === 'button')[0];
+    const markRest = t.r.root.findAll(n => n.type === 'PressableScale' && n.props.onPress && n.props.accessibilityRole === 'button' && !n.props.accessibilityLabel)[0]; // the header chips are labelled buttons
     act(() => { markRest.props.onPress(); });
     expect(mock.markChallengeDay).toHaveBeenCalledWith('c1');
     t.rerender();

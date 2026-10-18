@@ -141,7 +141,7 @@
       "rest": "Ruhetag · %{count}-Tage-Serie hält",
       "restCaption": "Pause",
       "ofTotal": "%{completed} von %{total}",
-      "empty": "Tippe auf eine Gewohnheit, um deinen Tag zu starten"
+      "empty": "Tippe auf eine Gewohnheit"
     },
     "coach": "KI-Coach",
     "beats": { "a11y": { "one": "Letzter %{count} Tag: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst", "other": "Letzte %{count} Tage: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst" } },
@@ -162,11 +162,17 @@
     },
     "markRest": "Den Rest abhaken (%{count})",
     "markRestNote": "Mengen-, Zeit- und Limit-Gewohnheiten bleiben unverändert",
-    "activeChallenges": "AKTIVE CHALLENGES",
+    "streak": {
+      "a11y": { "one": "Serie von %{count} Tag", "other": "%{count}-Tage-Serie" },
+      "frozenYesterday": { "one": "Serie von %{count} Tag. Ein Freeze hat gestern abgedeckt.", "other": "%{count}-Tage-Serie. Ein Freeze hat gestern abgedeckt." },
+      "start": "Serie starten",
+      "hint": "Zeigt, wie Serien zählen"
+    },
+    "challengeChip": "%{name} · Tag %{day}",
+    "challengeChipHint": "Öffnet Challenges",
+    "challengeMore": { "one": "%{count} weitere Challenge: %{list}", "other": "%{count} weitere Challenges: %{list}" },
+    "challengeListSep": "; ",
     "challenge": {
-      "sub": "Tag %{day} von %{days} · %{count} erfasst",
-      "done": "✅ Erledigt",
-      "pending": "Offen",
       "a11yDone": "%{name}, Tag %{day} von %{days}, erledigt",
       "a11yPending": "%{name}, Tag %{day} von %{days}, offen"
     },

@@ -18,6 +18,7 @@ import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import UndoToast from '../components/UndoToast';
 import Button from '../components/ui/Button';
 import PressableScale from '../components/ui/PressableScale';
+import Dialog from '../components/ui/Dialog';
 import { radius, size, space } from '../theme/tokens';
 import { timing, duration } from '../theme/motion';
 import NoteModal from '../components/NoteModal';
@@ -27,7 +28,7 @@ import MoodCheckIn from '../components/MoodCheckIn';
 import { isGoalMet, usesCounter, countAfterIncrement, markRestLeavesOutCounters } from '../utils/habits';
 import feedback, { EVENTS } from '../services/feedback';
 import { fetchDailyNudge } from '../services/aiCoaching';
-import { localDateKey, parseDateKey } from '../utils/dates';
+import { localDateKey, parseDateKey, addDays } from '../utils/dates';
 import { maybeRequestReview } from '../services/review';
 import {
   currentChallengeDay, isChallengeExpired, getRelevantHabits,
@@ -48,6 +49,16 @@ const STICKY_H = 48;
 // Sample coach text for the web mockup's `?nudge=1` (review shots only; real nudges come from
 // the generate-nudge edge function).
 const MOCKUP_NUDGE = 'You hit your water goal on 5 of the last 7 days. Try stacking Meditate right after Move this morning: one cue, two habits.';
+// Sample challenges for the web mockup's `?challenges=<n>` (review shots of 1, 2 and 3+ chips;
+// nothing is stored). Real active challenges come first; samples fill up to n.
+const MOCKUP_CHALLENGES = [
+  { id: 'mock-reset', name: '7-Day Reset', day: 4, days: 7, done: true },
+  { id: 'mock-builder', name: '21-Day Habit Builder', day: 9, days: 21, done: false },
+  { id: 'mock-30', name: '30-Day Challenge', day: 15, days: 30, done: false },
+];
+function padMockupChallenges(live, n) {
+  return [...live, ...MOCKUP_CHALLENGES].slice(0, Math.max(0, n));
+}
 // A little air under the Android status bar; iOS (and the mockup) start right under it (D-00).
 const HEADER_TOP = Platform.OS === 'android' ? space.xs : 0;
 
@@ -87,7 +98,7 @@ export default function TodayScreen() {
     setRequestedTab, getNote, setNote, setModalOpen, openRoute, pendingRoute,
     pendingMilestone, clearPendingMilestone,
     moods, setMood,
-    themeName, allHabits, getOverallStreak, habitsOnDay, isSnapshotHabitDone, isExcused,
+    themeName, allHabits, getOverallStreak, habitsOnDay, isSnapshotHabitDone, isExcused, isDayFrozen,
   } = useApp();
   useLocale();
 
@@ -215,7 +226,26 @@ export default function TodayScreen() {
   const total = headerDue.length;
   // The strip's state: no strip before the first habit; a rest day when nothing is asked today.
   const headerState = habits.length === 0 ? null : total === 0 ? 'rest' : completed >= total ? 'complete' : 'progress';
-  const streak = habits.length > 0 ? getOverallStreak() : 0;
+  const liveStreak = habits.length > 0 ? getOverallStreak() : 0;
+  // C-05 chips. "Frozen": a freeze covered yesterday, so the streak stands on it today.
+  // Freezes are spent on the missed day itself (reconcileFreezes looks back from day -1), so
+  // today is never frozen.
+  const liveFrozen = liveStreak > 0 && isDayFrozen(addDays(today, -1));
+  // The web mockup's `?streak=<n>` / `?streak=frozen` shows a chip state for review shots.
+  const mockStreak = mockupParams.streak;
+  const streak = mockStreak ? mockStreak.count : liveStreak;
+  const frozen = mockStreak ? mockStreak.frozen : liveFrozen;
+  // Active challenges, in order, as chips: "name · day N" with today's claim.
+  const challengeChips = React.useMemo(() => {
+    const live = effectiveChallenges
+      .filter(ch => challenges.some(c => c.id === ch.id) && !isChallengeExpired(ch, today))
+      .map(ch => ({ id: ch.id, name: ch.name, day: currentChallengeDay(ch, today), days: ch.days, done: ch.completedDays.includes(today) }));
+    // `?challenges=<n>` pads the list with sample challenges (review shots only).
+    return mockupParams.challenges != null ? padMockupChallenges(live, mockupParams.challenges) : live;
+  }, [effectiveChallenges, challenges, today]);
+  const [streakRuleOpen, setStreakRuleOpen] = useState(false);
+  const openStreakRule = useCallback(() => setStreakRuleOpen(true), []);
+  const openChallenges = useCallback(() => setRequestedTab(2), [setRequestedTab]);
   // The 7-day beat row, judged by the same day rules as the streak. Days before the first
   // habit (or the account) are left out.
   const beats = React.useMemo(() => {
@@ -514,6 +544,10 @@ export default function TodayScreen() {
             compact={compactRing}
             onStripLayout={onStripLayout}
             stripRef={stripRef}
+            frozen={frozen}
+            challenges={challengeChips}
+            onStreakPress={openStreakRule}
+            onChallengePress={openChallenges}
           />
         </View>
 
@@ -615,45 +649,6 @@ export default function TodayScreen() {
             <MoodCheckIn value={moods[today] ?? null} onChange={(v) => setMood(today, v)} theme={theme} />
           )}
 
-          {/* Active Challenges */}
-          {effectiveChallenges.filter(ch => !isChallengeExpired(ch, today)).length > 0 && (
-            <View style={styles.challengesSection}>
-              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('today.activeChallenges')}</Text>
-              {effectiveChallenges
-                .filter(ch => !isChallengeExpired(ch, today))
-                .map(ch => {
-                  const completedCount = ch.completedDays.length;
-                  const todayDone = ch.completedDays.includes(today);
-                  const progress = ch.days > 0 ? completedCount / ch.days : 0;
-                  const currentDay = currentChallengeDay(ch, today);
-                  return (
-                    <View
-                      key={ch.id}
-                      style={[styles.challengeMini, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                      accessible={true}
-                      accessibilityLabel={t(todayDone ? 'today.challenge.a11yDone' : 'today.challenge.a11yPending', { name: ch.name, day: currentDay, days: ch.days })}
-                    >
-                      <View style={styles.challengeMiniRow}>
-                        <Text style={styles.challengeMiniIcon}>{ch.icon || '🏆'}</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.challengeMiniName, { color: theme.text }]} numberOfLines={1}>{ch.name}</Text>
-                          <Text style={[styles.challengeMiniSub, { color: theme.textSecondary }]}>
-                            {t('today.challenge.sub', { day: currentDay, days: ch.days, count: completedCount })}
-                          </Text>
-                        </View>
-                        {todayDone
-                          ? <Text style={[styles.challengeMiniStatus, { color: theme.success }]}>{t('today.challenge.done')}</Text>
-                          : <Text style={[styles.challengeMiniStatus, { color: theme.textSecondary }]}>{t('today.challenge.pending')}</Text>
-                        }
-                      </View>
-                      <View style={[styles.challengeMiniProgressBg, { backgroundColor: theme.track }]}>
-                        <View style={[styles.challengeMiniProgressFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: theme.meter }]} />
-                      </View>
-                    </View>
-                  );
-                })}
-            </View>
-          )}
         </View>
       </ScrollView>
 
@@ -671,6 +666,7 @@ export default function TodayScreen() {
           total={total}
           greeting={greeting}
           streak={streak}
+          frozen={frozen}
           onPress={scrollToTop}
           a11yLabel={headerState ? (headerState === 'progress' ? t('today.ring.a11y', { completed, total }) : dayLine({ state: headerState, completed, total, streak })) : undefined}
         />
@@ -686,6 +682,15 @@ export default function TodayScreen() {
           if (tst?.kind === 'markRest') { undoMarkRest(tst); setToast(null); return; }
           const h = tst?.habit; const a = tst?.amount || 1; setToast(null); if (h) handleDecrement(h, a, { undo: true });
         }}
+      />
+
+      {/* The streak rule (S-08), from the streak chip. */}
+      <Dialog
+        visible={streakRuleOpen}
+        onClose={() => setStreakRuleOpen(false)}
+        title={t('progress.streakRule.title')}
+        body={t('progress.streakRule.body')}
+        actions={[{ key: 'close', label: t('common.close'), onPress: () => setStreakRuleOpen(false) }]}
       />
 
       <HabitDetailSheet habit={detailHabit} onClose={closeDetail} onEdit={editFromDetail} onSetToday={setTodayFromSheet} />
@@ -746,9 +751,6 @@ const styles = StyleSheet.create({
   // Short windows (SE): 16 between groups instead of 24, so a third time-of-day group still
   // leaves the fourth card above the tab bar.
   sectionCompact: { marginTop: space.sectionCompact },
-  sectionLabel: {
-    fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase',
-  },
   stickyLayer: { position: 'absolute', top: 0, left: 0, right: 0, height: STICKY_H },
   restCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: space.sm,
@@ -791,15 +793,4 @@ const styles = StyleSheet.create({
   challengeEmptyText: { flex: 1 },
   challengeEmptyTitle: { fontSize: 15, fontWeight: '700' },
   challengeEmptyBody: { fontSize: 12, marginTop: 2 },
-  challengesSection: { marginTop: 24 },
-  challengeMini: {
-    borderRadius: 14, borderWidth: 1, padding: 14, marginTop: 8,
-  },
-  challengeMiniRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  challengeMiniIcon: { fontSize: 24 },
-  challengeMiniName: { fontSize: 14, fontWeight: '700' },
-  challengeMiniSub: { fontSize: 12, marginTop: 1 },
-  challengeMiniStatus: { fontSize: 13, fontWeight: '600' },
-  challengeMiniProgressBg: { height: 5, borderRadius: 3, overflow: 'hidden' },
-  challengeMiniProgressFill: { height: 5, borderRadius: 3 },
 });
