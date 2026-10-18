@@ -70,3 +70,41 @@ export function __resetReducedMotionForTests() {
 export function announce(message) {
   try { AccessibilityInfo.announceForAccessibility(message); } catch {}
 }
+
+// Whether a screen reader (TalkBack / VoiceOver) is on, kept current like the reduced-motion
+// store above. The Snackbar stays up longer then (C-10).
+let readerNow = false;
+let readerStarted = false;
+const readerListeners = new Set();
+
+function startReader() {
+  if (readerStarted) return;
+  readerStarted = true;
+  const set = (value) => {
+    const next = !!value;
+    if (next === readerNow) return;
+    readerNow = next;
+    readerListeners.forEach((fn) => { try { fn(next); } catch {} });
+  };
+  try {
+    AccessibilityInfo.isScreenReaderEnabled?.().then(set).catch(() => {});
+    AccessibilityInfo.addEventListener?.('screenReaderChanged', set);
+  } catch {}
+}
+
+export function isScreenReaderOn() {
+  startReader();
+  return readerNow;
+}
+
+export function subscribeScreenReader(fn) {
+  startReader();
+  readerListeners.add(fn);
+  return () => readerListeners.delete(fn);
+}
+
+export function __resetScreenReaderForTests() {
+  readerNow = false;
+  readerStarted = false;
+  readerListeners.clear();
+}

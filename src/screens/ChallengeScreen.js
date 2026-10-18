@@ -22,6 +22,7 @@ import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
 import { numeric } from '../theme/typography';
 import { space, radius } from '../theme/tokens';
+import { useSnackbar, useSnackbarInset } from '../components/ui/Snackbar';
 
 const RANGE_OPTIONS = [
   { key: 'week', max: 7 },
@@ -497,13 +498,22 @@ export default function ChallengeScreen() {
   const {
     habits, challenges, effectiveChallenges, effectivePastChallenges,
     theme,
-    editChallenge, createChallenge, deleteChallenge,
+    editChallenge, createChallenge, deleteChallenge, pendingChallengeDeletes, holdChallengeDelete,
     setRequestedTab, setPendingHabitLinkChallenge,
     setModalOpen,
     todayStr,
   } = useApp();
   useLocale();
   const today = todayStr();
+  // C-10: a confirmed delete ends in a Snackbar with Undo. Meanwhile AppContext holds the
+  // challenge out of effectiveChallenges (so it is not claimed, completed, archived or shown on
+  // Today); the delete runs when the snackbar goes without Undo (timeout, another snackbar, the
+  // app backgrounding, Settings' flush before sign-out), never on a provider unmount.
+  const snackbar = useSnackbar();
+  const snackbarInset = useSnackbarInset();
+  const live = useRef({});
+  live.current = { deleteChallenge };
+  const shownChallenges = effectiveChallenges;
 
   const [formVisible, setFormVisible] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState(null);
@@ -516,8 +526,22 @@ export default function ChallengeScreen() {
     feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(t('challenges.delete.title'), t('challenges.delete.body', { name: challenge.name }), [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => deleteChallenge(challenge.id) },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteWithUndo(challenge) },
     ]);
+  };
+
+  const deleteWithUndo = (challenge) => {
+    const { id } = challenge;
+    holdChallengeDelete(id, true);
+    snackbar.show({
+      kind: 'delete',
+      endsOnBackground: true,
+      message: t('snackbar.deleted', { name: challenge.name }),
+      actionLabel: t('common.undo'),
+      onAction: () => holdChallengeDelete(id, false),
+      // 'unmount': the provider is going away with a dead session; the challenge simply stays.
+      onHide: (reason) => (reason === 'unmount' ? undefined : live.current.deleteChallenge(id)),
+    });
   };
 
   const openNew = () => {
@@ -547,11 +571,12 @@ export default function ChallengeScreen() {
     setRequestedTab(3);
   };
 
-  const canAddMore = effectiveChallenges.length < 3;
+  // A challenge waiting out its delete Undo still holds its slot (Undo could bring it back).
+  const canAddMore = effectiveChallenges.length + (pendingChallengeDeletes?.length || 0) < 3;
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, snackbarInset > 0 && { paddingBottom: styles.scroll.paddingBottom + snackbarInset }]}>
         <View style={styles.headingRow}>
           <AppText variant="title" style={[styles.heading, { color: theme.text }]}>{t('challenges.title')}</AppText>
           {canAddMore && (
@@ -561,7 +586,7 @@ export default function ChallengeScreen() {
           )}
         </View>
 
-        {effectiveChallenges.length === 0 ? (
+        {shownChallenges.length === 0 ? (
           <EmptyCard
             emoji="🏆"
             title={t('challenges.empty.title')}
@@ -574,7 +599,7 @@ export default function ChallengeScreen() {
             </TouchableOpacity>
           </EmptyCard>
         ) : (
-          effectiveChallenges.map(challenge => (
+          shownChallenges.map(challenge => (
             <ChallengeCard
               key={challenge.id}
               challenge={challenge}
@@ -588,7 +613,7 @@ export default function ChallengeScreen() {
         )}
 
         {/* Tip: only shown before the user has any past challenges */}
-        {effectiveChallenges.length > 0 && effectiveChallenges.length < 3 && effectivePastChallenges.length === 0 && (
+        {shownChallenges.length > 0 && shownChallenges.length < 3 && effectivePastChallenges.length === 0 && (
           <View style={[styles.card, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
             <Text style={[styles.tipTitle, { color: theme.link }]}>{t('challenges.tip.title')}</Text>
             <Text style={[styles.tipBody, { color: theme.text }]}>

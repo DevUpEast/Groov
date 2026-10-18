@@ -998,5 +998,14 @@
     "rowCount": "%{name}  ·  %{count}/%{goal}",
     "rowDone": "%{name}, concluído",
     "more": "+%{count} mais no app"
+  },
+  "snackbar": {
+    "minus": { "one": "%{count} removido de %{name}", "other": "%{count} removidos de %{name}" },
+    "cleared": "Registro de hoje de %{name} apagado",
+    "archived": "%{name} arquivado",
+    "restored": "%{name} restaurado",
+    "deleted": "%{name} excluído",
+    "undone": "Desfeito",
+    "actionA11y": "%{action}: %{message}"
   }
 }

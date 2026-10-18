@@ -10,6 +10,7 @@ import { initSentry, captureException, wrapRoot } from './src/utils/sentry';
 import { t, useLocale, initLocale } from './src/i18n';
 import { duration, spring, timing, springTo } from './src/theme/motion';
 import { isReducedMotion } from './src/utils/a11y';
+import { SnackbarProvider, SnackbarView } from './src/components/ui/Snackbar';
 import PressableScale from './src/components/ui/PressableScale';
 import feedback, { EVENTS } from './src/services/feedback';
 import { space, radius } from './src/theme/tokens';
@@ -368,6 +369,9 @@ function AppNavigator() {
           );
         })}
       </View>
+
+      {/* The Snackbar (C-10): above the tab bar, under any sheet or dialog. */}
+      <SnackbarView bottom={TAB_BAR_HEIGHT} theme={theme} />
     </View>
   );
 }
@@ -403,7 +407,9 @@ function AuthGate() {
 
   return (
     <AppProvider key={session.user.id}>
-      <AppNavigator />
+      <SnackbarProvider>
+        <AppNavigator />
+      </SnackbarProvider>
     </AppProvider>
   );
 }

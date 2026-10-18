@@ -1,5 +1,4 @@
 import { applyMarkRest, revertMarkRest, countAfterIncrement, isGoalMet } from '../habits';
-import { endMarkRestWindow } from '../challenges';
 
 const TODAY = '2026-10-17';
 const habits = [
@@ -98,17 +97,6 @@ describe('(a) Mark the rest then Undo restores the exact day', () => {
     const { completions: undone } = revertMarkRest(later, TODAY, before, changedIds);
     expect(undone[TODAY]).toEqual({ water: 3 });
     expect(undone['2026-10-18']).toEqual({ move: 1 });
-  });
-});
-
-describe('endMarkRestWindow (M1: backgrounding closes the undo window)', () => {
-  it('hides a Mark-the-rest toast so Undo cannot outlive the flush', () => {
-    expect(endMarkRestWindow({ id: 1, kind: 'markRest' })).toBeNull();
-  });
-  it('leaves other toasts and no toast alone', () => {
-    const single = { id: 2, habit: { id: 'move' } };
-    expect(endMarkRestWindow(single)).toBe(single);
-    expect(endMarkRestWindow(null)).toBeNull();
   });
 });
 

@@ -89,7 +89,12 @@ jest.mock('../../components/ProgressRing', () => mockStub('ProgressRing')());
 jest.mock('../../components/CompletionCelebration', () => mockStub('CompletionCelebration')());
 jest.mock('../../components/TrophyCelebration', () => mockStub('TrophyCelebration')());
 jest.mock('../../components/ChallengeRewardModal', () => mockStub('ChallengeRewardModal')());
-jest.mock('../../components/UndoToast', () => mockStub('UndoToast')());
+// The Snackbar host (C-10): a recording fake; `mockItems` holds every item shown.
+jest.mock('../../components/ui/Snackbar', () => {
+  const items = [];
+  const api = { show: (it) => { items.push(it); return items.length; }, dismiss: () => false, flush: () => Promise.resolve(), showing: () => false };
+  return { __esModule: true, mockItems: items, useSnackbar: () => api, useSnackbarInset: () => 0 };
+});
 jest.mock('../../components/ui/Button', () => mockStub('Button')());
 jest.mock('../../components/ui/PressableScale', () => ({ __esModule: true, default: mockStub('PressableScale')(), hitSlopFor: () => ({}) }));
 jest.mock('../../components/ui/Dialog', () => mockStub('Dialog')());
@@ -203,8 +208,8 @@ describe("today's cell goes through Today's handlers (M1)", () => {
     expect(feedback.play).toHaveBeenCalledWith('habit.undone', expect.objectContaining({ delay: 0 }));
     // The undo window closes: the cancelled completion never runs.
     t.rerender();
-    const toast = t.r.root.findAll(n => n.type === 'UndoToast')[0];
-    act(() => { toast.props.onHide(); });
+    const snack = require('../../components/ui/Snackbar').mockItems.filter(i => i.kind === 'markRest').at(-1);
+    act(() => { snack.onHide('replaced'); });
     act(() => { jest.runOnlyPendingTimers(); });
     expect(mock.completeChallengeImmediately).not.toHaveBeenCalled();
   });

@@ -9,7 +9,9 @@
 //     the mockup never shows the tip), celebrate=<days> (C-08: Today holds that streak
 //     milestone: 7/30/100/365 the full screen, 1/3/14 the strip beat),
 //     streakNews=freeze|freezeDay|freezeMany|reset|back (C-09: Today shows that one-time card,
-//     or holds the "Back on beat." strip line; the real check never runs in the mockup), mockup=1
+//     or holds the "Back on beat." strip line; the real check never runs in the mockup),
+//     snackbar=markRest|skip|delete (C-10: Today holds a sample Snackbar; delete has a long
+//     two-line message), mockup=1
 //   window messages from the host: { type: 'mockup:theme', theme }, { type: 'mockup:navigate', route }
 //   messages to the host: { type: 'mockup:statusbar', style }, { type: 'mockup:ready' }
 import { Platform } from 'react-native';
@@ -51,6 +53,11 @@ export const mockupParams = {
   get streakNews() {
     const raw = isWeb && this.active ? params().get('streakNews') : null;
     return ['freeze', 'freezeDay', 'freezeMany', 'reset', 'back'].includes(raw) ? raw : null;
+  },
+  // snackbar=<kind>: Today holds a sample C-10 Snackbar (review stills). null when absent.
+  get snackbar() {
+    const raw = isWeb && this.active ? params().get('snackbar') : null;
+    return ['markRest', 'skip', 'delete'].includes(raw) ? raw : null;
   },
   // hint=<id>: Today shows that one-time tip (until it is dismissed in this profile).
   get hint() { return (isWeb && this.active && params().get('hint')) || null; },

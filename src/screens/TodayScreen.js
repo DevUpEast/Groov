@@ -17,13 +17,13 @@ import CompletionCelebration from '../components/CompletionCelebration';
 import TrophyCelebration from '../components/TrophyCelebration';
 import ChallengeRewardModal from '../components/ChallengeRewardModal';
 import ShareCards from '../components/ShareCards';
-import UndoToast from '../components/UndoToast';
+import { useSnackbar, useSnackbarInset } from '../components/ui/Snackbar';
 import StreakNewsCard from '../components/StreakNewsCard';
 import Button from '../components/ui/Button';
 import PressableScale from '../components/ui/PressableScale';
 import Dialog from '../components/ui/Dialog';
 import { radius, size, space } from '../theme/tokens';
-import { timing, duration, beat as beats, celebration } from '../theme/motion';
+import { timing, duration, beat as beats, celebration, snackbar as SNACK } from '../theme/motion';
 import NoteModal from '../components/NoteModal';
 import HabitDetailSheet from '../components/HabitDetailSheet';
 import { routeLeavesTab } from '../utils/links';
@@ -36,7 +36,7 @@ import { localDateKey, parseDateKey, addDays } from '../utils/dates';
 import { maybeRequestReview } from '../services/review';
 import {
   currentChallengeDay, isChallengeExpired, getRelevantHabits,
-  planChallengeClaims, routeClaims, cancelQueuedForHabit, planFlush, endMarkRestWindow,
+  planChallengeClaims, routeClaims, cancelQueuedForHabit, planFlush,
 } from '../utils/challenges';
 import { t, getLocale, useLocale } from '../i18n';
 import { buildWeekBeats } from '../utils/weekBeats';
@@ -106,9 +106,9 @@ function getDateString(offset = 0) {
   return d.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
-// How long the "Mark the rest done" toast (and its Undo) stays up. A challenge that
+// How long the "Mark the rest done" snackbar (and its Undo) stays up. A challenge that
 // Mark the rest would complete waits for this window before it is archived.
-const MARK_REST_UNDO_MS = 8000;
+const MARK_REST_UNDO_MS = SNACK.standard;
 
 export default function TodayScreen() {
   const {
@@ -117,7 +117,7 @@ export default function TodayScreen() {
     isChallengeHabitsDone, settings, theme, markChallengeDay, unmarkChallengeDay,
     getHabitCount, dateOffset, todayStr, accountCreatedAt, displayName, devMode,
     completeChallengeImmediately, markRestDone, planMarkRest, restoreHabitCounts,
-    isHabitSatisfiedWith, getTodayCompletions,
+    isHabitSatisfiedWith, getTodayCompletions, setSkipHabitOn, setHabitCountOn,
     pendingChallengeRewards, clearPendingChallengeRewards,
     setRequestedTab, getNote, setNote, setModalOpen, openRoute, pendingRoute,
     pendingMilestone, clearPendingMilestone,
@@ -137,7 +137,21 @@ export default function TodayScreen() {
   // ring (credit flight + RingBurst, C-07).
   const [milestoneShown, setMilestoneShown] = useState(null);
 
-  const [toast, setToast] = useState(null);
+  // The Snackbar (C-10): Mark the rest, skip / unskip, "−1" from the options and a counter
+  // cleared from the detail sheet. Never a single check (§4.1).
+  const snackbar = useSnackbar();
+  const snackbarInset = useSnackbarInset();
+  // The latest handlers, for an Undo pressed several renders after its snackbar appeared.
+  const live = useRef({});
+  // Web mockup `?snackbar=<kind>`: a held sample snackbar (review stills; nothing changes).
+  const mockSnack = mockupParams.snackbar;
+  useEffect(() => {
+    if (!mockSnack) return;
+    const message = mockSnack === 'markRest' ? t('today.toast.markedRest', { count: 3 })
+      : mockSnack === 'skip' ? t('habitCard.announce.skipped', { name: habits[0]?.name || 'Read' })
+        : t('snackbar.deleted', { name: '21-Day Habit Builder: no sugar after dinner' });
+    snackbar.show({ kind: 'mockup', hold: true, message, actionLabel: t('common.undo') });
+  }, [mockSnack, habits.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
   const [noteTarget, setNoteTarget] = useState(null);
   // C-02b (BTN-6): a counter's body tap opens its detail sheet here, over Today, from local
   // state: no pending route and no tab jump. Only the habit id is kept, so the sheet always
@@ -516,7 +530,7 @@ export default function TodayScreen() {
   ) : null;
 
   // Completions queued by "Mark the rest done": { challengeId, claimedAt, token }.
-  // They run when that action's toast hides (or the app backgrounds / the screen
+  // They run when that action's snackbar hides (or the app backgrounds / the screen
   // unmounts), so Undo can still take the claim back before anything is archived.
   const queueRef = useRef([]);
   // Latest state for the deferred flush, which may run from a stale closure
@@ -547,7 +561,7 @@ export default function TodayScreen() {
     return { ...plan, completedNowIds: completeNowIds };
   }, [effectiveChallenges, challenges, dueHabits, isHabitSatisfied, isHabitSatisfiedWith, markChallengeDay, completeChallengeImmediately, todayStr]);
 
-  // Run the queued completions (all of them, or only those of one toast), re-reading
+  // Run the queued completions (all of them, or only those of one snackbar), re-reading
   // current state: a challenge that is gone (archived by the expiry effect, completed
   // on another device) or no longer has every day is skipped. Trophy after the flush.
   const flushQueued = useCallback((token) => {
@@ -562,25 +576,16 @@ export default function TodayScreen() {
   }, []);
 
   useEffect(() => {
-    // Backgrounding ends the undo window: hiding the Mark-the-rest toast flushes its
-    // token (prevToast effect below); flushQueued() covers anything else still queued.
-    // The cleanup runs only when AppProvider remounts (sign-out, account switch): Today
-    // never unmounts inside the pager.
+    // Backgrounding ends the undo window: the Mark-the-rest snackbar is `endsOnBackground`, so
+    // the Snackbar host hides it and its onHide flushes its token; flushQueued() covers
+    // anything else still queued. The cleanup runs only when AppProvider remounts (sign-out,
+    // account switch): Today never unmounts inside the pager.
     const sub = AppState.addEventListener('change', (state) => {
       if (state !== 'background') return;
-      setToast(endMarkRestWindow);
       flushQueued();
     });
     return () => { sub.remove(); flushQueued(); };
   }, [flushQueued]);
-
-  // The Mark-the-rest toast hid (timeout, or replaced by another toast): its window closed.
-  const prevToast = useRef(null);
-  useEffect(() => {
-    const prev = prevToast.current;
-    prevToast.current = toast;
-    if (prev && prev !== toast && prev.kind === 'markRest') flushQueued(prev.id);
-  }, [toast, flushQueued]);
 
   // A linked habit was un-marked or skipped inside the window: its queued completion is
   // cancelled. With `unmark`, the cancelled challenges' day is un-marked here too.
@@ -599,9 +604,16 @@ export default function TodayScreen() {
     const justCompleted = incrementHabit(habit.id, amount);
     if (justCompleted === false && !usesCounter(habit) && before >= 1) return; // already checked
     // §4.1 r2: no snackbar for a single check; HabitCard announces it and Undo = tap again.
+    // (The choreography dev flag off keeps the old short per-check toast.)
     if (!choreography) {
       const over = habit.type === 'atMost' && before + amount > habit.volumeGoal;
-      setToast({ id: tapAt, habit, amount, message: justCompleted ? (habit.type === 'quit' ? t('today.toast.avoided', { name: habit.name }) : t('today.toast.done', { name: habit.name })) : over ? t('today.toast.overLimit', { name: habit.name }) : t('today.toast.plus', { name: habit.name, amount }) });
+      snackbar.show({
+        kind: 'check',
+        duration: SNACK.short,
+        message: justCompleted ? (habit.type === 'quit' ? t('today.toast.avoided', { name: habit.name }) : t('today.toast.done', { name: habit.name })) : over ? t('today.toast.overLimit', { name: habit.name }) : t('today.toast.plus', { name: habit.name, amount }),
+        actionLabel: t('common.undo'),
+        onAction: () => live.current.handleDecrement(habit, amount, { undo: true }),
+      });
     }
     // The note climbs the §2.11 ladder: a counter by its step toward the goal, a daily habit by
     // how many habits are checked today (an untouched limit or a perWeek habit met earlier in
@@ -660,9 +672,9 @@ export default function TodayScreen() {
         tapAt,
       });
     }
-  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, getHabitCount, getTodayCompletions, choreography, moment, getStreakForHabit, openTrophyAt, maybeBackOnBeat]);
+  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, getHabitCount, getTodayCompletions, choreography, moment, getStreakForHabit, openTrophyAt, maybeBackOnBeat, snackbar]);
 
-  // `undo`: the toast Undo, which always reads as an un-check.
+  // `undo`: the legacy per-check toast's Undo, which always reads as an un-check.
   const handleDecrement = useCallback((habit, amount = 1, { undo = false } = {}) => {
     const tapAt = Date.now();
     perfTap.current = tapAt;
@@ -706,25 +718,87 @@ export default function TodayScreen() {
     // A tap during the burst still lands (the layer takes no touches); an un-check ends the
     // burst with the day it celebrated.
     if (unchecks) burstRef.current?.stop();
+    // The challenge days this un-check took back (a silent Undo marks them again).
+    return unclaimed;
   }, [decrementHabit, effectiveChallenges, challenges, dueHabits, getHabitCount, unmarkChallengeDay, todayStr, cancelQueuedFor, choreography, moment]);
 
   // Today's cell in the detail sheet (code review M1): set today's count through the same
-  // handlers as a card, so challenge claims / un-claims, the Mark-the-rest queue, the toast,
+  // handlers as a card, so challenge claims / un-claims, the Mark-the-rest queue, the reset snackbar,
   // celebrations and feedback all run. "Set 20 (done)" on a timed habit is the manual way to
   // log a session done away from the in-app timer.
   const setTodayFromSheet = useCallback((habit, target) => {
-    const delta = target - getHabitCount(habit.id);
+    const before = getHabitCount(habit.id);
+    const delta = target - before;
+    let unclaimed = [];
     if (delta > 0) handleIncrement(habit, delta);
-    else if (delta < 0) handleDecrement(habit, -delta);
-    // No toast for a single check (C-06a): the screen reader hears the change instead.
-    if (delta !== 0) announce(todayAnnouncement(habit, target));
-  }, [getHabitCount, handleIncrement, handleDecrement]);
+    else if (delta < 0) unclaimed = handleDecrement(habit, -delta) || [];
+    if (delta === 0) return;
+    // A counter cleared to 0 is a reset (C-10): it gets a snackbar whose Undo quietly puts the
+    // count and the challenge days back. The snackbar announces itself.
+    if (usesCounter(habit) && target === 0) {
+      snackbar.show({
+        kind: 'reset',
+        message: t('snackbar.cleared', { name: habit.name }),
+        actionLabel: t('common.undo'),
+        onAction: () => live.current.restoreCount(habit.id, before, unclaimed),
+      });
+      return;
+    }
+    // No snackbar for a single check (C-06a): the screen reader hears the change instead.
+    announce(todayAnnouncement(habit, target));
+  }, [getHabitCount, handleIncrement, handleDecrement, snackbar]);
 
-  // Skipping (or un-skipping) a linked habit inside the window cancels the queued
-  // completion and un-marks that challenge's day.
-  const handleSkipToggle = useCallback((habit) => {
+  // Skip / unskip from a card's options (C-10): the skip lands, a linked habit's queued
+  // Mark-the-rest completion is cancelled (and that challenge's day un-marked), and a
+  // snackbar offers Undo, which sets the skip back for the same day.
+  // Inside the Mark-the-rest window (its snackbar is up) a skip only announces itself: a skip
+  // snackbar would replace Mark the rest's and take its Undo away (review m1).
+  const handleSkip = useCallback((habit, skip) => {
+    const day = todayStr();
+    setSkipHabitOn(habit.id, day, skip);
     cancelQueuedFor(habit.id, true);
-  }, [cancelQueuedFor]);
+    const message = t(skip ? 'habitCard.announce.skipped' : 'habitCard.announce.unskipped', { name: habit.name });
+    if (snackbar.showing('markRest')) { announce(message); return; }
+    snackbar.show({
+      kind: 'skip',
+      message,
+      actionLabel: t('common.undo'),
+      onAction: () => {
+        live.current.setSkipHabitOn(habit.id, day, !skip, { undo: true });
+        live.current.cancelQueuedFor(habit.id, true);
+      },
+    });
+  }, [todayStr, setSkipHabitOn, cancelQueuedFor, snackbar]);
+
+  // "−1" (or "−N") from a counter card's options (C-10): the decrement, plus a snackbar whose
+  // Undo quietly puts the count back.
+  const handleMenuMinus = useCallback((habit, amount) => {
+    const before = getHabitCount(habit.id);
+    const unclaimed = handleDecrement(habit, amount) || [];
+    snackbar.show({
+      kind: 'minus',
+      message: t('snackbar.minus', { count: amount, name: habit.name }),
+      actionLabel: t('common.undo'),
+      onAction: () => live.current.restoreCount(habit.id, before, unclaimed),
+    });
+  }, [getHabitCount, handleDecrement, snackbar]);
+
+  // The Undo of "−1" or of a reset (review m5): a restore, not a check-off. Today's count goes
+  // back through setHabitCountOn (same per-habit upsert key) and the challenge days the change
+  // un-marked are marked again; no feedback, no moment, no confetti, no claim of anything new
+  // and no trophy. A Mark-the-rest completion the change cancelled is not re-queued (the
+  // challenge is archived by the expiry check instead). Nothing happens when the habit has gone
+  // (archived, deleted) or already has that count.
+  const restoreCount = useCallback((habitId, count, reclaimIds = []) => {
+    const h = dueHabits.find(x => x.id === habitId);
+    if (!h || getHabitCount(habitId) === count) return;
+    const day = todayStr();
+    setHabitCountOn(habitId, day, count);
+    reclaimIds.forEach((id) => { if (effectiveChallenges.some(c => c.id === id && !c.completedDays.includes(day))) markChallengeDay(id); });
+    // The day is back to what it was: do not celebrate it again on the next tap.
+    const after = { ...getTodayCompletions(), [habitId]: count };
+    if (dueHabits.length > 0 && dueHabits.every(x => isHabitSatisfiedWith(x, after))) allDoneCelebrated.current = true;
+  }, [dueHabits, getHabitCount, todayStr, setHabitCountOn, effectiveChallenges, markChallengeDay, getTodayCompletions, isHabitSatisfiedWith]);
 
   // Untouched daily/quit habits the button would mark ("Mark the rest done (N)").
   const markRestCount = planMarkRest().changedIds.length;
@@ -741,9 +815,17 @@ export default function TodayScreen() {
     maybeBackOnBeat();
     // Completion is deferred until the undo window closes (S-02).
     const { claimedIds } = autoClaimChallenges(plan.next, { defer: true, token: id });
-    setToast({
-      id, kind: 'markRest', dayKey, before: plan.before, changedIds: plan.changedIds, claimedIds, duration: MARK_REST_UNDO_MS,
+    const record = { id, dayKey, before: plan.before, changedIds: plan.changedIds, claimedIds };
+    // The undo window is the snackbar's life: when it hides any way but Undo (timeout,
+    // replaced, the app backgrounding) the queued completions of this token run.
+    snackbar.show({
+      kind: 'markRest',
+      endsOnBackground: true,
+      duration: MARK_REST_UNDO_MS,
       message: t('today.toast.markedRest', { count: plan.changedIds.length }),
+      actionLabel: t('common.undo'),
+      onAction: () => live.current.undoMarkRest(record),
+      onHide: () => flushQueued(id),
     });
     // One markRest haptic (now) and one chord (at 750) for the whole batch; no separate
     // day.complete haptic. Undo cancels a chord that has not played yet.
@@ -764,7 +846,7 @@ export default function TodayScreen() {
     const order = grouped ? grouped.flatMap(sec => sec.habits) : dueHabits;
     const creditFrom = order.filter(h => plan.changedIds.includes(h.id)).map(h => h.id);
     if (choreography) moment.run({ kind: BEAT.markRest, claimedIds, dayComplete, creditFrom, tapAt: id });
-  }, [markRestDone, autoClaimChallenges, dueHabits, grouped, isHabitSatisfiedWith, todayStr, choreography, moment, maybeBackOnBeat]);
+  }, [markRestDone, autoClaimChallenges, dueHabits, grouped, isHabitSatisfiedWith, todayStr, choreography, moment, maybeBackOnBeat, snackbar, flushQueued]);
 
   // Undo for Mark the rest, on the day the action ran (tst.dayKey): drop its queued
   // completions, revert the habits it marked that are still at 1, and un-mark exactly
@@ -781,13 +863,16 @@ export default function TodayScreen() {
     tst.claimedIds.forEach(id => unmarkChallengeDay(id, tst.dayKey));
     allDoneCelebrated.current = false;
   }, [restoreHabitCounts, unmarkChallengeDay, choreography, moment]);
+  live.current = {
+    handleIncrement, handleDecrement, setTodayFromSheet, undoMarkRest, restoreCount, setSkipHabitOn, cancelQueuedFor,
+  };
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <View style={styles.body}>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, snackbarInset > 0 && { paddingBottom: space.xl + snackbarInset }]}
         showsVerticalScrollIndicator={false}
         style={{ backgroundColor: theme.bg }}
         onScroll={onScroll}
@@ -877,7 +962,8 @@ export default function TodayScreen() {
                       onIncrement={(a) => handleIncrement(habit, a)}
                       onDecrement={(a) => handleDecrement(habit, a)}
                       onNote={openNote}
-                      onSkipToggle={handleSkipToggle}
+                      onSkip={handleSkip}
+                      onMenuMinus={handleMenuMinus}
                       onOpenDetail={openDetail}
                     />
                   ))}
@@ -889,7 +975,8 @@ export default function TodayScreen() {
                   onIncrement={(a) => handleIncrement(habit, a)}
                   onDecrement={(a) => handleDecrement(habit, a)}
                   onNote={openNote}
-                  onSkipToggle={handleSkipToggle}
+                  onSkip={handleSkip}
+                  onMenuMinus={handleMenuMinus}
                   onOpenDetail={openDetail}
                 />
               ))}</View>}
@@ -948,17 +1035,6 @@ export default function TodayScreen() {
       <CreditFlight theme={theme} targets={creditTargets} />
       <RingBurst ref={burstRef} theme={theme} targets={creditTargets} />
       </View>
-
-      <UndoToast
-        toast={toast}
-        theme={theme}
-        onHide={() => setToast(null)}
-        onUndo={() => {
-          const tst = toast;
-          if (tst?.kind === 'markRest') { undoMarkRest(tst); setToast(null); return; }
-          const h = tst?.habit; const a = tst?.amount || 1; setToast(null); if (h) handleDecrement(h, a, { undo: true });
-        }}
-      />
 
       {/* The streak rule (S-08), from the streak chip. */}
       <Dialog

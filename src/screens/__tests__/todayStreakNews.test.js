@@ -88,7 +88,12 @@ jest.mock('../../components/ProgressRing', () => mockStub('ProgressRing')());
 jest.mock('../../components/CompletionCelebration', () => mockStub('CompletionCelebration')());
 jest.mock('../../components/TrophyCelebration', () => mockStub('TrophyCelebration')());
 jest.mock('../../components/ChallengeRewardModal', () => mockStub('ChallengeRewardModal')());
-jest.mock('../../components/UndoToast', () => mockStub('UndoToast')());
+// The Snackbar host (C-10): a recording fake; `mockItems` holds every item shown.
+jest.mock('../../components/ui/Snackbar', () => {
+  const items = [];
+  const api = { show: (it) => { items.push(it); return items.length; }, dismiss: () => false, flush: () => Promise.resolve(), showing: () => false };
+  return { __esModule: true, mockItems: items, useSnackbar: () => api, useSnackbarInset: () => 0 };
+});
 jest.mock('../../components/ui/Button', () => mockStub('Button')());
 jest.mock('../../components/ui/PressableScale', () => ({ __esModule: true, default: mockStub('PressableScale')(), hitSlopFor: () => ({}) }));
 jest.mock('../../components/ui/Dialog', () => mockStub('Dialog')());
