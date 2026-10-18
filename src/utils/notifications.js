@@ -3,8 +3,12 @@ import * as Notifications from 'expo-notifications';
 import { dateAt } from './dates';
 import { to24h } from './time';
 import { t } from '../i18n';
+import { palette } from '../theme/tokens';
+import { resolveAccent } from '../theme/accents';
 
-const ACCENT = '#4F46E5';
+// Android small-icon tint: the brand action colour, or the habit's accent on its own reminder.
+const ACCENT = palette.light.action;
+const habitTint = (habit) => resolveAccent(habit?.color, 'light').fill;
 
 // Scheduled notification identifiers:
 //   reminder-<id>        daily, from settings.reminders (global reminders)
@@ -137,6 +141,7 @@ function desiredDailyReminders(settings, habits, missesByHabit = {}) {
         ? t('notifications.habitBodyBackoff')
         : h.intention ? t('notifications.habitBodyIntention', { intention: h.intention }) : t('notifications.habitBody'),
       category: CATEGORY_HABIT,
+      color: habitTint(h),
       data: { kind: 'habit', habitId: h.id },
       // A backed-off reminder is a one-off for today, not a daily repeat, so the
       // next day's evaluation decides whether it fires again.
@@ -179,7 +184,7 @@ export async function applyReminderSchedule(settings, habits, { prompt = true, m
       }
       await Notifications.scheduleNotificationAsync({
         identifier: d.identifier,
-        content: { title: d.title, body: d.body, sound: true, color: ACCENT, categoryIdentifier: d.category, data: d.data },
+        content: { title: d.title, body: d.body, sound: true, color: d.color ?? ACCENT, categoryIdentifier: d.category, data: d.data },
         trigger,
       });
     } catch (e) {
@@ -276,7 +281,7 @@ export async function sendTestNotification(habit) {
     content: habit ? {
       title: t('notifications.habitTitle', { icon: habit.icon ?? '🔔', name: habit.name }),
       body: t('notifications.testBody'),
-      sound: true, color: ACCENT, categoryIdentifier: CATEGORY_HABIT, data: { kind: 'habit', habitId: habit.id },
+      sound: true, color: habitTint(habit), categoryIdentifier: CATEGORY_HABIT, data: { kind: 'habit', habitId: habit.id },
     } : {
       title: t('notifications.finishTitle'),
       body: t('notifications.eveningBody'),

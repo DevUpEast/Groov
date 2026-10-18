@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Modal, TextInput, Alert, Animated, ActivityIndicator,
-  PanResponder, Keyboard, Image,
+  PanResponder, Keyboard, Image, useWindowDimensions,
 } from 'react-native';
 import SafeAreaView from '../components/SafeAreaView';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,8 +22,8 @@ import { getHabitTypes, describeGoal } from '../utils/habits';
 import { suggestHabit } from '../services/aiCoaching';
 import { useAuth } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
-import { accentIdFor } from '../theme/accentNames';
-import { LEGACY_HABIT_COLORS } from '../theme/accents';
+import { ACCENT_IDS, resolveAccent, storedHexFor } from '../theme/accents';
+import { BLANK_FORM, formFromHabit, habitFromForm, pickAccent, selectedAccentId, suggestedColor } from '../utils/habitForm';
 
 // Preset icons. The stored value is the emoji; `key` names it for screen readers (habits.icons.<key>).
 const ICONS = [
@@ -35,10 +35,8 @@ const ICONS = [
   { key: 'salad', emoji: '🥗' }, { key: 'apple', emoji: '🍎' }, { key: 'coffee', emoji: '☕' },
   { key: 'music', emoji: '🎵' }, { key: 'sunrise', emoji: '🌅' },
 ];
-const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE, color: null, timeOfDay: 'anytime', unit: '', intention: '' };
-
-// Per-habit accent colours (null = theme primary). Chosen to read on light and dark.
-const HABIT_COLORS = LEGACY_HABIT_COLORS;
+// A new custom habit starts on the sky accent (plan §2.3).
+const BLANK = BLANK_FORM;
 const TIME_OPTIONS = ['anytime', 'morning', 'afternoon', 'evening'];
 
 const SCHEDULE_OPTIONS = [
@@ -144,7 +142,21 @@ function formatReminder(reminder) {
   return `${hour12}:${String(minute).padStart(2, '0')} ${ampm}`;
 }
 
+// The form content is the window width minus the sheet's 24 px side padding (VIS-15): the
+// icon grid picks as many >= 44 px columns as fit and stretches them to fill the row.
+const FORM_GUTTER = 24;
+const ICON_GAP = 8;
+const ICON_MIN = 44;
+function useIconTile() {
+  const { width } = useWindowDimensions();
+  const inner = Math.max(ICON_MIN * 5, width - FORM_GUTTER * 2);
+  const cols = Math.max(5, Math.floor((inner + ICON_GAP) / (ICON_MIN + ICON_GAP)));
+  return Math.floor((inner - ICON_GAP * (cols - 1)) / cols);
+}
+
 function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) {
+  const tile = useIconTile();
+  const size = { width: tile, height: tile };
   return (
     <View style={styles.iconGrid}>
       {ICONS.map(({ key, emoji }) => {
@@ -153,7 +165,7 @@ function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) 
           <TouchableOpacity
             key={key}
             style={[
-              styles.iconBtn,
+              styles.iconBtn, size,
               { backgroundColor: theme.bg, borderColor: active ? theme.selectionBorder : theme.border },
               active && { backgroundColor: theme.selection },
             ]}
@@ -161,6 +173,7 @@ function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) 
             accessibilityRole="button"
             accessibilityLabel={t(`habits.icons.${key}`)}
             accessibilityState={{ selected: active }}
+            aria-selected={active}
           >
             <Text style={styles.iconBtnText}>{emoji}</Text>
           </TouchableOpacity>
@@ -169,7 +182,7 @@ function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) 
       {/* Camera / Gallery button */}
       <TouchableOpacity
         style={[
-          styles.iconBtn,
+          styles.iconBtn, size,
           { backgroundColor: theme.bg, borderColor: customIconUri ? theme.selectionBorder : theme.border },
           customIconUri && { backgroundColor: theme.selection },
         ]}
@@ -177,6 +190,7 @@ function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) 
         accessibilityRole="button"
         accessibilityLabel={t('habits.form.photoIcon')}
         accessibilityState={{ selected: !!customIconUri }}
+        aria-selected={!!customIconUri}
       >
         {customIconUri ? (
           <Image source={{ uri: customIconUri }} style={{ width: 28, height: 28, borderRadius: 4 }} />
@@ -199,7 +213,8 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
   const [internalVisible, setInternalVisible] = useState(false);
   const [volMax, setVolMax] = useState(10);
   const { user } = useAuth();
-  const { todayStr } = useApp();
+  const { todayStr, themeName } = useApp();
+  const selectedId = selectedAccentId(form);
   // Magic Fill: describe the habit in words, the AI fills the form.
   const [magicText, setMagicText] = useState('');
   const [magicBusy, setMagicBusy] = useState(false);
@@ -220,7 +235,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
         unit: habit.unit || '',
         schedule: habit.schedule || DEFAULT_SCHEDULE,
         timeOfDay: habit.timeOfDay || 'anytime',
-        color: habit.color || null,
+        color: suggestedColor(habit.color, f.color),
         intention: habit.intention || '',
       }));
       if (habit.type === 'volume' && habit.volumeGoal > 10) setVolMax(habit.volumeGoal > 25 ? 100 : 25);
@@ -368,20 +383,24 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                 />
 
                 <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.colour')}</Text>
+                {/* The 7 curated accents in one row (VIS-15). The stored colour is shown as the
+                    accent it resolves to; only a tap writes (the accent's light-fill hex). */}
                 <View style={styles.colorRow}>
-                  {HABIT_COLORS.map(c => {
-                    const active = (form.color || null) === c;
-                    const accentId = accentIdFor(c);
+                  {ACCENT_IDS.map(accentId => {
+                    const active = selectedId === accentId;
+                    const swatch = resolveAccent(storedHexFor(accentId), themeName);
                     return (
                       <TouchableOpacity
-                        key={c || 'default'}
-                        style={[styles.colorDot, { backgroundColor: c || theme.selectionBorder, borderColor: active ? theme.text : 'transparent' }]}
-                        onPress={() => setForm(f => ({ ...f, color: c }))}
+                        key={accentId}
+                        style={[styles.colorDot, { backgroundColor: swatch.fill, borderColor: active ? theme.text : 'transparent' }]}
+                        onPress={() => setForm(f => pickAccent(f, accentId))}
+                        hitSlop={4}
                         accessibilityRole="button"
-                        accessibilityLabel={!c ? t('habits.form.defaultColour') : accentId ? t(`habits.colors.${accentId}`) : t('habits.form.colour')}
+                        accessibilityLabel={t(`habits.colors.${accentId}`)}
                         accessibilityState={{ selected: active }}
+                        aria-selected={active}
                       >
-                        {active && <Text style={[styles.colorCheck, { color: theme.onAccent }]}>✓</Text>}
+                        {active && <Text style={[styles.colorCheck, { color: swatch.onFill }]}>✓</Text>}
                       </TouchableOpacity>
                     );
                   })}
@@ -567,14 +586,14 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
   );
 }
 
-function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen, reorder, onMove, isFirst, isLast }) {
+function HabitRow({ habit, theme, themeName, onEdit, onDelete, onBell, onOpen, reorder, onMove, isFirst, isLast }) {
   const reminderTime = formatReminder(habit.reminder);
   const reminderOn = habit.reminder?.enabled;
   const scheduleLabel = habit.schedule && habit.schedule.type !== 'daily' ? describeSchedule(habit.schedule) : null;
-  const accent = habit.color || theme.selectionBorder;
+  const accent = resolveAccent(habit.color, themeName);
   return (
     <View style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-      {habit.color ? <View style={[styles.rowStripe, { backgroundColor: accent }]} /> : null}
+      <View style={[styles.rowStripe, { backgroundColor: accent.fill }]} />
       <HabitIcon habit={habit} size={26} imageStyle={styles.rowIconImage} textStyle={styles.rowIcon} />
       <TouchableOpacity style={styles.rowInfo} onPress={onOpen} activeOpacity={0.6} accessibilityRole="button" accessibilityLabel={t('habits.row.detailsA11y', { name: habit.name })}>
         <Text style={[styles.rowName, { color: theme.text }]} numberOfLines={1}>{habit.name}</Text>
@@ -650,7 +669,7 @@ function ArchivedRow({ habit, theme, onRestore, onDelete }) {
 
 export default function HabitsScreen() {
   const {
-    habits, archivedHabits, addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit, theme,
+    habits, archivedHabits, addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit, theme, themeName,
     pendingHabitLinkChallenge, setPendingHabitLinkChallenge, linkHabitToChallenge, ensureNotificationPermission,
     pendingRoute, clearPendingRoute, canAddHabit,
     setModalOpen, settings,
@@ -709,26 +728,15 @@ export default function HabitsScreen() {
 
   const openEdit = (habit) => {
     setEditingId(habit.id);
-    setForm({
-      name: habit.name, icon: habit.icon, type: habit.type, volumeGoal: habit.volumeGoal, customIconUri: habit.customIconUri ?? null,
-      schedule: habit.schedule ?? DEFAULT_SCHEDULE, color: habit.color ?? null, timeOfDay: habit.timeOfDay ?? 'anytime', unit: habit.unit ?? '',
-      intention: habit.intention ?? '',
-    });
+    // form.color keeps the stored value (legacy hexes included) until the user taps a dot.
+    setForm(formFromHabit(habit));
     setModalVisible(true);
   };
 
   const handleSave = () => {
     if (!form.name.trim()) return;
     if (settings.hapticsEnabled) mediumImpact();
-    const habit = {
-      ...form,
-      name: form.name.trim(),
-      unit: form.type === 'volume' || form.type === 'atMost' ? (form.unit || '').trim() || null : null,
-      intention: (form.intention || '').trim() || null,
-      volumeGoal: form.type === 'daily' || form.type === 'quit' ? 1
-        : form.type === 'atMost' ? Math.max(0, Number(form.volumeGoal) || 0)
-        : Math.max(1, Number(form.volumeGoal) || 1),
-    };
+    const habit = habitFromForm(form);
     if (editingId) {
       updateHabit(editingId, habit);
     } else {
@@ -810,6 +818,7 @@ export default function HabitsScreen() {
               key={habit.id}
               habit={habit}
               theme={theme}
+              themeName={themeName}
               reorder={reorder}
               isFirst={i === 0}
               isLast={i === habits.length - 1}
@@ -903,8 +912,8 @@ const styles = StyleSheet.create({
   },
   rowStripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   moveBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
-  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
-  colorDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
+  colorRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  colorDot: { width: 36, height: 36, borderRadius: 18, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
   colorCheck: { fontWeight: '800', fontSize: 14 },
   timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   timeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
@@ -940,7 +949,7 @@ const styles = StyleSheet.create({
   magicBtn: { paddingHorizontal: 16, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', minWidth: 60 },
   magicBtnText: { fontWeight: '700', fontSize: 14 },
   magicError: { fontSize: 12, marginTop: 6 },
-  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: ICON_GAP, marginBottom: 20 },
   iconBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   iconBtnText: { fontSize: 22 },
   input: { borderWidth: 1.5, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 20 },

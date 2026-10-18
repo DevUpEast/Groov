@@ -7,6 +7,7 @@
 //   atMost  stay at or under a limit        done when count <= volumeGoal (an untouched day counts)
 
 import { t } from '../i18n';
+import { storedHexFor } from '../theme/accents';
 
 // Labels and hints are translated at call time so a locale change applies.
 const HABIT_TYPE_DEFS = [
@@ -116,14 +117,14 @@ export const CHALLENGE_TEMPLATES = CHALLENGE_TEMPLATE_DEFS.map(d => ({
 // Names and units are translated on read so the picker follows the active locale;
 // the stored habit keeps the name as created.
 const STARTER_HABIT_DEFS = [
-  { key: 'water', icon: '💧', type: 'volume', volumeGoal: 8, unitKey: 'unitGlasses', timeOfDay: 'anytime', color: '#3B82F6' },
-  { key: 'move', icon: '🏃', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#F97316' },
-  { key: 'read', icon: '📚', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#A855F7' },
-  { key: 'meditate', icon: '🧘', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#14B8A6' },
-  { key: 'walk', icon: '🚶', type: 'daily', volumeGoal: 1, timeOfDay: 'afternoon', color: '#22C55E' },
-  { key: 'sleep', icon: '😴', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#6366F1' },
-  { key: 'journal', icon: '✍️', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: '#EC4899' },
-  { key: 'stretch', icon: '🤸', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: '#EAB308' },
+  { key: 'water', icon: '💧', type: 'volume', volumeGoal: 8, unitKey: 'unitGlasses', timeOfDay: 'anytime', color: storedHexFor('sky') },
+  { key: 'move', icon: '🏃', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: storedHexFor('coral') },
+  { key: 'read', icon: '📚', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: storedHexFor('magenta') },
+  { key: 'meditate', icon: '🧘', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: storedHexFor('teal') },
+  { key: 'walk', icon: '🚶', type: 'daily', volumeGoal: 1, timeOfDay: 'afternoon', color: storedHexFor('lime') },
+  { key: 'sleep', icon: '😴', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: storedHexFor('slate') },
+  { key: 'journal', icon: '✍️', type: 'daily', volumeGoal: 1, timeOfDay: 'evening', color: storedHexFor('pink') },
+  { key: 'stretch', icon: '🤸', type: 'daily', volumeGoal: 1, timeOfDay: 'morning', color: storedHexFor('coral') },
 ];
 
 export function getStarterHabits() {

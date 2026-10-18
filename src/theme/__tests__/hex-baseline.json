@@ -3,7 +3,5 @@
   "src/components/CompletionCelebration.js": 14,
   "src/components/ProgressRing.js": 3,
   "src/components/UndoToast.js": 1,
-  "src/context/AppContext.js": 12,
-  "src/utils/habits.js": 8,
-  "src/utils/notifications.js": 1
+  "src/context/AppContext.js": 12
 }
