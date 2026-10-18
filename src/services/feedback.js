@@ -167,6 +167,23 @@ export function clearRecent() {
   log = [];
 }
 
+/**
+ * A visual beat's frames (C-06b acceptance a): the first and last Animated frame of one run,
+ * in ms from the tap, against the beat's planned window (`target` .. `target + length`). Written
+ * by src/hooks/useTween.js in __DEV__ or with the frameLog dev flag, so release builds can be
+ * measured too. Also printed, so `adb logcat -s ReactNativeJS` shows it.
+ */
+export function logFrames({ name, tapAt, target, length, startedAt, first, last, count }) {
+  const e = {
+    t: first, offset: first - tapAt, target, drift: first - tapAt - target,
+    event: `visual.${name}`, haptic: null, sound: null,
+    frames: { started: (startedAt ?? first) - tapAt, first: first - tapAt, last: last - tapAt, count, planEnd: target + (length || 0) },
+  };
+  record(e);
+  // eslint-disable-next-line no-console
+  console.log(`[frames] ${name} started ${e.frames.started} frames ${e.frames.first}-${e.frames.last}ms (${count}), planned ${target}-${e.frames.planEnd}`);
+}
+
 function apiLevel() {
   const v = Number(Platform.Version);
   return Number.isFinite(v) ? v : 0;
