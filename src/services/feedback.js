@@ -133,6 +133,7 @@ export const LOG_SIZE = 50;
 let enabled = { haptics: true, sound: true };
 let lastHapticAt = -Infinity;
 let lastTapSoundAt = -Infinity;
+let lastPlayAt = -Infinity;
 let log = [];
 
 /** Mirror the settings gate. Only an explicit false turns a channel off. */
@@ -280,6 +281,7 @@ export function play(event, opts = {}) {
   }
   const handle = makeHandle();
   const calledAt = Date.now();
+  lastPlayAt = calledAt;
   const delay = typeof opts.delay === 'number' ? opts.delay : spec.offset;
   if (enabled.haptics && Platform.OS !== 'web') {
     const pulses = Platform.OS === 'android' ? spec.android : spec.ios;
@@ -291,6 +293,19 @@ export function play(event, opts = {}) {
   return handle;
 }
 
+// The background WAV pre-render waits while the user is interacting (a check-off, a counter
+// step, a celebration on its way), so its synchronous JS work never lands in a beat window.
+export const PREWARM_QUIET_MS = 1500;
+export function isBusy(now = Date.now()) {
+  return now - lastPlayAt < PREWARM_QUIET_MS;
+}
+
+/** Pre-render the sound kit at idle (AppContext, once loaded with sound on). Never throws. */
+export function prewarmSounds() {
+  if (!enabled.sound || Platform.OS === 'web') return;
+  try { require('../utils/sounds').prewarm({ isBusy: () => isBusy() }); } catch { /* never fatal */ }
+}
+
 /** Switch / toggle feedback (Android only; iOS switches have their own native haptic). */
 export function toggled(on) {
   play(on ? EVENTS.toggleOn : EVENTS.toggleOff);
@@ -300,8 +315,9 @@ export function __resetForTests() {
   enabled = { haptics: true, sound: true };
   lastHapticAt = -Infinity;
   lastTapSoundAt = -Infinity;
+  lastPlayAt = -Infinity;
   log = [];
 }
 
-const feedback = { play, toggled, configure, isEnabled, recent, clearRecent, EVENTS };
+const feedback = { play, toggled, configure, isEnabled, recent, clearRecent, prewarmSounds, isBusy, EVENTS };
 export default feedback;

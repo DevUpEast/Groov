@@ -45,6 +45,9 @@ function buildDefs() {
     defs[`counter-${d}`] = { notes: notes([LADDER[d], 0]), tau: 0.18, capMs: 250, levelDb: -22 };
   }
   defs.goal = { notes: notes([LADDER[GOAL_DEGREES[0]], 0], [LADDER[GOAL_DEGREES[1]], 62]), tau: 0.35, capMs: 450, levelDb: -18 };
+  // A use of an "at most" allowance: a quiet fixed tick that never climbs (staying under a
+  // limit is not progress). The tap that breaks the limit has no sound at all.
+  defs.tick = { notes: notes([NOTE.C5, 0]), tau: 0.18, capMs: 250, levelDb: -26 };
   defs.over = { notes: notes([NOTE.E6, 0]), tau: 0.18, capMs: 250, levelDb: -26 };
   defs.undone = { notes: notes([NOTE.E5, 0], [NOTE.C5, 62]), tau: 0.15, capMs: 250, levelDb: -24 };
   // Plays at the challenge.claimed beat (+250), so the notes land at 250 / 312 / 375 ms.
@@ -72,7 +75,7 @@ export const SOUND_DEFS = buildDefs();
 export const EVENT_SOUNDS = Object.freeze({
   'press': null,
   'habit.done': 'habit', // H(n), or the two-note goal step for a counter
-  'counter.step': 'counter', // C(k, G), or E6 quietly past the goal
+  'counter.step': 'counter', // C(k, G), E6 quietly past the goal; atMost: flat tick, none over
   'habit.undone': 'undone',
   'challenge.claimed': 'challenge',
   'day.complete': 'chord',
@@ -92,6 +95,7 @@ export const EVENT_SOUNDS = Object.freeze({
 /**
  * The sound id for an event. ctx: { n } habits done today including this one (habit.done from a
  * daily tap), or { step, goal } for a counter (counter.step, and habit.done on the goal step).
+ * Add `atMost: true` for a limit habit: a flat tick up to the limit, silence past it.
  */
 export function soundIdFor(event, ctx = {}) {
   const family = EVENT_SOUNDS[event];
@@ -101,6 +105,7 @@ export function soundIdFor(event, ctx = {}) {
     case 'habit':
       return hasGoal ? 'goal' : `habit-${habitDegree(ctx.n) + 1}`;
     case 'counter':
+      if (ctx.atMost) return hasGoal && Number(ctx.step) > Number(ctx.goal) ? null : 'tick';
       if (hasGoal && Number(ctx.step) > Number(ctx.goal)) return 'over';
       return `counter-${hasGoal ? counterDegree(ctx.step, ctx.goal) : 0}`;
     case 'preview':
@@ -127,6 +132,8 @@ export const LISTENING_SET = Object.freeze([
 ]);
 
 export const DAY_FILE = '13-a-day.wav';
+/** Extra listening file: the atMost allowance tick (not one of the 12 plan sounds). */
+export const LIMIT_TICK_FILE = '14-limit-tick.wav';
 
 /** "A day in 10 seconds": 4 habits, a water counter to 8, then the resolution chord at +750. */
 export function daySequence() {
@@ -150,5 +157,6 @@ export function renderKitFiles(sampleRate = SAMPLE_RATE) {
   const total = last.atMs + SOUND_DEFS[last.id].capMs + 200;
   const day = mix(seq.map(s => ({ samples: get(s.id), atMs: s.atMs })), total, sampleRate);
   files.push({ name: DAY_FILE, bytes: encodeWav(day, sampleRate) });
+  files.push({ name: LIMIT_TICK_FILE, bytes: encodeWav(get('tick'), sampleRate) });
   return files;
 }

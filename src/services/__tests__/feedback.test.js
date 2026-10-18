@@ -297,6 +297,15 @@ describe('sound routing (F-04b kit, plan §2.11)', () => {
     expect(sounds.playSound).toHaveBeenCalledTimes(4);
   });
 
+  test('atMost: the tap that breaks the limit keeps its haptic but plays no sound', () => {
+    play(EVENTS.counterStep, { tone: { step: 4, goal: 3, atMost: true } });
+    expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
+    expect(sounds.playSound).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(100);
+    play(EVENTS.counterStep, { tone: { step: 2, goal: 3, atMost: true } });
+    expect(sounds.playSound).toHaveBeenCalledWith('tick');
+  });
+
   test('sound off: the sounds module is never asked to play', () => {
     configure({ haptics: true, sound: false });
     Object.values(EVENTS).forEach(e => play(e, { delay: 0, tone: { n: 2 } }));
@@ -488,6 +497,42 @@ describe('call-site source checks (review M1/m1-m3)', () => {
   });
 });
 
+describe('pre-render scheduling (F-04b M1)', () => {
+  test('isBusy for 1.5 s after any feedback event', () => {
+    expect(feedback.isBusy()).toBe(false);
+    play(EVENTS.selection);
+    expect(feedback.isBusy()).toBe(true);
+    jest.advanceTimersByTime(1499);
+    expect(feedback.isBusy()).toBe(true);
+    jest.advanceTimersByTime(1);
+    expect(feedback.isBusy()).toBe(false);
+  });
+
+  test('prewarmSounds hands sounds.prewarm a live isBusy, only with sound on and not on web', () => {
+    sounds.prewarm = jest.fn();
+    configure({ sound: false });
+    feedback.prewarmSounds();
+    expect(sounds.prewarm).not.toHaveBeenCalled();
+    configure({ sound: true });
+    setPlatform('web', undefined);
+    feedback.prewarmSounds();
+    expect(sounds.prewarm).not.toHaveBeenCalled();
+    setPlatform('android', 36);
+    feedback.prewarmSounds();
+    expect(sounds.prewarm).toHaveBeenCalledTimes(1);
+    const { isBusy } = sounds.prewarm.mock.calls[0][0];
+    jest.advanceTimersByTime(2000);
+    expect(isBusy()).toBe(false);
+    play(EVENTS.habitDone);
+    expect(isBusy()).toBe(true);
+  });
+
+  test('AppContext starts the pre-render once loaded with sound on', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', '..', 'context', 'AppContext.js'), 'utf8');
+    expect(src).toMatch(/if \(loaded && settings\.soundEnabled\) feedback\.prewarmSounds\(\)/);
+  });
+});
+
 describe('F-04b call sites', () => {
   const read = (rel) => fs.readFileSync(path.join(__dirname, '..', '..', rel), 'utf8').replace(/\r\n/g, '\n');
 
@@ -500,6 +545,8 @@ describe('F-04b call sites', () => {
   test('Settings previews Sounds through its own event, never a chime directly', () => {
     const src = read('screens/SettingsScreen.js');
     expect(src).toMatch(/feedback\.play\(EVENTS\.soundPreview\)/);
+    // updateSettings applies the gate synchronously; screens never configure feedback (m3).
+    expect(src).not.toMatch(/feedback\.configure/);
     expect(src).not.toMatch(/utils\/sounds/);
   });
 

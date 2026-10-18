@@ -270,6 +270,9 @@ export function AppProvider({ children }) {
   // The load paths above also set it synchronously so child mount effects never
   // see a stale value; this effect covers every other settings change.
   useEffect(() => applyFeedbackSettings(settings), [settings.hapticsEnabled, settings.soundEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Pre-render the sound kit at idle after launch (no-op when sound is off, on web, or when
+  // already started), so the first chord or fanfare never renders inside a celebration.
+  useEffect(() => { if (loaded && settings.soundEnabled) feedback.prewarmSounds(); }, [loaded, settings.soundEnabled]);
   useEffect(() => { if (loaded) saveData('dateOffset', dateOffset); }, [dateOffset, loaded]);
   useEffect(() => { if (loaded) saveData('challenges', challenges); }, [challenges, loaded]);
   useEffect(() => { if (loaded) saveData('hasOnboarded', hasOnboarded); }, [hasOnboarded, loaded]);

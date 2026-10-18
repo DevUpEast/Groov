@@ -264,9 +264,10 @@ export default function TodayScreen() {
     const over = habit.type === 'atMost' && before + amount > habit.volumeGoal;
     setToast({ id: Date.now(), habit, amount, message: justCompleted ? (habit.type === 'quit' ? t('today.toast.avoided', { name: habit.name }) : t('today.toast.done', { name: habit.name })) : over ? t('today.toast.overLimit', { name: habit.name }) : t('today.toast.plus', { name: habit.name, amount }) });
     // Same frame as the visual change, never awaited (HAP-4). The note climbs the §2.11 ladder:
-    // a counter by its step toward the goal, a daily habit by how many are done today.
+    // a counter by its step toward the goal, a daily habit by how many are done today. An
+    // atMost limit gets a flat tick, and no sound on the tap that breaks it.
     const tone = usesCounter(habit)
-      ? { step: after[habit.id], goal: habit.volumeGoal }
+      ? { step: after[habit.id], goal: habit.volumeGoal, atMost: habit.type === 'atMost' }
       : { n: dueHabits.filter(h => isHabitSatisfiedWith(h, after)).length };
     feedback.play(justCompleted ? EVENTS.habitDone : EVENTS.counterStep, { tone });
 

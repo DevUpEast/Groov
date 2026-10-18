@@ -99,6 +99,7 @@ describe('sound definitions (§2.11 event table)', () => {
     goal: { tau: 0.35, cap: 450, db: -18 },
     'counter-0': { tau: 0.18, cap: 250, db: -22 },
     over: { tau: 0.18, cap: 250, db: -26 },
+    tick: { tau: 0.18, cap: 250, db: -26 },
     undone: { tau: 0.15, cap: 250, db: -24 },
     challenge: { tau: 0.25, cap: 600, db: -20 },
     chord: { tau: 0.6, cap: 900, db: -18 },
@@ -175,6 +176,15 @@ describe('one pitch ladder', () => {
     }
   });
 
+  test('atMost limits: a flat quiet C5 tick that never climbs, silence on and past the break', () => {
+    expect(SOUND_DEFS.tick.notes).toEqual([{ freq: 523.25, atMs: 0 }]);
+    for (const G of [1, 3, 10]) {
+      for (let k = 1; k <= G; k++) expect(soundIdFor('counter.step', { step: k, goal: G, atMost: true })).toBe('tick');
+      expect(soundIdFor('counter.step', { step: G + 1, goal: G, atMost: true })).toBeNull();
+      expect(soundIdFor('counter.step', { step: G + 5, goal: G, atMost: true })).toBeNull();
+    }
+  });
+
   test('timer steps of +5 and past-goal steps', () => {
     expect(soundIdFor('counter.step', { step: 5, goal: 30 })).toBe(`counter-${Math.round(4 * 5 / 29)}`);
     expect(soundIdFor('counter.step', { step: 9, goal: 8 })).toBe('over');
@@ -216,10 +226,11 @@ describe('every event has a sound or an explicit none', () => {
 describe('render', () => {
   const sha = (b) => crypto.createHash('sha256').update(Buffer.from(b)).digest('hex');
 
-  test('12 listening WAVs plus the day; every listening id exists', () => {
+  test('12 listening WAVs plus the day and the limit tick; every listening id exists', () => {
     const files = renderKitFiles();
     expect(LISTENING_SET).toHaveLength(12);
-    expect(files).toHaveLength(13);
+    expect(files).toHaveLength(14);
+    expect(files[13].name).toBe('14-limit-tick.wav');
     LISTENING_SET.forEach(l => expect(SOUND_DEFS[l.id]).toBeDefined());
     const day = files[12];
     expect(day.name).toBe('13-a-day.wav');

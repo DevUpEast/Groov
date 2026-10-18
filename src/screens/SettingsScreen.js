@@ -712,12 +712,7 @@ export default function SettingsScreen() {
                 onValueChange={v => {
                   feedback.toggled(v);
                   updateSettings({ soundEnabled: v });
-                  if (v) {
-                    // The settings effect re-configures feedback a render later; open the sound
-                    // gate now so the preview of the newly enabled kit is heard.
-                    feedback.configure({ ...feedback.isEnabled(), sound: true });
-                    feedback.play(EVENTS.soundPreview);
-                  }
+                  if (v) feedback.play(EVENTS.soundPreview);
                 }}
                 {...switchColors(theme, settings.soundEnabled)}
                 accessibilityLabel={t('settings.sounds')}
