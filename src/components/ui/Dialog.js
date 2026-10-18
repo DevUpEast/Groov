@@ -3,7 +3,7 @@ import {
   Modal, View, Text, Pressable, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet,
 } from 'react-native';
 import { useApp } from '../../context/AppContext';
-import { elevation } from '../../theme/tokens';
+import { elevation, space, radius } from '../../theme/tokens';
 import OverlayModal from './OverlayModal';
 import feedback, { EVENTS } from '../../services/feedback';
 
@@ -177,32 +177,32 @@ export default function Dialog({
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  overlay: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.lg },
   card: {
     width: '100%',
     maxWidth: 420,
     maxHeight: '100%',
-    borderRadius: 24,
+    borderRadius: radius.sheet,
     borderWidth: 1,
-    padding: 24,
+    padding: space.lg,
   },
   scroll: { flexGrow: 0, flexShrink: 1 },
-  scrollContent: { paddingBottom: 16 },
-  title: { fontSize: 17, fontWeight: '700', marginBottom: 4 },
-  body: { fontSize: 13, marginBottom: 16 },
+  scrollContent: { paddingBottom: space.md },
+  title: { fontSize: 17, fontWeight: '700', marginBottom: space.xxs },
+  body: { fontSize: 13, marginBottom: space.md },
   actions: { flexDirection: 'row', gap: 10 },
   actionsStacked: { gap: 10 },
   btn: {
     flex: 1,
     minHeight: 48,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    borderRadius: radius.card,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnStacked: { flex: 0, alignSelf: 'stretch', paddingHorizontal: 16 },
+  btnStacked: { flex: 0, alignSelf: 'stretch', paddingHorizontal: space.md },
   btnDimmed: { opacity: 0.45 },
   btnText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
 });

@@ -12,6 +12,7 @@ import { duration, spring, timing, springTo } from './src/theme/motion';
 import { isReducedMotion } from './src/utils/a11y';
 import PressableScale from './src/components/ui/PressableScale';
 import feedback, { EVENTS } from './src/services/feedback';
+import { space, radius } from './src/theme/tokens';
 
 // Crash reporting is a no-op until EXPO_PUBLIC_SENTRY_DSN is set (see src/utils/sentry.js).
 initSentry();
@@ -434,14 +435,14 @@ function App() {
 export default wrapRoot(App);
 
 const crashStyles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  emoji: { fontSize: 56, marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
-  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', marginBottom: 24 },
-  btn: { paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14 },
+  root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl },
+  emoji: { fontSize: 56, marginBottom: space.md },
+  title: { fontSize: 22, fontWeight: '700', marginBottom: space.xs, textAlign: 'center' },
+  body: { fontSize: 15, lineHeight: 22, textAlign: 'center', marginBottom: space.lg },
+  btn: { paddingVertical: 14, paddingHorizontal: space.xl, borderRadius: radius.pill },
   btnText: { fontSize: 16, fontWeight: '700' },
-  devBox: { marginTop: 24, maxHeight: 260, alignSelf: 'stretch' },
-  devText: { fontSize: 13, marginBottom: 8 },
+  devBox: { marginTop: space.lg, maxHeight: 260, alignSelf: 'stretch' },
+  devText: { fontSize: 13, marginBottom: space.xs },
   devStack: { fontSize: 12 },
 });
 
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 4,
+    paddingTop: space.xxs,
     paddingHorizontal: 2,
     gap: 1,
   },

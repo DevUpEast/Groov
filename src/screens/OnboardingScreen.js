@@ -6,7 +6,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import SafeAreaView from '../components/SafeAreaView';
 import { useApp } from '../context/AppContext';
-import { palette } from '../theme/tokens';
+import { palette, space, radius } from '../theme/tokens';
 import feedback, { EVENTS } from '../services/feedback';
 import { t, useLocale } from '../i18n';
 import { STARTER_HABITS, getStarterHabits } from '../utils/habits';
@@ -135,7 +135,7 @@ function OnboardingFlow() {
           {dots}
           <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
             <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.pick.title')}</Text>
-            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: 16 }]}>
+            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: space.md }]}>
               {t('onboarding.pick.body')}
             </Text>
             <ScrollView style={{ alignSelf: 'stretch', maxHeight: 340 }} showsVerticalScrollIndicator={false}>
@@ -190,7 +190,7 @@ function OnboardingFlow() {
           <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
             <Text style={styles.emojiSmall}>🔔</Text>
             <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.reminders.title')}</Text>
-            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: 16 }]}>
+            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: space.md }]}>
               {t('onboarding.reminders.body')}
             </Text>
             <ScrollView style={{ alignSelf: 'stretch', maxHeight: 320 }} showsVerticalScrollIndicator={false}>
@@ -239,7 +239,7 @@ function OnboardingFlow() {
           {dots}
           <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
             <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.plan.title')}</Text>
-            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: 12 }]}>
+            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: space.sm }]}>
               {t('onboarding.plan.body')}
             </Text>
             <ScrollView style={{ alignSelf: 'stretch', maxHeight: 360 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -299,38 +299,38 @@ function OnboardingFlow() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  dots: { flexDirection: 'row', gap: 8, marginBottom: 24 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.lg },
+  dots: { flexDirection: 'row', gap: space.xs, marginBottom: space.lg },
+  dot: { width: 8, height: 8, borderRadius: radius.cell },
   dotActive: { width: 24 },
   dotIdle: { opacity: 0.4 },
   card: {
-    borderRadius: 24, padding: 28, alignItems: 'center', width: '100%', maxWidth: 420, marginBottom: 20,
+    borderRadius: radius.sheet, padding: 28, alignItems: 'center', width: '100%', maxWidth: 420, marginBottom: 20,
     shadowColor: palette.light.shadow, shadowOpacity: 0.15, shadowRadius: 20, elevation: 8,
   },
   cardWide: { padding: 20, alignItems: 'stretch' },
   emoji: { fontSize: 64, marginBottom: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
+  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: space.xs },
   body: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  btn: { width: '100%', maxWidth: 420, padding: 16, borderRadius: 16, alignItems: 'center' },
+  btn: { width: '100%', maxWidth: 420, padding: space.md, borderRadius: radius.card, alignItems: 'center' },
   btnText: { fontSize: 17, fontWeight: '700' },
-  skipBtn: { marginTop: 12, padding: 8 },
+  skipBtn: { marginTop: space.sm, padding: space.xs },
   skipText: { fontSize: 15, fontWeight: '600' },
-  backBtn: { marginTop: 2, padding: 8 },
-  emojiSmall: { fontSize: 40, textAlign: 'center', marginBottom: 8 },
-  reminderRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 8 },
+  backBtn: { marginTop: 2, padding: space.xs },
+  emojiSmall: { fontSize: 40, textAlign: 'center', marginBottom: space.xs },
+  reminderRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderWidth: 1, borderRadius: radius.card, padding: space.sm, marginBottom: space.xs },
   reminderTime: { fontSize: 14, fontWeight: '700' },
-  pickRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 12, padding: 12, marginBottom: 8 },
+  pickRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderWidth: 1.5, borderRadius: radius.card, padding: space.sm, marginBottom: space.xs },
   pickIcon: { fontSize: 24 },
   pickName: { fontSize: 15, fontWeight: '600' },
   pickSub: { fontSize: 12, marginTop: 1 },
-  check: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  check: { width: 24, height: 24, borderRadius: radius.pill, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   checkMark: { fontSize: 13, fontWeight: 'bold' },
-  counter: { fontSize: 12, textAlign: 'center', marginTop: 8 },
-  planBlock: { borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 10 },
-  planName: { fontSize: 15, fontWeight: '700', marginBottom: 8 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1.5 },
+  counter: { fontSize: 12, textAlign: 'center', marginTop: space.xs },
+  planBlock: { borderWidth: 1, borderRadius: radius.card, padding: space.sm, marginBottom: 10 },
+  planName: { fontSize: 15, fontWeight: '700', marginBottom: space.xs },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: space.xs },
+  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.card, borderWidth: 1.5 },
   chipText: { fontSize: 12, fontWeight: '600' },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
+  input: { borderWidth: 1, borderRadius: radius.control, paddingHorizontal: space.sm, paddingVertical: 10, fontSize: 14 },
 });

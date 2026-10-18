@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { t, useLocale } from '../i18n';
-import { elevation } from '../theme/tokens';
+import { elevation, space, radius } from '../theme/tokens';
 import OverlayModal from './ui/OverlayModal';
 
 // Small centred dialog to write a note for one habit on one day.
@@ -42,12 +42,12 @@ export default function NoteModal({ target, onSave, onClose, theme }) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { width: '100%', maxWidth: 420, borderRadius: 16, borderWidth: 1, padding: 20 },
+  overlay: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.lg },
+  card: { width: '100%', maxWidth: 420, borderRadius: radius.card, borderWidth: 1, padding: 20 },
   title: { fontSize: 17, fontWeight: '700' },
-  sub: { fontSize: 12, marginTop: 2, marginBottom: 12 },
-  input: { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 15, minHeight: 90, textAlignVertical: 'top', marginBottom: 14 },
+  sub: { fontSize: 12, marginTop: 2, marginBottom: space.sm },
+  input: { borderWidth: 1, borderRadius: radius.control, padding: space.sm, fontSize: 15, minHeight: 90, textAlignVertical: 'top', marginBottom: 14 },
   btns: { flexDirection: 'row', gap: 10 },
-  btn: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  btn: { flex: 1, borderWidth: 1, borderRadius: radius.card, paddingVertical: space.sm, alignItems: 'center' },
   btnText: { fontSize: 14, fontWeight: '600' },
 });

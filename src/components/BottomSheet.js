@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Modal, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Animated, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { elevation } from '../theme/tokens';
+import { elevation, space, radius } from '../theme/tokens';
 import { useMotion } from '../theme/motion';
 import OverlayModal from './ui/OverlayModal';
 
@@ -30,9 +30,9 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
   overlayBg: { ...StyleSheet.absoluteFillObject },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    paddingHorizontal: space.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : space.lg,
   },
 });

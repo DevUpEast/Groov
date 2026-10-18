@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth, AUTH_CANCELLED } from '../context/AuthContext';
 import { themes } from '../theme/colors';
-import { palette } from '../theme/tokens';
+import { palette, space, radius } from '../theme/tokens';
 import { t, useLocale } from '../i18n';
 
 export default function AuthScreen() {
@@ -215,7 +215,7 @@ export default function AuthScreen() {
               {/* ── Reset: enter code + new password ── */}
               {mode === 'reset' && (
                 <>
-                  {!!successMsg && <Text style={[s.msg, { color: theme.success, marginBottom: 8 }]}>{successMsg}</Text>}
+                  {!!successMsg && <Text style={[s.msg, { color: theme.success, marginBottom: space.xs }]}>{successMsg}</Text>}
                   <Text style={[s.label, { color: theme.textSecondary }]}>{t('auth.resetCode')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
@@ -466,12 +466,12 @@ export default function AuthScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1 },
   kav: { flex: 1 },
-  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  header: { alignItems: 'center', marginBottom: 32 },
+  scroll: { flexGrow: 1, justifyContent: 'center', padding: space.lg },
+  header: { alignItems: 'center', marginBottom: space.xl },
   logo: { fontSize: 40, fontWeight: '800', letterSpacing: -1 },
   tagline: { fontSize: 15, marginTop: 6 },
   card: {
-    borderRadius: 16,
+    borderRadius: radius.card,
     borderWidth: 1,
     padding: 20,
     shadowColor: palette.light.shadow,
@@ -482,15 +482,15 @@ const s = StyleSheet.create({
   },
   tabs: {
     flexDirection: 'row',
-    borderRadius: 10,
+    borderRadius: radius.control,
     borderWidth: 1,
     padding: 3,
     marginBottom: 20,
   },
   tab: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: space.xs,
+    borderRadius: radius.control,
     borderWidth: 1,
     borderColor: 'transparent',
     alignItems: 'center',
@@ -500,49 +500,49 @@ const s = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '500', marginBottom: 2, marginTop: 6 },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.control,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: space.sm,
     fontSize: 15,
-    marginBottom: 4,
+    marginBottom: space.xxs,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.control,
     paddingHorizontal: 14,
-    marginBottom: 4,
+    marginBottom: space.xxs,
   },
   inputInner: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: space.sm,
     fontSize: 15,
   },
   eyeBtn: {
-    paddingLeft: 8,
-    paddingVertical: 4,
+    paddingLeft: space.xs,
+    paddingVertical: space.xxs,
   },
-  msg: { fontSize: 13, marginTop: 4, marginBottom: 2 },
+  msg: { fontSize: 13, marginTop: space.xxs, marginBottom: 2 },
   btn: {
     marginTop: 14,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: radius.card,
     alignItems: 'center',
   },
   btnDisabled: { opacity: 0.7 },
   btnText: { fontSize: 15, fontWeight: '700' },
-  footer: { textAlign: 'center', marginTop: 24, fontSize: 14 },
+  footer: { textAlign: 'center', marginTop: space.lg, fontSize: 14 },
   forgotBtn: { alignItems: 'center', marginTop: 10 },
   forgotText: { fontSize: 13 },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18, marginBottom: 10 },
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
   dividerText: { fontSize: 12, marginHorizontal: 10 },
-  socialBtn: { height: 48, borderRadius: 12, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
+  socialBtn: { height: 48, borderRadius: radius.card, marginTop: space.xs, alignItems: 'center', justifyContent: 'center' },
   guestBtn: { marginTop: 18, alignItems: 'center', paddingVertical: 10 },
   guestText: { fontSize: 15, fontWeight: '700' },
-  guestHint: { fontSize: 12, textAlign: 'center', lineHeight: 17, paddingHorizontal: 12 },
+  guestHint: { fontSize: 12, textAlign: 'center', lineHeight: 17, paddingHorizontal: space.sm },
   googleBtn: { flexDirection: 'row', borderWidth: 1 },
-  googleIcon: { marginRight: 8 },
+  googleIcon: { marginRight: space.xs },
   googleText: { fontSize: 15, fontWeight: '600' },
 });

@@ -5,7 +5,7 @@ import { announce } from '../utils/a11y';
 import { useMotion, celebration, spring } from '../theme/motion';
 import { t } from '../i18n';
 import OverlayModal from './ui/OverlayModal';
-import { celebrationArt } from '../theme/tokens';
+import { celebrationArt, space, radius } from '../theme/tokens';
 
 // The trophy's confetti (moved here from CelebrationOverlay in C-07, when the perfect-day
 // confetti gave way to the credit flight and RingBurst). Full motion only: the trophy shows
@@ -201,8 +201,8 @@ const styles = StyleSheet.create({
   column: { alignItems: 'center' },
   center: { alignItems: 'center', justifyContent: 'center', width: 160, height: 160 },
   emoji: { fontSize: 80 },
-  orbitDot: { position: 'absolute', width: 14, height: 14, borderRadius: 7 },
-  hint: { marginTop: 24, fontSize: 15, fontWeight: '600', opacity: 0.85 },
+  orbitDot: { position: 'absolute', width: 14, height: 14, borderRadius: radius.pill },
+  hint: { marginTop: space.lg, fontSize: 15, fontWeight: '600', opacity: 0.85 },
   hintHidden: { opacity: 0 },
-  particle: { position: 'absolute', width: 10, height: 10, borderRadius: 2, top: 0, left: 0 },
+  particle: { position: 'absolute', width: 10, height: 10, borderRadius: radius.cell, top: 0, left: 0 },
 });

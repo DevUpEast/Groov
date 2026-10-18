@@ -3,6 +3,7 @@ import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'rea
 import { getChallengeTier, TIER_STYLES } from '../context/AppContext';
 import { t, useLocale } from '../i18n';
 import OverlayModal from './ui/OverlayModal';
+import { space, radius } from '../theme/tokens';
 
 function ChallengeResultCard({ challenge, theme }) {
   const tier = challenge.tier || getChallengeTier(challenge.completedDays?.length ?? 0, challenge.days);
@@ -94,7 +95,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   container: {
-    padding: 24,
+    padding: space.lg,
     paddingBottom: 40,
     justifyContent: 'center',
     flexGrow: 1,
@@ -103,15 +104,15 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: space.xxs,
   },
   pageIndicator: {
     fontSize: 13,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: space.md,
   },
   card: {
-    borderRadius: 18,
+    borderRadius: radius.sheet,
     borderWidth: 2,
     padding: 20,
     marginBottom: 20,
@@ -119,20 +120,20 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
+    gap: space.sm,
+    marginBottom: space.md,
   },
   trophyEmoji: { fontSize: 40 },
   challengeName: { fontSize: 18, fontWeight: 'bold', marginBottom: 2 },
   tierLabel: { fontSize: 13, fontWeight: '600' },
-  progressBg: { height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 6 },
-  progressFill: { height: 8, borderRadius: 4 },
-  progressText: { fontSize: 12, marginBottom: 16 },
-  headline: { fontSize: 17, fontWeight: '700', marginBottom: 8 },
+  progressBg: { height: 8, borderRadius: radius.cell, overflow: 'hidden', marginBottom: 6 },
+  progressFill: { height: 8, borderRadius: radius.cell },
+  progressText: { fontSize: 12, marginBottom: space.md },
+  headline: { fontSize: 17, fontWeight: '700', marginBottom: space.xs },
   body: { fontSize: 14, lineHeight: 22 },
   dismissBtn: {
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: radius.card,
+    padding: space.md,
     alignItems: 'center',
   },
   dismissBtnText: { fontSize: 16, fontWeight: '700' },

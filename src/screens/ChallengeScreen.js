@@ -23,6 +23,7 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import TextField from '../components/ui/TextField';
 import { numeric } from '../theme/typography';
 import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, useMotion } from '../theme/motion';
+import { space, radius } from '../theme/tokens';
 
 const RANGE_OPTIONS = [
   { key: 'week', max: 7 },
@@ -157,7 +158,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
         {!initial && (
           <>
             <SectionLabel label={t('challenges.form.template')} theme={theme} header={false} first style={styles.formLabel} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.md }} contentContainerStyle={{ gap: space.xs }}>
               {templates.map(tpl => {
                 const active = days === tpl.days && name === tpl.name;
                 return (
@@ -321,7 +322,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: canSave ? theme.action : theme.disabledContainer, marginTop: 8 }]}
+          style={[styles.saveBtn, { backgroundColor: canSave ? theme.action : theme.disabledContainer, marginTop: space.xs }]}
           onPress={handleSave}
           disabled={!canSave}
           accessibilityRole="button"
@@ -633,7 +634,7 @@ export default function ChallengeScreen() {
         )}
 
         {/* Past Challenges */}
-        <View style={{ marginTop: 8 }}>
+        <View style={{ marginTop: space.xs }}>
           <SectionLabel label={t('challenges.past')} theme={theme} first style={styles.sectionLabel} />
           {effectivePastChallenges.length === 0 ? (
             <View style={[styles.pastEmptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -699,14 +700,14 @@ export default function ChallengeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 24, paddingBottom: 40 },
-  headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  scroll: { paddingHorizontal: space.gutter, paddingTop: space.lg, paddingBottom: 40 },
+  headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.lg },
   heading: {},
-  newBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  newBtn: { paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.pill },
   newBtnText: { fontWeight: '700', fontSize: 15 },
-  sectionLabel: { marginBottom: 10 },
-  card: { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 16 },
-  challengeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 10 },
+  sectionLabel: { marginBottom: space.xs },
+  card: { borderRadius: radius.card, borderWidth: 1, padding: 20, marginBottom: space.lg },
+  challengeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: space.md, gap: 10 },
   trophy: { fontSize: 32 },
   challengeInfo: { flex: 1 },
   challengeName: { fontSize: 17, fontWeight: 'bold' },
@@ -716,79 +717,79 @@ const styles = StyleSheet.create({
   deleteBtn: { padding: 6 },
   deleteBtnText: { fontSize: 16, fontWeight: 'bold' },
   badgeRow: { flexDirection: 'row', gap: 6, marginBottom: 14, flexWrap: 'wrap' },
-  badge: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  badge: { width: 36, height: 36, borderRadius: radius.pill, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   badgeText: { fontSize: 12, fontWeight: 'bold' },
-  progressBg: { height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 6 },
-  progressFill: { height: 8, borderRadius: 4 },
-  progressLabel: { fontSize: 12, marginBottom: 8, ...numeric },
-  desc: { fontSize: 13, lineHeight: 18, marginBottom: 8 },
-  linkedSection: { borderTopWidth: 1, paddingTop: 12, marginTop: 4 },
+  progressBg: { height: 8, borderRadius: radius.cell, overflow: 'hidden', marginBottom: 6 },
+  progressFill: { height: 8, borderRadius: radius.cell },
+  progressLabel: { fontSize: 12, marginBottom: space.xs, ...numeric },
+  desc: { fontSize: 13, lineHeight: 18, marginBottom: space.xs },
+  linkedSection: { borderTopWidth: 1, paddingTop: space.sm, marginTop: space.xxs },
   linkedTitleArea: { flexDirection: 'row', alignItems: 'center' },
   linkedTitle: { fontSize: 12, fontWeight: '600' },
   linkedChevron: { fontSize: 12, fontWeight: '700' },
-  linkedPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  linkedPill: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, gap: 4, maxWidth: 140 },
+  linkedPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: space.xs },
+  linkedPill: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.control, paddingHorizontal: space.xs, paddingVertical: space.xxs, gap: space.xxs, maxWidth: 140 },
   linkedPillIcon: { fontSize: 14 },
   linkedPillText: { fontSize: 12, fontWeight: '600', flexShrink: 1 },
-  todayStatus: { borderTopWidth: 1, paddingTop: 12, marginTop: 8 },
+  todayStatus: { borderTopWidth: 1, paddingTop: space.sm, marginTop: space.xs },
   claimDoneText: { fontSize: 15, fontWeight: '600' },
   claimWaiting: { fontSize: 13, lineHeight: 18 },
-  emptyCard: { borderRadius: 16, borderWidth: 1, padding: 36, alignItems: 'center', borderStyle: 'dashed' },
-  emptyEmoji: { fontSize: 44, marginBottom: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  emptyCard: { borderRadius: radius.card, borderWidth: 1, padding: 36, alignItems: 'center', borderStyle: 'dashed' },
+  emptyEmoji: { fontSize: 44, marginBottom: space.sm },
+  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: space.xs },
   emptyBody: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
-  emptyBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 },
+  emptyBtn: { paddingHorizontal: space.lg, paddingVertical: space.sm, borderRadius: radius.pill },
   emptyBtnText: { fontWeight: '700', fontSize: 15 },
   tipTitle: { fontSize: 14, fontWeight: '700', marginBottom: 6 },
   tipBody: { fontSize: 14, lineHeight: 20 },
-  pastRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 10 },
-  pastEmptyCard: { borderRadius: 14, borderWidth: 1, borderStyle: 'dashed', padding: 20, alignItems: 'center', marginBottom: 10 },
+  pastRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderRadius: radius.card, borderWidth: 1, padding: 14, marginBottom: space.xs },
+  pastEmptyCard: { borderRadius: radius.card, borderWidth: 1, borderStyle: 'dashed', padding: 20, alignItems: 'center', marginBottom: 10 },
   pastEmptyText: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
   pastEmoji: { fontSize: 24 },
   pastName: { fontSize: 15, fontWeight: '600' },
   pastSub: { fontSize: 12, marginTop: 2 },
-  completeBanner: { borderRadius: 10, padding: 12, alignItems: 'center', marginBottom: 16 },
+  completeBanner: { borderRadius: radius.control, padding: space.sm, alignItems: 'center', marginBottom: space.md },
   completeBannerText: { fontSize: 16, fontWeight: '700' },
-  pastDesc: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
-  pastMeta: { fontSize: 12, marginTop: 12 },
+  pastDesc: { fontSize: 14, lineHeight: 20, marginBottom: space.md },
+  pastMeta: { fontSize: 12, marginTop: space.sm },
   // Form & habit linking
-  noHabitsInForm: { fontSize: 13, marginBottom: 16, fontStyle: 'italic' },
-  linkAllBtn: { borderWidth: 1.5, borderRadius: 12, padding: 12, alignItems: 'center', marginBottom: 12 },
+  noHabitsInForm: { fontSize: 13, marginBottom: space.md, fontStyle: 'italic' },
+  linkAllBtn: { borderWidth: 1.5, borderRadius: radius.card, padding: space.sm, alignItems: 'center', marginBottom: space.sm },
   linkAllBtnText: { fontSize: 15, fontWeight: '700' },
-  habitLinkRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1.5, padding: 12, marginBottom: 10, gap: 10 },
+  habitLinkRow: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.card, borderWidth: 1.5, padding: space.sm, marginBottom: 10, gap: 10 },
   habitLinkIcon: { fontSize: 22 },
   habitLinkName: { flex: 1, fontSize: 15, fontWeight: '500' },
-  habitLinkCheck: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  habitLinkCheck: { width: 24, height: 24, borderRadius: radius.pill, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   habitLinkCheckMark: { fontSize: 12, fontWeight: 'bold' },
   linkWarningRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   linkWarning: { flex: 1, fontSize: 13, fontStyle: 'italic' },
-  addHabitInModalBtn: { borderWidth: 1.5, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 4, marginBottom: 16, borderStyle: 'dashed' },
+  addHabitInModalBtn: { borderWidth: 1.5, borderRadius: radius.card, padding: 14, alignItems: 'center', marginTop: space.xxs, marginBottom: space.md, borderStyle: 'dashed' },
   addHabitInModalText: { fontSize: 15, fontWeight: '700' },
-  templateChip: { width: 96, borderWidth: 1.5, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center' },
+  templateChip: { width: 96, borderWidth: 1.5, borderRadius: radius.control, paddingVertical: 10, paddingHorizontal: space.xs, alignItems: 'center' },
   templateEmoji: { fontSize: 22 },
   templateDays: { fontSize: 15, fontWeight: '800', marginTop: 2 },
   templateName: { fontSize: 12, marginTop: 2 },
   // Icon picker
-  iconPickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  iconPickerBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  iconPickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: 20 },
+  iconPickerBtn: { width: 44, height: 44, borderRadius: radius.control, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   iconPickerEmoji: { fontSize: 22 },
   // Sheet / modal styles
   overlay: { flex: 1, justifyContent: 'flex-end' },
   overlayBg: { ...StyleSheet.absoluteFillObject },
   sheet: {
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
+    paddingHorizontal: space.lg, paddingBottom: Platform.OS === 'ios' ? 40 : space.lg,
     maxHeight: '92%',
   },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   sheetTitle: { fontSize: 20, fontWeight: 'bold' },
-  sheetCloseBtn: { padding: 4 },
+  sheetCloseBtn: { padding: space.xxs },
   sheetCloseTxt: { fontSize: 20, fontWeight: 'bold' },
-  formLabel: { marginBottom: 8 },
-  detailLabel: { fontSize: 13, fontWeight: '600', marginBottom: 8 },
-  rangeRow: { marginBottom: 16 },
-  sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, marginHorizontal: 4 },
+  formLabel: { marginBottom: space.xs },
+  detailLabel: { fontSize: 13, fontWeight: '600', marginBottom: space.xs },
+  rangeRow: { marginBottom: space.md },
+  sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: space.md, marginHorizontal: space.xxs },
   sliderLabelText: { fontSize: 12 },
-  saveBtn: { padding: 16, borderRadius: 14, alignItems: 'center' },
+  saveBtn: { padding: space.md, borderRadius: radius.card, alignItems: 'center' },
   saveBtnText: { fontSize: 16, fontWeight: '700' },
 });

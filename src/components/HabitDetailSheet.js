@@ -14,7 +14,7 @@ import HabitIcon from './HabitIcon';
 import { describeGoal } from '../utils/habits';
 import { isHabitDoneOnDay } from '../utils/dayStatus';
 import { t, getLocale, useLocale } from '../i18n';
-import { data } from '../theme/tokens';
+import { data, space, radius } from '../theme/tokens';
 import { numeric } from '../theme/typography';
 import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle } from '../theme/motion';
 
@@ -191,7 +191,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday })
   return (
     <BottomSheet visible={visible} onClose={close} translateY={translateY} maxHeight="92%">
       <SheetDragHandle panHandlers={pan.panHandlers} theme={theme} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.lg }}>
         <View style={styles.titleRow}>
           <HabitIcon habit={habit} size={34} imageStyle={styles.iconImage} textStyle={styles.icon} />
           <View style={{ flex: 1 }}>
@@ -265,7 +265,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday })
                   accessibilityRole="button"
                   accessibilityLabel={t('habitDetail.cellA11y', { date: d.key, status: t(`habitDetail.status.${d.future ? 'future' : d.status}`) })}
                   style={{
-                    width: cell, height: cell, marginBottom: GRID_GAP, borderRadius: 3,
+                    width: cell, height: cell, marginBottom: GRID_GAP, borderRadius: radius.cell,
                     backgroundColor: colorFor(d),
                     borderWidth: d.key === today ? 1.5 : 0, borderColor: d.status === 'pending' ? theme.controlBorder : theme.text,
                   }}
@@ -310,30 +310,30 @@ export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday })
 }
 
 const styles = StyleSheet.create({
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.md },
   icon: { fontSize: 34 },
-  iconImage: { width: 40, height: 40, borderRadius: 8 },
+  iconImage: { width: 40, height: 40, borderRadius: radius.control },
   name: { fontSize: 20, fontWeight: 'bold' },
   meta: { fontSize: 13, marginTop: 2 },
-  editBtn: { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
+  editBtn: { borderWidth: 1.5, borderRadius: radius.control, paddingHorizontal: space.sm, paddingVertical: 6 },
   editBtnText: { fontSize: 13, fontWeight: '700' },
-  closeBtn: { padding: 4 },
+  closeBtn: { padding: space.xxs },
   closeTxt: { fontSize: 20, fontWeight: 'bold' },
-  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  stat: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1, gap: 2 },
+  statsRow: { flexDirection: 'row', gap: space.xs, marginBottom: 20 },
+  stat: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: radius.card, borderWidth: 1, gap: 2 },
   statEmoji: { fontSize: 16 },
   statValue: { fontSize: 17, fontWeight: 'bold', ...numeric },
   statLabel: { fontSize: 12, fontWeight: '600' },
   sectionTitle: { fontSize: 15, fontWeight: '700' },
-  hint: { fontSize: 12, marginTop: 2, marginBottom: 8 },
+  hint: { fontSize: 12, marginTop: 2, marginBottom: space.xs },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  legendDot: { width: 10, height: 10, borderRadius: 2 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
+  legendDot: { width: 10, height: 10, borderRadius: radius.cell / 2 },
   legendText: { fontSize: 12 },
   weekdayRow: { flexDirection: 'row', gap: 6, height: 120, alignItems: 'flex-end' },
   weekdayCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
-  weekdayPct: { fontSize: 12, marginBottom: 4, ...numeric },
-  weekdayTrack: { flex: 1, width: '70%', borderRadius: 4, overflow: 'hidden', justifyContent: 'flex-end' },
-  weekdayFill: { width: '100%', borderRadius: 4 },
-  weekdayLabel: { fontSize: 12, marginTop: 4, fontWeight: '600' },
+  weekdayPct: { fontSize: 12, marginBottom: space.xxs, ...numeric },
+  weekdayTrack: { flex: 1, width: '70%', borderRadius: radius.cell, overflow: 'hidden', justifyContent: 'flex-end' },
+  weekdayFill: { width: '100%', borderRadius: radius.cell },
+  weekdayLabel: { fontSize: 12, marginTop: space.xxs, fontWeight: '600' },
 });

@@ -4,7 +4,7 @@ import { PLANS, PRO_FEATURES, purchasePlan, restorePurchases, purchasesConfigure
 import feedback, { EVENTS } from '../services/feedback';
 import { track, Events } from '../utils/analytics';
 import { t, useLocale } from '../i18n';
-import { elevation } from '../theme/tokens';
+import { elevation, space, radius } from '../theme/tokens';
 import OverlayModal from './ui/OverlayModal';
 
 const TERMS_URL = 'https://isaaceast.com/groov/terms';
@@ -113,27 +113,27 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 16, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '92%' },
+  sheet: { borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: Platform.OS === 'ios' ? 40 : space.lg, maxHeight: '92%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   title: { fontSize: 22, fontWeight: 'bold' },
-  closeBtn: { padding: 4 },
+  closeBtn: { padding: space.xxs },
   closeTxt: { fontSize: 20, fontWeight: 'bold' },
   reason: { fontSize: 14, lineHeight: 20, marginBottom: 14 },
-  features: { gap: 8, marginBottom: 16 },
+  features: { gap: space.xs, marginBottom: space.md },
   feature: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   featureEmoji: { fontSize: 18, width: 26, textAlign: 'center' },
   featureText: { fontSize: 14, flex: 1 },
   plans: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  plan: { flex: 1, borderWidth: 2, borderRadius: 14, padding: 14, alignItems: 'center' },
-  badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 6 },
+  plan: { flex: 1, borderWidth: 2, borderRadius: radius.card, padding: 14, alignItems: 'center' },
+  badge: { borderRadius: radius.control, paddingHorizontal: space.xs, paddingVertical: 2, marginBottom: 6 },
   badgeText: { fontSize: 12, fontWeight: '800' },
   planTitle: { fontSize: 15, fontWeight: '700' },
-  planPrice: { fontSize: 16, fontWeight: '800', marginTop: 4 },
-  planNote: { fontSize: 12, marginTop: 4, textAlign: 'center' },
+  planPrice: { fontSize: 16, fontWeight: '800', marginTop: space.xxs },
+  planNote: { fontSize: 12, marginTop: space.xxs, textAlign: 'center' },
   error: { fontSize: 13, marginBottom: 10 },
-  cta: { paddingVertical: 15, borderRadius: 14, alignItems: 'center' },
+  cta: { paddingVertical: 15, borderRadius: radius.card, alignItems: 'center' },
   ctaText: { fontSize: 16, fontWeight: '700' },
-  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 12 },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: space.xs, marginTop: space.sm },
   link: { fontSize: 13, fontWeight: '600' },
   dot: { fontSize: 13 },
   legal: { fontSize: 12, lineHeight: 16, textAlign: 'center', marginTop: 10 },

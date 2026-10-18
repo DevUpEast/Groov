@@ -3,7 +3,7 @@ import { Animated, Text, StyleSheet, View } from 'react-native';
 import { t } from '../i18n';
 import { duration, easing, useMotion } from '../theme/motion';
 import { themes } from '../theme/colors';
-import { radius } from '../theme/tokens';
+import { radius, space } from '../theme/tokens';
 import PressableScale, { hitSlopFor } from './ui/PressableScale';
 
 // The toast is a dark surface in both themes, so its Undo press uses the dark theme's
@@ -83,13 +83,13 @@ export default function UndoToast({ toast, onUndo, onHide, theme, bottom = 16, d
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 16, right: 16, alignItems: 'center' },
   toast: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingLeft: 16, paddingRight: 6, paddingVertical: 8, borderRadius: 12, borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', gap: space.sm,
+    paddingLeft: space.md, paddingRight: 6, paddingVertical: space.xs, borderRadius: radius.card, borderWidth: 1,
     shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6,
     maxWidth: '100%',
   },
   msg: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
   // 36 tall + hitSlop to the touch minimum; it is wider than 48 with its label.
-  undoBtn: { minHeight: UNDO_HEIGHT, justifyContent: 'center', paddingHorizontal: 12, borderRadius: radius.control, overflow: 'hidden' },
+  undoBtn: { minHeight: UNDO_HEIGHT, justifyContent: 'center', paddingHorizontal: space.sm, borderRadius: radius.control, overflow: 'hidden' },
   undo: { fontSize: 14, fontWeight: '800', letterSpacing: 0.3 },
 });
