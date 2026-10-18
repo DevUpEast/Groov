@@ -31,7 +31,9 @@ describe('habit form accessibility (S-06)', () => {
     expect(form).toMatch(/accessibilityLabel=\{t\(`habits\.icons\.\$\{key\}`\)\}/);
     expect(form).toMatch(/accessibilityLabel=\{t\('habits\.form\.photoIcon'\)\}/);
     expect(form).toMatch(/t\(`habits\.colors\.\$\{accentId\}`\)/);
-    expect(form).toMatch(/accessibilityLabel=\{t\('common\.close'\)\}/);
+    // F-09b: the close button is ui/Sheet's title-row IconButton, labelled common.close.
+    expect(form).toMatch(/<Sheet\s[\s\S]{0,200}title=\{/);
+    expect(fs.readFileSync(path.join(__dirname, '..', '..', 'components', 'ui', 'Sheet.js'), 'utf8')).toMatch(/accessibilityLabel=\{t\('common\.close'\)\}/);
   });
 
   it('has an English name for every preset icon', () => {

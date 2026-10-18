@@ -89,3 +89,17 @@ export function planFlush(queue, currentChallenges) {
   });
   return ids;
 }
+
+// The challenge form's dirty guard (F-09b): has anything changed since the sheet opened?
+// Text is compared as typed; the linked habits as a set (the order of taps does not matter).
+export function challengeFormDirty(opened, current) {
+  if (!opened || !current) return false;
+  if ((opened.name ?? '') !== (current.name ?? '')) return true;
+  if ((opened.description ?? '') !== (current.description ?? '')) return true;
+  if (opened.icon !== current.icon || opened.days !== current.days) return true;
+  const a = new Set(opened.linkedHabitIds || []);
+  const b = new Set(current.linkedHabitIds || []);
+  if (a.size !== b.size) return true;
+  for (const id of a) if (!b.has(id)) return true;
+  return false;
+}

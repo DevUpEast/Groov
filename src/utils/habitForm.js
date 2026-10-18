@@ -44,3 +44,20 @@ export function habitFromForm(form) {
       : Math.max(1, Number(form.volumeGoal) || 1),
   };
 }
+
+// Deep equality for plain form values (strings, numbers, null, arrays, plain objects).
+export function sameFormValue(a, b) {
+  if (a === b) return true;
+  if (a == null || b == null || typeof a !== 'object' || typeof b !== 'object') {
+    // '' and a missing value are the same untouched field.
+    return (a ?? '') === (b ?? '');
+  }
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of keys) if (!sameFormValue(a[k], b[k])) return false;
+  return true;
+}
+
+// The dirty guard (F-09b): has the form changed since the sheet opened? Typing a character
+// and deleting it again is not an edit.
+export const isFormDirty = (initial, form) => !sameFormValue(initial, form);

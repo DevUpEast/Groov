@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, ScrollView, Pressable, KeyboardAvoidingView, Platform, Animated, PanResponder, StyleSheet,
+  View, ScrollView, Pressable, Keyboard, KeyboardAvoidingView, Platform, Animated, PanResponder, StyleSheet,
   AccessibilityInfo, findNodeHandle, useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -47,8 +47,10 @@ import { useUiTheme } from './PressableScale';
  *
  * Reduced motion: the sheet does not slide (a medium detent still rests at its height). The same value becomes its opacity, so open, close
  * and a drag are 150 ms fades in place (F-05), and the scrim follows it.
- * Keyboard: a `KeyboardAvoidingView` (padding on iOS, height on Android) lifts the surface; the
- * scrim stays outside it and keeps covering the window.
+ * Keyboard: a `KeyboardAvoidingView` (padding) on iOS, and on Android a bottom padding of the
+ * keyboard height (the edge-to-edge Modal window does not resize), lift the surface; the scrim stays outside it and keeps covering the window. While the keyboard is up the surface
+ * drops the bottom inset from its padding (the keyboard covers the home indicator / nav bar), so
+ * a pinned footer sits just above the keys (F-09b, checked on the Pixel emulator).
  */
 
 // Detent heights as fractions of the window.
@@ -70,6 +72,34 @@ const FOCUS_DELAY_MS = 150;
 // The enter starts from the Modal's onShow: started earlier, a slow device plays the whole spring
 // before the Modal window exists and the sheet pops in. If onShow never comes, enter anyway.
 const ENTER_FALLBACK_MS = 400;
+
+/**
+ * The software keyboard's height while it is up, else 0 (show/hide events: `did*` on Android,
+ * `will*` on iOS). Only the hide event resets it: RN's KeyboardAvoidingView on Android also
+ * measures the hide event against its own frame, and in an edge-to-edge Modal that left the
+ * sheet lifted by about the navigation bar after the keyboard went (F-09b, seen on the emulator).
+ */
+export function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const ios = Platform.OS === 'ios';
+    const subs = [
+      Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (e) => setHeight(Math.max(0, e?.endCoordinates?.height ?? 0))),
+      Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => setHeight(0)),
+    ];
+    return () => subs.forEach(sub => sub.remove());
+  }, []);
+  return height;
+}
+
+// Android reports the keyboard height without the navigation bar under it (RN subtracts the
+// system bar inset), so the caller adds the bottom inset back.
+function KeyboardLift({ style, lift, children }) {
+  if (Platform.OS === 'ios') {
+    return <KeyboardAvoidingView behavior="padding" style={style} pointerEvents="box-none">{children}</KeyboardAvoidingView>;
+  }
+  return <View style={[style, { paddingBottom: lift }]} pointerEvents="box-none">{children}</View>;
+}
 
 /** The offset (dp below the top rest) of the medium detent for a window height. */
 export function mediumOffsetFor(windowHeight) {
@@ -100,12 +130,11 @@ export function sheetDragTarget({ detents = ['large'], detent = 'large', dy = 0,
 /**
  * The sheet's outer frame: Modal, scrim, keyboard avoidance and the raised surface, driven by
  * an external Animated value (0 = open; SHEET_OFFSCREEN closed in full motion, SHEET_FADE_RANGE
- * under reduced motion). `Sheet` uses it, and so does the legacy `BottomSheet` wrapper the
- * habit and challenge forms still drive themselves until F-09b.
+ * under reduced motion). Only `Sheet` uses it; the legacy `BottomSheet` wrapper went in F-09b.
  */
 export function SheetFrame({
   visible, value, onRequestClose, onScrimPress, onShow, rest = 0, height, maxHeight = `${LARGE_FRACTION * 100}%`,
-  backgroundColor, statusBarTranslucent = true, paddingBottom, accessibilityLabel, onAccessibilityEscape, children, theme: themeProp,
+  backgroundColor, accessibilityLabel, onAccessibilityEscape, children, theme: themeProp,
   testID,
 }) {
   const theme = useUiTheme(themeProp);
@@ -118,14 +147,15 @@ export function SheetFrame({
   const motionStyle = r
     ? { opacity: scrimOpacity, transform: [{ translateY: rest }] }
     : { transform: [{ translateY: value }] };
-  const bottom = paddingBottom ?? Math.max(space.lg, insets.bottom + space.xs);
+  const keyboardHeight = useKeyboardHeight();
+  const bottom = keyboardHeight > 0 ? space.sm : Math.max(space.lg, insets.bottom + space.xs);
   return (
     <OverlayModal
       visible={visible}
       animationType="none"
       transparent
-      statusBarTranslucent={statusBarTranslucent}
-      navigationBarTranslucent={statusBarTranslucent}
+      statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={onRequestClose}
       onShow={onShow}
     >
@@ -138,7 +168,9 @@ export function SheetFrame({
           importantForAccessibility="no"
         />
       </Animated.View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay} pointerEvents="box-none">
+      {/* iOS: KeyboardAvoidingView (padding). Android: the edge-to-edge Modal window does not
+          resize, so the overlay is padded by the keyboard height itself (see useKeyboardHeight). */}
+      <KeyboardLift style={styles.overlay} lift={keyboardHeight > 0 ? keyboardHeight + insets.bottom : 0}>
         <Animated.View
           testID={testID}
           accessibilityViewIsModal
@@ -153,7 +185,7 @@ export function SheetFrame({
         >
           {children}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </KeyboardLift>
     </OverlayModal>
   );
 }

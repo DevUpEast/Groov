@@ -150,10 +150,21 @@ describe('adopters', () => {
     expect(src).toMatch(/theme\.success/);
     expect(src).not.toMatch(/'habitDetail\.hint'/);
   });
-  it('BottomSheet is a wrapper over the Sheet frame', () => {
-    const src = read('src/components/BottomSheet.js');
-    expect(src).toMatch(/SheetFrame/);
-    expect(src).not.toMatch(/<Modal|OverlayModal/);
+  it('the habit and challenge forms use Sheet with the dirty guard and a pinned Save (F-09b)', () => {
+    expect(fs.existsSync(path.join(ROOT, 'src/components/BottomSheet.js'))).toBe(false);
+    const habits = read('src/screens/HabitsScreen.js');
+    const form = habits.slice(habits.indexOf('function HabitModal('), habits.indexOf('function HabitRow('));
+    expect(form).toMatch(/<Sheet\s[\s\S]*dirty=\{dirty\}[\s\S]*footer=\{\([\s\S]*testID="habit-form-save"[\s\S]*\)\}\s*>/);
+    expect(form).not.toMatch(/PanResponder|BottomSheet|SheetDragHandle|sheetIn|sheetOut/);
+    const challenges = read('src/screens/ChallengeScreen.js');
+    const cform = challenges.slice(challenges.indexOf('function ChallengeFormModal('), challenges.indexOf('function PastChallengeDetailModal('));
+    expect(cform).toMatch(/<Sheet\s[\s\S]*dirty=\{dirty\}[\s\S]*footer=\{\([\s\S]*testID="challenge-form-save"[\s\S]*\)\}\s*>/);
+    expect(cform).not.toMatch(/PanResponder|BottomSheet|SheetHeader|sheet\.close|useSheetAnim/);
+    // The tab change to Habits waits for the sheet to go (onDismiss), never a timer.
+    expect(cform).toMatch(/onDismiss=/);
+    expect(cform).not.toMatch(/setTimeout/);
+    // No JSX-prop spacing literal survives in the frame (the old wrapper's 40 on iOS).
+    expect(read('src/components/ui/Sheet.js')).not.toMatch(/paddingBottom=\{/);
   });
 });
 
