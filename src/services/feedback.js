@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { EVENT_SOUNDS, soundIdFor } from '../utils/soundKit';
 
 // One feedback service for the whole app (plan §2.10). It is the only module that imports
 // expo-haptics. Callers say *what happened* (`play(EVENTS.habitDone)`) and this file decides
@@ -30,6 +31,7 @@ export const EVENTS = Object.freeze({
   refused: 'refused',
   error: 'error',
   destructiveConfirm: 'destructiveConfirm',
+  soundPreview: 'sound.preview',
 });
 
 const A = Haptics.AndroidHaptics;
@@ -59,51 +61,48 @@ const REJECT = [A.Reject, A.Long_Press];
 
 /**
  * The §2.10 map. `offset` is the default delay from the triggering tap (the §4.1 beat);
- * `play(event, { delay })` overrides it. `sound` names one of SOUNDS (the existing chimes until
- * F-04b replaces them with the sound kit); null is explicit silence.
+ * `play(event, { delay })` overrides it. `sound` is the §2.11 sound family from
+ * src/utils/soundKit.js EVENT_SOUNDS (null is explicit silence); `soundAt` delays the sound past
+ * the haptic (Mark the rest: one Success haptic at 0, one chord at 750, §4.1).
  */
-export const FEEDBACK_MAP = Object.freeze({
-  [EVENTS.press]: { ios: [], android: [], sound: null, offset: 0 },
-  [EVENTS.habitDone]: { ios: [impact('light')], android: [droid(CONFIRM)], sound: 'success', offset: 0 },
-  [EVENTS.counterStep]: { ios: [select()], android: [droid(TICK)], sound: 'chime', offset: 0 },
-  [EVENTS.habitUndone]: { ios: [impact('soft')], android: [droid([A.Toggle_Off, A.Context_Click])], sound: null, offset: 0 },
-  [EVENTS.challengeClaimed]: { ios: [impact('light')], android: [droid(CONFIRM)], sound: 'challenge', offset: 250 },
+const HAPTIC_MAP = {
+  [EVENTS.press]: { ios: [], android: [], offset: 0 },
+  [EVENTS.habitDone]: { ios: [impact('light')], android: [droid(CONFIRM)], offset: 0 },
+  [EVENTS.counterStep]: { ios: [select()], android: [droid(TICK)], offset: 0 },
+  [EVENTS.habitUndone]: { ios: [impact('soft')], android: [droid([A.Toggle_Off, A.Context_Click])], offset: 0 },
+  [EVENTS.challengeClaimed]: { ios: [impact('light')], android: [droid(CONFIRM)], offset: 250 },
   [EVENTS.dayComplete]: {
     ios: [notify('success')],
     android: [droid(CONFIRM), droid(CONFIRM, 125)],
-    sound: null,
     offset: 750,
   },
   [EVENTS.milestone]: {
     ios: [notify('success'), impact('light', 125), impact('light', 250)],
     android: [droid(CONFIRM), droid(CONFIRM, 125), droid([A.Gesture_End], 250)],
-    sound: 'fanfare',
     offset: 0,
   },
   [EVENTS.trophy]: {
     ios: [notify('success'), impact('medium', 250)],
     android: [droid(CONFIRM), droid([A.Long_Press], 250)],
-    sound: 'fanfare',
     offset: 0,
   },
-  [EVENTS.markRest]: { ios: [notify('success')], android: [droid(CONFIRM)], sound: 'success', offset: 0 },
-  [EVENTS.selection]: { ios: [select()], android: [droid(TICK)], sound: null, offset: 0 },
-  [EVENTS.toggleOn]: { ios: [], android: [droid([A.Toggle_On, A.Context_Click])], sound: null, offset: 0 },
-  [EVENTS.toggleOff]: { ios: [], android: [droid([A.Toggle_Off, A.Context_Click])], sound: null, offset: 0 },
-  [EVENTS.longPress]: { ios: [impact('medium')], android: [droid([A.Long_Press])], sound: null, offset: 0 },
-  [EVENTS.refused]: { ios: [notify('warning')], android: [droid(REJECT)], sound: null, offset: 0 },
-  [EVENTS.error]: { ios: [notify('error')], android: [droid(REJECT)], sound: null, offset: 0 },
-  [EVENTS.destructiveConfirm]: { ios: [notify('warning')], android: [droid(REJECT)], sound: null, offset: 0 },
-});
-
-// Event sound → the existing chime in src/utils/sounds.js. Required lazily, so importing this
-// module (every screen does) never loads expo-audio until a sound actually plays.
-const SOUNDS = {
-  chime: 'playChime',
-  success: 'playSuccessChime',
-  challenge: 'playChallengeChime',
-  fanfare: 'playHornFanfare',
+  [EVENTS.markRest]: { ios: [notify('success')], android: [droid(CONFIRM)], offset: 0 },
+  [EVENTS.selection]: { ios: [select()], android: [droid(TICK)], offset: 0 },
+  [EVENTS.toggleOn]: { ios: [], android: [droid([A.Toggle_On, A.Context_Click])], offset: 0 },
+  [EVENTS.toggleOff]: { ios: [], android: [droid([A.Toggle_Off, A.Context_Click])], offset: 0 },
+  [EVENTS.longPress]: { ios: [impact('medium')], android: [droid([A.Long_Press])], offset: 0 },
+  [EVENTS.refused]: { ios: [notify('warning')], android: [droid(REJECT)], offset: 0 },
+  [EVENTS.error]: { ios: [notify('error')], android: [droid(REJECT)], offset: 0 },
+  [EVENTS.destructiveConfirm]: { ios: [notify('warning')], android: [droid(REJECT)], offset: 0 },
+  // Settings -> Sounds switched on: the preview note only (the Switch gave its own toggle haptic).
+  [EVENTS.soundPreview]: { ios: [], android: [], offset: 0 },
 };
+const SOUND_AT = { [EVENTS.markRest]: 750 };
+
+export const FEEDBACK_MAP = Object.freeze(Object.fromEntries(Object.entries(HAPTIC_MAP).map(([event, spec]) => [
+  event,
+  Object.freeze({ ...spec, sound: EVENT_SOUNDS[event] ?? null, soundAt: SOUND_AT[event] || 0 }),
+])));
 
 const IOS_IMPACT = {
   light: Haptics.ImpactFeedbackStyle.Light,
@@ -133,6 +132,8 @@ export const LOG_SIZE = 50;
 
 let enabled = { haptics: true, sound: true };
 let lastHapticAt = -Infinity;
+let lastTapSoundAt = -Infinity;
+let lastPlayAt = -Infinity;
 let log = [];
 
 /** Mirror the settings gate. Only an explicit false turns a channel off. */
@@ -221,11 +222,27 @@ function runPattern(handle, event, pulses, i, calledAt) {
   if (next) handle.later(() => runPattern(handle, event, pulses, i + 1, calledAt), next.at - pulses[i].at);
 }
 
-function fireSound(event, name, calledAt) {
-  if (!enabled.sound || !name || !SOUNDS[name]) return;
+// §2.11: at most one sound start per 60 ms. Like the haptic limit it only applies to the rapid
+// tap sounds; a celebration (chord, motif, fanfare) is never dropped. The degree still advances
+// because the caller passes the new count with every tap.
+export const SOUND_RATE_LIMIT_MS = 60;
+export const SOUND_RATE_LIMITED = Object.freeze([EVENTS.habitDone, EVENTS.counterStep, EVENTS.habitUndone]);
+
+// src/utils/sounds.js is required lazily, so importing this module (every screen does) never
+// loads expo-audio until a sound actually plays.
+function fireSound(event, tone, calledAt) {
+  const id = soundIdFor(event, tone);
+  if (!enabled.sound || !id) return;
   const now = Date.now();
-  record({ t: now, offset: now - calledAt, event, haptic: null, sound: name });
-  try { require('../utils/sounds')[SOUNDS[name]](); } catch { /* audio failure is never fatal */ }
+  if (SOUND_RATE_LIMITED.includes(event)) {
+    if (now - lastTapSoundAt < SOUND_RATE_LIMIT_MS) {
+      record({ t: now, offset: now - calledAt, event, haptic: null, sound: null, dropped: true });
+      return;
+    }
+    lastTapSoundAt = now;
+  }
+  record({ t: now, offset: now - calledAt, event, haptic: null, sound: id });
+  try { require('../utils/sounds').playSound(id); } catch { /* audio failure is never fatal */ }
 }
 
 // The timers of one play() call, cancellable together.
@@ -252,7 +269,8 @@ const NOOP_HANDLE = Object.freeze({ cancelled: true, cancel() {} });
 /**
  * Fire the feedback for `event`: its haptic pulses (gated by the haptics setting) and its sound
  * (gated by the sound setting), starting `opts.delay` ms from now (default: the event's beat
- * offset). `opts.sound: false` plays the haptic only. Never awaits: call it in the same frame as
+ * offset). `opts.sound: false` plays the haptic only. `opts.tone` picks the note (§2.11):
+ * `{ n }` habits done today for a daily habit.done, `{ step, goal }` for a counter. Never awaits: call it in the same frame as
  * the visual change. Returns a handle whose `cancel()` drops anything not yet fired.
  */
 export function play(event, opts = {}) {
@@ -263,15 +281,29 @@ export function play(event, opts = {}) {
   }
   const handle = makeHandle();
   const calledAt = Date.now();
+  lastPlayAt = calledAt;
   const delay = typeof opts.delay === 'number' ? opts.delay : spec.offset;
   if (enabled.haptics && Platform.OS !== 'web') {
     const pulses = Platform.OS === 'android' ? spec.android : spec.ios;
     if (pulses.length) handle.later(() => runPattern(handle, event, pulses, 0, calledAt), delay + pulses[0].at);
   }
   if (enabled.sound && spec.sound && opts.sound !== false) {
-    handle.later(() => fireSound(event, spec.sound, calledAt), delay);
+    handle.later(() => fireSound(event, opts.tone, calledAt), delay + spec.soundAt);
   }
   return handle;
+}
+
+// The background WAV pre-render waits while the user is interacting (a check-off, a counter
+// step, a celebration on its way), so its synchronous JS work never lands in a beat window.
+export const PREWARM_QUIET_MS = 1500;
+export function isBusy(now = Date.now()) {
+  return now - lastPlayAt < PREWARM_QUIET_MS;
+}
+
+/** Pre-render the sound kit at idle (AppContext, once loaded with sound on). Never throws. */
+export function prewarmSounds() {
+  if (!enabled.sound || Platform.OS === 'web') return;
+  try { require('../utils/sounds').prewarm({ isBusy: () => isBusy() }); } catch { /* never fatal */ }
 }
 
 /** Switch / toggle feedback (Android only; iOS switches have their own native haptic). */
@@ -282,8 +314,10 @@ export function toggled(on) {
 export function __resetForTests() {
   enabled = { haptics: true, sound: true };
   lastHapticAt = -Infinity;
+  lastTapSoundAt = -Infinity;
+  lastPlayAt = -Infinity;
   log = [];
 }
 
-const feedback = { play, toggled, configure, isEnabled, recent, clearRecent, EVENTS };
+const feedback = { play, toggled, configure, isEnabled, recent, clearRecent, prewarmSounds, isBusy, EVENTS };
 export default feedback;

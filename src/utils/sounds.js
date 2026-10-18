@@ -1,16 +1,27 @@
-import { Platform } from 'react-native';
+import { Platform, InteractionManager } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
+import { renderSound, encodeWav, bytesToBase64, hashString, SAMPLE_RATE, SYNTH_VERSION } from './synth';
+import { SOUND_DEFS } from './soundKit';
 
-// Short synthesised chimes. On web they are generated live with the Web Audio API;
-// on iOS/Android a tiny WAV is rendered once per tone, cached in the document
-// directory and played through expo-audio. src/services/feedback.js gates on settings.soundEnabled.
-// iOS uses the ambient category (playsInSilentMode false + mixWithOthers), so the
-// ring/silent switch mutes chimes and other apps' audio keeps playing.
+// Plays the Groov sound kit (plan §2.11). The sounds are synthesised in code by src/utils/synth.js
+// from the definitions in src/utils/soundKit.js; there are no audio assets.
+// - iOS / Android: each sound is rendered once to a small WAV in the cache directory (named by
+//   a hash of its definition, so a kit edit re-renders it) and played through expo-audio.
+//   The kit is pre-rendered at idle after launch (prewarm, started by AppContext through
+//   feedback.prewarmSounds); a sound that is not ready yet renders on demand.
+// - Web: the same samples go into a Web Audio AudioBuffer.
+// src/services/feedback.js is the only caller: it maps events to sound ids and gates on
+// settings.soundEnabled, so nothing here runs (and no player is created) when sound is off.
+// iOS uses the ambient category (playsInSilentMode false + mixWithOthers): the ring/silent
+// switch mutes the kit and other apps' audio keeps playing. Android plays on the media stream.
 
-// ─── Web Audio API (browser) ──────────────────────────────────────────────────
+export const MAX_PLAYERS = 3;
+
+// ─── Web Audio (browser) ─────────────────────────────────────────────────────
 
 let audioCtx = null;
+const webBuffers = {};
 
 function getAudioContext() {
   if (typeof window === 'undefined') return null;
@@ -20,177 +31,243 @@ function getAudioContext() {
   return audioCtx;
 }
 
-async function playToneWeb(frequency, duration, gainValue = 0.25) {
+async function playWeb(id) {
   const ctx = getAudioContext();
   if (!ctx) return;
   try {
     if (ctx.state === 'suspended') await ctx.resume();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(frequency, ctx.currentTime);
-    gain.gain.setValueAtTime(gainValue, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-    osc.start();
-    osc.stop(ctx.currentTime + duration);
+    if (!webBuffers[id]) {
+      const samples = renderSound(SOUND_DEFS[id], SAMPLE_RATE);
+      const buffer = ctx.createBuffer(1, samples.length, SAMPLE_RATE);
+      buffer.getChannelData(0).set(samples);
+      webBuffers[id] = buffer;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = webBuffers[id];
+    src.connect(ctx.destination);
+    src.start();
   } catch { /* silent */ }
 }
 
 // ─── Native audio via expo-audio ─────────────────────────────────────────────
 
-function buildWAV(frequency, duration, gain = 0.45) {
-  const sampleRate = 22050;
-  const numSamples = Math.max(1, Math.floor(sampleRate * duration));
-  const bytes = new Uint8Array(44 + numSamples * 2);
-  const view = new DataView(bytes.buffer);
-
-  const wr = (off, s) => { for (let i = 0; i < s.length; i++) bytes[off + i] = s.charCodeAt(i); };
-  wr(0, 'RIFF');
-  view.setUint32(4, 36 + numSamples * 2, true);
-  wr(8, 'WAVE');
-  wr(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  wr(36, 'data');
-  view.setUint32(40, numSamples * 2, true);
-
-  for (let i = 0; i < numSamples; i++) {
-    const t = i / sampleRate;
-    const envelope = Math.exp(-t * 6);
-    const sample = Math.sin(2 * Math.PI * frequency * t) * envelope * gain;
-    const v = Math.max(-32768, Math.min(32767, Math.round(sample * 32767)));
-    view.setInt16(44 + i * 2, v, true);
-  }
-  return bytes;
-}
-
-// Pure-JS base64 — avoids btoa + String.fromCharCode.apply issues on React Native
-function uint8ToBase64(bytes) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let result = '';
-  const len = bytes.length;
-  for (let i = 0; i < len; i += 3) {
-    const b0 = bytes[i];
-    const b1 = i + 1 < len ? bytes[i + 1] : 0;
-    const b2 = i + 2 < len ? bytes[i + 2] : 0;
-    result += chars[b0 >> 2];
-    result += chars[((b0 & 3) << 4) | (b1 >> 4)];
-    result += i + 1 < len ? chars[((b1 & 15) << 2) | (b2 >> 6)] : '=';
-    result += i + 2 < len ? chars[b2 & 63] : '=';
-  }
-  return result;
-}
-
-// Audio mode is configured once; a singleton promise keeps the near-simultaneous
-// tones of a multi-note chime from racing each other.
+// Audio mode is configured once; a singleton promise keeps near-simultaneous sounds from racing.
 let audioModePromise = null;
+let audioModeReady = false;
 
 function ensureAudioMode() {
   if (audioModePromise) return audioModePromise;
   audioModePromise = setAudioModeAsync({
-    playsInSilentMode: false, // iOS .ambient: the silent switch mutes chimes
+    playsInSilentMode: false, // iOS .ambient: the silent switch mutes the kit
     interruptionMode: 'mixWithOthers',
     allowsRecording: false,
     shouldPlayInBackground: false,
-  }).catch(e => {
-    console.warn('[Sound] setAudioModeAsync failed:', e?.message ?? e);
+  }).then(() => { audioModeReady = true; }).catch(e => {
+    warnOnce('setAudioModeAsync failed', e);
     audioModePromise = null; // reset so the next call retries
   });
   return audioModePromise;
 }
 
-// ─── WAV file cache (documentDirectory is stable, never cleared by the OS) ───
-
-const memCache = {}; // key → file URI (in-memory, reset on app restart)
-
-async function getOrCreateWav(key, frequency, duration, gain) {
-  if (memCache[key]) return memCache[key];
-
-  const uri = `${FileSystem.documentDirectory}snd_${key}.wav`;
-
-  // Reuse a file written in a previous session
-  const info = await FileSystem.getInfoAsync(uri);
-  if (!info.exists) {
-    const wav = buildWAV(frequency, duration, gain);
-    const b64 = uint8ToBase64(wav);
-    await FileSystem.writeAsStringAsync(uri, b64, { encoding: FileSystem.EncodingType.Base64 });
-  }
-
-  memCache[key] = uri;
-  return uri;
+/** The cache file name of a sound: its id plus a hash of what it renders from. */
+export function wavFileName(id) {
+  const key = hashString(`${SYNTH_VERSION}|${SAMPLE_RATE}|${JSON.stringify(SOUND_DEFS[id])}`);
+  return `groov-snd-${id}-${key}.wav`;
 }
 
-async function playToneNative(frequency, duration, gain = 0.3) {
-  try {
-    await ensureAudioMode();
+/** Byte size of a complete WAV for `id` (a shorter cached file is a truncated write). */
+export function expectedWavBytes(id) {
+  return 44 + 2 * Math.max(1, Math.round((SOUND_DEFS[id].capMs / 1000) * SAMPLE_RATE));
+}
 
-    // Include gain in the cache key so changing gain produces a fresh WAV file
-    const key = `${frequency}_${Math.round(duration * 1000)}_${Math.round(gain * 100)}`;
-    const uri = await getOrCreateWav(key, frequency, duration, gain);
+const uriCache = {}; // id → file URI (this session)
+const pendingUri = {}; // id → Promise<uri> while rendering
+const failed = {}; // id → true after a write or play failure: never retried this session
+let lastSoundAt = -Infinity;
 
-    const player = createAudioPlayer({ uri }, { updateInterval: 100 });
-    let released = false;
-    const release = () => {
+// One warning per session, so a broken audio path never floods LogBox (it swallows taps).
+let warned = false;
+function warnOnce(what, e) {
+  if (warned) return;
+  warned = true;
+  console.warn(`[Sound] ${what}:`, e?.message ?? e);
+}
+
+function cacheDir() {
+  return FileSystem.cacheDirectory || null;
+}
+
+function getOrCreateWav(id) {
+  if (uriCache[id]) return Promise.resolve(uriCache[id]);
+  if (pendingUri[id]) return pendingUri[id];
+  const dir = cacheDir();
+  if (!dir) return Promise.reject(new Error('no cache directory'));
+  const uri = `${dir}${wavFileName(id)}`;
+  pendingUri[id] = (async () => {
+    const info = await FileSystem.getInfoAsync(uri);
+    if (!info.exists || (typeof info.size === 'number' && info.size !== expectedWavBytes(id))) {
+      const bytes = encodeWav(renderSound(SOUND_DEFS[id], SAMPLE_RATE), SAMPLE_RATE);
+      // Write beside the target and rename, so an interrupted write never leaves a short WAV
+      // under the name that later sessions reuse.
+      const tmp = `${uri}.tmp`;
+      await FileSystem.writeAsStringAsync(tmp, bytesToBase64(bytes), { encoding: FileSystem.EncodingType.Base64 });
+      await FileSystem.deleteAsync(uri, { idempotent: true });
+      await FileSystem.moveAsync({ from: tmp, to: uri });
+    }
+    uriCache[id] = uri;
+    return uri;
+  })().catch(e => {
+    failed[id] = true;
+    throw e;
+  }).finally(() => { delete pendingUri[id]; });
+  return pendingUri[id];
+}
+
+// ─── Background pre-render ───────────────────────────────────────────────────
+// Rendering is synchronous JS (up to ~90 ms for the fanfare without a JIT), so the kit is
+// rendered once the app is idle after launch, celebration sounds first, one sound per
+// macrotask, and a step is postponed while the user is checking things off (a sound or a
+// feedback event in the last PREWARM_QUIET_MS) so it never lands inside a §4.1 beat window.
+// A sound that is not ready yet still renders on demand when it plays.
+
+export const PREWARM_PRIORITY = Object.freeze(['chord', 'habit-1', 'goal', 'challenge', 'fanfare']);
+export const PREWARM_START_MS = 4000;
+export const PREWARM_QUIET_MS = 1500;
+export const PREWARM_GAP_MS = 100;
+
+/** The pre-render order: the priority sounds, then the rest of the kit. */
+export function prewarmOrder() {
+  return [...PREWARM_PRIORITY, ...Object.keys(SOUND_DEFS).filter(id => !PREWARM_PRIORITY.includes(id))];
+}
+
+let prewarmStarted = false;
+
+/**
+ * Pre-render the kit in the background (native only, idempotent). `isBusy()` (from feedback.js:
+ * a feedback event in the last 1.5 s) postpones a step, as does a sound played here.
+ */
+export function prewarm({ isBusy = () => false } = {}) {
+  if (prewarmStarted || Platform.OS === 'web') return;
+  prewarmStarted = true;
+  const queue = prewarmOrder();
+  const busy = () => isBusy() || Date.now() - lastSoundAt < PREWARM_QUIET_MS;
+  const step = () => {
+    if (!cacheDir()) return;
+    if (busy()) { setTimeout(step, PREWARM_QUIET_MS); return; }
+    let id = queue.shift();
+    while (id && (uriCache[id] || failed[id])) id = queue.shift();
+    if (!id) return;
+    getOrCreateWav(id)
+      .then(uri => warmAudioStack(uri))
+      .catch(() => {})
+      .finally(() => setTimeout(step, PREWARM_GAP_MS));
+  };
+  InteractionManager.runAfterInteractions(() => {
+    setTimeout(() => {
+      ensureAudioMode(); // so the first sound of the session can take the synchronous path
+      removeStaleFiles();
+      step();
+    }, PREWARM_START_MS);
+  });
+}
+
+// The first createAudioPlayer of a session pays a one-time native setup (~270 ms of blocked JS
+// on the emulator, against ~20 ms after). Pay it here at idle with a player that never plays.
+let audioStackWarm = false;
+function warmAudioStack(uri) {
+  if (audioStackWarm || !uri) return;
+  audioStackWarm = true;
+  try { createAudioPlayer({ uri }, { updateInterval: 100 }).remove(); } catch { /* the real play reports */ }
+}
+
+// Old cache files: the pre-kit chimes (documentDirectory/snd_*.wav) and kit files whose hash is
+// not the current kit's (cacheDirectory/groov-snd-*), plus any leftover .tmp.
+function removeStaleFiles() {
+  if (!FileSystem.readDirectoryAsync) return;
+  const sweep = (dir, isStale) => {
+    if (!dir) return;
+    FileSystem.readDirectoryAsync(dir)
+      .then(names => names.filter(isStale)
+        .forEach(n => FileSystem.deleteAsync(dir + n, { idempotent: true }).catch(() => {})))
+      .catch(() => {});
+  };
+  sweep(FileSystem.documentDirectory, n => /^snd_.*\.wav$/.test(n));
+  const current = new Set(Object.keys(SOUND_DEFS).map(wavFileName));
+  sweep(cacheDir(), n => /^groov-snd-.*\.wav(\.tmp)?$/.test(n) && !current.has(n));
+}
+
+// ─── Players ─────────────────────────────────────────────────────────────────
+
+// Live players, oldest first. At most MAX_PLAYERS at once: a new sound releases the oldest.
+const active = [];
+
+function startPlayer(uri, capMs) {
+  while (active.length >= MAX_PLAYERS) active[0].release();
+  const player = createAudioPlayer({ uri }, { updateInterval: 100 });
+  let released = false;
+  let sub = null;
+  const entry = {
+    release() {
       if (released) return;
       released = true;
-      try { sub.remove(); } catch {}
+      const i = active.indexOf(entry);
+      if (i >= 0) active.splice(i, 1);
+      try { sub?.remove(); } catch {}
       try { player.remove(); } catch {}
-    };
-    const sub = player.addListener('playbackStatusUpdate', (status) => {
-      if (status.didJustFinish) release();
+    },
+  };
+  active.push(entry);
+  // Safety net in case didJustFinish never arrives (interrupted playback, or a throw below).
+  setTimeout(() => entry.release(), capMs + 1500);
+  try {
+    sub = player.addListener('playbackStatusUpdate', (status) => {
+      if (status.didJustFinish) entry.release();
     });
-    // Safety net in case didJustFinish never arrives (e.g. interrupted playback).
-    setTimeout(release, duration * 1000 + 1500);
-
     player.volume = 1.0;
     player.play();
   } catch (e) {
-    console.warn('[Sound] playback failed:', e?.message ?? e);
+    entry.release(); // free the slot now
+    throw e;
   }
 }
 
-// ─── Dispatcher ───────────────────────────────────────────────────────────────
+function playNative(id) {
+  if (failed[id]) return;
+  // Warm path (audio mode set, WAV on disk): start the player in the same tick as the tap.
+  // Awaiting here would queue the start behind the re-render the tap triggers, which on a
+  // dev build is hundreds of ms.
+  if (audioModeReady && uriCache[id]) {
+    try {
+      startPlayer(uriCache[id], SOUND_DEFS[id].capMs);
+    } catch (e) {
+      failed[id] = true;
+      warnOnce('playback failed', e);
+    }
+    return;
+  }
+  playNativeCold(id);
+}
 
-function playTone(frequency, duration, gain = 0.3) {
-  if (Platform.OS === 'web') {
-    playToneWeb(frequency, duration, gain);
-  } else {
-    playToneNative(frequency, duration, gain);
+async function playNativeCold(id) {
+  try {
+    await ensureAudioMode();
+    const uri = await getOrCreateWav(id);
+    startPlayer(uri, SOUND_DEFS[id].capMs);
+  } catch (e) {
+    failed[id] = true;
+    warnOnce('playback failed', e);
   }
 }
 
-// ─── Public chime functions ───────────────────────────────────────────────────
-// All sounds kept soft (gain ≤ 0.18) and brief (total ≤ 350 ms).
-
-// Single soft ding — a volume habit ticked up one step
-export function playChime() {
-  playTone(1047, 0.13, 0.16);
+/** Number of live native players (tests, and the max-3 rule). */
+export function activePlayerCount() {
+  return active.length;
 }
 
-// Two ascending notes — a habit reached its goal
-export function playSuccessChime() {
-  playTone(784, 0.11, 0.15);
-  setTimeout(() => playTone(1047, 0.14, 0.13), 90);
-}
-
-// Three ascending notes — a challenge day claimed
-export function playChallengeChime() {
-  playTone(659, 0.10, 0.14);
-  setTimeout(() => playTone(784, 0.10, 0.13), 85);
-  setTimeout(() => playTone(1047, 0.14, 0.12), 170);
-}
-
-// Four-note ascending finish — challenge completed
-export function playHornFanfare() {
-  playTone(523, 0.10, 0.14);
-  setTimeout(() => playTone(659, 0.10, 0.13), 80);
-  setTimeout(() => playTone(784, 0.10, 0.12), 160);
-  setTimeout(() => playTone(1047, 0.16, 0.12), 240);
+/** Play one sound of the kit by id (see SOUND_DEFS). Unknown ids are ignored. */
+export function playSound(id) {
+  if (!SOUND_DEFS[id]) return;
+  lastSoundAt = Date.now();
+  if (Platform.OS === 'web') playWeb(id);
+  else playNative(id);
 }
