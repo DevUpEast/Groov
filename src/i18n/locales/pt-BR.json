@@ -352,12 +352,15 @@
     "week": "%{done}/%{target} esta semana",
     "skippedToday": "Pulado hoje",
     "timer": "⏱ %{time}",
+    "doneCount": "%{name}, %{count} de %{goal}, concluído",
     "longPress": {
       "body": "A vida acontece. Escolha uma opção:",
       "unskip": "Não pular hoje",
       "skip": "Pular hoje (mantém a sequência)",
       "undoYesterday": "Desfazer o check de ontem",
       "markYesterday": "Marcar como feito ontem",
+      "minusOne": "Remover um",
+      "minusMany": "Remover %{count}",
       "editNote": "Editar nota",
       "addNote": "Adicionar uma nota"
     },
@@ -379,6 +382,7 @@
       "notDone": ", não concluído",
       "streak": ", sequência de %{count} dias",
       "hint": "Toque duas vezes para registrar. Pressione e segure para as opções de pular, ontem e nota.",
+      "openDetail": "Toque duas vezes para ver os detalhes. Pressione e segure para as opções de pular, ontem e nota.",
       "startTimer": "Iniciar cronômetro",
       "stopTimer": "Parar cronômetro e registrar os minutos",
       "removeOne": "Remover um %{unit}",

@@ -704,6 +704,10 @@ export default function HabitsScreen() {
       else if (pendingRoute.action === 'open') {
         const h = habits.find(x => x.id === pendingRoute.habitId);
         if (h) setDetailHabit(h);
+      } else if (pendingRoute.action === 'edit') {
+        // Edit from the detail sheet on Today (C-02b): that sheet has already closed.
+        const h = habits.find(x => x.id === pendingRoute.habitId);
+        if (h) { setDetailHabit(null); openEdit(h); }
       }
       clearPendingRoute();
     }, handoff.afterTabChange);

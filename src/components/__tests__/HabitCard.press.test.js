@@ -269,3 +269,135 @@ describe('C-02a review round', () => {
     expect(en.habitCard.weekDone).toBe('%{done}/%{target} this week');
   });
 });
+
+describe('C-02b counter semantics', () => {
+  const { bodyPressAction, showsDonePill } = require('../HabitCard');
+  const { FLAGS } = require('../../utils/flags');
+  const timed = { id: 'h3', name: 'Stretch', type: 'timed', volumeGoal: 20, createdAt: '2026-01-01' };
+  const limit = { id: 'h4', name: 'Coffee', type: 'atMost', volumeGoal: 2, createdAt: '2026-01-01' };
+  const pill = (r) => r.root.findAll(n => n.props.testID === 'habit-done-pill' && typeof n.props.onPressIn === 'function')[0];
+  const renderWith = (habit, extra = {}) => {
+    const onIncrement = jest.fn(); const onDecrement = jest.fn(); const onOpenDetail = jest.fn();
+    let r;
+    act(() => { r = TestRenderer.create(<HabitCard habit={habit} onIncrement={onIncrement} onDecrement={onDecrement} onOpenDetail={onOpenDetail} {...extra} />); });
+    return { r, onIncrement, onDecrement, onOpenDetail };
+  };
+
+  it('bodyPressAction: counters open the detail with the flag on, increment with it off; daily always toggles', () => {
+    expect(FLAGS.counterBodyOpensDetail).toBe(true);
+    for (const h of [counter, timed, limit]) {
+      expect(bodyPressAction(h, { canOpenDetail: true })).toBe('detail');
+      expect(bodyPressAction(h, { opensDetail: false, canOpenDetail: true })).toBe('increment');
+      // A screen with no detail sheet (no onOpenDetail) keeps the +step body tap.
+      expect(bodyPressAction(h, { canOpenDetail: false })).toBe('increment');
+    }
+    expect(bodyPressAction(daily, { canOpenDetail: true })).toBe('toggle');
+    expect(bodyPressAction({ ...daily, type: 'quit' }, { opensDetail: false, canOpenDetail: true })).toBe('toggle');
+  });
+
+  it('flag on: a counter body tap opens the detail sheet and logs nothing', () => {
+    mockCount = 3;
+    const { r, onIncrement, onOpenDetail } = renderWith(counter);
+    const body = byLabel(r, /^Water/);
+    expect(body.props.accessibilityHint).toMatch(/details/);
+    act(() => { body.props.onPress({}); });
+    expect(onOpenDetail).toHaveBeenCalledWith(counter);
+    expect(onIncrement).not.toHaveBeenCalled();
+    // + still increments; long-press still opens the options.
+    act(() => { byLabel(r, /^Add/).props.onPress({}); });
+    expect(onIncrement).toHaveBeenCalledWith(1);
+    act(() => { body.props.onLongPress({}); });
+    expect(sheetOpen(r)).toBe(true);
+  });
+
+  it('flag off: the counter body tap increments as before', () => {
+    FLAGS.counterBodyOpensDetail = false;
+    try {
+      mockCount = 3;
+      const { r, onIncrement, onOpenDetail } = renderWith(counter);
+      act(() => { byLabel(r, /^Water/).props.onPress({}); });
+      expect(onIncrement).toHaveBeenCalledWith(1);
+      expect(onOpenDetail).not.toHaveBeenCalled();
+    } finally {
+      FLAGS.counterBodyOpensDetail = true;
+    }
+  });
+
+  it('a daily body tap still toggles when the screen can open details', () => {
+    const { r, onIncrement, onOpenDetail } = renderWith(daily);
+    act(() => { byLabel(r, /^Read/).props.onPress({}); });
+    expect(onIncrement).toHaveBeenCalledWith(1);
+    expect(onOpenDetail).not.toHaveBeenCalled();
+  });
+
+  it('at goal the − and + collapse to one accent pill "8 ✓"; a tap adds one past the goal', () => {
+    mockCount = 8; mockDone = true;
+    const { r, onIncrement } = renderWith(counter);
+    expect(byLabel(r, /^Remove/)).toBeUndefined();
+    expect(byLabel(r, /^Add/)).toBeUndefined();
+    const p = pill(r);
+    expect(p.props.accessibilityRole).toBe('button');
+    expect(p.props.accessibilityLabel).toBe('Water, 8 of 8, done');
+    expect(p.props.accessibilityHint).toBe('Add one glasses');
+    const accent = resolveAccent(counter.color, 'light');
+    expect(flat(p)).toMatchObject({ backgroundColor: accent.fill, height: 36 });
+    expect(p.findAll(n => n.type === 'CheckMark')[0].props.color).toBe(accent.onFill);
+    expect(p.findAll(n => n.type === 'Text').map(n => [].concat(n.props.children).join(''))).toEqual(['8']);
+    // The digits are WCAG large text (>= 18.66 px bold), so the >= 3:1 fill / onFill pair holds.
+    const digits = StyleSheet.flatten(p.findAll(n => n.type === 'Text')[0].props.style);
+    expect(digits.fontSize).toBeGreaterThanOrEqual(18.66);
+    expect(digits.fontWeight).toBe('700');
+    act(() => { p.props.onPress({}); });
+    expect(onIncrement).toHaveBeenCalledWith(1);
+  });
+
+  it('the pill is as tall as the ± buttons it replaces, so the card height does not change at goal', () => {
+    mockCount = 7;
+    const open = flat(byLabel(renderWith(counter).r, /^Add/));
+    mockCount = 8; mockDone = true;
+    expect(flat(pill(renderWith(counter).r)).height).toBe(open.height ?? 36);
+  });
+
+  it('a done counter keeps a decrement in the long-press options', () => {
+    mockCount = 8; mockDone = true;
+    const { r, onDecrement } = renderWith(counter);
+    act(() => { pill(r).props.onLongPress({}); });
+    expect(sheetOpen(r)).toBe(true);
+    const opts = r.root.findAll(n => n.type === 'ActionSheet')[0].props.options;
+    const minus = opts.find(o => o.label === 'Remove one');
+    expect(minus).toBeTruthy();
+    act(() => { minus.onPress(); });
+    expect(onDecrement).toHaveBeenCalledWith(1);
+  });
+
+  it('no decrement option at 0, and the timed step reads "Remove 5"', () => {
+    const opts0 = renderWith(counter).r.root.findAll(n => n.type === 'ActionSheet')[0].props.options;
+    expect(opts0.some(o => /^Remove/.test(o.label))).toBe(false);
+    mockCount = 10;
+    const optsT = renderWith(timed).r.root.findAll(n => n.type === 'ActionSheet')[0].props.options;
+    expect(optsT.some(o => o.label === 'Remove 5')).toBe(true);
+  });
+
+  it('timed: ▶ takes the + slot until done, then the pill (+5); a running timer keeps ■ even at goal', () => {
+    mockCount = 5;
+    const open = renderWith(timed);
+    expect(byLabel(open.r, /^Add/)).toBeUndefined();
+    expect(byLabel(open.r, /^Start timer/)).toBeTruthy();
+    expect(byLabel(open.r, /^Remove/)).toBeTruthy();
+    mockCount = 20; mockDone = true;
+    const done = renderWith(timed);
+    expect(byLabel(done.r, /^Start timer/)).toBeUndefined();
+    act(() => { pill(done.r).props.onPress({}); });
+    expect(done.onIncrement).toHaveBeenCalledWith(5);
+    expect(showsDonePill(timed, { done: true, timerRunning: true })).toBe(false);
+    expect(showsDonePill(timed, { done: true })).toBe(true);
+  });
+
+  it('"at most" habits are done from 0, so they keep − / + and never show the pill', () => {
+    mockCount = 1; mockDone = true;
+    const { r } = renderWith(limit);
+    expect(pill(r)).toBeUndefined();
+    expect(byLabel(r, /^Add/)).toBeTruthy();
+    expect(showsDonePill(limit, { done: true })).toBe(false);
+  });
+});

@@ -410,6 +410,9 @@ export function AppProvider({ children }) {
   const [pendingRoute, setPendingRoute] = useState(null);
   const clearPendingRoute = useCallback(() => setPendingRoute(null), []);
   const routeRef = useRef(null);
+  // In-app navigation through the same path as a deep link (switch tab + hand the route to
+  // the owning screen). Today's detail sheet uses it for Edit: { tab: 3, habitId, action: 'edit' }.
+  const openRoute = useCallback((route) => routeRef.current?.(route), []);
   useEffect(() => {
     routeRef.current = (route) => {
       if (!isRouteAllowed(route, { dev: __DEV__, mockup: mockupParams.active })) return;
@@ -1468,7 +1471,7 @@ export function AppProvider({ children }) {
       pendingChallengeRewards, clearPendingChallengeRewards,
       modalOpen, setModalOpen,
       requestedTab, setRequestedTab,
-      pendingRoute, clearPendingRoute,
+      pendingRoute, clearPendingRoute, openRoute,
       pendingHabitLinkChallenge, setPendingHabitLinkChallenge,
       getTodayCompletions, getHabitCount, isHabitDone, isHabitDoneOn, isHabitSatisfied, dueHabits,
       getCompletedCount, isAllDone, isChallengeHabitsDone,
