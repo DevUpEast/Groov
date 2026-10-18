@@ -16,7 +16,8 @@ export const CHIP_HEIGHT = 40;
  * - `selected`: `selection` fill, `onSelection` label, `selectionBorder`; the fill fades in
  *   over duration.selection (150 ms). Unselected: no fill, `controlBorder`, `textSecondary`.
  * - `multi`: one of several that can be on at once; a selected multi chip shows a ✓ and is
- *   announced as a checkbox (`checked`). A single-select chip is a button with `selected`.
+ *   announced as a checkbox with `checked` only. A single-select chip is a button with
+ *   `selected` only (setting both made VoiceOver and TalkBack say the state twice).
  *   `showCheck={false}` drops the ✓ where the chip is too small for it (weekday initials).
  * - `onPress` plays the `selection` haptic (§2.10) and then calls `onPress`.
  * - `disabled`: `disabledContainer` / `onDisabled`, still focusable; a tap calls
@@ -68,8 +69,7 @@ export default function Chip({
       accessibilityRole={multi ? 'checkbox' : 'button'}
       accessibilityLabel={accessibilityLabel || label}
       accessibilityHint={accessibilityHint}
-      accessibilityState={multi ? { checked: selected, selected } : { selected }}
-      aria-selected={selected}
+      accessibilityState={multi ? { checked: selected } : { selected }}
       style={[styles.chip, { minHeight, paddingHorizontal: size === 'sm' ? space.xs : space.sm }, style]}
     >
       <SelectionLayers state={state} radius={radius.pill} />

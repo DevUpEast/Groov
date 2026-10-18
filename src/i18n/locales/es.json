@@ -549,6 +549,7 @@
       "weeklyA11y": "Reflexión semanal",
       "monthlyA11y": "Reflexión mensual",
       "lockedSuffix": ", bloqueada",
+      "lockedHint": "Muestra cuándo se desbloquea",
       "unlocks": { "one": "Se desbloquea en %{count} día", "other": "Se desbloquea en %{count} días" },
       "unlockWeekly": "Registra tus hábitos durante una semana completa para desbloquear tu resumen semanal.",
       "unlockMonthly": "Registra tus hábitos durante un mes completo para desbloquear tu resumen mensual.",

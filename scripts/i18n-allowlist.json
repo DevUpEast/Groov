@@ -1,5 +1,5 @@
 {
-  "_comment": "Values a locale may legitimately keep identical to English (scripts/i18n-check.mjs). 'values' applies to every locale; 'keys' lists per-locale key paths that may stay English. Strings made only of %{placeholders}, digits, punctuation and emoji are always allowed. F-07: ja keeps its section labels when en moves from capitals to sentence case (ja has no case); es/de/fr already had sentence case for challenges.form.linked; de/fr/pt-BR use the English loanwords Feedback, Backup and Notifications.",
+  "_comment": "Values a locale may legitimately keep identical to English (scripts/i18n-check.mjs). 'values' applies to every locale; 'keys' lists per-locale key paths that may stay English. Strings made only of %{placeholders}, digits, punctuation and emoji are always allowed. F-07: ja keeps its section labels when en moves from capitals to sentence case (ja has no case); es/de/fr already had sentence case for challenges.form.linked; de/fr/pt-BR use the English loanwords Feedback, Backup and Notifications. Remove these F-07 key entries in P-07 (it rewords several of them, and a permanent entry would hide a stale translation).",
   "values": [
     "Groov",
     "Groov Pro",

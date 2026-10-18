@@ -15,7 +15,9 @@ function Segment({ option, selected, role, onSelect, onDisabledPress, theme, fil
   const state = useSelectionFill(theme, { selected, disabled });
   const slop = SEGMENT_HEIGHT < touchMinimum() ? hitSlopFor(0, SEGMENT_HEIGHT) : undefined;
   const iconColor = disabled ? theme.onDisabled : selected ? theme.onSelection : theme.textSecondary;
-  const a11yState = role === 'tab' ? { selected } : { checked: selected, selected };
+  // One state per role (VoiceOver and TalkBack read both when both are set): a tab is
+  // `selected`, a radio `checked`. aria-selected is only valid on a tab.
+  const a11yState = role === 'tab' ? { selected } : { checked: selected };
   return (
     <PressableScale
       theme={theme}
@@ -28,7 +30,7 @@ function Segment({ option, selected, role, onSelect, onDisabledPress, theme, fil
       accessibilityLabel={option.accessibilityLabel || option.label}
       accessibilityHint={option.accessibilityHint}
       accessibilityState={a11yState}
-      aria-selected={selected}
+      aria-selected={role === 'tab' ? selected : undefined}
       style={[styles.segment, compact && styles.compact, fill && styles.fill]}
     >
       <SelectionLayers state={state} radius={radius.pill} />
@@ -53,8 +55,9 @@ function Segment({ option, selected, role, onSelect, onDisabledPress, theme, fil
  * - A disabled option (`disabledContainer` / `onDisabled`, never an opacity) stays focusable;
  *   a tap calls `onDisabledPress(value)` or plays `refused`.
  * - Each option is 40 tall with hitSlop to the touch minimum (48 dp Android, 44 pt iOS). The
- *   options wrap to a second row when the labels do not fit (LAY-6). `fill` stretches them to
- *   equal widths across the row. `compact` trims the side padding for tight rows.
+ *   options wrap to a second row when the labels do not fit (LAY-6). `fill` grows them to
+ *   share the row (each starts at its own label width, flexBasis auto, so long labels still
+ *   wrap instead of clipping). `compact` trims the side padding for tight rows.
  * - The selected fill fades over duration.selection (150 ms, PRS-6).
  */
 export default function SegmentedControl({
@@ -118,7 +121,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   compact: { paddingHorizontal: space.xs },
-  fill: { flexGrow: 1, flexBasis: 0 },
+  fill: { flexGrow: 1, flexBasis: 'auto' },
   content: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
   label: { flexShrink: 1, textAlign: 'center' },
 });

@@ -4,12 +4,15 @@ import { duration, easing, useMotion } from '../../theme/motion';
 
 /**
  * The selected / unselected colours of a Chip or a segment (plan §3, §2.2): `selection` fill,
- * `onSelection` label and `selectionBorder` when selected; `restBg` (none by default),
- * `textSecondary` and `controlBorder` otherwise. Disabled wins over both: `disabledContainer`
- * with `onDisabled` (the pair Button uses, 6.15:1 light / 5.59:1 dark) and no visible border.
+ * `onSelection` label and `selectionBorder` when selected; no fill, `textSecondary` and
+ * `controlBorder` otherwise. Disabled: `disabledContainer` with `onDisabled` (the pair Button
+ * uses, 6.15:1 light / 5.59:1 dark), never an opacity. A disabled option that is selected
+ * keeps the `selectionBorder` outline, so it still reads as the chosen one, dimmed.
  */
 export function selectionColors(theme, { selected, disabled }) {
-  if (disabled) return { fill: theme.disabledContainer, border: theme.disabledContainer, label: theme.onDisabled };
+  if (disabled) {
+    return { fill: theme.disabledContainer, border: selected ? theme.selectionBorder : theme.disabledContainer, label: theme.onDisabled };
+  }
   return selected
     ? { fill: theme.selection, border: theme.selectionBorder, label: theme.onSelection }
     : { fill: null, border: theme.controlBorder, label: theme.textSecondary };
@@ -39,7 +42,7 @@ export function useSelectionFill(theme, { selected, disabled = false }) {
   }, [selected, fill, tint, motion]);
 
   if (disabled) {
-    const c = selectionColors(theme, { disabled: true });
+    const c = selectionColors(theme, { selected, disabled: true });
     return { fillOpacity: 1, fillColor: c.fill, border: c.border, label: c.label };
   }
   const off = selectionColors(theme, { selected: false });

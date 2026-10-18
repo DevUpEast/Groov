@@ -549,6 +549,7 @@
       "weeklyA11y": "Wochenrückblick",
       "monthlyA11y": "Monatsrückblick",
       "lockedSuffix": ", gesperrt",
+      "lockedHint": "Zeigt, wann es freigeschaltet wird",
       "unlocks": { "one": "Wird in %{count} Tag freigeschaltet", "other": "Wird in %{count} Tagen freigeschaltet" },
       "unlockWeekly": "Verfolge deine Gewohnheiten eine ganze Woche lang, um deine Wochenzusammenfassung freizuschalten.",
       "unlockMonthly": "Verfolge deine Gewohnheiten einen ganzen Monat lang, um deine Monatszusammenfassung freizuschalten.",

@@ -549,6 +549,7 @@
       "weeklyA11y": "Weekly reflection",
       "monthlyA11y": "Monthly reflection",
       "lockedSuffix": ", locked",
+      "lockedHint": "Shows when it unlocks",
       "unlocks": { "one": "Unlocks in %{count} day", "other": "Unlocks in %{count} days" },
       "unlockWeekly": "Track your habits for a full week to unlock your weekly summary.",
       "unlockMonthly": "Track your habits for a full month to unlock your monthly summary.",

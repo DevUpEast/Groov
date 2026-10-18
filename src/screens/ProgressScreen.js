@@ -598,13 +598,15 @@ export default function ProgressScreen() {
               onChange={pickReflectionPeriod}
               // A locked period still opens its "unlocks after N days" note (it was tappable before).
               onDisabledPress={pickReflectionPeriod}
-              options={[{ label: '7d', value: 'weekly' }, { label: '30d', value: 'monthly' }].map(({ label, value }) => {
+              options={[{ label: t('progress.period.d7'), value: 'weekly' }, { label: t('progress.period.d30'), value: 'monthly' }].map(({ label, value }) => {
                 const locked = value === 'weekly' ? !canGenerateWeekly : !canGenerateMonthly;
                 return {
                   value,
                   label,
                   icon: locked ? 'lock-closed' : undefined,
                   disabled: locked,
+                  // The locked option still acts (it opens the "unlocks in N days" note).
+                  accessibilityHint: locked ? t('progress.reflection.lockedHint') : undefined,
                   accessibilityLabel: (value === 'weekly' ? t('progress.reflection.weeklyA11y') : t('progress.reflection.monthlyA11y')) + (locked ? t('progress.reflection.lockedSuffix') : ''),
                 };
               })}

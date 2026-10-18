@@ -549,6 +549,7 @@
       "weeklyA11y": "週間ふりかえり",
       "monthlyA11y": "月間ふりかえり",
       "lockedSuffix": "、ロック中",
+      "lockedHint": "解放される時期を表示します",
       "unlocks": { "one": "あと%{count}日で解放", "other": "あと%{count}日で解放" },
       "unlockWeekly": "丸1週間習慣を記録すると、週間サマリーが解放されます。",
       "unlockMonthly": "丸1か月習慣を記録すると、月間サマリーが解放されます。",

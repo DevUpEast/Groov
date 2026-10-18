@@ -9,9 +9,10 @@ const TestRenderer = require('react-test-renderer');
 const { act } = TestRenderer;
 const { Animated, Platform, StyleSheet } = require('react-native');
 
+let mockReduced = false;
 jest.mock('../../../utils/a11y', () => ({
-  useReducedMotion: () => false,
-  isReducedMotion: () => false,
+  useReducedMotion: () => mockReduced,
+  isReducedMotion: () => mockReduced,
   announce: jest.fn(),
 }));
 jest.mock('../../../services/feedback', () => ({
@@ -37,6 +38,7 @@ const originalOS = Platform.OS;
 
 let timings;
 beforeEach(() => {
+  mockReduced = false;
   timings = [];
   feedback.play.mockClear();
   announce.mockClear();
@@ -72,7 +74,9 @@ describe('Chip', () => {
 
     const m = render(<Chip label="Mo" multi selected theme={light} />);
     expect(outer(m).props.accessibilityRole).toBe('checkbox');
-    expect(outer(m).props.accessibilityState).toEqual({ checked: true, selected: true });
+    // One state per role: checked for a checkbox, selected for a button (never both).
+    expect(outer(m).props.accessibilityState).toEqual({ checked: true });
+    expect(outer(m).props['aria-selected']).toBeUndefined();
     expect(m.root.findAll(n => n.props.testID === 'chip-check').length).toBeGreaterThan(0);
 
     const n = render(<Chip label="Mo" multi showCheck={false} selected theme={light} />);
@@ -97,6 +101,24 @@ describe('Chip', () => {
     expect(duration.selection).toBe(150);
     const fill = r.root.findAll(n => n.props.testID === 'selection-fill' && typeof n.type !== 'string')[0];
     expect(flat(fill).backgroundColor).toBe(light.selection);
+  });
+
+  it('keeps the 150 ms fill under reduced motion (a fade, no scale)', () => {
+    mockReduced = true;
+    const r = render(<Chip label="Anytime" selected={false} theme={light} />);
+    act(() => { r.update(<Chip label="Anytime" selected theme={light} />); });
+    const fills = timings.filter(x => x.config.toValue === 1);
+    expect(fills.length).toBe(2);
+    fills.forEach(x => expect(x.config.duration).toBe(150));
+  });
+
+  it('a disabled chip that is selected keeps the selectionBorder outline', () => {
+    const r = render(<Chip label="Timed" disabled selected theme={light} />);
+    const border = r.root.findAll(n => n.props.testID === 'selection-border' && typeof n.type !== 'string')[0];
+    expect(flat(border).borderColor).toBe(light.selectionBorder);
+    const off = render(<Chip label="Timed" disabled theme={light} />);
+    const b2 = off.root.findAll(n => n.props.testID === 'selection-border' && typeof n.type !== 'string')[0];
+    expect(flat(b2).borderColor).toBe(light.disabledContainer);
   });
 
   it('is 40 tall with slop to 48 dp on Android and 44 pt on iOS', () => {
@@ -132,13 +154,15 @@ describe('SegmentedControl', () => {
     expect(group.props.accessibilityLabel).toBe('History');
     const segs = pressables(r);
     expect(segs.map(s => s.props.accessibilityRole)).toEqual(['radio', 'radio', 'radio']);
-    expect(segs[1].props.accessibilityState).toEqual({ checked: true, selected: true });
-    expect(segs[0].props.accessibilityState).toEqual({ checked: false, selected: false });
+    expect(segs[1].props.accessibilityState).toEqual({ checked: true });
+    expect(segs[0].props.accessibilityState).toEqual({ checked: false });
+    expect(segs[1].props['aria-selected']).toBeUndefined();
     expect(segs[2].props.accessibilityState.disabled).toBe(true);
 
     const tabs = render(<SegmentedControl testID="seg" role="tab" options={OPTIONS} value="a" theme={light} />);
     expect(tabs.root.findAll(n => n.props.accessibilityRole === 'tablist' && typeof n.type === 'string')).toHaveLength(1);
     expect(pressables(tabs)[0].props.accessibilityState).toEqual({ selected: true });
+    expect(pressables(tabs)[0].props['aria-selected']).toBe(true);
   });
 
   it('changes on another option with the selection haptic, ignores the current one', () => {
@@ -172,10 +196,17 @@ describe('SegmentedControl', () => {
     expect(flat(seg).minHeight + seg.props.hitSlop.top + seg.props.hitSlop.bottom).toBe(48);
   });
 
-  it('wraps its options when they do not fit (LAY-6)', () => {
-    const r = render(<SegmentedControl testID="seg" options={OPTIONS} value="a" theme={light} />);
-    const group = r.root.findAll(n => n.props.accessibilityRole === 'radiogroup' && typeof n.type === 'string')[0];
+  it('wraps its options when they do not fit, also with fill (LAY-6)', () => {
+    const LONG = [{ value: 'a', label: 'Cette semaine' }, { value: 'b', label: 'Année en pixels' }, { value: 'c', label: 'Série' }];
+    const r = render(<SegmentedControl testID="seg" role="tab" fill options={LONG} value="a" theme={light} />);
+    const group = r.root.findAll(n => n.props.accessibilityRole === 'tablist' && typeof n.type === 'string')[0];
     expect(flat(group).flexWrap).toBe('wrap');
+    // flexBasis 0 would squeeze every option onto one row (the label then clips); 'auto' starts
+    // each option at its label width, so a row that is too narrow breaks onto a second one.
+    pressables(r).forEach(seg => {
+      expect(flat(seg).flexGrow).toBe(1);
+      expect(flat(seg).flexBasis).toBe('auto');
+    });
   });
 });
 
@@ -186,6 +217,25 @@ describe('TextField', () => {
     const r = render(<TextField label="Name" hint="Keep it short" value="" onChangeText={() => {}} theme={light} />);
     expect(input(r).props.accessibilityLabel).toBe('Name');
     expect(input(r).props.accessibilityHint).toBe('Keep it short');
+  });
+
+  it('rests on controlBorder (the input-outline role, >= 3:1 on the field fill)', () => {
+    const { pairs } = require('../../../theme/tokens');
+    const r = render(<TextField label="Name" value="" onChangeText={() => {}} theme={light} />);
+    const field = r.root.findAll(n => typeof n.type === 'string' && flat(n).borderWidth === 2)[0];
+    expect(flat(field).borderColor).toBe(light.controlBorder);
+    for (const theme of ['light', 'dark']) {
+      const pair = pairs.find(p => p.theme === theme && p.fg === 'controlBorder' && p.bg === 'bg');
+      expect(pair && pair.min).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('hides the visible label and helper from screen readers (the input carries both)', () => {
+    const r = render(<TextField label="Name" hint="Keep it short" value="" onChangeText={() => {}} theme={light} />);
+    const hiddenTexts = r.root.findAll(n => typeof n.type === 'string' && n.props.importantForAccessibility === 'no' && n.props.accessibilityElementsHidden === true);
+    expect(hiddenTexts.length).toBeGreaterThanOrEqual(2); // label, helper row
+    expect(input(r).props.accessibilityLabelledBy).toBeUndefined();
+    expect(r.root.findAll(n => n.props.accessibilityLiveRegion && n.props.accessibilityLiveRegion !== 'none')).toHaveLength(0);
   });
 
   it('shows an error in dangerText, reads it as the hint and announces it once', () => {
@@ -212,6 +262,21 @@ describe('TextField', () => {
     const r = render(<TextField label="Name" value={'a'.repeat(32)} maxLength={40} onChangeText={() => {}} theme={light} />);
     expect(r.root.findAll(n => n.props.children === '32/40').length).toBeGreaterThan(0);
   });
+
+  it('puts the count in the hint, no live region, and announces only on reaching the limit', () => {
+    const el = (n) => <TextField label="Name" hint="Short" value={'a'.repeat(n)} maxLength={40} onChangeText={() => {}} theme={light} />;
+    const r = render(el(32));
+    expect(input(r).props.accessibilityHint).toMatch(/^Short\. .*32.*40/);
+    const counter = r.root.findAll(n => n.props.testID === 'textfield-counter')[0];
+    expect(counter.props.accessibilityLiveRegion).toBeUndefined();
+    act(() => { r.update(el(33)); });
+    act(() => { r.update(el(34)); });
+    expect(announce).not.toHaveBeenCalled(); // no per-keystroke announcement
+    act(() => { r.update(el(40)); });
+    expect(announce).toHaveBeenCalledTimes(1);
+    act(() => { r.update(el(40)); });
+    expect(announce).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('SectionLabel', () => {
@@ -224,30 +289,59 @@ describe('SectionLabel', () => {
 });
 
 describe('the uppercase sweep (TYP-4, acceptance a)', () => {
-  const SRC = path.resolve(__dirname, '../../..');
-  const files = [];
+  const ROOT = path.resolve(__dirname, '../../../..');
+  const SRC = path.join(ROOT, 'src');
+  const files = [path.join(ROOT, 'App.js'), path.join(ROOT, 'index.js')];
   (function walk(dir) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) { if (e.name !== '__tests__') walk(p); } else if (/\.(js|jsx|ts|tsx)$/.test(e.name)) files.push(p);
     }
   })(SRC);
+  const rel = (f) => path.relative(ROOT, f).replace(/\\/g, '/');
+  const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
-  it('no file in src/ sets textTransform: uppercase', () => {
-    const offenders = files.filter(f => /textTransform\s*:\s*['"]uppercase['"]/.test(fs.readFileSync(f, 'utf8')));
-    expect(offenders.map(f => path.relative(SRC, f))).toEqual([]);
+  it('no file sets an uppercase text transform (any quote, a constant or a template literal)', () => {
+    const offenders = files.filter(f => /['"`]uppercase['"`]/.test(strip(fs.readFileSync(f, 'utf8'))));
+    expect(offenders.map(rel)).toEqual([]);
   });
 
-  it('no en section label is written in capitals', () => {
-    const en = require('../../../i18n/locales/en.json');
+  // Data, not displayed text: hex colours, a crypto algorithm name, and HabitCard's
+  // first-letter capitalisation of a sub-line. Anything new must be reviewed for caps.
+  const UPPER_ALLOW = ['src/components/HabitCard.js', 'src/theme/accents.js', 'src/theme/contrast.js', 'src/utils/color.js', 'src/utils/supabase.js'];
+  it('no file upper-cases strings with toUpperCase / toLocaleUpperCase outside the allowlist', () => {
+    const offenders = files.filter(f => /\.to(Locale)?UpperCase\(/.test(strip(fs.readFileSync(f, 'utf8')))).map(rel);
+    expect(offenders.filter(f => !UPPER_ALLOW.includes(f))).toEqual([]);
+  });
+
+  // Strings that are legitimately capitals (abbreviations); anything else with 3+ capitals
+  // and no lower-case letter is a shouted label.
+  const CAPS_ALLOW = new Set(['OK', 'AM/PM', 'USD', 'JSON', 'AI', 'KI', 'IA', 'PRO']);
+  const shouted = (v) => {
+    const text = v.replace(/%\{[^}]*\}/g, '');
+    return !/\p{Ll}/u.test(text) && /\p{Lu}{3,}/u.test(text) && !CAPS_ALLOW.has(text.trim());
+  };
+  it('no locale (except ja) has a label written in capitals', () => {
     const caps = [];
-    (function walk(o, k) {
-      for (const [key, v] of Object.entries(o)) {
-        const kk = k ? `${k}.${key}` : key;
-        if (v && typeof v === 'object') walk(v, kk);
-        else if (typeof v === 'string' && /^[^a-z]*[A-Z]{4,}[^a-z]*$/.test(v) && !/^(GROOV|AM\/PM)/.test(v)) caps.push(kk);
-      }
-    })(en, '');
+    for (const code of ['en', 'es', 'de', 'fr', 'pt-BR']) {
+      const json = require(`../../../i18n/locales/${code}.json`);
+      (function walk(o, k) {
+        for (const [key, v] of Object.entries(o)) {
+          const kk = k ? `${k}.${key}` : key;
+          if (v && typeof v === 'object') walk(v, kk);
+          else if (typeof v === 'string' && shouted(v)) caps.push(`${code}:${kk}`);
+        }
+      })(json, '');
+    }
     expect(caps).toEqual([]);
+  });
+
+  it('the caps check catches 3-letter labels and spares abbreviations', () => {
+    expect(shouted('NOW')).toBe(true);
+    expect(shouted('PAST CHALLENGES')).toBe(true);
+    expect(shouted('ARCHIVED (%{count})')).toBe(true);
+    expect(shouted('OK')).toBe(false);
+    expect(shouted('AM/PM')).toBe(false);
+    expect(shouted('Now')).toBe(false);
   });
 });

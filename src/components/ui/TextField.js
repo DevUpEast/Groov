@@ -7,8 +7,6 @@ import { t, useLocale } from '../../i18n';
 import AppText from './AppText';
 import { useUiTheme } from './PressableScale';
 
-let nextId = 0;
-
 // The counter shows once the text reaches 80 % of maxLength (plan §3).
 export function showCounter(length, maxLength) {
   return !!maxLength && length >= Math.ceil(maxLength * 0.8);
@@ -17,13 +15,18 @@ export function showCounter(length, maxLength) {
 /**
  * A labelled text input (plan §3, FRM-2, STA-8).
  * - `label` sits above the field (footnoteStrong, textSecondary) and is the input's
- *   accessibility label (plus `nativeID` / `accessibilityLabelledBy` on Android).
- * - `hint`: a footnote under the field, read as the accessibility hint.
- * - `error`: replaces the hint with a `dangerText` footnote, turns the border `dangerText`,
- *   and is announced once each time it appears or changes. Callers play the `error` haptic.
- * - Focus: a 2 px `selectionBorder` (the border is always 2 px, so nothing moves).
- * - `maxLength`: a counter "12/40" appears at 80 % of the limit, announced as "12 of 40
- *   characters".
+ *   accessible name (`accessibilityLabel` overrides it). The visible label is hidden from
+ *   screen readers, so it is not read twice.
+ * - `hint`: a footnote under the field, read as the input's accessibility hint (the visible
+ *   footnote is hidden from screen readers for the same reason).
+ * - `error`: replaces the hint with a `dangerText` footnote and turns the border `dangerText`.
+ *   It is announced once each time it appears or changes (announce() only, no live region,
+ *   so Android does not read it twice) and becomes the hint. Callers play the `error` haptic.
+ * - Border: 2 px always (nothing moves): `controlBorder` at rest (the input-outline role,
+ *   3.31:1 on bg light, 6.25:1 dark), `selectionBorder` focused, `dangerText` on error.
+ * - `maxLength`: a counter "12/40" appears at 80 % of the limit. It is not a live region: the
+ *   count ("12 of 40 characters") is part of the input's hint, read on focus, and reaching
+ *   the limit is announced once.
  * - `left` / `right`: elements inside the field (an icon, a clear button).
  * - Everything else (`value`, `onChangeText`, `placeholder`, `multiline`, `secureTextEntry`,
  *   `autoComplete`, `textContentType`, `keyboardType`, `returnKeyType`, `onSubmitEditing`,
@@ -51,9 +54,6 @@ const TextField = forwardRef(function TextField({
   useLocale();
   const theme = useUiTheme(themeProp);
   const [focused, setFocused] = useState(false);
-  const idRef = useRef(null);
-  if (idRef.current == null) idRef.current = `textfield-${++nextId}`;
-  const labelId = `${idRef.current}-label`;
 
   const lastError = useRef(null);
   useEffect(() => {
@@ -63,13 +63,25 @@ const TextField = forwardRef(function TextField({
 
   const length = (value || '').length;
   const counter = showCounter(length, maxLength);
-  const borderColor = error ? theme.dangerText : focused ? theme.selectionBorder : theme.border;
+  const countText = counter ? t('common.charCount', { count: length, max: maxLength }) : null;
+
+  // Reaching the limit is announced once (not on every keystroke past 80 %).
+  const atLimit = !!maxLength && length >= maxLength;
+  const wasAtLimit = useRef(atLimit);
+  useEffect(() => {
+    if (atLimit && !wasAtLimit.current) announce(t('common.charCount', { count: length, max: maxLength }));
+    wasAtLimit.current = atLimit;
+  }, [atLimit, length, maxLength]);
+
+  const borderColor = error ? theme.dangerText : focused ? theme.selectionBorder : theme.controlBorder;
   const helper = error || hint;
+  const a11yHint = [helper, countText].filter(Boolean).join('. ') || undefined;
+  const hidden = { importantForAccessibility: 'no', accessibilityElementsHidden: true };
 
   return (
     <View style={[styles.wrap, style]} testID={testID}>
       {label ? (
-        <AppText variant="footnoteStrong" nativeID={labelId} style={[styles.label, { color: theme.textSecondary }]}>{label}</AppText>
+        <AppText variant="footnoteStrong" {...hidden} style={[styles.label, { color: theme.textSecondary }]}>{label}</AppText>
       ) : null}
       <View style={[styles.field, multiline && styles.fieldMulti, { borderColor, backgroundColor: theme.bg }]}>
         {left ? <View style={styles.side}>{left}</View> : null}
@@ -83,29 +95,26 @@ const TextField = forwardRef(function TextField({
           onFocus={(e) => { setFocused(true); onFocus?.(e); }}
           onBlur={(e) => { setFocused(false); onBlur?.(e); }}
           accessibilityLabel={accessibilityLabel || label}
-          accessibilityHint={helper || undefined}
-          accessibilityLabelledBy={Platform.OS === 'android' && label ? labelId : undefined}
+          accessibilityHint={a11yHint}
           aria-invalid={error ? true : undefined}
           style={[type.body, styles.input, multiline && styles.inputMulti, { color: theme.text }, inputStyle]}
         />
         {right ? <View style={styles.side}>{right}</View> : null}
       </View>
       {helper || counter ? (
-        <View style={styles.below}>
+        <View style={styles.below} {...hidden}>
           <AppText
             variant="footnote"
+            testID="textfield-helper"
             style={[styles.helper, { color: error ? theme.dangerText : theme.textSecondary }]}
-            accessibilityLiveRegion={error ? 'polite' : 'none'}
-            importantForAccessibility={error ? 'auto' : 'no'}
           >
             {helper || ''}
           </AppText>
           {counter ? (
             <AppText
               variant="caption"
-              style={[styles.counter, { color: length >= maxLength ? theme.dangerText : theme.textSecondary }]}
-              accessibilityLabel={t('common.charCount', { count: length, max: maxLength })}
-              accessibilityLiveRegion="polite"
+              testID="textfield-counter"
+              style={[styles.counter, { color: atLimit ? theme.dangerText : theme.textSecondary }]}
             >
               {`${length}/${maxLength}`}
             </AppText>
