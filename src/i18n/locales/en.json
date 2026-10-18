@@ -998,5 +998,13 @@
     "rowCount": "%{name}  ·  %{count}/%{goal}",
     "rowDone": "%{name}, done",
     "more": "+%{count} more in the app"
+  },
+  "snackbar": {
+    "minus": { "one": "Removed %{count} from %{name}", "other": "Removed %{count} from %{name}" },
+    "cleared": "%{name} cleared for today",
+    "archived": "%{name} archived",
+    "restored": "%{name} restored",
+    "deleted": "%{name} deleted",
+    "undone": "Undone"
   }
 }

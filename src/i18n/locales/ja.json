@@ -998,5 +998,13 @@
     "rowCount": "%{name}  ·  %{count}/%{goal}",
     "rowDone": "%{name}、完了",
     "more": "ほか%{count}件はアプリで確認"
+  },
+  "snackbar": {
+    "minus": { "one": "%{name}から%{count}減らしました", "other": "%{name}から%{count}減らしました" },
+    "cleared": "%{name}の今日の記録を消しました",
+    "archived": "%{name}をアーカイブしました",
+    "restored": "%{name}を復元しました",
+    "deleted": "%{name}を削除しました",
+    "undone": "元に戻しました"
   }
 }

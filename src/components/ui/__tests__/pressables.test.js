@@ -414,7 +414,8 @@ describe('source checks', () => {
     expect(card).toMatch(/<PressableScale\b/);
     expect(iconButtonTags(card)).toHaveLength(4); // ⋯ (C-03), timer, −, +
     expect(fs.existsSync(path.join(root, 'src/components/SheetHeader.js'))).toBe(false); // F-10: deleted
-    expect(read('src/components/UndoToast.js')).not.toMatch(/TouchableOpacity/);
+    expect(fs.existsSync(path.join(root, 'src/components/UndoToast.js'))).toBe(false); // C-10: ui/Snackbar
+    expect(read('src/components/ui/Snackbar.js')).not.toMatch(/TouchableOpacity/);
     const app = read('App.js');
     expect(app).toMatch(/<PressableScale[\s\S]{0,400}accessibilityRole="tab"/);
     const habits = read('src/screens/HabitsScreen.js');

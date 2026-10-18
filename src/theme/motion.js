@@ -108,6 +108,17 @@ export const celebration = {
   trophyStaticHold: 2000, // reduced-motion trophy
 };
 
+// How long a Snackbar (ui/Snackbar, C-10) stays up before it hides itself. The timer pauses
+// while the bar is touched or a sheet / dialog is open. `short` is the legacy per-check toast
+// (choreography dev flag off only).
+export const snackbar = {
+  standard: 8000,
+  screenReader: 10000, // a screen reader is on: time to reach the action
+  short: 4000,
+  gap: 8, // above the tab bar, and between the bar and the content it pads
+  bumpFrom: 1.03, // the scale a replacing message starts from (PRS-5)
+};
+
 // Hand-offs between surfaces that do not expose a completion callback. Sheet-to-sheet and
 // sheet-to-tab hand-offs use ui/Sheet's `onDismiss` or `ref.requestClose(then)` instead.
 export const handoff = {

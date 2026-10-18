@@ -1026,7 +1026,9 @@ export function AppProvider({ children }) {
 
   const updateHabit = useCallback((id, updates) => {
     if (updates.schedule) updates = { ...updates, schedule: normalizeSchedule(updates.schedule) };
-    const before = allHabits.find(h => h.id === id);
+    // The latest committed habits, not this render's: a Snackbar Undo may call it from a
+    // screen whose context is up to MOMENT_MS old (TabScope, C-10).
+    const before = (stateRef.current.habits || allHabits).find(h => h.id === id);
     // Switching back to an emoji drops the stored image too.
     if ('customIconUri' in updates && !updates.customIconUri && before?.iconStoragePath) {
       updates = { ...updates, iconStoragePath: null };
@@ -1102,18 +1104,19 @@ export function AppProvider({ children }) {
     if (userId) syncNote(userId, key, habitId, trimmed, (completions[key] || {})[habitId] || 0);
   }, [userId, completions]);
 
+  // Reads the latest committed state (stateRef), and writes challenges functionally: a
+  // Snackbar's deferred delete runs up to 8 s after the screen rendered (C-10), and must not
+  // put back a challenge day claimed in between.
   const deleteHabit = useCallback((id) => {
-    const gone = allHabits.find(h => h.id === id);
+    const live = stateRef.current;
+    const gone = (live.habits || allHabits).find(h => h.id === id);
     if (gone?.customIconUri || gone?.iconStoragePath) removeIcon(userId, id, gone.iconStoragePath);
     setHabits(prev => prev.filter(h => h.id !== id));
-    const updatedChallenges = challenges.map(ch => ({
-      ...ch,
-      linkedHabitIds: (ch.linkedHabitIds || []).filter(hid => hid !== id),
-    }));
-    setChallenges(updatedChallenges);
+    const unlink = (ch) => ({ ...ch, linkedHabitIds: (ch.linkedHabitIds || []).filter(hid => hid !== id) });
+    setChallenges(prev => prev.map(unlink));
     if (userId) {
       deleteHabitSync(userId, id);
-      updatedChallenges.forEach(ch => syncChallenge(userId, ch));
+      (live.challenges || challenges).forEach(ch => syncChallenge(userId, unlink(ch)));
     }
   }, [challenges, userId, allHabits]);
 
@@ -1153,18 +1156,28 @@ export function AppProvider({ children }) {
   }, [settings.skips]);
 
   // Skip (or unskip) a habit for a day: the day becomes a rest day for that habit, so
-  // the streak is preserved without counting it.
-  const toggleSkipHabitOn = useCallback((habitId, key) => {
-    const current = settings.skips?.[key] || [];
+  // the streak is preserved without counting it. Reads the live settings (settingsRef), so a
+  // Snackbar Undo from an older render sets exactly the state it names (C-10).
+  // `undo`: this write takes back a skip / unskip, so a milestone that skip just recorded is
+  // forgotten again (like Mark the rest's Undo).
+  const setSkipHabitOn = useCallback((habitId, key, skipped, { undo = false } = {}) => {
+    const all = settingsRef.current.skips || {};
+    const current = all[key] || [];
+    if (current.includes(habitId) === !!skipped) return;
+    if (undo) milestoneUndoRef.current = { before: completionsStateRef.current, skips: skipsStateRef.current };
     // C-08 m2: skipping the last open habit of today completes the day, and the streak rises
     // like it does for a check-off. Milestones are recorded once ever, so recording it
     // silently would take the moment away for good: a skip of today arms the celebration.
-    if (key === todayStr()) armMilestone();
-    const nextDay = current.includes(habitId) ? current.filter(id => id !== habitId) : [...current, habitId];
-    const skips = { ...(settings.skips || {}) };
+    else if (key === todayStr()) armMilestone();
+    const nextDay = skipped ? [...current, habitId] : current.filter(id => id !== habitId);
+    const skips = { ...all };
     if (nextDay.length > 0) skips[key] = nextDay; else delete skips[key];
     updateSettings({ skips });
-  }, [settings.skips, updateSettings, todayStr]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [updateSettings, todayStr]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleSkipHabitOn = useCallback((habitId, key) => {
+    setSkipHabitOn(habitId, key, !(settingsRef.current.skips?.[key] || []).includes(habitId));
+  }, [setSkipHabitOn]);
 
   const isDayFrozen = useCallback((key) => (settings.streakFreezes || []).includes(key), [settings.streakFreezes]);
 
@@ -1231,7 +1244,8 @@ export function AppProvider({ children }) {
   }, [challenges, todayStr, userId]);
 
   const deleteChallenge = useCallback((challengeId) => {
-    const ch = challenges.find(c => c.id === challengeId);
+    // The latest committed challenge (a Snackbar's deferred delete, C-10; see deleteHabit).
+    const ch = (stateRef.current.challenges || challenges).find(c => c.id === challengeId);
     if (ch) {
       const tier = getChallengeTier(ch.completedDays.length, ch.days);
       const archived = { ...ch, archivedAt: todayStr(), tier };
@@ -1605,7 +1619,7 @@ export function AppProvider({ children }) {
     // Silent entries stay (a first-run backfill at or below the best streak is not the undone
     // action's).
     const undo = milestoneUndoRef.current;
-    if (undo && undo.before !== completions) {
+    if (undo && (undo.before !== completions || (undo.skips !== undefined && undo.skips !== settings.skips))) {
       milestoneUndoRef.current = null;
       const keep = recorded.filter(m => !(m.date === today && !m.silent && m.days > streak));
       if (keep.length !== recorded.length) {
@@ -1832,7 +1846,7 @@ export function AppProvider({ children }) {
       getTodayCompletions, getHabitCount, isHabitDone, isHabitDoneOn, isHabitSatisfied, dueHabits,
       getCompletedCount, isAllDone, isChallengeHabitsDone,
       incrementHabit, decrementHabit, setHabitCountOn, toggleHabitDoneOn,
-      isHabitSkippedOn, toggleSkipHabitOn, isDayFrozen, isExcused, freezesLeft,
+      isHabitSkippedOn, toggleSkipHabitOn, setSkipHabitOn, isDayFrozen, isExcused, freezesLeft,
       streakNews, dismissStreakNews, takeBackOnBeat, simulateMissedYesterday, spendFreezesThisMonth,
       pendingMilestone, clearPendingMilestone,
       addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit,

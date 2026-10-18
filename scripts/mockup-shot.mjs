@@ -8,9 +8,10 @@
 //                       anonymous sign-in to stderr, plus a sign-in count at the end)
 //            --demo 0|1 --guest 0|1 --lang de (forwarded to the app; default: apps.json params)
 //            --nudge 1 --streak 12|frozen --challenges 2 --hint longPress --celebrate 7|3|1
-//            --streakNews freeze|freezeDay|freezeMany|reset|back
+//            --streakNews freeze|freezeDay|freezeMany|reset|back --snackbar markRest|skip|delete
 //            (review states, forwarded; --celebrate holds that milestone screen or strip beat,
-//            --streakNews shows that C-09 card or holds "Back on beat.")
+//            --streakNews shows that C-09 card or holds "Back on beat.", --snackbar holds a
+//            sample C-10 Snackbar on Today)
 //            --fresh (throwaway Chrome profile: first-run, onboarding, welcome shots)
 //            --reset-demo (delete .mockup-profile/ first; alone, without --out, it only resets)
 // Without --base, serves ./mockup-dist on port 8786 (run scripts/build-mockup.sh first).
@@ -35,7 +36,7 @@ const wait = Number(args.wait || 2500);
 const out = path.resolve(args.out || `mockup-${app}-${route || 'home'}-${theme}.png`);
 
 const session = await openMockup({ base: args.base, fresh: args.fresh === '1' });
-const extra = { nudge: args.nudge, streak: args.streak, challenges: args.challenges, hint: args.hint, celebrate: args.celebrate, streakNews: args.streakNews };
+const extra = { nudge: args.nudge, streak: args.streak, challenges: args.challenges, hint: args.hint, celebrate: args.celebrate, streakNews: args.streakNews, snackbar: args.snackbar };
 const url = hostUrl(session.base, { app, device, theme, route, frame, demo: args.demo, guest: args.guest, lang: args.lang, extra });
 try {
   const page = await session.browser.newPage();

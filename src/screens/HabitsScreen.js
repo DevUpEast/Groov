@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, ActivityIndicator,
@@ -23,6 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
 import { ACCENT_IDS, resolveAccent, storedHexFor } from '../theme/accents';
 import { handoff } from '../theme/motion';
+import { useSnackbar, useSnackbarInset } from '../components/ui/Snackbar';
 import { BLANK_FORM, formFromHabit, habitFromForm, isFormDirty, pickAccent, selectedAccentId, suggestedColor } from '../utils/habitForm';
 import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
@@ -624,6 +625,15 @@ export default function HabitsScreen() {
   } = useApp();
   const tabActive = useTabActive();
   useLocale();
+  // C-10: archive, restore and delete forever end in a Snackbar with Undo. A delete is held
+  // back until the snackbar goes (its onHide), so Undo has nothing to rebuild: the habit is
+  // only hidden here (and, if it was active, archived) meanwhile.
+  const snackbar = useSnackbar();
+  const snackbarInset = useSnackbarInset();
+  const [pendingDeletes, setPendingDeletes] = useState([]);
+  const live = useRef({});
+  live.current = { updateHabit, archiveHabit, deleteHabit };
+  const unpend = (id) => setPendingDeletes(prev => prev.filter(x => x !== id));
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(BLANK);
@@ -711,17 +721,62 @@ export default function HabitsScreen() {
     Alert.alert(t('habits.archive.title'), t('habits.archive.body', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('habits.archive.deleteForever'), style: 'destructive', onPress: () => handleDeleteForever(id, name) },
-      { text: t('habits.archive.archive'), onPress: () => archiveHabit(id) },
+      { text: t('habits.archive.archive'), onPress: () => archiveWithUndo(id, name) },
     ]);
+  };
+
+  // Archive drops the habit's reminder; Undo puts the habit back with it.
+  const archiveWithUndo = (id, name) => {
+    const reminder = habits.find(h => h.id === id)?.reminder;
+    archiveHabit(id);
+    snackbar.show({
+      kind: 'archive',
+      message: t('snackbar.archived', { name }),
+      actionLabel: t('common.undo'),
+      onAction: () => live.current.updateHabit(id, { archived: false, reminder }),
+    });
+  };
+
+  const restoreWithUndo = (id, name) => {
+    unarchiveHabit(id);
+    snackbar.show({
+      kind: 'restore',
+      message: t('snackbar.restored', { name }),
+      actionLabel: t('common.undo'),
+      onAction: () => live.current.archiveHabit(id),
+    });
+  };
+
+  // Confirmed delete: an active habit is archived at once (it leaves Today and its reminder
+  // stops) and the row hides; the delete itself runs when the snackbar goes without Undo,
+  // including when the app goes to the background.
+  const deleteWithUndo = (id, name) => {
+    const active = habits.find(h => h.id === id);
+    const reminder = active?.reminder;
+    if (active) archiveHabit(id);
+    setPendingDeletes(prev => (prev.includes(id) ? prev : [...prev, id]));
+    snackbar.show({
+      kind: 'delete',
+      endsOnBackground: true,
+      message: t('snackbar.deleted', { name }),
+      actionLabel: t('common.undo'),
+      onAction: () => {
+        unpend(id);
+        if (active) live.current.updateHabit(id, { archived: false, reminder });
+      },
+      onHide: () => { live.current.deleteHabit(id); unpend(id); },
+    });
   };
 
   const handleDeleteForever = (id, name) => {
     feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(t('habits.deleteHabit.title'), t('habits.deleteHabit.body', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => deleteHabit(id) },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteWithUndo(id, name) },
     ]);
   };
+
+  const shownArchived = pendingDeletes.length > 0 ? archivedHabits.filter(h => !pendingDeletes.includes(h.id)) : archivedHabits;
 
   // habit.reminder is the single source of truth; AppContext reschedules the OS
   // notifications whenever it changes, and Settings lists it from the habit itself.
@@ -738,7 +793,7 @@ export default function HabitsScreen() {
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scroll, snackbarInset > 0 && { paddingBottom: styles.scroll.paddingBottom + snackbarInset }]} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <AppText variant="title" style={[styles.heading, { color: theme.text }]}>{t('habits.title')}</AppText>
           <View style={{ flexDirection: 'row', gap: space.xs }}>
@@ -790,15 +845,15 @@ export default function HabitsScreen() {
           ))
         )}
 
-        {archivedHabits.length > 0 && (
+        {shownArchived.length > 0 && (
           <View style={{ marginTop: 20 }}>
-            <SectionLabel label={t('habits.archived', { count: archivedHabits.length })} theme={theme} first style={styles.sectionLabel} />
-            {archivedHabits.map(habit => (
+            <SectionLabel label={t('habits.archived', { count: shownArchived.length })} theme={theme} first style={styles.sectionLabel} />
+            {shownArchived.map(habit => (
               <ArchivedRow
                 key={habit.id}
                 habit={habit}
                 theme={theme}
-                onRestore={() => unarchiveHabit(habit.id)}
+                onRestore={() => restoreWithUndo(habit.id, habit.name)}
                 onDelete={() => handleDeleteForever(habit.id, habit.name)}
               />
             ))}

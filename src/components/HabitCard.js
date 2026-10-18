@@ -112,7 +112,9 @@ export function secondaryActions({ skipped, yesterdayDone, note, isCounter, coun
   ];
 }
 
-export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkipToggle, onOpenDetail }) {
+// `onSkip(habit, skip)` and `onMenuMinus(habit, amount)` (Today, C-10) take over the options'
+// skip and "−1": the host applies them and shows the Snackbar with Undo, which announces.
+export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkip, onMenuMinus, onOpenDetail }) {
   const {
     getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, themeName, todayStr,
     isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, getNote, setHint,
@@ -244,7 +246,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
       // Skip and yesterday give a screen-reader user no other confirmation (yesterday is not on
       // the card, and a custom action closes no sheet), so say what happened (code review n7).
       case 'skip':
-        toggleSkipHabitOn(habit.id, today); onSkipToggle?.(habit);
+        if (onSkip) { onSkip(habit, !skipped); break; }
+        toggleSkipHabitOn(habit.id, today);
         announce(t(skipped ? 'habitCard.announce.unskipped' : 'habitCard.announce.skipped', { name: habit.name }));
         break;
       case 'yesterday':
@@ -252,7 +255,10 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         announce(t(yesterdayDone ? 'habitCard.announce.yesterdayUndone' : 'habitCard.announce.yesterdayDone', { name: habit.name }));
         break;
       case 'note': onNote?.(habit, today); break;
-      case 'minus': onDecrement(removeAmount); sayCount(count - removeAmount); break;
+      case 'minus':
+        if (onMenuMinus) onMenuMinus(habit, removeAmount);
+        else { onDecrement(removeAmount); sayCount(count - removeAmount); }
+        break;
       case 'details': onOpenDetail?.(habit); break;
       default: break;
     }

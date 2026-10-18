@@ -355,6 +355,27 @@ test('M2: Undo of Mark the rest takes the 7 back; completing the day later celeb
   act(() => r.unmount());
 });
 
+test('C-10: the skip snackbar Undo takes back the 7 that skip recorded, and sets the skip back', async () => {
+  Object.assign(mockStore, { habits: TWO, completions: { ...historyOf(['r', 'w'], 6), [today()]: { r: 1 } } });
+  const r = await mount();
+  await act(async () => { app.setSkipHabitOn('w', today(), true); });
+  await flush();
+  expect(app.getOverallStreak()).toBe(7);
+  expect(recorded()).toEqual(['streak-7']);
+  expect(app.isHabitSkippedOn('w', today())).toBe(true);
+  await act(async () => { app.setSkipHabitOn('w', today(), false, { undo: true }); });
+  await flush();
+  expect(app.isHabitSkippedOn('w', today())).toBe(false);
+  expect(app.settings.skips?.[today()]).toBeUndefined();
+  expect(app.getOverallStreak()).toBe(6);
+  expect(recorded()).toEqual([]);
+  expect(app.pendingMilestone).toBeNull();
+  // Setting the state it already has is a no-op.
+  await act(async () => { app.setSkipHabitOn('w', today(), false); });
+  expect(app.settings.skips?.[today()]).toBeUndefined();
+  act(() => r.unmount());
+});
+
 test('m5: a background notification Done that crosses 7 plays on the next foreground', async () => {
   Object.assign(mockStore, { habits: READ1, completions: history(6) });
   const r = await mount();

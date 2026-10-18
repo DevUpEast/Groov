@@ -22,6 +22,7 @@ import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
 import { numeric } from '../theme/typography';
 import { space, radius } from '../theme/tokens';
+import { useSnackbar, useSnackbarInset } from '../components/ui/Snackbar';
 
 const RANGE_OPTIONS = [
   { key: 'week', max: 7 },
@@ -504,6 +505,14 @@ export default function ChallengeScreen() {
   } = useApp();
   useLocale();
   const today = todayStr();
+  // C-10: a confirmed delete hides the card and ends in a Snackbar with Undo; the delete runs
+  // when the snackbar goes without Undo (including when the app goes to the background).
+  const snackbar = useSnackbar();
+  const snackbarInset = useSnackbarInset();
+  const [pendingDeletes, setPendingDeletes] = useState([]);
+  const live = useRef({});
+  live.current = { deleteChallenge };
+  const shownChallenges = pendingDeletes.length > 0 ? effectiveChallenges.filter(c => !pendingDeletes.includes(c.id)) : effectiveChallenges;
 
   const [formVisible, setFormVisible] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState(null);
@@ -516,8 +525,22 @@ export default function ChallengeScreen() {
     feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(t('challenges.delete.title'), t('challenges.delete.body', { name: challenge.name }), [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => deleteChallenge(challenge.id) },
+      { text: t('common.delete'), style: 'destructive', onPress: () => deleteWithUndo(challenge) },
     ]);
+  };
+
+  const deleteWithUndo = (challenge) => {
+    const { id } = challenge;
+    const unpend = () => setPendingDeletes(prev => prev.filter(x => x !== id));
+    setPendingDeletes(prev => (prev.includes(id) ? prev : [...prev, id]));
+    snackbar.show({
+      kind: 'delete',
+      endsOnBackground: true,
+      message: t('snackbar.deleted', { name: challenge.name }),
+      actionLabel: t('common.undo'),
+      onAction: unpend,
+      onHide: () => { live.current.deleteChallenge(id); unpend(); },
+    });
   };
 
   const openNew = () => {
@@ -551,7 +574,7 @@ export default function ChallengeScreen() {
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, snackbarInset > 0 && { paddingBottom: styles.scroll.paddingBottom + snackbarInset }]}>
         <View style={styles.headingRow}>
           <AppText variant="title" style={[styles.heading, { color: theme.text }]}>{t('challenges.title')}</AppText>
           {canAddMore && (
@@ -561,7 +584,7 @@ export default function ChallengeScreen() {
           )}
         </View>
 
-        {effectiveChallenges.length === 0 ? (
+        {shownChallenges.length === 0 ? (
           <EmptyCard
             emoji="🏆"
             title={t('challenges.empty.title')}
@@ -574,7 +597,7 @@ export default function ChallengeScreen() {
             </TouchableOpacity>
           </EmptyCard>
         ) : (
-          effectiveChallenges.map(challenge => (
+          shownChallenges.map(challenge => (
             <ChallengeCard
               key={challenge.id}
               challenge={challenge}
@@ -588,7 +611,7 @@ export default function ChallengeScreen() {
         )}
 
         {/* Tip: only shown before the user has any past challenges */}
-        {effectiveChallenges.length > 0 && effectiveChallenges.length < 3 && effectivePastChallenges.length === 0 && (
+        {shownChallenges.length > 0 && shownChallenges.length < 3 && effectivePastChallenges.length === 0 && (
           <View style={[styles.card, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
             <Text style={[styles.tipTitle, { color: theme.link }]}>{t('challenges.tip.title')}</Text>
             <Text style={[styles.tipBody, { color: theme.text }]}>

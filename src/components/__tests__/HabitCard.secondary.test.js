@@ -63,8 +63,8 @@ const flat = (node) => StyleSheet.flatten(node.props.style);
 const byLabel = (r, re) => r.root.findAll(n => typeof n.props.onPressIn === 'function' && re.test(n.props.accessibilityLabel || ''))[0];
 const sheet = (r) => r.root.findAll(n => n.type === 'ActionSheet')[0].props;
 const more = (r) => r.root.findAll(n => n.props.testID === 'habit-more' && typeof n.props.onPressIn === 'function')[0];
-function render(habit) {
-  const fns = { onIncrement: jest.fn(), onDecrement: jest.fn(), onNote: jest.fn(), onOpenDetail: jest.fn(), onSkipToggle: jest.fn() };
+function render(habit, extra = {}) {
+  const fns = { onIncrement: jest.fn(), onDecrement: jest.fn(), onNote: jest.fn(), onOpenDetail: jest.fn(), ...extra };
   let r;
   act(() => { r = TestRenderer.create(<HabitCard habit={habit} {...fns} />); });
   return { r, ...fns };
@@ -126,7 +126,7 @@ it('"Habit details" opens the detail sheet for a daily card too', () => {
 
 it('screen readers get every option as a custom action, plus the long press', () => {
   mockCount = 3;
-  const { r, onOpenDetail, onNote, onDecrement, onSkipToggle } = render(counter);
+  const { r, onOpenDetail, onNote, onDecrement } = render(counter);
   const card = byLabel(r, /^Water/);
   expect(card.props.accessibilityActions).toEqual([
     { name: 'skip', label: 'Skip today (keeps streak)' },
@@ -140,7 +140,6 @@ it('screen readers get every option as a custom action, plus the long press', ()
   announce.mockClear();
   run('skip');
   expect(mockToggleSkip).toHaveBeenCalledWith('h2', '2026-10-17');
-  expect(onSkipToggle).toHaveBeenCalledWith(counter);
   expect(announce).toHaveBeenLastCalledWith('Water skipped today');
   run('yesterday');
   expect(mockToggleDoneOn).toHaveBeenCalledWith('h2', '2026-10-16');
@@ -154,4 +153,22 @@ it('screen readers get every option as a custom action, plus the long press', ()
   expect(sheet(r).visible).toBe(false);
   run('longpress');
   expect(sheet(r)).toMatchObject({ visible: true, haptic: true });
+});
+
+it('C-10: with onSkip / onMenuMinus the host applies skip and "−1" (its snackbar announces)', () => {
+  mockCount = 3;
+  mockToggleSkip.mockClear();
+  const onSkip = jest.fn();
+  const onMenuMinus = jest.fn();
+  const { r, onDecrement } = render(counter, { onSkip, onMenuMinus });
+  const card = byLabel(r, /^Water/);
+  const run = (actionName) => act(() => { card.props.onAccessibilityAction({ nativeEvent: { actionName } }); });
+  announce.mockClear();
+  run('skip');
+  expect(onSkip).toHaveBeenCalledWith(counter, true);
+  expect(mockToggleSkip).not.toHaveBeenCalled();
+  run('minus');
+  expect(onMenuMinus).toHaveBeenCalledWith(counter, 1);
+  expect(onDecrement).not.toHaveBeenCalled();
+  expect(announce).not.toHaveBeenCalled();
 });

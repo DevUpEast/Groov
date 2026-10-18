@@ -998,5 +998,13 @@
     "rowCount": "%{name}  ·  %{count}/%{goal}",
     "rowDone": "%{name}, fait",
     "more": "+%{count} de plus dans l'app"
+  },
+  "snackbar": {
+    "minus": { "one": "%{count} retiré de %{name}", "other": "%{count} retirés de %{name}" },
+    "cleared": "Saisie du jour effacée pour %{name}",
+    "archived": "%{name} archivée",
+    "restored": "%{name} restaurée",
+    "deleted": "Supprimé : %{name}",
+    "undone": "Annulé"
   }
 }
