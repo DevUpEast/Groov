@@ -142,6 +142,23 @@ test('a reset card shows above the habits and dismisses through AppContext', () 
   act(() => r.unmount());
 });
 
+test("Start today's first habit dismisses the card and names the first habit", () => {
+  const { r } = setup({ streakNews: { kind: 'reset', ended: 12, date: TODAY } });
+  const card = r.root.findByType(StreakNewsCard);
+  act(() => card.props.onStart());
+  expect(mock.dismissStreakNews).toHaveBeenCalled();
+  expect(announce).toHaveBeenCalledWith('First up: Read');
+  act(() => r.unmount());
+});
+
+test('once a habit is done today the reset card offers "Got it" instead (review m2)', () => {
+  const { r, rerender } = setup({ streakNews: { kind: 'reset', ended: 12, date: TODAY } });
+  mock.counts = { w: 1 };
+  rerender();
+  expect(r.root.findByType(StreakNewsCard).props.canStart).toBe(false);
+  act(() => r.unmount());
+});
+
 test('no card without news', () => {
   const { r } = setup();
   expect(r.root.findAllByType(StreakNewsCard)).toHaveLength(0);

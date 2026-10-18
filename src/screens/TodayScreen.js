@@ -388,6 +388,9 @@ export default function TodayScreen() {
   // bottom edge in scroll-content coordinates.
   const scrollRef = useRef(null);
   const stripRef = useRef(null);
+  // Scroll offset and the content block's y, for "Start today's first habit" (C-09).
+  const scrollY = useRef(0);
+  const contentY = useRef(0);
   const [stripBottom, setStripBottom] = useState(0);
   const [stuck, setStuck] = useState(false);
   const stuckRef = useRef(false);
@@ -399,6 +402,7 @@ export default function TodayScreen() {
     : { ring: 'ring', edge: 'strip' }), []);
   const onScroll = useCallback((e) => {
     const y = e.nativeEvent.contentOffset.y;
+    scrollY.current = y;
     const next = stripBottom > 0 && y > stripBottom - STICKY_H;
     if (next !== stuckRef.current) {
       stuckRef.current = next;
@@ -479,13 +483,35 @@ export default function TodayScreen() {
   }, [mockNews, today]); // eslint-disable-line react-hooks/exhaustive-deps
   const [mockNewsDismissed, setMockNewsDismissed] = useState(false);
   const shownNews = mockNewsCard ? (mockNewsDismissed ? null : mockNewsCard) : streakNews;
+  // The card is judged on the real date (like the freezes) and shows on Today even under a dev
+  // date offset (review n2: dev only).
+  const dismissNews = mockNewsCard ? () => setMockNewsDismissed(true) : dismissStreakNews;
+  // "Start today's first habit" (review m2) is offered only while nothing is done today. It
+  // dismisses the card, names the first habit for screen readers and, when the list starts low
+  // on the screen, scrolls it up under the sticky bar (once the card has left the layout).
+  const firstHabit = grouped ? grouped[0]?.habits[0] : dueHabits[0];
+  const startFirstPending = useRef(false);
+  const startFirstHabit = () => {
+    dismissNews();
+    if (firstHabit) announce(t('today.streakNews.firstUp', { name: firstHabit.name }));
+    startFirstPending.current = true;
+  };
+  const onListLayout = (e) => {
+    if (!startFirstPending.current) return;
+    startFirstPending.current = false;
+    const top = contentY.current + e.nativeEvent.layout.y;
+    if (top - scrollY.current > windowHeight / 2) {
+      scrollRef.current?.scrollTo?.({ y: Math.max(0, top - STICKY_H - space.md), animated: true });
+    }
+  };
   const newsCard = habits.length > 0 && shownNews ? (
     <StreakNewsCard
       key={`${shownNews.kind}-${shownNews.date}`}
       news={shownNews}
       theme={theme}
-      canStart={dueHabits.length > 0}
-      onDismiss={mockNewsCard ? () => setMockNewsDismissed(true) : dismissStreakNews}
+      canStart={dueHabits.length > 0 && completed === 0}
+      onDismiss={dismissNews}
+      onStart={startFirstHabit}
     />
   ) : null;
 
@@ -711,6 +737,7 @@ export default function TodayScreen() {
     const dayKey = todayStr();
     const plan = markRestDone();
     if (plan.changedIds.length === 0) return;
+    // An Undo of this Mark the rest does not re-arm "Back on beat" (review n1): the user did act.
     maybeBackOnBeat();
     // Completion is deferred until the undo window closes (S-02).
     const { claimedIds } = autoClaimChallenges(plan.next, { defer: true, token: id });
@@ -791,7 +818,7 @@ export default function TodayScreen() {
         </View>
 
         {/* Habits */}
-        <View style={styles.content}>
+        <View style={styles.content} onLayout={(e) => { contentY.current = e.nativeEvent.layout.y; }}>
           {newsCard}
           {!compactRing && nudgeCard}
 
@@ -839,6 +866,7 @@ export default function TodayScreen() {
           ) : (
             <>
               {longPressHint}
+              <View onLayout={onListLayout}>
               {grouped ? grouped.map((section, i) => (
                 <View key={section.key}>
                   <SectionLabel icon={SECTION_ICONS[section.key]} label={t(`today.sections.${section.key}`)} theme={theme} style={i > 0 ? styles.groupAfterCards : compactRing && styles.sectionCompact} />
@@ -865,6 +893,7 @@ export default function TodayScreen() {
                   onOpenDetail={openDetail}
                 />
               ))}</View>}
+              </View>
               {markRestCount > 0 && (
                 <PressableScale
                   onPress={handleMarkRest}

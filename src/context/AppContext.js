@@ -218,6 +218,9 @@ export function AppProvider({ children }) {
   // Bumped when a foreground pull settles (C-09: the since-last-open check waits for it, so a
   // day another device filled in never reads as missed here).
   const [pullsSettled, setPullsSettled] = useState(0);
+  // C-09 review m1: true once a pull has succeeded this session. A failed (offline) login pull
+  // still opens `cloudSynced`, but the since-last-open check waits for real cloud data.
+  const [pullOk, setPullOk] = useState(false);
 
   // Bumped when the app returns to the foreground and at local midnight, so everything
   // derived from todayStr() re-evaluates when the calendar date changes while the app
@@ -765,6 +768,7 @@ export function AppProvider({ children }) {
           setPastChallenges([]);
           setDailySnapshot({});
           settleAccountCreatedAt(null, null);
+          setPullOk(true);
           return;
         }
 
@@ -807,6 +811,7 @@ export function AppProvider({ children }) {
           settleAccountCreatedAt(stateRef.current.completions, stateRef.current.habits);
         }
         lastPulledAtRef.current = pulledAt;
+        setPullOk(true);
       } catch (e) {
         if (__DEV__) console.warn('Cloud sync error:', e.message);
       } finally {
@@ -867,6 +872,7 @@ export function AppProvider({ children }) {
           writeBackSettings(userId, delta.settings, merged, { hasExtrasColumn: !!delta.settingsHasExtras }).catch(() => {});
         }
         lastPulledAtRef.current = startedAt;
+        setPullOk(true);
       })
       .catch((e) => { if (__DEV__) console.warn('Foreground pull failed:', e.message); })
       .finally(() => { pullInFlightRef.current = false; setPullsSettled(n => n + 1); });
@@ -1656,8 +1662,9 @@ export function AppProvider({ children }) {
   // One-time Today cards: "A freeze covered yesterday" and "Your streak ended at N days"
   // (src/utils/streaks.js sinceLastOpen), compared with deviceSettings.lastSeen, which is
   // device-local, so a cloud pull never moves it and never fires a card. The check runs on
-  // the real date (like the freezes) once the data is settled: after the login sync, after
-  // any foreground pull that is still running, and once the freeze reconcile has applied
+  // the real date (like the freezes) once the data is settled: after a successful pull this
+  // session (an offline start waits), after any foreground pull that is still running, and
+  // once the freeze reconcile has applied
   // (a run that would still change the freezes waits for the next render). The first run on
   // a device or account (no lastSeen) only records. A card lives in memory until dismissed;
   // a reset also arms "Back on beat" (lastSeen.backOnBeat) for the next check-off on Today.
@@ -1666,7 +1673,7 @@ export function AppProvider({ children }) {
   const [streakNews, setStreakNews] = useState(null);
   const dismissStreakNews = useCallback(() => setStreakNews(null), []);
   useEffect(() => {
-    if (!loaded || !cloudSynced || pullInFlightRef.current || mockupParams.active) return;
+    if (!loaded || !cloudSynced || !pullOk || pullInFlightRef.current || mockupParams.active) return;
     const today = localDateKey();
     if (reconciledFreezes(today) !== settings.streakFreezes) return;
     const prev = getDeviceSetting('lastSeen') ?? null;
@@ -1678,10 +1685,11 @@ export function AppProvider({ children }) {
       statusOf: (k) => overallDayStatus(k, today, habitsOnDay, isSnapshotHabitDone, isExcused),
       streakEndingOn: streakFrom,
     });
-    // After the check-off moment: a write per streak change is storage work (C-06a).
-    if (!sameLastSeen(prev, lastSeen)) afterMoment('lastSeen', () => setDeviceSettings({ lastSeen }));
+    // Written at once (review m3): the in-memory store updates synchronously, so a later run or
+    // takeBackOnBeat() never reads an older record; the AsyncStorage write itself is async.
+    if (!sameLastSeen(prev, lastSeen)) setDeviceSettings({ lastSeen });
     if (event) setStreakNews({ ...event, date: today });
-  }, [loaded, cloudSynced, pullsSettled, clockTick, completions, dailySnapshot, habits, allHabits, settings.skips, settings.streakFreezes, accountCreatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded, cloudSynced, pullOk, pullsSettled, clockTick, completions, dailySnapshot, habits, allHabits, settings.skips, settings.streakFreezes, accountCreatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
   // A card belongs to the day it was found on.
   useEffect(() => {
     if (streakNews && streakNews.date !== localDateKey()) setStreakNews(null);

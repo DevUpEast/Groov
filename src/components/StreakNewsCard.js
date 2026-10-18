@@ -17,7 +17,15 @@ export function streakNewsText(news) {
   if (news.kind === 'reset') return t('today.streakNews.reset', { count: news.ended });
   if (news.count > 1) return t('today.streakNews.freezeMany', { days: news.count, count: news.streak });
   if (news.covered === addDays(news.date, -1)) return t('today.streakNews.freezeYesterday', { count: news.streak });
-  const day = parseDateKey(news.covered).toLocaleDateString(getLocale(), { weekday: 'long' });
+  const d = parseDateKey(news.covered);
+  const locale = getLocale();
+  // A week back the weekday would be today's own name (review m5): say the date instead.
+  if (news.covered < addDays(news.date, -6)) {
+    return t('today.streakNews.freezeDate', { date: d.toLocaleDateString(locale, { month: 'short', day: 'numeric' }), count: news.streak });
+  }
+  let day = d.toLocaleDateString(locale, { weekday: 'long' });
+  // pt-BR takes the article (glossary: "cobriu a terça"): sábado and domingo are masculine.
+  if (/^pt/i.test(locale)) day = `${d.getDay() === 0 || d.getDay() === 6 ? 'o' : 'a'} ${day}`;
   return t('today.streakNews.freezeDay', { day, count: news.streak });
 }
 
@@ -25,11 +33,11 @@ export function streakNewsText(news) {
  * The one-time Today card for a freeze that covered a day or a streak that ended (C-09).
  * It sits above the first habit card on `brandSurface`, like the other informational cards,
  * and fades in (a shorter fade under reduced motion). A screen reader hears it once when it
- * appears. A freeze card has "Got it"; a reset card has "Start today's first habit", which
- * dismisses it so the first habit sits where the card was (and "Got it" on a day with nothing
- * scheduled).
+ * appears. A freeze card has "Got it". A reset card has "Start today's first habit" (`onStart`:
+ * TodayScreen dismisses it, names the first habit and brings it into view) while nothing is done
+ * today (`canStart`), else "Got it".
  */
-export default function StreakNewsCard({ news, theme, onDismiss, canStart = true }) {
+export default function StreakNewsCard({ news, theme, onDismiss, onStart, canStart = true }) {
   useLocale();
   const m = useMotion();
   const opacity = useRef(new Animated.Value(0)).current;
@@ -39,6 +47,7 @@ export default function StreakNewsCard({ news, theme, onDismiss, canStart = true
     announce(text);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const reset = news.kind === 'reset';
+  const start = reset && canStart;
   return (
     <Animated.View
       testID={`streak-news-${news.kind}`}
@@ -54,8 +63,8 @@ export default function StreakNewsCard({ news, theme, onDismiss, canStart = true
         <Button
           variant="tertiary"
           size="sm"
-          label={reset && canStart ? t('today.streakNews.start') : t('common.gotIt')}
-          onPress={onDismiss}
+          label={start ? t('today.streakNews.start') : t('common.gotIt')}
+          onPress={start && onStart ? onStart : onDismiss}
           style={styles.btn}
         />
       </View>

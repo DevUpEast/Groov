@@ -3,6 +3,7 @@ import { Appearance } from 'react-native';
 import { TodayWidget } from './TodayWidget';
 import { loadTodayForWidget, applyWidgetToggle, WIDGET_NAME, rowsForHeight } from './widgetData';
 import { initLocale } from '../i18n';
+import { cancelStreakNews } from '../utils/notifications';
 
 // Headless task invoked by the OS for widget lifecycle events and taps.
 async function render(props) {
@@ -29,6 +30,10 @@ export async function widgetTaskHandler(props) {
     case 'WIDGET_CLICK':
       if (props.clickAction === 'TOGGLE_HABIT' && props.clickActionData?.habitId) {
         await applyWidgetToggle(String(props.clickActionData.habitId));
+        // C-09 review B1: tomorrow's "Streak news" was predicted from the app's last view of
+        // today; a check-off here can make it false ("Your streak ended" after the day was
+        // finished from the widget). Drop it; the next app open schedules a fresh one.
+        await cancelStreakNews();
         await render(props);
       }
       break;

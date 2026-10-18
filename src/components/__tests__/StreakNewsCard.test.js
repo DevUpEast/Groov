@@ -33,6 +33,23 @@ describe('streakNewsText', () => {
     expect(streakNewsText({ kind: 'freeze', covered: '2026-10-13', count: 1, streak: 12, date: TODAY }))
       .toBe('A freeze covered Tuesday. Your 12-day streak holds.');
   });
+  test("a week back says the date, not today's own weekday (review m5)", () => {
+    expect(streakNewsText({ kind: 'freeze', covered: '2026-10-11', count: 1, streak: 12, date: TODAY }))
+      .toBe('A freeze covered Oct 11. Your 12-day streak holds.');
+    expect(streakNewsText({ kind: 'freeze', covered: '2026-10-12', count: 1, streak: 12, date: TODAY }))
+      .toBe('A freeze covered Monday. Your 12-day streak holds.');
+  });
+  test('pt-BR weekdays take their article (glossary: "cobriu a terça")', () => {
+    act(() => { setLocale('pt-BR'); });
+    expect(streakNewsText({ kind: 'freeze', covered: '2026-10-13', count: 1, streak: 12, date: TODAY }))
+      .toBe('Um congelamento cobriu a terça-feira. Sua sequência de 12 dias continua.');
+    expect(streakNewsText({ kind: 'freeze', covered: '2026-10-17', count: 1, streak: 12, date: TODAY }))
+      .toBe('Um congelamento cobriu o dia de ontem. Sua sequência de 12 dias continua.');
+    expect(streakNewsText({ kind: 'freeze', covered: '2026-10-14', count: 1, streak: 12, date: '2026-10-19' }))
+      .toBe('Um congelamento cobriu a quarta-feira. Sua sequência de 12 dias continua.');
+    expect(streakNewsText({ kind: 'freeze', covered: '2026-10-17', count: 1, streak: 12, date: '2026-10-20' }))
+      .toBe('Um congelamento cobriu o sábado. Sua sequência de 12 dias continua.');
+  });
   test('two freezes', () => {
     expect(streakNewsText({ kind: 'freeze', covered: '2026-10-17', count: 2, streak: 12, date: TODAY }))
       .toBe('Freezes covered 2 days. Your 12-day streak holds.');
@@ -56,14 +73,16 @@ function render(props) {
 }
 const labels = (r) => r.root.findAll(n => typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityRole === 'button').map(n => n.props.accessibilityLabel);
 
-test('a reset card announces itself and offers to start the first habit, which dismisses it', () => {
+test('a reset card announces itself and offers to start the first habit (onStart)', () => {
   const onDismiss = jest.fn();
-  const r = render({ news: { kind: 'reset', ended: 12, date: TODAY }, onDismiss });
+  const onStart = jest.fn();
+  const r = render({ news: { kind: 'reset', ended: 12, date: TODAY }, onDismiss, onStart });
   expect(announce).toHaveBeenCalledWith('Your streak ended at 12 days. Today starts a new one.');
   expect(labels(r)).toContain("Start today's first habit");
   const btn = r.root.find(n => n.props.accessibilityLabel === "Start today's first habit" && typeof n.props.onPress === 'function');
   act(() => btn.props.onPress());
-  expect(onDismiss).toHaveBeenCalled();
+  expect(onStart).toHaveBeenCalled();
+  expect(onDismiss).not.toHaveBeenCalled();
   act(() => r.unmount());
 });
 

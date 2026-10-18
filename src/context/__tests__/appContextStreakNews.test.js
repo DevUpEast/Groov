@@ -241,3 +241,82 @@ test('Streak news off (the default): only cancels', async () => {
   notifications.requestStreakNews.mock.calls.forEach(([, content]) => expect(content).toBeNull());
   act(() => r.unmount());
 });
+
+// ── Review M2 / m1 ──────────────────────────────────────────────────────────────
+
+test('an account switch drops the previous account\'s lastSeen: the first run on B only records', async () => {
+  sync.pullAllData.mockImplementationOnce(() => Promise.resolve({ habits: READ, completions: doneDays(30, 10) }));
+  Object.assign(mockStore, {
+    lastUserId: 'someone-else',
+    completions: {},
+    deviceSettings: { lastSeen: { date: d(9), streak: 21, freezesUsed: [] } },
+  });
+  const r = await mount();
+  expect(app.getOverallStreak()).toBe(0); // B's history: a run that ended while away
+  expect(app.streakNews).toBeNull();
+  expect(getDeviceSetting('lastSeen')).toMatchObject({ date: TODAY });
+  act(() => r.unmount());
+});
+
+test('an offline login pull keeps the gate shut: no card, lastSeen untouched', async () => {
+  sync.pullAllData.mockImplementationOnce(() => Promise.reject(new Error('offline')));
+  Object.assign(mockStore, {
+    completions: doneDays(30, 10),
+    deviceSettings: { lastSeen: { date: d(9), streak: 21, freezesUsed: [] } },
+  });
+  const r = await mount();
+  expect(app.streakNews).toBeNull();
+  expect(getDeviceSetting('lastSeen').date).toBe(d(9));
+  act(() => r.unmount());
+});
+
+describe('a date change while open waits for the foreground pull (pullsSettled)', () => {
+  // Mount at 23:59:50 on day A, cross midnight into B: the midnight tick starts a delta pull.
+  const A = '2026-07-14';
+  const B = '2026-07-15';
+  const before = (n) => addDays(A, -n);
+  let resolveDelta;
+  const delta = (rows) => ({
+    habits: [], habitIds: null, challenges: [], challengeIds: null, pastChallenges: [],
+    completions: rows, dailySnapshots: [], moods: [], settings: null,
+  });
+  async function crossMidnight() {
+    jest.setSystemTime(new Date(2026, 6, 14, 23, 59, 50));
+    sync.pullChangesSince.mockImplementation(() => new Promise((res) => { resolveDelta = res; }));
+    const out = {};
+    for (let i = 1; i <= 12; i++) out[before(i)] = { r: 1 };
+    Object.assign(mockStore, {
+      habits: [{ ...READ[0], createdAt: before(12) }],
+      completions: out, // A itself is not done on this device
+      deviceSettings: { lastSeen: { date: A, streak: 12, freezesUsed: [] } },
+    });
+    const r = await mount();
+    expect(app.streakNews).toBeNull();
+    await act(async () => { jest.advanceTimersByTime(15000); });
+    await flush();
+    expect(localDateKey()).toBe(B);
+    return r;
+  }
+
+  test('a day another device finished arrives with the pull: no card', async () => {
+    const r = await crossMidnight();
+    // The pull is still in flight: A looks missed here, but the check has not run.
+    expect(sync.pullChangesSince).toHaveBeenCalled();
+    expect(app.streakNews).toBeNull();
+    expect(getDeviceSetting('lastSeen').date).toBe(A);
+    await act(async () => { resolveDelta(delta([{ date: A, habit_id: 'r', count: 1 }])); });
+    await flush();
+    expect(app.streakNews).toBeNull();
+    expect(getDeviceSetting('lastSeen')).toMatchObject({ date: B, streak: 13 });
+    act(() => r.unmount());
+  });
+
+  test('control: when the pull brings nothing, the check runs after it and A\'s freeze is news', async () => {
+    const r = await crossMidnight();
+    expect(app.streakNews).toBeNull();
+    await act(async () => { resolveDelta(delta([])); });
+    await flush();
+    expect(app.streakNews).toMatchObject({ kind: 'freeze', covered: A, streak: 12 });
+    act(() => r.unmount());
+  });
+});
