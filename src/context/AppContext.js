@@ -38,10 +38,10 @@ import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup
 import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocalUri, localIconExists } from '../services/icons';
 import { t, useLocale } from '../i18n';
 import feedback, { EVENTS as FEEDBACK } from '../services/feedback';
+import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
 
 // The one feedback gate (src/services/feedback.js): callers never check these settings.
 const applyFeedbackSettings = (s) => feedback.configure({ haptics: s?.hapticsEnabled !== false, sound: s?.soundEnabled !== false });
-import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
 
 const AppContext = createContext(null);
 

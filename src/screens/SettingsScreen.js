@@ -247,6 +247,7 @@ export default function SettingsScreen() {
     }
     if (!picked) return;
     const when = picked.exportedAt ? new Date(picked.exportedAt).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', year: 'numeric' }) : t('settings.backup.restoreDialog.unknownDate');
+    feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(
       t('settings.backup.restoreDialog.title'),
       t('settings.backup.restoreDialog.body', { when, summary: summarizeBackup(picked.data) }),
@@ -277,6 +278,7 @@ export default function SettingsScreen() {
   const handleSignOut = () => {
     if (isAnonymous) {
       // A guest has no way back in: signing out orphans the account and its data.
+      feedback.play(EVENTS.destructiveConfirm);
       Alert.alert(
         t('settings.account.signOutGuest.title'),
         t('settings.account.signOutGuest.body'),
@@ -288,6 +290,7 @@ export default function SettingsScreen() {
       );
       return;
     }
+    feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(t('settings.account.signOut'), t('settings.account.signOutBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -300,6 +303,7 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteAccount = () => {
+    feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(
       t('settings.account.deleteAccount.title'),
       t('settings.account.deleteAccount.body'),
@@ -309,6 +313,7 @@ export default function SettingsScreen() {
           text: t('settings.account.deleteAccount.title'),
           style: 'destructive',
           onPress: () => {
+            feedback.play(EVENTS.destructiveConfirm);
             Alert.alert(
               t('settings.account.deleteAccount.sure'),
               t('settings.account.deleteAccount.sureBody'),
@@ -528,6 +533,7 @@ export default function SettingsScreen() {
   };
 
   const handleClearData = () => {
+    feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(
       t('settings.data.clear'),
       t('settings.data.clearBody'),
@@ -616,8 +622,8 @@ export default function SettingsScreen() {
               <Switch
                 value={settings.notificationsEnabled && permitted}
                 onValueChange={async v => {
-                  feedback.toggled(v);
                   if (v && !(await ensureNotificationPermission())) return;
+                  feedback.toggled(v);
                   updateSettings({ notificationsEnabled: v });
                 }}
                 {...switchColors(theme, settings.notificationsEnabled && permitted)}
@@ -831,6 +837,7 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: theme.border }]}
               onPress={() => {
+                feedback.play(EVENTS.destructiveConfirm);
                 Alert.alert(t('settings.dev.crash.title'), t('settings.dev.crash.body'), [
                   { text: t('common.cancel'), style: 'cancel' },
                   { text: t('settings.dev.crash.crash'), style: 'destructive', onPress: () => setCrashTest(true) },
@@ -851,6 +858,7 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: 'transparent' }]}
               onPress={() => {
+                feedback.play(EVENTS.destructiveConfirm);
                 Alert.alert(
                   t('settings.dev.disable.title'),
                   t('settings.dev.disable.body'),

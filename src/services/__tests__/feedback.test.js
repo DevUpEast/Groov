@@ -332,12 +332,111 @@ describe('pattern timing', () => {
     expect(Haptics.performAndroidHapticsAsync).toHaveBeenCalledTimes(2);
   });
 
-  test('follow-up pulses bypass the 40 ms limit; a dropped first pulse drops the pattern', () => {
+  test('celebration events are never rate limited: a milestone 10 ms after a selection still fires', () => {
     play(EVENTS.selection);
     jest.advanceTimersByTime(10);
-    play(EVENTS.milestone, { delay: 0 }); // first pulse inside the window: whole pattern dropped
+    play(EVENTS.milestone, { delay: 0 });
     jest.advanceTimersByTime(1000);
-    expect(Haptics.notificationAsync).not.toHaveBeenCalled();
-    expect(Haptics.impactAsync).not.toHaveBeenCalled();
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+    expect(Haptics.impactAsync).toHaveBeenCalledTimes(2);
+  });
+
+  test('milestone landing 10 ms after day.complete\'s second pulse: both patterns fire in full', () => {
+    setPlatform('android', 36);
+    play(EVENTS.dayComplete, { delay: 0 }); // Confirm at 0, Confirm at +125
+    jest.advanceTimersByTime(125);
+    expect(Haptics.performAndroidHapticsAsync).toHaveBeenCalledTimes(2);
+    jest.advanceTimersByTime(10);
+    play(EVENTS.milestone, { delay: 0 }); // Confirm, Confirm +125, Gesture_End +250
+    jest.advanceTimersByTime(1000);
+    expect(Haptics.performAndroidHapticsAsync.mock.calls.map(c => c[0]))
+      .toEqual(['confirm', 'confirm', 'confirm', 'confirm', 'gesture-end']);
+  });
+
+  test.each([EVENTS.trophy, EVENTS.challengeClaimed, EVENTS.dayComplete, EVENTS.markRest, EVENTS.habitDone])(
+    '%s right after another haptic is not dropped', (event) => {
+      play(EVENTS.counterStep);
+      jest.advanceTimersByTime(5);
+      play(event, { delay: 0 });
+      jest.advanceTimersByTime(1000);
+      expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
+      expect(Haptics.impactAsync.mock.calls.length + Haptics.notificationAsync.mock.calls.length).toBeGreaterThan(0);
+    },
+  );
+
+  test('a dropped repeat tap shows in the log as dropped', () => {
+    play(EVENTS.counterStep);
+    jest.advanceTimersByTime(10);
+    play(EVENTS.selection);
+    expect(recent().filter(e => e.dropped)).toEqual([expect.objectContaining({ event: 'selection', dropped: true })]);
+  });
+});
+
+describe('cancel and sound:false', () => {
+  test('cancel() drops a pending day.complete (an un-check inside the 750 ms window)', () => {
+    setPlatform('android', 36);
+    const handle = play(EVENTS.dayComplete);
+    jest.advanceTimersByTime(500);
+    handle.cancel();
+    jest.advanceTimersByTime(2000);
+    expect(Haptics.performAndroidHapticsAsync).not.toHaveBeenCalled();
+    expect(recent()).toEqual([]);
+  });
+
+  test('cancel() between pulses stops the rest of the pattern', () => {
+    const handle = play(EVENTS.milestone, { delay: 0 });
+    jest.advanceTimersByTime(130);
+    handle.cancel();
+    jest.advanceTimersByTime(1000);
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+    expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
+  });
+
+  test('cancel() also drops a pending sound; an unknown event returns a no-op handle', () => {
+    const handle = play(EVENTS.challengeClaimed);
+    handle.cancel();
+    jest.advanceTimersByTime(1000);
+    expect(sounds.playChallengeChime).not.toHaveBeenCalled();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(() => play('nope').cancel()).not.toThrow();
+    warn.mockRestore();
+  });
+
+  test('sound:false plays the haptic only', () => {
+    play(EVENTS.counterStep, { sound: false });
+    expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
+    expect(sounds.playChime).not.toHaveBeenCalled();
+  });
+});
+
+describe('call-site source checks (review M1/m1-m3)', () => {
+  const read = (rel) => fs.readFileSync(path.join(__dirname, '..', '..', rel), 'utf8').replace(/\r\n/g, '\n');
+
+  test('TodayScreen keeps the pending day.complete / challenge.claimed handles and an un-check cancels them', () => {
+    const src = read('screens/TodayScreen.js');
+    expect(src).toMatch(/keepPending\(feedback\.play\(EVENTS\.dayComplete\)\)/);
+    expect(src).toMatch(/keepPending\(feedback\.play\(EVENTS\.challengeClaimed\)\)/);
+    const dec = src.slice(src.indexOf('const handleDecrement'), src.indexOf('const handleSkipToggle'));
+    expect(dec).toMatch(/cancelPendingFeedback\(\);\s*feedback\.play\(EVENTS\.habitUndone\)/);
+    // A −1 that is not an un-check: haptic only, no rising chime.
+    expect(dec).toMatch(/feedback\.play\(EVENTS\.counterStep, \{ sound: false \}\)/);
+    const undoRest = src.slice(src.indexOf('const undoMarkRest'), src.indexOf('return (', src.indexOf('const undoMarkRest')));
+    expect(undoRest).toMatch(/cancelPendingFeedback\(\)/);
+  });
+
+  test('every destructive Alert plays destructiveConfirm just before it opens', () => {
+    for (const rel of ['screens/SettingsScreen.js', 'screens/HabitsScreen.js', 'screens/ChallengeScreen.js']) {
+      const src = read(rel);
+      // Each Alert.alert( call whose button list has a destructive style...
+      const calls = [...src.matchAll(/Alert\.alert\(/g)].map(m => m.index);
+      for (const i of calls) {
+        const next = calls.find(j => j > i) ?? src.length;
+        // ...up to the next Alert.alert (a nested confirm is checked on its own).
+        if (!/style: 'destructive'/.test(src.slice(i, Math.min(next, i + 900)))) continue;
+        const before = src.slice(Math.max(0, i - 120), i);
+        expect({ file: rel, at: src.slice(0, i).split('\n').length, ok: /destructiveConfirm\);\s*$/.test(before) })
+          .toEqual({ file: rel, at: src.slice(0, i).split('\n').length, ok: true });
+      }
+    }
   });
 });

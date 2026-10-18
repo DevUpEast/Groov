@@ -751,6 +751,7 @@ export default function HabitsScreen() {
 
   // Archive is the default; permanent deletion is one more step away.
   const handleDelete = (id, name) => {
+    feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(t('habits.archive.title'), t('habits.archive.body', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('habits.archive.deleteForever'), style: 'destructive', onPress: () => handleDeleteForever(id, name) },

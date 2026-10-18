@@ -156,7 +156,8 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
       );
       return;
     }
-    feedback.play(isHabitDoneOn(habit, d.key) ? EVENTS.habitUndone : EVENTS.habitDone);
+    // History editing is not the check-off moment: haptic only, no chime.
+    feedback.play(isHabitDoneOn(habit, d.key) ? EVENTS.habitUndone : EVENTS.habitDone, { sound: false });
     toggleHabitDoneOn(habit.id, d.key);
   };
 

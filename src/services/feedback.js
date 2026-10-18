@@ -185,13 +185,20 @@ function performIOS(pulse) {
   return pulse.kind === 'selection' ? 'selection' : `${pulse.kind}(${pulse.style || pulse.type})`;
 }
 
-// `followUp`: a later pulse of the same event (day.complete's second Confirm). The rate limit
-// only applies to an event's first pulse; follow-ups are part of the pattern. Returns whether
-// the pulse fired (a dropped first pulse drops the rest of the pattern too).
+// The 40 ms limit is for rapid repeat taps only (§2.10): counter steps and selection ticks.
+// Celebration and scheduled events (day.complete, milestone, trophy, challenge.claimed, ...)
+// are never dropped, however close they land to another haptic.
+export const RATE_LIMITED = Object.freeze([EVENTS.counterStep, EVENTS.selection]);
+
+// `followUp`: a later pulse of the same event (day.complete's second Confirm), part of the
+// pattern and never rate limited. Returns whether the pattern should continue.
 function firePulse(event, pulse, calledAt, followUp = false) {
   if (!enabled.haptics || Platform.OS === 'web') return false;
   const now = Date.now();
-  if (!followUp && now - lastHapticAt < RATE_LIMIT_MS) return false; // rapid counter taps: drop, never queue
+  if (!followUp && RATE_LIMITED.includes(event) && now - lastHapticAt < RATE_LIMIT_MS) {
+    record({ t: now, offset: now - calledAt, event, haptic: null, sound: null, dropped: true });
+    return false; // rapid repeat taps: drop, never queue
+  }
   if (Platform.OS === 'android') {
     const candidates = supportedChain(pulse.chain, apiLevel());
     if (candidates.length === 0) return true; // no-op on this API level, the pattern continues
@@ -207,10 +214,11 @@ function firePulse(event, pulse, calledAt, followUp = false) {
 
 // Pulses are chained, each timed from the previous one actually firing, so a busy JS thread
 // that delays the first pulse keeps the pattern's spacing instead of collapsing it.
-function runPattern(event, pulses, i, calledAt) {
+function runPattern(handle, event, pulses, i, calledAt) {
+  if (handle.cancelled) return;
   if (!firePulse(event, pulses[i], calledAt, i > 0)) return;
   const next = pulses[i + 1];
-  if (next) setTimeout(() => runPattern(event, pulses, i + 1, calledAt), next.at - pulses[i].at);
+  if (next) handle.later(() => runPattern(handle, event, pulses, i + 1, calledAt), next.at - pulses[i].at);
 }
 
 function fireSound(event, name, calledAt) {
@@ -220,29 +228,50 @@ function fireSound(event, name, calledAt) {
   try { require('../utils/sounds')[SOUNDS[name]](); } catch { /* audio failure is never fatal */ }
 }
 
-function at(ms, fn) {
-  if (ms > 0) setTimeout(fn, ms);
-  else fn();
+// The timers of one play() call, cancellable together.
+function makeHandle() {
+  const timers = [];
+  const handle = {
+    cancelled: false,
+    later(fn, ms) {
+      if (ms > 0) timers.push(setTimeout(() => { if (!handle.cancelled) fn(); }, ms));
+      else fn();
+    },
+    /** Drop whatever of this event has not fired yet (an un-check cancels a pending day.complete). */
+    cancel() {
+      handle.cancelled = true;
+      timers.forEach(clearTimeout);
+      timers.length = 0;
+    },
+  };
+  return handle;
 }
+
+const NOOP_HANDLE = Object.freeze({ cancelled: true, cancel() {} });
 
 /**
  * Fire the feedback for `event`: its haptic pulses (gated by the haptics setting) and its sound
  * (gated by the sound setting), starting `opts.delay` ms from now (default: the event's beat
- * offset). Never awaits: call it in the same frame as the visual change.
+ * offset). `opts.sound: false` plays the haptic only. Never awaits: call it in the same frame as
+ * the visual change. Returns a handle whose `cancel()` drops anything not yet fired.
  */
 export function play(event, opts = {}) {
   const spec = FEEDBACK_MAP[event];
   if (!spec) {
     if (__DEV__) console.warn(`[feedback] unknown event ${event}`);
-    return;
+    return NOOP_HANDLE;
   }
+  const handle = makeHandle();
   const calledAt = Date.now();
   const delay = typeof opts.delay === 'number' ? opts.delay : spec.offset;
   if (enabled.haptics && Platform.OS !== 'web') {
     const pulses = Platform.OS === 'android' ? spec.android : spec.ios;
-    if (pulses.length) at(delay + pulses[0].at, () => runPattern(event, pulses, 0, calledAt));
+    if (pulses.length) handle.later(() => runPattern(handle, event, pulses, 0, calledAt), delay + pulses[0].at);
   }
-  if (enabled.sound && spec.sound) at(delay, () => fireSound(event, spec.sound, calledAt));
+  if (enabled.sound && spec.sound && opts.sound !== false) {
+    handle.later(() => fireSound(event, spec.sound, calledAt), delay);
+  }
+  return handle;
 }
 
 /** Switch / toggle feedback (Android only; iOS switches have their own native haptic). */

@@ -119,6 +119,12 @@ export default function TodayScreen() {
   const [rewardsToShow, setRewardsToShow] = useState([]);
   const rewardModalShown = useRef(false);
   const allDoneCelebrated = useRef(false);
+  // Feedback still pending from the last check-off (day.complete at +750, challenge.claimed at
+  // +250). An un-check cancels them (§4.1): a day that is no longer complete gets no Success.
+  const pendingFeedback = useRef([]);
+  const cancelPendingFeedback = () => { pendingFeedback.current.forEach(h => h.cancel()); pendingFeedback.current = []; };
+  // Only the latest few matter (they expire within ~1 s); keep the list bounded.
+  const keepPending = (h) => { pendingFeedback.current = [...pendingFeedback.current.slice(-3), h]; };
 
   const [nudgeMessage, setNudgeMessage] = useState(null);
   const [nudgeLoading, setNudgeLoading] = useState(false);
@@ -269,12 +275,12 @@ export default function TodayScreen() {
       const anyComplete = completedNowIds.length > 0;
       // challenge.claimed lands on its beat (+250 ms); a completed challenge gets the trophy
       // screen, which plays its own feedback.
-      if (claimedIds.length > 0 && !anyComplete) feedback.play(EVENTS.challengeClaimed);
+      if (claimedIds.length > 0 && !anyComplete) keepPending(feedback.play(EVENTS.challengeClaimed));
       if (anyComplete) setTimeout(() => setTrophyCelebrating(true), 100);
 
       if (willAllBeDone && !allDoneCelebrated.current) {
         allDoneCelebrated.current = true;
-        feedback.play(EVENTS.dayComplete);
+        keepPending(feedback.play(EVENTS.dayComplete));
         setCelebrating(true);
       }
     }
@@ -288,7 +294,13 @@ export default function TodayScreen() {
     const habitStillDone = isGoalMet(habit, Math.max(0, countBefore - (amount || 1)));
 
     decrementHabit(habit.id, amount || 1);
-    feedback.play(undo || (habitWasDone && !habitStillDone) ? EVENTS.habitUndone : EVENTS.counterStep);
+    if (undo || (habitWasDone && !habitStillDone)) {
+      cancelPendingFeedback();
+      feedback.play(EVENTS.habitUndone);
+    } else {
+      // A −1 that leaves the habit's done state alone: the tick only, never the rising step chime.
+      feedback.play(EVENTS.counterStep, { sound: false });
+    }
     allDoneCelebrated.current = false;
 
     // Only unmark challenge days when this habit transitions from done → not done
@@ -331,7 +343,7 @@ export default function TodayScreen() {
     });
     // One markRest haptic and chord for the whole batch; no separate day.complete haptic.
     feedback.play(EVENTS.markRest);
-    if (claimedIds.length > 0) feedback.play(EVENTS.challengeClaimed);
+    if (claimedIds.length > 0) keepPending(feedback.play(EVENTS.challengeClaimed));
     // Celebrate only when the day is truly complete: counters may still be open.
     const allNow = dueHabits.length > 0 && dueHabits.every(h => isHabitSatisfiedWith(h, plan.next));
     if (allNow && !allDoneCelebrated.current) {
@@ -345,6 +357,7 @@ export default function TodayScreen() {
   // the challenge days it claimed.
   const undoMarkRest = useCallback((tst) => {
     queueRef.current = queueRef.current.filter(i => i.token !== tst.id);
+    cancelPendingFeedback();
     feedback.play(EVENTS.habitUndone);
     restoreHabitCounts(tst.before, tst.changedIds, tst.dayKey);
     tst.claimedIds.forEach(id => unmarkChallengeDay(id, tst.dayKey));
