@@ -158,7 +158,10 @@ function desiredDailyReminders(settings, habits, missesByHabit = {}) {
 // `prompt` controls whether a missing permission triggers the OS dialog: the launch
 // pass uses false so a fresh install is never greeted with a permission prompt;
 // user-initiated changes use true.
-export async function applyReminderSchedule(settings, habits, { prompt = true, missesByHabit = {}, today } = {}) {
+// `isStale()` (optional) is checked before every OS schedule call: a pass that a newer
+// one has superseded stops there, so it can never re-add a reminder the newer pass
+// cancelled. Callers should go through requestReminderSchedule, which sets it.
+export async function applyReminderSchedule(settings, habits, { prompt = true, missesByHabit = {}, today, isStale = () => false } = {}) {
   if (Platform.OS === 'web') return;
   const desired = desiredDailyReminders(settings, habits, missesByHabit);
 
@@ -170,11 +173,12 @@ export async function applyReminderSchedule(settings, habits, { prompt = true, m
     await Promise.all(ours.map(n => cancel(n.identifier)));
   } catch {}
 
-  if (desired.length === 0) return;
+  if (desired.length === 0 || isStale()) return;
   const granted = await requestPermissions({ prompt });
   if (!granted) return;
 
   for (const d of desired) {
+    if (isStale()) return;
     try {
       let trigger = { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: d.hour, minute: d.minute };
       if (d.oneOff && today) {
@@ -191,6 +195,70 @@ export async function applyReminderSchedule(settings, habits, { prompt = true, m
       console.warn('applyReminderSchedule failed for', d.identifier, e);
     }
   }
+}
+
+// ── Serialized scheduling (#186) ──────────────────────────────────────────────
+// applyReminderSchedule cancels then reschedules asynchronously, so two overlapping
+// passes could interleave and an older pass could re-add a reminder that a newer
+// pass had just cancelled. requestReminderSchedule fixes that in three ways:
+//  - bursts (launch: settings, habits and the permission state land within a few
+//    renders) are debounced by REMINDER_SCHEDULE_DEBOUNCE_MS and only the latest
+//    arguments are used;
+//  - passes run one at a time on a single promise chain;
+//  - each pass carries a generation number and stops before its next OS call as
+//    soon as a newer request exists.
+// A pass that throws is logged and the chain carries on, so one bad pass never
+// wedges the queue.
+export const REMINDER_SCHEDULE_DEBOUNCE_MS = 250;
+
+let scheduleGeneration = 0;
+let scheduleChain = Promise.resolve();
+let pendingTimer = null;
+let pendingArgs = null;
+let pendingWaiters = [];
+
+function runPass(args, gen) {
+  const isStale = () => gen !== scheduleGeneration;
+  scheduleChain = scheduleChain.then(async () => {
+    if (isStale()) return;
+    try {
+      await applyReminderSchedule(args.settings, args.habits, { ...args.options, isStale });
+    } catch (e) {
+      console.warn('reminder scheduling pass failed', e);
+    }
+  });
+  return scheduleChain;
+}
+
+// Debounced, serialized applyReminderSchedule. Resolves once the pass that covers
+// this request has finished (or was superseded).
+export function requestReminderSchedule(settings, habits, options = {}) {
+  const gen = ++scheduleGeneration;
+  pendingArgs = { settings, habits, options };
+  if (pendingTimer) clearTimeout(pendingTimer);
+  return new Promise((resolve) => {
+    pendingWaiters.push(resolve);
+    pendingTimer = setTimeout(() => {
+      pendingTimer = null;
+      const args = pendingArgs;
+      const waiters = pendingWaiters;
+      pendingArgs = null;
+      pendingWaiters = [];
+      runPass(args, gen).then(() => waiters.forEach(w => w()));
+    }, REMINDER_SCHEDULE_DEBOUNCE_MS);
+  });
+}
+
+// Drop a debounced request that has not started yet (provider unmount / sign-out)
+// and stop any running pass before its next OS call.
+export function cancelPendingReminderSchedule() {
+  scheduleGeneration++;
+  if (pendingTimer) clearTimeout(pendingTimer);
+  pendingTimer = null;
+  pendingArgs = null;
+  const waiters = pendingWaiters;
+  pendingWaiters = [];
+  waiters.forEach(w => w());
 }
 
 // Re-deliver a notification's content in `minutes` (Snooze action).

@@ -19,7 +19,7 @@ import {
   syncSettings,
 } from '../services/sync';
 import {
-  applyReminderSchedule, scheduleEveningHabitReminder, cancelEveningHabitReminder,
+  requestReminderSchedule, cancelPendingReminderSchedule, scheduleEveningHabitReminder, cancelEveningHabitReminder,
   getPermissionState, requestOsPermission, listenForNotificationResponses, snoozeNotification, setBadge,
   ACTION_DONE, ACTION_SNOOZE, BACKOFF_AFTER_MISSES,
 } from '../utils/notifications';
@@ -346,9 +346,13 @@ export function AppProvider({ children }) {
     // Never show the OS permission dialog from the launch pass; only after the user
     // changes a reminder (which is what the later runs of this effect represent).
     // Re-runs when permission is granted, so already-stored reminders get scheduled.
-    applyReminderSchedule(settings, habits, { prompt: false, missesByHabit, today: localDateKey() });
+    // Debounced and serialized (#186): only the latest state's pass survives, so a
+    // reminder turned off cannot be re-added by an older pass still in flight.
+    requestReminderSchedule(settings, habits, { prompt: false, missesByHabit, today: localDateKey() });
     remindersAppliedOnce.current = true;
   }, [loaded, settings.notificationsEnabled, settings.reminders, habitReminderKey, backoffKey, clockTick, notificationPermission]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A pass queued by this provider must not run for the next user after sign-out.
+  useEffect(() => () => cancelPendingReminderSchedule(), []);
 
   // ── Notification permission priming ──────────────────────────────────────────
   // Screens call ensureNotificationPermission() before turning a reminder on. If the
