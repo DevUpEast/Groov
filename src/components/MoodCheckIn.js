@@ -12,9 +12,9 @@ export default function MoodCheckIn({ value, onChange, theme, haptics = true }) 
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.text }]}>{t('moodCheckIn.title')}</Text>
         {value ? (
-          <Text style={[styles.sub, { color: theme.textMuted }]}>{MOODS.find(m => m.value === value)?.label}</Text>
+          <Text style={[styles.sub, { color: theme.textSecondary }]}>{MOODS.find(m => m.value === value)?.label}</Text>
         ) : (
-          <Text style={[styles.sub, { color: theme.textMuted }]}>{t('moodCheckIn.optional')}</Text>
+          <Text style={[styles.sub, { color: theme.textSecondary }]}>{t('moodCheckIn.optional')}</Text>
         )}
       </View>
       <View style={styles.row} accessibilityRole="radiogroup">
@@ -23,7 +23,7 @@ export default function MoodCheckIn({ value, onChange, theme, haptics = true }) 
           return (
             <TouchableOpacity
               key={m.value}
-              style={[styles.btn, { borderColor: on ? theme.primary : theme.border, backgroundColor: on ? theme.primaryLight : theme.bg }]}
+              style={[styles.btn, { borderColor: on ? theme.selectionBorder : theme.border, backgroundColor: on ? theme.selection : theme.bg }]}
               onPress={() => { if (haptics) lightImpact(); onChange(on ? null : m.value); }}
               accessibilityRole="radio"
               accessibilityState={{ selected: on, checked: on }}

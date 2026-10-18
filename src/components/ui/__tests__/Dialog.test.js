@@ -162,6 +162,78 @@ describe('Dialog', () => {
   });
 });
 
+describe('Dialog actions (F-02)', () => {
+  const { themes } = jest.requireActual('../../../theme/colors');
+  const theme = themes.light;
+  const flat = (style) => Object.assign({}, ...[].concat(style).flat(Infinity).filter(Boolean));
+  const btn = (r, label) => pressable(r, label);
+  const labelColor = (r, label) => flat(btn(r, label).findAll(n => n.type === require('react-native').Text)[0].props.style).color;
+
+  it('draws primary as action/onAction and destructive as dangerFill/onDanger, per action', () => {
+    const actions = [
+      { label: 'Cancel', onPress: jest.fn() },
+      { label: 'Delete', variant: 'destructive', onPress: jest.fn() },
+      { label: 'Save', variant: 'primary', onPress: jest.fn() },
+    ];
+    const r = render({ visible: true, onClose: jest.fn(), title: 'T', actions });
+    expect(flat(btn(r, 'Save').props.style).backgroundColor).toBe(theme.action);
+    expect(labelColor(r, 'Save')).toBe(theme.onAction);
+    expect(flat(btn(r, 'Delete').props.style).backgroundColor).toBe(theme.dangerFill);
+    expect(labelColor(r, 'Delete')).toBe(theme.onDanger);
+    expect(flat(btn(r, 'Cancel').props.style).backgroundColor).toBeUndefined();
+    expect(flat(btn(r, 'Cancel').props.style).borderColor).toBe(theme.controlBorder);
+  });
+
+  it('keeps the legacy `destructive` prop: primary actions turn destructive', () => {
+    const r = render({ visible: true, onClose: jest.fn(), title: 'T', destructive: true, actions: [{ label: 'Go', variant: 'primary', onPress: jest.fn() }] });
+    expect(flat(btn(r, 'Go').props.style).backgroundColor).toBe(theme.dangerFill);
+  });
+
+  it('dims every disabled action, secondary included', () => {
+    const r = render({ visible: true, onClose: jest.fn(), title: 'T', actions: [
+      { label: 'Cancel', disabled: true, onPress: jest.fn() },
+      { label: 'Save', variant: 'primary', disabled: true, onPress: jest.fn() },
+    ] });
+    expect(flat(btn(r, 'Cancel').props.style).opacity).toBeLessThan(1);
+    expect(flat(btn(r, 'Save').props.style).opacity).toBeLessThan(1);
+  });
+
+  it('stacks three actions or a long label, main action on top; two short ones stay in a row', () => {
+    const { shouldStack, STACK_LABEL_CHARS } = require('../Dialog');
+    const short = [{ label: 'Cancel' }, { label: 'Save' }];
+    expect(shouldStack(short)).toBe(false);
+    expect(shouldStack([...short, { label: 'Later' }])).toBe(true);
+    expect(shouldStack([{ label: 'Abbrechen' }, { label: 'Alle Daten zurücksetzen' }])).toBe(true);
+    expect('Alle Daten zurücksetzen'.length).toBeGreaterThan(STACK_LABEL_CHARS);
+    expect(shouldStack(short, 'stack')).toBe(true);
+    expect(shouldStack([...short, { label: 'x' }], 'row')).toBe(false);
+
+    const r = render({ visible: true, onClose: jest.fn(), title: 'T', actions: [
+      { label: 'Cancel', onPress: jest.fn() }, { label: 'Not now', onPress: jest.fn() }, { label: 'Save', variant: 'primary', onPress: jest.fn() },
+    ] });
+    expect(r.root.findAll(n => n.props.testID === 'dialog-actions-stacked').length).toBeGreaterThan(0);
+    const order = [...new Set(r.root.findAll(n => n.props.accessibilityRole === 'button' && typeof n.props.onPress === 'function').map(b => b.props.accessibilityLabel))];
+    expect(order).toEqual(['Save', 'Not now', 'Cancel']);
+  });
+
+  it('sits on the overlay surface (level 3)', () => {
+    const r = render({ visible: true, onClose: jest.fn(), title: 'T' });
+    const card = r.root.findAll(n => n.type === View && n.props.accessibilityViewIsModal)[0];
+    expect(flat(card.props.style).backgroundColor).toBe(theme.overlay);
+  });
+
+  it('registers as an open overlay while visible (status bar, F-02)', () => {
+    const { anyOverlayOpen, openOverlayCount } = require('../../../utils/overlayStatus');
+    const before = openOverlayCount(); // earlier tests leave their dialogs mounted
+    const r = render({ visible: true, onClose: jest.fn(), title: 'T' });
+    expect(anyOverlayOpen()).toBe(true);
+    expect(openOverlayCount()).toBe(before + 1);
+    act(() => { r.update(React.createElement(Dialog, { visible: false, onClose: jest.fn(), title: 'T' })); });
+    expect(openOverlayCount()).toBe(before);
+    act(() => { r.unmount(); });
+  });
+});
+
 describe('SettingsScreen dialogs', () => {
   const settings = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'screens', 'SettingsScreen.js'), 'utf8');
 

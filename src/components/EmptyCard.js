@@ -6,7 +6,7 @@ export default function EmptyCard({ emoji, title, body, theme, style, children, 
     <View style={[styles.card, { borderColor: theme.border }, style]}>
       <Text style={styles.emoji}>{emoji}</Text>
       <Text style={[styles.title, { color: titleColor ?? theme.text }]}>{title}</Text>
-      <Text style={[styles.body, { color: theme.textMuted }]}>{body}</Text>
+      <Text style={[styles.body, { color: theme.textSecondary }]}>{body}</Text>
       {children}
     </View>
   );

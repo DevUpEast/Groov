@@ -6,6 +6,7 @@ import { timeToDate, from24h, formatTimeForClock } from '../utils/time';
 import { usesDevice24hClock } from '../utils/clock';
 import { themes } from '../theme/colors';
 import { t } from '../i18n';
+import OverlayModal from './ui/OverlayModal';
 
 // Native time picker (S-07). Same props and the same { hour12, minute, ampm } result as before,
 // so callers did not change.
@@ -63,13 +64,13 @@ function IOSTimePicker({ visible, hour12, minute, ampm, onClose, onSave, theme }
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <OverlayModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.scrim }]}>
-        <View style={[styles.card, { backgroundColor: theme.surface }]}>
+        <View style={[styles.card, { backgroundColor: theme.overlay }]}>
           <Text style={[styles.title, { color: theme.text }]} accessibilityRole="header">
             {t('timePicker.title')}
           </Text>
-          <Text style={[styles.preview, { color: theme.textMuted }]}>
+          <Text style={[styles.preview, { color: theme.textSecondary }]}>
             {formatTimeForClock(from24h(value), uses24h)}
           </Text>
           {/* No `locale` on purpose: an explicit locale makes UIDatePicker ignore the 24-hour override. */}
@@ -84,16 +85,16 @@ function IOSTimePicker({ visible, hour12, minute, ampm, onClose, onSave, theme }
             style={styles.spinner}
           />
           <View style={styles.actions}>
-            <TouchableOpacity style={[styles.cancelBtn, { borderColor: theme.border }]} onPress={onClose} accessibilityRole="button">
-              <Text style={[styles.cancelText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
+            <TouchableOpacity style={[styles.cancelBtn, { borderColor: theme.controlBorder }]} onPress={onClose} accessibilityRole="button">
+              <Text style={[styles.cancelText, { color: theme.text }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSave} accessibilityRole="button">
-              <Text style={[styles.saveText, { color: theme.onPrimary }]}>{t('common.save')}</Text>
+            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.action }]} onPress={handleSave} accessibilityRole="button">
+              <Text style={[styles.saveText, { color: theme.onAction }]}>{t('common.save')}</Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
-    </Modal>
+    </OverlayModal>
   );
 }
 

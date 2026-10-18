@@ -10,14 +10,17 @@ import { lightImpact, mediumImpact } from '../utils/haptics';
 import { track, Events } from '../utils/analytics';
 import { weekdayInitials } from '../utils/schedule';
 import { t, getLocale, useLocale } from '../i18n';
+import { elevation, shareCard } from '../theme/tokens';
+import OverlayModal from './ui/OverlayModal';
 
 // Shareable cards (#31): streak card, weekly recap and a year-in-pixels grid.
 // Each card is rendered off-screen-sized, captured with react-native-view-shot and
 // handed to the share sheet (web: downloaded).
 
 const CARD_W = Math.min(Dimensions.get('window').width - 48, 360);
-const BRAND = '#4F46E5';
-const BRAND_DARK = '#3730A3';
+// Fixed brand art, the same in both themes (VA-7).
+const BRAND = shareCard.bg;
+const BRAND_DARK = shareCard.bgDeep;
 
 export const CARD_KINDS = [
   { key: 'streak', emoji: '🔥', get label() { return t('shareCards.kinds.streak'); } },
@@ -75,21 +78,21 @@ function YearCard({ year, cells, displayName, today }) {
   // 53 columns x 7 rows, Monday first, like a contribution graph.
   // 53 columns must fit the card width; cells are square with a 2px gap.
   return (
-    <View style={[styles.card, { backgroundColor: '#0F172A' }]}>
+    <View style={[styles.card, { backgroundColor: shareCard.bgInk }]}>
       <Text style={styles.cardKicker}>{displayName ? t('shareCards.namedYear', { name: displayName, year }) : t('shareCards.myYear', { year })}</Text>
       {rows.map((rowCols, r) => (
         <View key={r} style={{ flexDirection: 'row', marginTop: r === 0 ? 14 : 10 }}>
           {rowCols.map((col, i) => (
             <View key={i} style={{ marginRight: 2 }}>
               {col.map((c, j) => (
-                <View key={j} style={{ width: cellBig, height: cellBig, marginBottom: 2, borderRadius: 2, backgroundColor: c === null ? 'transparent' : c >= 1 ? '#818CF8' : c > 0 ? '#F59E0B' : '#1E293B' }} />
+                <View key={j} style={{ width: cellBig, height: cellBig, marginBottom: 2, borderRadius: 2, backgroundColor: c === null ? 'transparent' : c >= 1 ? shareCard.cellPerfect : c > 0 ? shareCard.cellPartial : shareCard.cellNone }} />
               ))}
             </View>
           ))}
         </View>
       ))}
       <View style={[styles.legendRow, { marginTop: 12 }]}>
-        {[['#1E293B', 'none'], ['#F59E0B', 'partial'], ['#818CF8', 'perfect']].map(([c, l]) => (
+        {[[shareCard.cellNone, 'none'], [shareCard.cellPartial, 'partial'], [shareCard.cellPerfect, 'perfect']].map(([c, l]) => (
           <View key={l} style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: c }]} /><Text style={styles.legendText}>{t(`shareCards.legend.${l}`)}</Text></View>
         ))}
       </View>
@@ -164,21 +167,21 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
 
   if (!visible) return null;
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
+    <OverlayModal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={[styles.overlay, { backgroundColor: theme.scrim }]}>
+        <View style={[styles.sheet, elevation.sheet, { backgroundColor: theme.raised, shadowColor: theme.shadow }]}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>{t('shareCards.title')}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
-              <Text style={[styles.closeTxt, { color: theme.textMuted }]}>✕</Text>
+              <Text style={[styles.closeTxt, { color: theme.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.tabs}>
             {CARD_KINDS.map(k => {
               const on = kind === k.key;
               return (
-                <TouchableOpacity key={k.key} style={[styles.tab, { borderColor: on ? theme.primary : theme.border, backgroundColor: on ? theme.primaryLight : 'transparent' }]} onPress={() => { if (settings.hapticsEnabled) lightImpact(); setKind(k.key); }} accessibilityRole="button" accessibilityState={{ selected: on }}>
-                  <Text style={[styles.tabText, { color: on ? theme.primary : theme.textMuted }]}>{t('shareCards.kindTab', { emoji: k.emoji, label: k.label })}</Text>
+                <TouchableOpacity key={k.key} style={[styles.tab, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : 'transparent' }]} onPress={() => { if (settings.hapticsEnabled) lightImpact(); setKind(k.key); }} accessibilityRole="button" accessibilityState={{ selected: on }}>
+                  <Text style={[styles.tabText, { color: on ? theme.onSelection : theme.textSecondary }]}>{t('shareCards.kindTab', { emoji: k.emoji, label: k.label })}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -190,17 +193,17 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
               {kind === 'year' && <YearCard year={yearCells.year} cells={yearCells.cols} displayName={displayName} today={today} />}
             </View>
           </ScrollView>
-          <TouchableOpacity style={[styles.shareBtn, { backgroundColor: theme.primary, opacity: busy ? 0.6 : 1 }]} onPress={share} disabled={busy} accessibilityRole="button" accessibilityLabel={t('shareCards.shareImage')}>
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.shareBtnText}>{t('shareCards.shareImage')}</Text>}
+          <TouchableOpacity style={[styles.shareBtn, { backgroundColor: theme.action, opacity: busy ? 0.6 : 1 }]} onPress={share} disabled={busy} accessibilityRole="button" accessibilityLabel={t('shareCards.shareImage')}>
+            {busy ? <ActivityIndicator color={theme.onAction} /> : <Text style={[styles.shareBtnText, { color: theme.onAction }]}>{t('shareCards.shareImage')}</Text>}
           </TouchableOpacity>
         </View>
       </View>
-    </Modal>
+    </OverlayModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 16, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '92%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   title: { fontSize: 20, fontWeight: 'bold' },
@@ -210,25 +213,25 @@ const styles = StyleSheet.create({
   tab: { flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
   tabText: { fontSize: 12, fontWeight: '700' },
   card: { borderRadius: 24, padding: 20, width: CARD_W },
-  cardKicker: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
-  bigNumber: { color: '#fff', fontSize: 72, fontWeight: '900', marginTop: 6, lineHeight: 80 },
-  bigLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 16, fontWeight: '600', marginTop: -4 },
+  cardKicker: { color: shareCard.fgSecondary, fontSize: 13, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
+  bigNumber: { color: shareCard.fg, fontSize: 72, fontWeight: '900', marginTop: 6, lineHeight: 80 },
+  bigLabel: { color: shareCard.fgStrong, fontSize: 16, fontWeight: '600', marginTop: -4 },
   statRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  stat: { flex: 1, backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
-  statValue: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  statLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 },
+  stat: { flex: 1, backgroundColor: shareCard.well, borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
+  statValue: { color: shareCard.fg, fontSize: 20, fontWeight: '800' },
+  statLabel: { color: shareCard.fgSecondary, fontSize: 11, marginTop: 2 },
   weekRow: { flexDirection: 'row', gap: 8, height: 110, alignItems: 'flex-end', marginTop: 18 },
   weekDay: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
-  weekBarTrack: { flex: 1, width: '70%', backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end' },
-  weekBarFill: { width: '100%', backgroundColor: '#fff', borderRadius: 6 },
-  weekLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 4, fontWeight: '700' },
+  weekBarTrack: { flex: 1, width: '70%', backgroundColor: shareCard.well, borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end' },
+  weekBarFill: { width: '100%', backgroundColor: shareCard.fg, borderRadius: 6 },
+  weekLabel: { color: shareCard.fgSecondary, fontSize: 11, marginTop: 4, fontWeight: '700' },
   legendRow: { flexDirection: 'row', gap: 12 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 9, height: 9, borderRadius: 2 },
-  legendText: { color: 'rgba(255,255,255,0.7)', fontSize: 11 },
+  legendText: { color: shareCard.fgTertiary, fontSize: 11 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 },
-  footerBrand: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
-  footerDate: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
+  footerBrand: { color: shareCard.fg, fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
+  footerDate: { color: shareCard.fgTertiary, fontSize: 12 },
   shareBtn: { marginTop: 12, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
-  shareBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  shareBtnText: { fontSize: 16, fontWeight: '700' },
 });

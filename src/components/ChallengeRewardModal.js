@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { getChallengeTier, TIER_STYLES } from '../context/AppContext';
 import { t, useLocale } from '../i18n';
+import OverlayModal from './ui/OverlayModal';
 
 function ChallengeResultCard({ challenge, theme }) {
   const tier = challenge.tier || getChallengeTier(challenge.completedDays?.length ?? 0, challenge.days);
@@ -28,7 +29,7 @@ function ChallengeResultCard({ challenge, theme }) {
       </View>
 
       <View style={[styles.progressBg, { backgroundColor: (border || theme.border) + '40' }]}>
-        <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: border || theme.primary }]} />
+        <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: border || theme.meter }]} />
       </View>
       <Text style={[styles.progressText, { color: textColor }]}>
         {t('rewardModal.progress', { done: completedCount, days: challenge.days, percent: Math.round(progress * 100) })}
@@ -59,38 +60,37 @@ export default function ChallengeRewardModal({ challenges, onDismiss, theme }) {
   };
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onDismiss}>
-      <View style={styles.overlay}>
+    <OverlayModal visible transparent animationType="fade" onRequestClose={onDismiss}>
+      <View style={[styles.overlay, { backgroundColor: theme.celebrationScrim }]}>
         <ScrollView
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.title}>{t('rewardModal.title')}</Text>
+          <Text style={[styles.title, { color: theme.onCelebration }]}>{t('rewardModal.title')}</Text>
           {isMulti && (
-            <Text style={styles.pageIndicator}>{t('rewardModal.page', { page: page + 1, total: challenges.length })}</Text>
+            <Text style={[styles.pageIndicator, { color: theme.onCelebrationSecondary }]}>{t('rewardModal.page', { page: page + 1, total: challenges.length })}</Text>
           )}
 
           <ChallengeResultCard challenge={current} theme={theme} />
 
           <TouchableOpacity
-            style={[styles.dismissBtn, { backgroundColor: theme.primary }]}
+            style={[styles.dismissBtn, { backgroundColor: theme.action }]}
             onPress={handleNext}
             accessibilityRole="button"
           >
-            <Text style={styles.dismissBtnText}>
+            <Text style={[styles.dismissBtnText, { color: theme.onAction }]}>
               {isLast ? t('rewardModal.gotIt') : t('rewardModal.next')}
             </Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
-    </Modal>
+    </OverlayModal>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'center',
   },
   container: {
@@ -104,12 +104,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 4,
-    color: '#fff',
   },
   pageIndicator: {
     fontSize: 13,
     textAlign: 'center',
-    color: 'rgba(255,255,255,0.7)',
     marginBottom: 16,
   },
   card: {
@@ -137,5 +135,5 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
   },
-  dismissBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  dismissBtnText: { fontSize: 16, fontWeight: '700' },
 });

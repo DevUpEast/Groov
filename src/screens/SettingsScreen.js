@@ -25,6 +25,17 @@ import { t, getLocale, useLocale, setLocale, SUPPORTED_LOCALES } from '../i18n';
 // Secret code for first-time dev unlock (tap version label 7× then enter)
 const DEV_CODE = 'devmode';
 
+// Switch colours (F-02): the on track is the action fill and its thumb the onAction colour
+// (ink on #818CF8 in dark, 5.98:1; a white thumb there is 2.98:1); off is a white thumb on the
+// control-boundary track.
+export function switchColors(theme, on) {
+  return {
+    trackColor: { false: theme.controlBorder, true: theme.action },
+    thumbColor: on ? theme.onAction : theme.switchThumb,
+    ios_backgroundColor: theme.controlBorder,
+  };
+}
+
 // "v1.2.0 (7)": app version from app.json, native build number from the binary.
 const APP_VERSION = Constants.expoConfig?.version ?? '0.0.0';
 const BUILD_NUMBER = Application.nativeBuildVersion;
@@ -118,12 +129,12 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
               {!!icon && <Text style={styles.habitReminderIcon}>{icon}</Text>}
               <Text style={[styles.reminderLabel, { color: theme.text }]}>{label}</Text>
               {!!badge && (
-                <View style={[styles.habitBadge, { backgroundColor: theme.primaryLight }]}>
-                  <Text style={[styles.habitBadgeText, { color: theme.primary }]}>{badge}</Text>
+                <View style={[styles.habitBadge, { backgroundColor: theme.selection }]}>
+                  <Text style={[styles.habitBadgeText, { color: theme.onSelection }]}>{badge}</Text>
                 </View>
               )}
             </View>
-            <Text style={[styles.reminderSublabel, { color: blocked ? theme.primary : theme.textSecondary }]}>
+            <Text style={[styles.reminderSublabel, { color: blocked ? theme.link : theme.textSecondary }]}>
               {sublabelText}
             </Text>
           </TouchableOpacity>
@@ -131,8 +142,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
         <Switch
           value={enabled && masterOn && permitted}
           onValueChange={toggle}
-          trackColor={{ false: theme.border, true: theme.primary }}
-          thumbColor="#fff"
+          {...switchColors(theme, enabled && masterOn && permitted)}
           style={{ opacity: masterOn && permitted ? 1 : 0.4 }}
           accessibilityLabel={label}
           accessibilityState={{ disabled: !masterOn }}
@@ -146,7 +156,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
           accessibilityLabel={t('settings.changeTimeA11y', { time: formatTime(time) })}
           accessibilityState={{ disabled: !timeActive }}
         >
-          <Text style={[styles.timeBtnText, { color: theme.primary }]}>{formatTime(time)}</Text>
+          <Text style={[styles.timeBtnText, { color: theme.link }]}>{formatTime(time)}</Text>
         </TouchableOpacity>
         {onRemove && (
           <TouchableOpacity style={styles.deleteReminderBtn} onPress={onRemove} accessibilityRole="button" accessibilityLabel={t('settings.removeReminderA11y')}>
@@ -549,21 +559,21 @@ export default function SettingsScreen() {
                 {settings.theme === 'system' ? t('settings.themeFollows') : settings.theme === 'dark' ? t('settings.themeAlwaysDark') : t('settings.themeAlwaysLight')}
               </Text>
             </View>
-            <View style={[styles.segment, { borderColor: theme.border }]}>
+            <View style={[styles.segment, { borderColor: theme.controlBorder }]}>
               {THEME_OPTIONS.map(opt => {
                 const active = (settings.theme ?? 'system') === opt;
                 const label = t(`settings.themeOptions.${opt}`);
                 return (
                   <TouchableOpacity
                     key={opt}
-                    style={[styles.segmentBtn, active && { backgroundColor: theme.primary }]}
+                    style={[styles.segmentBtn, active && { backgroundColor: theme.selection, borderColor: theme.selectionBorder }]}
                     onPress={() => updateSettings({ theme: opt })}
                     activeOpacity={0.7}
                     accessibilityRole="button"
                     accessibilityLabel={t('settings.themeA11y', { label })}
                     accessibilityState={{ selected: active }}
                   >
-                    <Text style={[styles.segmentText, { color: active ? '#fff' : theme.textSecondary }]}>{label}</Text>
+                    <Text style={[styles.segmentText, { color: active ? theme.onSelection : theme.textSecondary }]}>{label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -589,7 +599,7 @@ export default function SettingsScreen() {
           <Row
             label={t('settings.enableNotifications')}
             sublabel={masterBlocked ? t('settings.offTapToAllow') : Platform.OS === 'web' ? t('settings.enableSubWeb') : t('settings.enableSub')}
-            sublabelColor={masterBlocked ? theme.primary : undefined}
+            sublabelColor={masterBlocked ? theme.link : undefined}
             onPress={masterBlocked ? ensureNotificationPermission : undefined}
             theme={theme}
             right={
@@ -599,8 +609,7 @@ export default function SettingsScreen() {
                   if (v && !(await ensureNotificationPermission())) return;
                   updateSettings({ notificationsEnabled: v });
                 }}
-                trackColor={{ false: theme.border, true: theme.primary }}
-                thumbColor="#fff"
+                {...switchColors(theme, settings.notificationsEnabled && permitted)}
                 accessibilityLabel={t('settings.enableNotifications')}
               />
             }
@@ -670,8 +679,8 @@ export default function SettingsScreen() {
             accessibilityLabel={t('settings.addReminder')}
             accessibilityState={{ disabled: !masterOn }}
           >
-            <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
-            <Text style={[styles.addReminderText, { color: theme.primary }]}>{t('settings.addReminder')}</Text>
+            <Ionicons name="add-circle-outline" size={18} color={theme.link} />
+            <Text style={[styles.addReminderText, { color: theme.link }]}>{t('settings.addReminder')}</Text>
           </TouchableOpacity>
         </Section>
 
@@ -688,8 +697,7 @@ export default function SettingsScreen() {
                   updateSettings({ soundEnabled: v });
                   if (v) playSuccessChime();
                 }}
-                trackColor={{ false: theme.border, true: theme.primary }}
-                thumbColor="#fff"
+                {...switchColors(theme, settings.soundEnabled)}
                 accessibilityLabel={t('settings.sounds')}
               />
             }
@@ -702,8 +710,7 @@ export default function SettingsScreen() {
               <Switch
                 value={settings.hapticsEnabled}
                 onValueChange={v => updateSettings({ hapticsEnabled: v })}
-                trackColor={{ false: theme.border, true: theme.primary }}
-                thumbColor="#fff"
+                {...switchColors(theme, settings.hapticsEnabled)}
                 accessibilityLabel={t('settings.haptics')}
               />
             }
@@ -757,7 +764,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.sendTest')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{t('settings.dev.sendTestSub')}</Text>
               </View>
-              <Ionicons name="notifications-outline" size={20} color={theme.primary} />
+              <Ionicons name="notifications-outline" size={20} color={theme.link} />
             </TouchableOpacity>
 
             {/* Seed 30-day random history */}
@@ -786,7 +793,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.seed.title')}</Text>
                 <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{t('settings.dev.seed.sub')}</Text>
               </View>
-              <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+              <Ionicons name="calendar-outline" size={20} color={theme.link} />
             </TouchableOpacity>
 
             {/* Crash test */}
@@ -844,7 +851,7 @@ export default function SettingsScreen() {
             sublabel={isPro ? t('settings.pro.haveSub') : t('settings.pro.upgradeSub')}
             theme={theme}
             onPress={isPro ? undefined : () => { if (settings.hapticsEnabled) lightImpact(); openPaywall('settings'); }}
-            right={<Ionicons name={isPro ? 'checkmark-circle' : 'sparkles-outline'} size={20} color={theme.primary} />}
+            right={<Ionicons name={isPro ? 'checkmark-circle' : 'sparkles-outline'} size={20} color={theme.link} />}
           />
         </Section>
 
@@ -863,7 +870,7 @@ export default function SettingsScreen() {
               sublabel={t('settings.account.guestSub')}
               theme={theme}
               onPress={() => { if (settings.hapticsEnabled) lightImpact(); setLinkSheet(true); }}
-              right={<View style={[styles.linkPill, { backgroundColor: theme.primary }]}><Text style={styles.linkPillText}>{t('settings.account.addSignIn')}</Text></View>}
+              right={<View style={[styles.linkPill, { backgroundColor: theme.action }]}><Text style={[styles.linkPillText, { color: theme.onAction }]}>{t('settings.account.addSignIn')}</Text></View>}
             />
           ) : (
             <Row
@@ -890,14 +897,14 @@ export default function SettingsScreen() {
             sublabel={t('settings.backup.exportSub', { last: lastBackupLabel })}
             theme={theme}
             onPress={backupBusy ? undefined : handleExport}
-            right={<Ionicons name="share-outline" size={20} color={theme.primary} />}
+            right={<Ionicons name="share-outline" size={20} color={theme.link} />}
           />
           <Row
             label={t('settings.backup.restore')}
             sublabel={t('settings.backup.restoreSub')}
             theme={theme}
             onPress={backupBusy ? undefined : handleImport}
-            right={<Ionicons name="download-outline" size={20} color={theme.primary} />}
+            right={<Ionicons name="download-outline" size={20} color={theme.link} />}
           />
           {!lastBackupAt && (
             <Text style={[styles.backupHint, { color: theme.textSecondary }]}>{t('settings.backup.hint')}</Text>
@@ -915,7 +922,7 @@ export default function SettingsScreen() {
               accessibilityLabel={t('settings.data.resetPasswordA11y')}
               accessibilityState={{ disabled: resetLoading }}
             >
-              <Text style={[styles.dangerText, { color: theme.primary }]}>{t('settings.data.resetPassword')}</Text>
+              <Text style={[styles.dangerText, { color: theme.link }]}>{t('settings.data.resetPassword')}</Text>
               <Text style={[styles.dangerSub, { color: theme.textSecondary }]}>
                 {t('settings.data.resetPasswordSub')}
               </Text>
@@ -962,7 +969,7 @@ export default function SettingsScreen() {
                   Alert.alert(t('settings.about.widgetFailed.title'), e?.message || t('settings.about.widgetFailed.body'));
                 }
               }}
-              right={<Ionicons name="grid-outline" size={18} color={theme.primary} />}
+              right={<Ionicons name="grid-outline" size={18} color={theme.link} />}
             />
           )}
           <Row
@@ -1146,8 +1153,8 @@ export default function SettingsScreen() {
                 accessibilityState={{ selected, checked: selected }}
                 accessibilityLabel={opt.label}
               >
-                <Text style={[styles.langOptionText, { color: selected ? theme.primary : theme.text }]}>{opt.label}</Text>
-                {selected && <Ionicons name="checkmark" size={18} color={theme.primary} />}
+                <Text style={[styles.langOptionText, { color: selected ? theme.link : theme.text }]}>{opt.label}</Text>
+                {selected && <Ionicons name="checkmark" size={18} color={theme.link} />}
               </TouchableOpacity>
             );
           })}
@@ -1200,7 +1207,7 @@ const styles = StyleSheet.create({
   rowSub: { fontSize: 12, marginTop: 2 },
   rowRight: { marginLeft: 12 },
   segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 10, overflow: 'hidden', marginLeft: 12 },
-  segmentBtn: { paddingHorizontal: 12, paddingVertical: 7 },
+  segmentBtn: { paddingHorizontal: 11, paddingVertical: 6, borderWidth: 1, borderColor: 'transparent', borderRadius: 9 },
   segmentText: { fontSize: 13, fontWeight: '600' },
   reminderBlock: {
     borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8,
@@ -1233,7 +1240,7 @@ const styles = StyleSheet.create({
   devBtnText: { fontSize: 16, fontWeight: '700' },
   backupHint: { fontSize: 12, lineHeight: 17, paddingHorizontal: 16, paddingBottom: 12 },
   linkPill: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
-  linkPillText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  linkPillText: { fontSize: 12, fontWeight: '700' },
   dangerRow: { paddingHorizontal: 16, paddingVertical: 14 },
   dangerText: { fontSize: 15, fontWeight: '600' },
   dangerSub: { fontSize: 12, marginTop: 2 },

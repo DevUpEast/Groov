@@ -3,6 +3,8 @@ import {
   Modal, View, Text, Pressable, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, StyleSheet,
 } from 'react-native';
 import { useApp } from '../../context/AppContext';
+import { elevation } from '../../theme/tokens';
+import OverlayModal from './OverlayModal';
 
 /**
  * Shared centred dialog (plan §3). A real `Modal`, so it sits above the tab bar, the scrim covers
@@ -15,12 +17,18 @@ import { useApp } from '../../context/AppContext';
  *   same tick as closing (iOS cannot present an alert over a Modal that is still dismissing). iOS and
  *   web use the Modal's own `onDismiss`; Android has none, so it runs after `visible` turns false.
  * - `title` (announced as a header), `body` (secondary text under the title)
- * - `actions`: [{ label, onPress, variant: 'secondary' | 'primary', disabled, loading, loadingLabel,
- *   accessibilityLabel }]. Rendered in order, so put Cancel first (leading/left).
+ * - `actions`: [{ label, onPress, variant: 'secondary' | 'primary' | 'destructive', disabled, loading,
+ *   loadingLabel, accessibilityLabel }]. `primary` is the action fill with its onAction label (ink
+ *   in dark); `destructive` is the danger fill with onDanger. Rendered in order, so put Cancel first
+ *   (leading/left). A disabled action of any variant is dimmed.
+ * - `layout`: 'auto' (default) | 'row' | 'stack'. Auto stacks the buttons full-width when there are
+ *   3 or more actions or a label is longer than STACK_LABEL_CHARS (long de/fr labels would wrap or
+ *   clip side by side). Stacked, the order is reversed so the main action is on top and Cancel last.
  * - `dismissable` (default true): false ignores back, scrim taps and the escape gesture, e.g. while
  *   saving.
- * - `destructive`: the primary action is drawn in the danger colour. A destructive action is never
- *   the default: do not wire it to `onSubmitEditing`.
+ * - `destructive`: legacy shorthand, draws every `primary` action as `destructive`. Prefer the
+ *   per-action variant. A destructive action is never the default: do not wire it to
+ *   `onSubmitEditing`.
  * - `initialFocusRef`: a ref to focus once the dialog is shown. Use it instead of `autoFocus`, which
  *   fires before an Android Modal window has focus and leaves the keyboard closed. On Android the
  *   focus lands 150 ms after `onShow`, with one retry at 300 ms if the field is still not focused.
@@ -29,10 +37,18 @@ import { useApp } from '../../context/AppContext';
  */
 const FOCUS_DELAY_MS = 150;
 const FOCUS_RETRY_MS = 300;
+// Two buttons share about 135 pt at 375 pt wide; past this many characters a 14 pt label wraps.
+export const STACK_LABEL_CHARS = 16;
+
+export function shouldStack(actions, layout = 'auto') {
+  if (layout === 'stack') return true;
+  if (layout === 'row') return false;
+  return actions.length >= 3 || actions.some(a => String(a.label ?? '').length > STACK_LABEL_CHARS);
+}
 
 export default function Dialog({
   visible, onClose, onDismiss, title, body, actions = [], dismissable = true, destructive = false,
-  initialFocusRef, children,
+  initialFocusRef, children, layout = 'auto',
 }) {
   const { theme } = useApp();
   const requestClose = () => { if (dismissable) onClose?.(); };
@@ -67,9 +83,10 @@ export default function Dialog({
     wasVisible.current = !!visible;
   }, [visible]);
   const handleModalDismiss = Platform.OS === 'android' ? undefined : () => onDismissRef.current?.();
+  const stacked = shouldStack(actions, layout);
 
   return (
-    <Modal
+    <OverlayModal
       visible={!!visible}
       transparent
       animationType="fade"
@@ -94,7 +111,7 @@ export default function Dialog({
         pointerEvents="box-none"
       >
         <View
-          style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          style={[styles.card, elevation.dialog, { backgroundColor: theme.overlay, borderColor: theme.border, shadowColor: theme.shadow }]}
           accessibilityViewIsModal
           onAccessibilityEscape={requestClose}
         >
@@ -111,30 +128,32 @@ export default function Dialog({
             {children}
           </ScrollView>
           {actions.length > 0 && (
-            <View style={styles.actions}>
-              {actions.map((a, i) => {
-                const primary = a.variant === 'primary';
-                const fill = destructive ? theme.dangerFill : theme.primary;
-                const onFill = destructive ? theme.onDanger : theme.onPrimary;
+            <View style={stacked ? styles.actionsStacked : styles.actions} testID={stacked ? 'dialog-actions-stacked' : 'dialog-actions'}>
+              {(stacked ? [...actions].reverse() : actions).map((a, i) => {
+                const variant = a.variant === 'primary' && destructive ? 'destructive' : (a.variant || 'secondary');
+                const fill = variant === 'destructive' ? theme.dangerFill : variant === 'primary' ? theme.action : null;
+                const onFill = variant === 'destructive' ? theme.onDanger : theme.onAction;
                 const busy = !!a.loading;
                 const disabled = !!a.disabled || busy;
                 return (
                   <TouchableOpacity
-                    key={a.key ?? i}
+                    key={a.key ?? a.label ?? i}
                     style={[
                       styles.btn,
-                      primary
+                      stacked && styles.btnStacked,
+                      fill
                         ? { backgroundColor: fill, borderColor: fill }
-                        : { borderColor: theme.border },
-                      disabled && primary && styles.btnDimmed,
+                        : { borderColor: theme.controlBorder },
+                      disabled && styles.btnDimmed,
                     ]}
                     onPress={a.onPress}
                     disabled={disabled}
                     accessibilityRole="button"
                     accessibilityLabel={a.accessibilityLabel ?? a.label}
                     accessibilityState={{ disabled, busy }}
+                    testID={`dialog-action-${variant}`}
                   >
-                    <Text style={[styles.btnText, { color: primary ? onFill : theme.textSecondary }]}>
+                    <Text style={[styles.btnText, { color: fill ? onFill : theme.text }]}>
                       {busy && a.loadingLabel ? a.loadingLabel : a.label}
                     </Text>
                   </TouchableOpacity>
@@ -144,7 +163,7 @@ export default function Dialog({
           )}
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </OverlayModal>
   );
 }
 
@@ -163,15 +182,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '700', marginBottom: 4 },
   body: { fontSize: 13, marginBottom: 16 },
   actions: { flexDirection: 'row', gap: 10 },
+  actionsStacked: { gap: 10 },
   btn: {
     flex: 1,
     minHeight: 48,
     borderWidth: 1,
     borderRadius: 10,
     paddingVertical: 12,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnDimmed: { opacity: 0.6 },
-  btnText: { fontSize: 14, fontWeight: '600' },
+  btnStacked: { flex: 0, alignSelf: 'stretch', paddingHorizontal: 16 },
+  btnDimmed: { opacity: 0.45 },
+  btnText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
 });

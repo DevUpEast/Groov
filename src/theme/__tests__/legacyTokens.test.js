@@ -3,14 +3,19 @@
 // reads role keys. Each screen ticket migrates its own file; Z-01a takes every count to 0
 // and deletes the legacy keys.
 //
+// F-02 extended the scan: besides `theme.<key>` it counts `themes.dark.<key>`,
+// `themes[name].<key>`, `colors.<key>`, bracket reads (`theme['primary']`) and destructuring
+// (`const { primary } = theme`, `({ theme: { primary } })`), so a legacy read cannot hide
+// behind another spelling.
+//
 // After lowering a count, refresh the baseline:  UPDATE_RATCHET=1 npx jest legacyTokens
-const { scan, compare } = require('./ratchet');
+const { scan, compare, legacyMatcher } = require('./ratchet');
 const { LEGACY_KEYS } = require('../colors');
 
-const LEGACY_READ = new RegExp(String.raw`\b(?:theme|scheme)\??\.(?:${LEGACY_KEYS.join('|')})\b`, 'g');
+const countLegacy = legacyMatcher(LEGACY_KEYS);
 
 describe('legacy theme key ratchet', () => {
-  const counts = scan(LEGACY_READ);
+  const counts = scan(countLegacy);
 
   it('adds no legacy key read', () => {
     const { grown } = compare(counts, 'legacy-baseline.json');
@@ -22,8 +27,21 @@ describe('legacy theme key ratchet', () => {
     if (fallen.length) throw new Error(`Counts fell; run UPDATE_RATCHET=1 npx jest legacyTokens and commit legacy-baseline.json:\n${fallen.join('\n')}`);
   });
 
-  it('matches theme.<legacy> and theme?.<legacy> reads but not role keys', () => {
-    const src = 'theme.textMuted theme?.primary scheme.danger theme.primaryLight theme.text theme.textSecondary theme.dangerText';
-    expect(src.match(LEGACY_READ)).toEqual(['theme.textMuted', 'theme?.primary', 'scheme.danger', 'theme.primaryLight']);
+  it('counts member reads on every theme spelling but not role keys', () => {
+    const src = 'theme.textMuted theme?.primary scheme.danger theme.primaryLight theme.text theme.textSecondary theme.dangerText themes.dark.primary themes[name].onPrimary colors.warning mytheme.primary';
+    expect(countLegacy(src)).toBe(7);
+    expect(countLegacy('theme.action theme.onAction theme.selection theme.dangerText styles.primary')).toBe(0);
+  });
+
+  it('counts bracket reads', () => {
+    expect(countLegacy(`theme['primary'] theme["textMuted"] theme['action']`)).toBe(2);
+  });
+
+  it('counts destructured legacy keys, renamed or not, and ignores role keys', () => {
+    expect(countLegacy('const { primary, textMuted: muted, text } = theme;')).toBe(2);
+    expect(countLegacy('const { primaryLight } = themes.dark;')).toBe(1);
+    expect(countLegacy('const {\n  danger,\n  action,\n} = useApp().theme;')).toBe(1);
+    expect(countLegacy('function Row({ theme: { primary, surface } }) {}')).toBe(1);
+    expect(countLegacy('const { primary } = props; const { action, onAction } = theme;')).toBe(0);
   });
 });

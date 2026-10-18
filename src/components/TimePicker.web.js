@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { lightImpact } from '../utils/haptics';
 import { t } from '../i18n';
+import OverlayModal from './ui/OverlayModal';
 
 const ITEM_H = 50;
 const VISIBLE = 5;  // rows shown in wheel
@@ -138,9 +139,9 @@ function WheelColumn({ items, selectedValue, onValueChange, loop, theme, width }
       </ScrollView>
 
       {/* Top fade */}
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.fadeTop, { backgroundColor: theme.surface }]} />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.fadeTop, { backgroundColor: theme.overlay }]} />
       {/* Bottom fade */}
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.fadeBottom, { backgroundColor: theme.surface }]} />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.fadeBottom, { backgroundColor: theme.overlay }]} />
     </View>
   );
 }
@@ -164,9 +165,9 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <OverlayModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.scrim }]}>
-        <View style={[styles.card, { backgroundColor: theme.surface }]}>
+        <View style={[styles.card, { backgroundColor: theme.overlay }]}>
           <Text style={[styles.title, { color: theme.text }]}>{t('timePicker.title')}</Text>
 
           <View style={styles.wheelsRow} accessible={true} accessibilityLabel={t('timePicker.a11y')}>
@@ -180,7 +181,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
                 theme={theme}
                 width={72}
               />
-              <Text style={[styles.colLabel, { color: theme.textMuted }]}>{t('timePicker.hour')}</Text>
+              <Text style={[styles.colLabel, { color: theme.textSecondary }]}>{t('timePicker.hour')}</Text>
             </View>
 
             <Text style={[styles.colon, { color: theme.text }]}>:</Text>
@@ -195,7 +196,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
                 theme={theme}
                 width={72}
               />
-              <Text style={[styles.colLabel, { color: theme.textMuted }]}>{t('timePicker.minute')}</Text>
+              <Text style={[styles.colLabel, { color: theme.textSecondary }]}>{t('timePicker.minute')}</Text>
             </View>
 
             {/* AM/PM wheel */}
@@ -208,21 +209,21 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
                 theme={theme}
                 width={72}
               />
-              <Text style={[styles.colLabel, { color: theme.textMuted }]}>{t('timePicker.ampm')}</Text>
+              <Text style={[styles.colLabel, { color: theme.textSecondary }]}>{t('timePicker.ampm')}</Text>
             </View>
           </View>
 
           <View style={styles.actions}>
             <TouchableOpacity style={[styles.cancelBtn, { borderColor: theme.border }]} onPress={onClose} accessibilityRole="button">
-              <Text style={[styles.cancelText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
+              <Text style={[styles.cancelText, { color: theme.textSecondary }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSave} accessibilityRole="button">
-              <Text style={[styles.saveText, { color: theme.onPrimary }]}>{t('common.save')}</Text>
+            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.action }]} onPress={handleSave} accessibilityRole="button">
+              <Text style={[styles.saveText, { color: theme.onAction }]}>{t('common.save')}</Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
-    </Modal>
+    </OverlayModal>
   );
 }
 

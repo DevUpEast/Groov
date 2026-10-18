@@ -132,11 +132,12 @@ describe('colors.js legacy adapter (plan §2.1)', () => {
       expect(t.tabIconInactive).toBe(p.tabInactive);
       expect(t.progressBarBg).toBe(p.track);
     }
-    // primaryLight is `selection` in light; dark keeps #1E1B4B until F-02, because the legacy
-    // primary text drawn on it must keep 4.5:1 (it would be 3.83:1 on dark selection).
-    expect(themes.light.primaryLight).toBe(palette.light.selection);
+    // F-02: primaryLight is `selection` in both themes (the dark #1E1B4B override is gone;
+    // every selection fill is paired with onSelection), and onPrimary is onAction.
     for (const theme of ['light', 'dark']) {
-      expect(contrastRatio(themes[theme].primary, themes[theme].primaryLight)).toBeGreaterThanOrEqual(TEXT);
+      expect(themes[theme].primaryLight).toBe(palette[theme].selection);
+      expect(themes[theme].onPrimary).toBe(palette[theme].onAction);
+      expect(contrastRatio(themes[theme].onSelection, themes[theme].primaryLight)).toBeGreaterThanOrEqual(TEXT);
       expect(contrastRatio(themes[theme].textMuted, themes[theme].primaryLight)).toBeGreaterThanOrEqual(TEXT);
     }
     // Text/icon meaning of primary: light #4F46E5, dark stays #818CF8.

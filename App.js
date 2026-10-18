@@ -41,8 +41,8 @@ class ErrorBoundary extends React.Component {
           <Text style={[crashStyles.body, { color: scheme.textSecondary }]}>
             {t('app.crash.body')}
           </Text>
-          <TouchableOpacity style={[crashStyles.btn, { backgroundColor: scheme.primary }]} onPress={this.retry} activeOpacity={0.8} accessibilityRole="button">
-            <Text style={crashStyles.btnText}>{t('app.crash.retry')}</Text>
+          <TouchableOpacity style={[crashStyles.btn, { backgroundColor: scheme.action }]} onPress={this.retry} activeOpacity={0.8} accessibilityRole="button">
+            <Text style={[crashStyles.btnText, { color: scheme.onAction }]}>{t('app.crash.retry')}</Text>
           </TouchableOpacity>
           {__DEV__ && (
             <ScrollView style={crashStyles.devBox}>
@@ -70,6 +70,7 @@ function ThemedErrorBoundary({ children }) {
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { mockupParams, postToMockupHost } from './src/utils/mockup';
+import { useAnyOverlayOpen } from './src/utils/overlayStatus';
 import { supabaseConfigError } from './src/utils/supabase';
 import { AppProvider, useApp } from './src/context/AppContext';
 import { themes } from './src/theme/colors';
@@ -233,12 +234,17 @@ function AppNavigator() {
 
   // Conditional return AFTER all hooks
   // Mirror the status-bar style to the iOS mockup host (web only).
-  // Onboarding and the Today hero sit on the action colour: white icons on light #4F46E5,
-  // ink icons on dark #818CF8, where white would be 2.98:1 (F-01, matching onAction).
+  // The Today hero sits on the action colour: white icons on light #4F46E5, ink icons on dark
+  // #818CF8, where white would be 2.98:1 (F-01, matching onAction).
+  // While a scrim covers the screen (a sheet, dialog or the habit form), dark mode always uses
+  // light icons: ink on the scrimmed #818CF8 hero is about 1.6:1 (F-02). Light mode keeps its
+  // style, which stays readable under the lighter light-mode scrim.
+  const overlayOpen = useAnyOverlayOpen();
   const onActionStatus = themeName === 'dark' ? 'dark' : 'light';
-  const statusStyle = !hasOnboarded
-    ? onActionStatus // OnboardingScreen renders the same style on its action background
+  const baseStatus = !hasOnboarded
+    ? 'light' // OnboardingScreen renders the same style on its brand ground (indigo / deep indigo)
     : (activeIndex === 0 ? onActionStatus : (themeName === 'dark' ? 'light' : 'dark'));
+  const statusStyle = themeName === 'dark' && (overlayOpen || modalOpen) ? 'light' : baseStatus;
   useEffect(() => {
     if (mockupParams.active) postToMockupHost({ type: 'mockup:statusbar', style: statusStyle });
   }, [statusStyle]);
@@ -399,7 +405,7 @@ const crashStyles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
   body: { fontSize: 15, lineHeight: 22, textAlign: 'center', marginBottom: 24 },
   btn: { paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14 },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  btnText: { fontSize: 16, fontWeight: '700' },
   devBox: { marginTop: 24, maxHeight: 260, alignSelf: 'stretch' },
   devText: { fontSize: 13, marginBottom: 8 },
   devStack: { fontSize: 11 },

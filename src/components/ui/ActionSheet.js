@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { lightImpact } from '../../utils/haptics';
 import { t, useLocale } from '../../i18n';
+import { elevation } from '../../theme/tokens';
+import OverlayModal from './OverlayModal';
 
 /**
  * Shared action sheet (plan §3). Replaces multi-button `Alert.alert` menus, which on Android show
@@ -74,7 +76,7 @@ export default function ActionSheet({ visible, title, message, options = [], onC
   };
 
   return (
-    <Modal
+    <OverlayModal
       visible={!!visible}
       transparent
       animationType="fade"
@@ -93,7 +95,8 @@ export default function ActionSheet({ visible, title, message, options = [], onC
         <View
           style={[
             styles.panel,
-            { backgroundColor: theme.surface, borderColor: theme.border, paddingBottom: 8 + insets.bottom },
+            elevation.sheet,
+            { backgroundColor: theme.raised, borderColor: theme.border, shadowColor: theme.shadow, paddingBottom: 8 + insets.bottom },
           ]}
           accessibilityViewIsModal
           onAccessibilityEscape={() => onCancel?.()}
@@ -105,7 +108,7 @@ export default function ActionSheet({ visible, title, message, options = [], onC
                   {title}
                 </Text>
               )}
-              {!!message && <Text style={[styles.message, { color: theme.textMuted }]}>{message}</Text>}
+              {!!message && <Text style={[styles.message, { color: theme.textSecondary }]}>{message}</Text>}
             </View>
           )}
           {options.map((o, i) => (
@@ -116,7 +119,7 @@ export default function ActionSheet({ visible, title, message, options = [], onC
               accessibilityRole="button"
               accessibilityLabel={o.label}
             >
-              <Text style={[styles.rowText, { color: o.destructive ? theme.danger : theme.text }]}>{o.label}</Text>
+              <Text style={[styles.rowText, { color: o.destructive ? theme.dangerText : theme.text }]}>{o.label}</Text>
             </TouchableOpacity>
           ))}
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
@@ -127,11 +130,11 @@ export default function ActionSheet({ visible, title, message, options = [], onC
             accessibilityLabel={t('common.cancel')}
             testID="actionsheet-cancel"
           >
-            <Text style={[styles.rowText, styles.cancelText, { color: theme.textMuted }]}>{t('common.cancel')}</Text>
+            <Text style={[styles.rowText, styles.cancelText, { color: theme.textSecondary }]}>{t('common.cancel')}</Text>
           </TouchableOpacity>
         </View>
       </View>
-    </Modal>
+    </OverlayModal>
   );
 }
 

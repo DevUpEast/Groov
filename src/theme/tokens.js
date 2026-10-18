@@ -42,11 +42,28 @@ const light = {
   onActionTint: '#3730A3',
   // Secondary text on an action-coloured ground (onboarding, Today hero)
   onActionSecondary: '#E0E7FF',
+  // Ring track on an action-coloured ground (Today hero): onAction at 25 % over action, opaque.
+  actionTrack: '#7B74EC',
+  // Full-bleed brand ground (onboarding). Light: the action indigo with an inverted white CTA.
+  // Dark: the deep brand surface, so the CTA is the normal #818CF8 action with an ink label
+  // (a #818CF8 ground would leave the CTA nowhere to go; white-on-#818CF8 is 2.98:1, COL-1).
+  brandGround: '#4F46E5',
+  onBrandGround: '#FFFFFF',
+  onBrandGroundSecondary: '#E0E7FF',
+  brandGroundCta: '#FFFFFF',
+  onBrandGroundCta: '#4F46E5',
   link: '#4338CA',
   // Selection (chips, segments, selected rows)
   selection: '#EEF2FF',
   onSelection: '#3730A3',
   selectionBorder: '#4F46E5',
+  // Indigo meters: progress-bar fills, the slider, weekday bars (non-interactive, not a CTA)
+  meter: '#4F46E5',
+  onMeter: '#FFFFFF',
+  // Label on a challenge-tier colour (banner, badges); X-02 replaces the tier palette.
+  onTier: '#0F172A',
+  // Glyph on a habit accent fill (check, counter +): white in light, ink in dark (§2.3)
+  onAccent: '#FFFFFF',
   // Success: the ring arc, the heat-map ramp and "Logged" text only
   success: '#15803D',
   onSuccess: '#FFFFFF',
@@ -71,8 +88,16 @@ const light = {
   // Disabled
   disabledContainer: '#E2E8F0',
   onDisabled: '#475569',
-  // Full-screen celebration (trophy): its own darker scrim, white hint text
+  // Full-screen celebration (trophy, challenge rewards): its own darker scrim, white text
   onCelebration: '#FFFFFF',
+  onCelebrationSecondary: '#CBD5E1',
+  // Switch thumb (both states; the track carries the state)
+  switchThumb: '#FFFFFF',
+  // Sign in with Apple button (Apple HIG: black on light, white on dark)
+  appleButton: '#000000',
+  onAppleButton: '#FFFFFF',
+  // The decorative sprout beside the Today greeting (C-04 redraws the header)
+  sprout: '#F5C518',
   // Translucent roles (rgba by design)
   scrim: 'rgba(15,23,42,0.40)',
   pressedOverlay: 'rgba(15,23,42,0.08)',
@@ -105,10 +130,20 @@ const dark = {
   actionTint: '#312E81',
   onActionTint: '#E0E7FF',
   onActionSecondary: '#0F172A',
+  actionTrack: '#A1A9FA',
+  brandGround: '#1E1B4B',
+  onBrandGround: '#F8FAFC',
+  onBrandGroundSecondary: '#CBD5E1',
+  brandGroundCta: '#818CF8',
+  onBrandGroundCta: '#0F172A',
   link: '#A5B4FC',
   selection: '#312E81',
   onSelection: '#E0E7FF',
   selectionBorder: '#818CF8',
+  meter: '#818CF8',
+  onMeter: '#0F172A',
+  onTier: '#0F172A',
+  onAccent: '#0F172A',
   success: '#4ADE80',
   onSuccess: '#0F172A',
   successText: '#4ADE80',
@@ -128,6 +163,11 @@ const dark = {
   disabledContainer: '#2C3647',
   onDisabled: '#A3B1C5',
   onCelebration: '#FFFFFF',
+  onCelebrationSecondary: '#CBD5E1',
+  switchThumb: '#FFFFFF',
+  appleButton: '#FFFFFF',
+  onAppleButton: '#000000',
+  sprout: '#F5C518',
   scrim: 'rgba(0,0,0,0.60)',
   pressedOverlay: 'rgba(255,255,255,0.08)',
   ripple: 'rgba(255,255,255,0.16)',
@@ -149,9 +189,12 @@ export const accentOnFill = ACCENT_ON_FILL;
 
 // Data ramp and state vocabulary (§2.4). Missed, rest, frozen and pending cells use
 // `controlBorder`; the frozen glyph uses `textSecondary`.
+// The heat* keys are the pre-§2.4 heat-map colours the Progress heat map and the habit detail
+// grid still draw (partial amber, frozen sky, missed rose); V-02 moves both onto the ramp above.
+const legacyHeat = { heatPartial: '#FDE68A', heatFrozen: '#7DD3FC', heatMissed: '#FCA5A5' };
 export const data = {
-  light: { partial: '#16A34A', perfect: '#14532D', todayRing: '#0F172A' },
-  dark: { partial: '#16A34A', perfect: '#86EFAC', todayRing: '#F8FAFC' },
+  light: { partial: '#16A34A', perfect: '#14532D', todayRing: '#0F172A', ...legacyHeat },
+  dark: { partial: '#16A34A', perfect: '#86EFAC', todayRing: '#F8FAFC', ...legacyHeat },
 };
 
 // Fixed, theme-independent brand colours (share cards, splash; VA-7).
@@ -160,6 +203,23 @@ export const brand = {
   indigoDeep: '#3730A3',
   ink: '#0F172A',
   splash: '#4F46E5',
+};
+
+// The share cards (Progress -> Share) are fixed brand art, the same in both themes (VA-7):
+// white type on the brand indigo, or on ink for the year-in-pixels card.
+export const shareCard = {
+  bg: brand.indigo,
+  bgDeep: brand.indigoDeep,
+  bgInk: brand.ink,
+  fg: '#FFFFFF',
+  fgSecondary: 'rgba(255,255,255,0.8)',
+  fgStrong: 'rgba(255,255,255,0.9)',
+  fgTertiary: 'rgba(255,255,255,0.7)',
+  well: 'rgba(255,255,255,0.14)',
+  // Year-in-pixels cells on ink
+  cellNone: '#1E293B',
+  cellPartial: '#F59E0B',
+  cellPerfect: '#818CF8',
 };
 
 // §2.6
@@ -249,6 +309,18 @@ export const pairs = [
   P('light', 'frozen glyph / caution text (textSecondary) on surface', 'textSecondary', 'surface', TEXT, 7.58),
   P('light', 'today ring vs surface', 'data.todayRing', 'surface', LARGE, 17.85),
   P('light', 'trophy hint on celebrationScrim over bg', 'onCelebration', 'celebrationScrim', TEXT, 8.74, 'bg'),
+  // F-02: the inverted CTA on action-coloured ground (onboarding), selected rows, meters, rewards
+  P('light', 'onboarding: onBrandGround on brandGround', 'onBrandGround', 'brandGround', TEXT, 6.29),
+  P('light', 'onboarding: onBrandGroundSecondary on brandGround', 'onBrandGroundSecondary', 'brandGround', TEXT, 5.1),
+  P('light', 'onboarding CTA: onBrandGroundCta on brandGroundCta', 'onBrandGroundCta', 'brandGroundCta', TEXT, 6.29),
+  P('light', 'text on selection', 'text', 'selection', TEXT, 15.97),
+  P('light', 'textSecondary on selection', 'textSecondary', 'selection', TEXT, 6.78),
+  P('light', 'selectionBorder vs selection', 'selectionBorder', 'selection', LARGE, 5.62),
+  P('light', 'meter vs track', 'meter', 'track', LARGE, 5.1),
+  P('light', 'onMeter (check) on meter', 'onMeter', 'meter', TEXT, 6.29),
+  P('light', 'link on overlay', 'link', 'overlay', TEXT, 7.9),
+  P('light', 'reward subtitle on celebrationScrim over bg', 'onCelebrationSecondary', 'celebrationScrim', TEXT, 5.89, 'bg'),
+  P('light', 'onAppleButton on appleButton', 'onAppleButton', 'appleButton', TEXT, 21),
   // ── Dark ──
   P('dark', 'text on bg', 'text', 'bg', TEXT, 17.06),
   P('dark', 'text on surface', 'text', 'surface', TEXT, 13.98),
@@ -305,4 +377,16 @@ export const pairs = [
   P('dark', 'frozen glyph / caution text (textSecondary) on surface', 'textSecondary', 'surface', TEXT, 9.85),
   P('dark', 'today ring vs surface', 'data.todayRing', 'surface', LARGE, 13.98),
   P('dark', 'trophy hint on celebrationScrim over bg', 'onCelebration', 'celebrationScrim', TEXT, 20.14, 'bg'),
+  P('dark', 'onboarding: onBrandGround on brandGround', 'onBrandGround', 'brandGround', TEXT, 15.28),
+  P('dark', 'onboarding: onBrandGroundSecondary on brandGround', 'onBrandGroundSecondary', 'brandGround', TEXT, 10.77),
+  P('dark', 'onboarding CTA: onBrandGroundCta (ink) on brandGroundCta', 'onBrandGroundCta', 'brandGroundCta', TEXT, 5.98),
+  P('dark', 'onboarding CTA boundary vs brandGround', 'brandGroundCta', 'brandGround', LARGE, 5.36),
+  P('dark', 'text on selection', 'text', 'selection', TEXT, 10.92),
+  P('dark', 'textSecondary on selection', 'textSecondary', 'selection', TEXT, 7.69),
+  P('dark', 'selectionBorder vs selection', 'selectionBorder', 'selection', LARGE, 3.83),
+  P('dark', 'meter vs track', 'meter', 'track', LARGE, 3.47),
+  P('dark', 'onMeter (ink check) on meter', 'onMeter', 'meter', TEXT, 5.98),
+  P('dark', 'link on overlay', 'link', 'overlay', TEXT, 5.01),
+  P('dark', 'reward subtitle on celebrationScrim over bg', 'onCelebrationSecondary', 'celebrationScrim', TEXT, 13.57, 'bg'),
+  P('dark', 'onAppleButton on appleButton', 'onAppleButton', 'appleButton', TEXT, 21),
 ];
