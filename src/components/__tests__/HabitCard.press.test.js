@@ -7,6 +7,8 @@ const { Animated } = require('react-native');
 
 let mockCount = 0;
 let mockDone = false;
+let mockStreak = 0;
+let mockSkipped = false;
 jest.mock('../../context/AppContext', () => {
   const { themes } = jest.requireActual('../../theme/colors');
   return {
@@ -17,8 +19,8 @@ jest.mock('../../context/AppContext', () => {
       getHabitCount: () => mockCount,
       isHabitDone: () => mockDone,
       isHabitDoneOn: () => false,
-      getStreakForHabit: () => 0,
-      isHabitSkippedOn: () => false,
+      getStreakForHabit: () => mockStreak,
+      isHabitSkippedOn: () => mockSkipped,
       toggleSkipHabitOn: jest.fn(),
       toggleHabitDoneOn: jest.fn(),
       getNote: () => null,
@@ -33,6 +35,7 @@ jest.mock('../../services/feedback', () => ({
 jest.mock('../../utils/a11y', () => ({ useReducedMotion: () => false, isReducedMotion: () => false, announce: jest.fn() }));
 jest.mock('../ui/ActionSheet', () => (props) => require('react').createElement('ActionSheet', props));
 jest.mock('../HabitIcon', () => () => null);
+jest.mock('../ui/CheckMark', () => (props) => require('react').createElement('CheckMark', props));
 jest.mock('@expo/vector-icons', () => ({ Ionicons: (props) => require('react').createElement('Ionicons', props) }));
 
 const HabitCard = require('../HabitCard').default;
@@ -43,6 +46,8 @@ global.IS_REACT_ACT_ENVIRONMENT = true;
 beforeEach(() => {
   mockCount = 0;
   mockDone = false;
+  mockStreak = 0;
+  mockSkipped = false;
   feedback.play.mockClear();
   const instant = (value, config) => ({ start: (cb) => { value.setValue(config.toValue); cb?.({ finished: true }); }, stop: jest.fn() });
   jest.spyOn(Animated, 'timing').mockImplementation(instant);
@@ -114,13 +119,153 @@ it('a long hold on + also opens the options; a tap on + increments', () => {
   expect(onIncrement).toHaveBeenCalledWith(1);
 });
 
-it('the disabled − looks disabled (disabledContainer disc, onDisabled glyph)', () => {
-  const { themes } = jest.requireActual('../../theme/colors');
-  const { StyleSheet } = require('react-native');
+const { themes } = jest.requireActual('../../theme/colors');
+const { StyleSheet } = require('react-native');
+const { resolveAccent } = jest.requireActual('../../theme/accents');
+const flat = (node) => StyleSheet.flatten(node.props.style);
+const textOf = (r) => r.root.findAll(n => n.type === 'Text').map(n => [].concat(n.props.children).join(''));
+
+it('the disabled − is lighter than the +: no fill, a disabledContainer hairline, textTertiary glyph (a tone lighter than the enabled textSecondary)', () => {
   const { r } = render(counter);
   const minus = byLabel(r, /^Remove/);
-  const s = StyleSheet.flatten(minus.props.style);
-  expect(s.backgroundColor).toBe(themes.light.disabledContainer);
-  const icon = minus.findAll(n => n.type === 'Ionicons')[0];
-  expect(icon.props.color).toBe(themes.light.onDisabled);
+  const s = flat(minus);
+  expect(s.backgroundColor).toBe('transparent');
+  expect(s.borderColor).toBe(themes.light.disabledContainer);
+  expect(minus.findAll(n => n.type === 'Ionicons')[0].props.color).toBe(themes.light.textTertiary);
+  // The enabled + keeps its accent ring and accent glyph.
+  const plus = byLabel(r, /^Add/);
+  const accent = resolveAccent(counter.color, 'light');
+  expect(flat(plus).borderColor).toBe(accent.ring);
+  expect(plus.findAll(n => n.type === 'Ionicons')[0].props.color).toBe(accent.fill);
+});
+
+describe('C-02a anatomy', () => {
+  const card = (r, re) => flat(byLabel(r, re));
+
+  it('every card has the 72 dp minimum, done or not, so a check-off never changes its height', () => {
+    expect(card(render(daily).r, /^Read/).minHeight).toBe(72);
+    mockDone = true; mockStreak = 2;
+    expect(card(render(daily).r, /^Read/).minHeight).toBe(72);
+    expect(card(render(counter).r, /^Water/).minHeight).toBe(72);
+  });
+
+  it('one done form for every type: the accent disc with the SVG check (quit too, no 🛡)', () => {
+    mockDone = true;
+    for (const habit of [daily, { ...daily, id: 'q', name: 'No sugar', type: 'quit' }]) {
+      const { r } = render(habit);
+      const disc = r.root.findAll(n => n.props.testID === 'habit-check' && n.props.style)[0];
+      const accent = resolveAccent(habit.color, 'light');
+      expect(flat(disc).backgroundColor).toBe(accent.fill);
+      const marks = r.root.findAll(n => n.type === 'CheckMark');
+      expect(marks).toHaveLength(1);
+      expect(marks[0].props.color).toBe(accent.onFill);
+      expect(textOf(r).join(' ')).not.toMatch(/🛡|✓/);
+    }
+  });
+
+  it('the name keeps full text contrast when done', () => {
+    mockDone = true;
+    const { r } = render(daily);
+    const name = r.root.findAll(n => n.type === 'Text' && n.props.children === 'Read')[0];
+    expect(StyleSheet.flatten(name.props.style).color).toBe(themes.light.text);
+  });
+
+  it('a done card reads "Done · N-day streak" (counters too) on the tint, with a tint border and no stripe', () => {
+    mockDone = true; mockStreak = 4;
+    const d = render(daily);
+    expect(textOf(d.r)).toContain('Done · 4-day streak');
+    const accent = resolveAccent(daily.color, 'light');
+    expect(card(d.r, /^Read/)).toMatchObject({ backgroundColor: accent.tint, borderColor: accent.tint, borderWidth: 1 });
+    mockCount = 8;
+    expect(textOf(render(counter).r)).toContain('Done · 4-day streak');
+  });
+
+  it('an open counter shows its progress; a lone streak starts upper case', () => {
+    mockCount = 5; mockStreak = 3;
+    expect(textOf(render(counter).r)).toContain('5/8 glasses · 3-day streak');
+  });
+
+  it('skipped: dashed controlBorder outline at full opacity, neutral ring, no 💤', () => {
+    mockSkipped = true;
+    const { r } = render(daily);
+    const s = card(r, /^Read/);
+    expect(s).toMatchObject({ borderStyle: 'dashed', borderColor: themes.light.controlBorder });
+    expect(s.opacity).toBeUndefined();
+    const disc = r.root.findAll(n => n.props.testID === 'habit-check' && n.props.style)[0];
+    expect(flat(disc).borderColor).toBe(themes.light.controlBorder);
+    expect(textOf(r).join(' ')).not.toMatch(/💤/);
+    expect(textOf(r)).toContain('Skipped today');
+  });
+});
+
+it('styles Android would keep after a key is dropped are always explicit (borderStyle, + fill)', () => {
+  // Android does not reset a removed borderStyle / backgroundColor: a skipped-then-done card
+  // stayed dashed and a counter that left its goal kept the filled +.
+  mockCount = 3;
+  const { r } = render(counter);
+  expect(flat(byLabel(r, /^Water/)).borderStyle).toBe('solid');
+  expect(flat(byLabel(r, /^Add/)).backgroundColor).toBe('transparent');
+  mockDone = true;
+  expect(flat(byLabel(render(daily).r, /^Read/)).borderStyle).toBe('solid');
+});
+
+describe('joinSubLine', () => {
+  const { joinSubLine } = require('../HabitCard');
+  it('joins with " · ", skips blanks and capitalises the first letter for the locale', () => {
+    expect(joinSubLine(['Hecho', null, 'racha de 4 días'], 'es')).toBe('Hecho · racha de 4 días');
+    expect(joinSubLine(['racha de 4 días'], 'es')).toBe('Racha de 4 días');
+    expect(joinSubLine(['série de 3 jours'], 'fr')).toBe('Série de 3 jours');
+    expect(joinSubLine(['4日連続'], 'ja')).toBe('4日連続');
+    expect(joinSubLine([null, ''], 'en')).toBe('');
+  });
+});
+
+it('a running timer survives a re-render from a check on another card (no remount)', () => {
+  const timed = { id: 'h3', name: 'Stretch', type: 'timed', volumeGoal: 10, createdAt: '2026-01-01' };
+  const { r } = render(timed);
+  act(() => { byLabel(r, /^Start timer/).props.onPress({}); });
+  expect(byLabel(r, /^Stop timer/)).toBeTruthy();
+  // Another card's check re-renders the list: same key, new props, new context values.
+  mockStreak = 2;
+  act(() => { r.update(<HabitCard habit={{ ...timed }} onIncrement={jest.fn()} onDecrement={jest.fn()} />); });
+  expect(byLabel(r, /^Stop timer/)).toBeTruthy();
+  act(() => { r.unmount(); }); // clears the 1 s tick
+});
+
+describe('C-02a review round', () => {
+  const quit = { id: 'q1', name: 'No sugar', type: 'quit', volumeGoal: 1, createdAt: '2026-01-01' };
+
+  it('M1: a done quit habit reads "Avoided today · N days clean", never "Done"', () => {
+    mockDone = true; mockCount = 1; mockStreak = 5;
+    const lines = textOf(render(quit).r);
+    expect(lines).toContain('Avoided today · 5 days clean');
+    expect(lines.join(' ')).not.toMatch(/\bDone\b/);
+  });
+
+  it('S2: every card renders a sub-line, so the name keeps its y on check-off', () => {
+    // Open daily, no intention, no streak: the schedule fallback.
+    expect(textOf(render(daily).r)).toContain('Every day');
+    expect(textOf(render({ ...daily, schedule: { type: 'perWeek', target: 3 } }).r)).toContain('0/3 this week');
+    // Intention leads (D-00 "After coffee · 3-day streak").
+    mockStreak = 3;
+    expect(textOf(render({ ...daily, intention: 'coffee' }).r)).toContain('After I coffee · 3-day streak');
+    // Done replaces the intention.
+    mockDone = true;
+    expect(textOf(render({ ...daily, intention: 'coffee' }).r)).toContain('Done · 3-day streak');
+  });
+
+  it('m2: counter and timer sub-lines may wrap to 2 lines; daily stays on 1', () => {
+    mockCount = 3;
+    const sub = (r, re) => r.root.findAll(n => n.type === 'Text' && re.test([].concat(n.props.children).join('')))[0];
+    expect(sub(render(counter).r, /glasses/).props.numberOfLines).toBe(2);
+    expect(sub(render(daily).r, /Every day/).props.numberOfLines).toBe(1);
+  });
+
+  it('m1: the week label carries no text ✓', () => {
+    const en = require('../../i18n/locales/en.json');
+    for (const code of ['en', 'es', 'de', 'fr', 'pt-BR', 'ja']) {
+      expect(require(`../../i18n/locales/${code}.json`).habitCard.weekDone).not.toMatch(/✓/);
+    }
+    expect(en.habitCard.weekDone).toBe('%{done}/%{target} this week');
+  });
 });

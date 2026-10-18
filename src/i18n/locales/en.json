@@ -345,11 +345,12 @@
     }
   },
   "habitCard": {
-    "streakClean": "🔥 %{count} days clean",
-    "streak": "🔥 %{count}-day streak",
-    "weekDone": "✓ %{done}/%{target} this week",
+    "done": "Done",
+    "streakClean": "%{count} days clean",
+    "streak": "%{count}-day streak",
+    "weekDone": "%{done}/%{target} this week",
     "week": "%{done}/%{target} this week",
-    "skippedToday": "💤 Skipped today",
+    "skippedToday": "Skipped today",
     "timer": "⏱ %{time}",
     "longPress": {
       "body": "Life happens. Pick an option:",

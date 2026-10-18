@@ -132,8 +132,16 @@ export default function PressableScale({
       }
     : undefined;
 
+  // Android: a borderless ripple is installed as the view's *background* drawable. When the
+  // ripple colour changes (a theme switch) in the same update as backgroundColor/borderColor,
+  // the view keeps the old colours (C-02a S1: the filled + and the ▶ ring stayed light sky on
+  // dark). Remounting on a ripple-colour change rebuilds the background with the new colours.
+  // Bounded ripples are foreground drawables and are not affected.
+  const rippleKey = Platform.OS === 'android' && ripple === 'borderless' ? `ripple-${theme.ripple}` : undefined;
+
   return (
     <AnimatedPressable
+      key={rippleKey}
       {...rest}
       onPress={handlePress}
       onLongPress={disabled ? onDisabledLongPress : onLongPress}
