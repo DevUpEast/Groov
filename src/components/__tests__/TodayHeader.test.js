@@ -7,7 +7,7 @@ jest.mock('@expo/vector-icons', () => ({ Ionicons: (props) => require('react').c
 jest.mock('react-native-svg', () => {
   const R = require('react');
   const C = (name) => (props) => R.createElement(name, props, props.children);
-  return { __esModule: true, default: C('Svg'), Circle: C('Circle') };
+  return { __esModule: true, default: C('Svg'), Circle: C('Circle'), Path: C('Path') };
 });
 
 const TodayHeader = require('../TodayHeader').default;
@@ -85,19 +85,24 @@ describe('TodayHeader strip', () => {
     expect(cs[1].props.stroke).toBe(theme.success);
   });
 
-  it('empty (0 done): a dashed brandInk track and no arc', () => {
+  it('empty (0 done): a dashed brandInk track and no arc (the arc is drawn at opacity 0, C-06b)', () => {
     const cs = circles(render({ completed: 0 }));
-    expect(cs).toHaveLength(1);
     expect(cs[0].props.stroke).toBe(theme.brandInk);
     expect(cs[0].props.strokeDasharray).toBe('5 5');
+    expect(cs[1].props.strokeOpacity).toBe(0);
   });
 
-  it('complete: a full gold arc with a check and "4 of 4"', () => {
+  it('complete: a full gold arc stacked on the green one, with a check and "4 of 4"', () => {
     const r = render({ state: 'complete', completed: 4, total: 4, streak: 12 });
     const cs = circles(r);
-    expect(cs[1].props.stroke).toBe(theme.signature);
-    expect(cs[1].props.strokeDashoffset).toBeCloseTo(0);
-    expect(r.root.findAll(n => n.type === 'Ionicons' && n.props.name === 'checkmark')).toHaveLength(1);
+    // C-06b: the gold arc is swept over the green one (its own dash), never a colour tween
+    // or an opacity cross-fade; at rest the green arc under it is hidden.
+    expect(cs[1].props.stroke).toBe(theme.success);
+    expect(cs[2].props.stroke).toBe(theme.signature);
+    expect(cs[2].props.strokeDashoffset).toBeCloseTo(0);
+    expect(cs[2].props.strokeOpacity).toBe(1);
+    expect(cs[1].props.strokeOpacity).toBe(0);
+    expect(r.root.findAll(n => n.type === 'Path')).toHaveLength(1);
     expect(texts(r)).toEqual(expect.arrayContaining(['4 of 4', 'Day complete · 12-day streak']));
   });
 

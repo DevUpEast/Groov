@@ -12,6 +12,7 @@ import { clearAll, saveData } from '../utils/storage';
 import { clearDevMode } from '../utils/devMode';
 import { setSentryUser } from '../utils/sentry';
 import { flushMoment, dropMoment } from '../utils/afterMoment';
+import { dropPendingUpserts } from '../utils/completionUpserts';
 
 // On web, lets the auth popup/redirect hand control back to the app.
 WebBrowser.maybeCompleteAuthSession();
@@ -363,6 +364,7 @@ export function AuthProvider({ children }) {
     // Write the sentinel AFTER clearAll so it survives the wipe and AppContext
     // can detect it on the next login and reset in-memory state too.
     dropMoment(); // nothing queued during the request may be written after the wipe
+    dropPendingUpserts();
     await clearAll();
     await saveData('accountWasDeleted', true);
     await clearDevMode();

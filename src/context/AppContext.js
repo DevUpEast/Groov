@@ -41,9 +41,13 @@ import feedback, { EVENTS as FEEDBACK } from '../services/feedback';
 import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
 import { afterMoment, flushMoment, dropMoment } from '../utils/afterMoment';
 import { announce } from '../utils/a11y';
-import { queueUpsert, queueUpserts, withoutPendingRows } from '../utils/completionUpserts';
+import { queueUpsert, queueUpserts, withoutPendingRows, configurePendingUpserts, resendPendingUpserts, retryPendingUpserts, overlayPendingUpserts, dropPendingUpserts } from '../utils/completionUpserts';
+
 import { createLiveCompletions } from '../utils/liveCompletions';
 import { ThemeContext } from '../theme/ThemeContext';
+
+// Pending cloud upserts survive a kill (C-06b round 2): see completionUpserts.js.
+configurePendingUpserts({ load: loadData, save: saveData });
 
 // The one feedback gate (src/services/feedback.js): callers never check these settings.
 const applyFeedbackSettings = (s) => feedback.configure({ haptics: s?.hapticsEnabled !== false, sound: s?.soundEnabled !== false });
@@ -281,9 +285,11 @@ export function AppProvider({ children }) {
   }
 
   // ── AsyncStorage persistence ─────────────────────────────────────────────────
-  // Saves wait out a check-off moment (C-06a: nothing heavy inside the 0–1500 ms beats);
-  // the latest value per key wins, and backgrounding the app saves at once (afterMoment).
-  const persist = (key, value) => afterMoment(`save:${key}`, () => saveData(key, value));
+  // User data is written at once (C-06b round 2): deferring it behind the check-off moment
+  // (C-06a) lost the last taps to a force-stop, `adb install -r` or an OOM kill, which never
+  // send the background flush. Only the network upserts and the widget, badge, reminder and
+  // analytics work wait for the moment (afterMoment).
+  const persist = (key, value) => saveData(key, value);
   useEffect(() => flushMoment, []);
   useEffect(() => { if (loaded) persist('habits', allHabits); }, [allHabits, loaded]);
   useEffect(() => { if (loaded) persist('completions', completions); }, [completions, loaded]);
@@ -642,6 +648,7 @@ export function AppProvider({ children }) {
           // Different user logged in on this device — wipe the previous user's local data.
           // Nothing queued for the previous user may be written after the wipe (m2).
           dropMoment();
+          dropPendingUpserts();
           await storeClearAll();
           stateRef.current = emptyState;
           storedAca = null;
@@ -665,7 +672,11 @@ export function AppProvider({ children }) {
         }
         await saveData('lastUserId', userId);
 
+        // Rows a kill left unsent go up first, so the pull below reads them back; any that
+        // still fail are laid over the pulled completions.
+        const unsent = await resendPendingUpserts(syncCompletion, userId).catch(() => []);
         const cloudData = await pullAllData(userId);
+        if (unsent.length && cloudData.completions) cloudData.completions = overlayPendingUpserts(cloudData.completions, unsent);
 
         // One-time migration: if cloud only has the hardcoded legacy default habits
         // (ids '1'–'4'), the user never customised anything — wipe them so the app
@@ -727,6 +738,8 @@ export function AppProvider({ children }) {
     const since = lastPulledAtRef.current;
     if (!since || pullInFlightRef.current) return;
     pullInFlightRef.current = true;
+    // Rows whose upload failed since launch go up again (round 2 review m1).
+    retryPendingUpserts(syncCompletion, userId);
     const startedAt = Date.now();
     // Generous margin for client/server clock skew; re-applying unchanged rows is harmless.
     const sinceIso = new Date(since - 10 * 60 * 1000).toISOString();
@@ -1278,6 +1291,7 @@ export function AppProvider({ children }) {
   const resetAll = useCallback(async () => {
     const today = localDateKey();
     dropMoment();
+    dropPendingUpserts();
     await storeClearAll();
     if (userId) await deleteAllUserData(userId).catch(e => console.warn('deleteAllUserData:', e));
     saveData('lastUserId', userId);

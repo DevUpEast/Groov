@@ -408,3 +408,34 @@ describe('C-02b counter semantics', () => {
     expect(showsDonePill(limit, { done: true })).toBe(false);
   });
 });
+
+describe('C-06b round 2: the confirm fade starts at the commit, under the ✓', () => {
+  const bus = require('../../utils/beatBus');
+  beforeEach(() => bus.__resetBeatBusForTests());
+
+  it('the frame that commits "done" already carries the old open look, beneath the drawing ✓', () => {
+    const starts = [];
+    // Timings that never finish: the test reads the first committed frame.
+    Animated.timing.mockImplementation((value, config) => ({ start: () => starts.push(config), stop: jest.fn() }));
+    const { r } = render(daily);
+    bus.emitBeat({ key: 'visual:confirm:h1', beat: 'confirm', habitId: 'h1', at: 0, duration: 200, tapAt: Date.now() - 100 });
+    mockDone = true;
+    act(() => { r.update(<HabitCard habit={daily} onIncrement={jest.fn()} onDecrement={jest.fn()} />); });
+    const disc = r.root.findAll(n => n.props.testID === 'habit-check' && n.props.style)[0];
+    const kids = disc.findAll(n => n.type === 'CheckMark' || (n.props.style && [].concat(n.props.style).flat(Infinity).some(s => s && s.borderWidth === 2 && s.position === 'absolute')), { deep: true });
+    const order = kids.map(n => (n.type === 'CheckMark' ? 'check' : 'fade'));
+    expect(order.indexOf('fade')).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf('fade')).toBeLessThan(order.lastIndexOf('check'));
+    // Both the fade and the draw run their full 200 ms from the commit (not what is left of
+    // the beat after a 100 ms render).
+    expect(starts.filter(c => c.duration === 200).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('outside a moment (no beat) a change shows at once, with no fade layer', () => {
+    const { r } = render(daily);
+    mockDone = true;
+    act(() => { r.update(<HabitCard habit={daily} onIncrement={jest.fn()} onDecrement={jest.fn()} />); });
+    const disc = r.root.findAll(n => n.props.testID === 'habit-check' && n.props.style)[0];
+    expect(disc.findAll(n => n.props.style && [].concat(n.props.style).flat(Infinity).some(s => s && s.borderWidth === 2 && s.position === 'absolute'))).toHaveLength(0);
+  });
+});

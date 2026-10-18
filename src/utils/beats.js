@@ -61,6 +61,8 @@ function fb(event, at, group, extra = {}) {
  * - `unclaimedIds`: challenges whose day an un-check took back (their pending motif is cancelled);
  * - `dayComplete`: this action completed the day (credit at b4, chord + Success at b4 + b8);
  * - `habitStreak`: the habit's own streak grew to 2 or more (its sub-line pulses at bDot8);
+ * - `breaksDay` (step / stepDown): the day is no longer complete after this action (an "at
+ *   most" limit broken, C-06b round 1 B1): any pending resolution is taken back;
  * - `reduced`: reduced motion. Visual beats then last `duration.reduced` (150 ms) and the
  *   credit flight is dropped (§4.3: the gold ring fades in at 750); feedback is unchanged.
  *
@@ -71,7 +73,7 @@ function fb(event, at, group, extra = {}) {
 export function planBeats(action = {}) {
   const {
     kind, habitId = null, tone, claimedIds = [], unclaimedIds = [],
-    dayComplete = false, habitStreak = false, reduced = false,
+    dayComplete = false, habitStreak = false, reduced = false, breaksDay = false,
   } = action;
   const len = (ms) => (reduced ? duration.reduced : ms);
   const items = [];
@@ -104,10 +106,12 @@ export function planBeats(action = {}) {
       // Below the goal the ring does not move (§4.1): the number rolls, nothing else.
       items.push(fb('counter.step', 0, GROUPS.habit, { opts: { tone } }));
       items.push(visual('count', 0, duration.reduced, GROUPS.habit));
+      if (breaksDay) cancel.groups = [GROUPS.resolution];
       break;
     case KINDS.stepDown:
       items.push(fb('counter.step', 0, GROUPS.habit, { opts: { sound: false } }));
       items.push(visual('count', 0, duration.reduced, GROUPS.habit));
+      if (breaksDay) cancel.groups = [GROUPS.resolution];
       break;
     case KINDS.uncheck:
       items.push(fb('habit.undone', 0, GROUPS.habit));

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useLayoutEffect, useReducer, useRef } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { completionsInWeek, describeSchedule } from '../utils/schedule';
 import { addDays } from '../utils/dates';
@@ -17,6 +17,57 @@ import { resolveAccent } from '../theme/accents';
 import { type, numeric } from '../theme/typography';
 import { space, radius, size } from '../theme/tokens';
 import { FLAGS } from '../utils/flags';
+import RollingNumber from './ui/RollingNumber';
+import useTween from '../hooks/useTween';
+import { findBeat, matchesBeat, subscribeBeats } from '../utils/beatBus';
+import { amount, duration as durations, easing as easings, useMotion } from '../theme/motion';
+
+// C-06b (plan §4.1): the card's part of the check-off moment, on the beats useCheckoffMoment
+// emits (src/utils/beatBus.js). Outside a moment (a sync pull, the widget, the choreography
+// flag off) every change shows at once.
+// - confirm (0): the ✓ draws in over 200 ms (emphasizedDecel) and the previous look (the open
+//   card and ring, or on an un-check the tinted card and filled disc) fades out over the new
+//   one, so the accent fill and the opaque tint fade in by opacity, never by a colour tween.
+//   Both start at the commit of the new done state, over their full length (round 1 M2: on
+//   the beat clock the ~100 ms tap render ate them, and no partial frame ever painted);
+// - count (0) / confirm of this habit: the counter's number rolls;
+// - habitStreak (375): the sub-line with the streak pulses 1 -> 1.06 -> 1 over 200 ms.
+// Reduced motion: the ✓ appears under the 150 ms fade, the number cross-fades in place and
+// the streak gets a signature-colour flash instead of a scale (§4.3).
+const confirmMatch = (habitId) => ({ beat: 'confirm', habitId });
+const ownBeat = (item, habitId) => item.habitId === habitId;
+
+// The previous done look while it fades out over the new one: { from: { done } | null,
+// opacity }. Decided in render, so the frame that commits the new state already carries the
+// old look on top at full opacity (round 1 S5: no frame of "Done" before the ✓).
+function useDoneFade(done, habitId) {
+  const [, force] = useReducer((x) => x + 1, 0);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const committed = useRef(done);
+  const fading = useRef(null);
+  let from = fading.current;
+  if (done !== committed.current) {
+    const hit = findBeat(confirmMatch(habitId));
+    if (hit) {
+      from = { done: committed.current };
+      opacity.setValue(1);
+    } else {
+      from = null;
+    }
+  }
+  useLayoutEffect(() => {
+    if (committed.current === done) return;
+    const was = committed.current;
+    committed.current = done;
+    const hit = findBeat(confirmMatch(habitId));
+    if (!hit || hit.item.duration < FRAME_MS) { fading.current = null; opacity.setValue(0); return; }
+    fading.current = { done: was };
+    Animated.timing(opacity, { toValue: 0, duration: hit.item.duration, easing: easings.standard, useNativeDriver: true })
+      .start(({ finished }) => { if (finished) { fading.current = null; force(); } });
+  }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { from, opacity };
+}
+const FRAME_MS = 16;
 
 // The sub-line parts joined with " · ", first letter capitalised for the locale: the streak
 // strings are lower case so they read naturally after "Done ·" (G-01: "Día completo · racha
@@ -67,6 +118,31 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   // Consecutive days (ending today) this habit hit its goal; one day is not yet a streak.
   const streak = getStreakForHabit(habit.id);
   const streakLabel = streak >= 2 ? (isQuit ? t('habitCard.streakClean', { count: streak }) : t('habitCard.streak', { count: streak })) : null;
+
+  // C-06b motion (see the top of the file).
+  const m = useMotion();
+  const fade = useDoneFade(done, habit.id);
+  // Native driver, started at the commit over the full 200 ms (fromCommit, round 1 M2).
+  const draw = useTween(m.reduced || done ? 1 : 0, {
+    beat: confirmMatch(habit.id), onlyOnBeat: true, fromCommit: true, easing: easings.emphasizedDecel, useNativeDriver: true,
+    from: (_prev, next) => (next === 1 ? 0 : null), log: (to) => (to === 1 ? 'check' : null),
+  });
+  // A roll only for this habit's own count or confirm beat (not Mark the rest's, round 1 n3).
+  const countHit = findBeat({ beat: ['count', 'confirm'], habitId: habit.id });
+  const rolls = !!countHit && ownBeat(countHit.item, habit.id);
+  const countRoll = { roll: rolls, duration: rolls ? countHit.item.duration : durations.state };
+  const streakPulse = useRef(new Animated.Value(1)).current;
+  const streakFlash = useRef(new Animated.Value(0)).current;
+  useEffect(() => subscribeBeats(({ type, item }) => {
+    if (type !== 'fire' || !matchesBeat(item, { beat: 'habitStreak', habitId: habit.id })) return;
+    const half = item.duration / 2;
+    // Reduced motion: a signature-colour wash behind the sub-line, like the streak chip (m2).
+    const [v, peak, rest] = m.reduced ? [streakFlash, 1, 0] : [streakPulse, amount.streakPulse, 1];
+    Animated.sequence([
+      m.timing(v, { toValue: peak, duration: half }),
+      m.timing(v, { toValue: rest, duration: half }),
+    ]).start();
+  }), [habit.id, m]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Timed habits: a simple start/stop timer that adds whole minutes when stopped.
   const [timerStart, setTimerStart] = useState(null);
@@ -172,6 +248,13 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
         accessibilityHint={opensDetail ? t('habitCard.a11y.openDetail') : t('habitCard.a11y.hint')}
       >
+        {/* C-06b: the previous look fading out over the new one (useDoneFade). */}
+        {fade.from ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.fadeLayer, fade.from.done ? { backgroundColor: accent.tint, borderColor: accent.tint } : { backgroundColor: theme.surface, borderColor: theme.border }, { opacity: fade.opacity }]}
+          />
+        ) : null}
         {/* The icon sits in a neutral 40 px well; the accent lives only in the check (CHK-4/5). */}
         <View style={[styles.well, { backgroundColor: theme.well }]}>
           <HabitIcon habit={habit} size={22} imageStyle={styles.iconImage} textStyle={styles.icon} />
@@ -185,7 +268,10 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           {/* Always rendered (schedule fallback). Counter and timer cards have a narrow info
               column beside 3 or 4 controls, so their sub-line may wrap to a second line rather
               than cut the streak off (code review m2). */}
-          <Text style={[styles.sub, { color: theme.textSecondary }]} numberOfLines={isVolume ? 2 : 1}>{subLine}</Text>
+          <View>
+            <Animated.View pointerEvents="none" style={[styles.subFlash, { backgroundColor: theme.signatureTint, opacity: streakFlash }]} />
+            <Animated.Text style={[styles.sub, { color: theme.textSecondary, transform: [{ scale: streakPulse }], transformOrigin: 'left center' }]} numberOfLines={isVolume ? 2 : 1}>{subLine}</Animated.Text>
+          </View>
         </View>
 
         {donePill ? (
@@ -206,8 +292,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
             accessibilityLabel={t('habitCard.doneCount', { name: habit.name, count, goal: habit.volumeGoal })}
             accessibilityHint={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
           >
-            <Text style={[styles.pillNum, { color: accent.onFill }]} numberOfLines={1}>{count}</Text>
-            <CheckMark color={accent.onFill} size={16} />
+            <RollingNumber value={count} {...countRoll} style={[styles.pillNum, { color: accent.onFill }]} numberOfLines={1} />
+            <CheckMark color={accent.onFill} size={16} progress={draw} />
           </PressableScale>
         ) : isVolume ? (
           <View style={styles.counter}>
@@ -227,7 +313,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
             />
 
             {/* The count is text (4.5:1). */}
-            <Text style={[styles.counterNum, { color: overLimit ? theme.dangerText : theme.text }]} numberOfLines={1}>{count}</Text>
+            <RollingNumber value={count} {...countRoll} style={[styles.counterNum, { color: overLimit ? theme.dangerText : theme.text }]} numberOfLines={1} />
 
             {/* A timed habit's ▶ / ■ takes the + slot until it is done (CHK-7: one primary
                 control per card); its minutes come from the timer, the detail sheet or the pill. */}
@@ -268,7 +354,16 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
                 done && { backgroundColor: accent.fill },
               ]}
             >
-              {done ? <CheckMark color={accent.onFill} /> : null}
+              {/* The previous look fades out under the ✓, which draws on top (round 1 m1). */}
+              {fade.from ? (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[styles.discFade, fade.from.done ? { backgroundColor: accent.fill, borderColor: accent.fill } : { backgroundColor: theme.surface, borderColor: skipped ? theme.controlBorder : accent.ring }, { opacity: fade.opacity }]}
+                >
+                  {fade.from.done ? <CheckMark color={accent.onFill} /> : null}
+                </Animated.View>
+              ) : null}
+              {done ? <CheckMark color={accent.onFill} progress={draw} /> : null}
             </View>
           </View>
         )}
@@ -321,6 +416,13 @@ const styles = StyleSheet.create({
   // footnote 13/18; tabular, so the running timer ("0:03") and counts change without jitter.
   sub: { ...type.footnote, marginTop: 2, ...numeric },
   slot: { width: size.trailingSlot, alignItems: 'center', justifyContent: 'center' },
+  // C-06b fade layers: they cover the border too (the card clips them to its rounded box).
+  subFlash: { position: 'absolute', top: 1, bottom: -1, left: -space.xxs, right: 0, borderRadius: radius.cell },
+  fadeLayer: { position: 'absolute', top: -1, left: -1, right: -1, bottom: -1, borderRadius: radius.card, borderWidth: 1 },
+  discFade: {
+    position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: radius.pill, borderWidth: 2,
+    alignItems: 'center', justifyContent: 'center',
+  },
   checkbox: {
     width: size.checkCircle, height: size.checkCircle, borderRadius: radius.pill,
     borderWidth: 2, alignItems: 'center', justifyContent: 'center',

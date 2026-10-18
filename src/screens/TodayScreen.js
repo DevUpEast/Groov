@@ -176,7 +176,15 @@ export default function TodayScreen() {
   // The perfect-day confetti starts on the resolution beat (+750), not with the tap: mounting it
   // at 0 put its render inside the 0-300 ms window and pushed the challenge motif late. An
   // un-check before 750 cancels the beat, so no confetti for a day that is no longer complete.
-  const onBeat = useCallback((item) => { if (item.beat === 'resolution') setCelebrating(true); }, []);
+  // C-06b round 2: it mounts once the gold sweep has ended (resolution + its length), so its
+  // render does not land inside the JS-driven sweep.
+  const confettiTimer = useRef(null);
+  const onBeat = useCallback((item) => {
+    if (item.beat !== 'resolution') return;
+    clearTimeout(confettiTimer.current);
+    confettiTimer.current = setTimeout(() => setCelebrating(true), item.duration);
+  }, []);
+  useEffect(() => () => clearTimeout(confettiTimer.current), []);
   const moment = useCheckoffMoment({ onBeat });
   const [fullCelebration, setFullCelebration] = useState(false);
   const [trophyCelebrating, setTrophyCelebrating] = useState(false);
@@ -442,9 +450,14 @@ export default function TodayScreen() {
 
     let claimed = [];
     let dayComplete = false;
+    // Judge everything against the counts after this action.
+    const willAllBeDone = dueHabits.every(h => isHabitSatisfiedWith(h, after));
+    // A step can also break a complete day (an "at most" limit gone over): the pending
+    // resolution (gold ring, chord) is taken back and the day can be celebrated again
+    // (C-06b round 1 B1).
+    const breaksDay = !justCompleted && !willAllBeDone;
+    if (breaksDay) allDoneCelebrated.current = false;
     if (justCompleted) {
-      // Judge everything against the counts after this check-off.
-      const willAllBeDone = dueHabits.every(h => isHabitSatisfiedWith(h, after));
 
       // A single check-off completes a challenge immediately, with its trophy.
       const { claimedIds, completedNowIds } = autoClaimChallenges(after);
@@ -472,6 +485,7 @@ export default function TodayScreen() {
         tone,
         claimedIds: claimed,
         dayComplete,
+        breaksDay,
         // Today was not done before this tap, so the habit's streak becomes the old one + 1.
         habitStreak: !!justCompleted && getStreakForHabit(habit.id) >= 1,
         tapAt,

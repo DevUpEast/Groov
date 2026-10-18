@@ -59,7 +59,7 @@ function formatFeedbackEntry(e) {
   const d = new Date(e.t);
   const pad = (n, w = 2) => String(n).padStart(w, '0');
   const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
-  const what = e.dropped ? 'dropped' : e.haptic ? e.haptic : `sound:${e.sound}`;
+  const what = e.frames ? `frames ${e.frames.first}-${e.frames.last} (${e.frames.count}) plan -${e.frames.planEnd}` : e.dropped ? 'dropped' : e.haptic ? e.haptic : `sound:${e.sound}`;
   const beat = typeof e.target === 'number' ? `  @${e.target} Δ${e.drift >= 0 ? '+' : ''}${e.drift}` : '';
   return `${time}  +${e.offset}ms${beat}  ${e.event}  ${what}`;
 }
@@ -435,6 +435,7 @@ export default function SettingsScreen() {
   const devTapTimer = useRef(null);
   const showDevTools = devMode;
   const choreography = useDevFlag('choreography');
+  const frameLog = useDevFlag('frameLog');
   // Throws during render so the root ErrorBoundary (and Sentry, when configured) can be exercised.
   const [crashTest, setCrashTest] = useState(false);
   // Dev: the feedback service's ring buffer (null = closed). A snapshot, re-read on each open.
@@ -847,6 +848,21 @@ export default function SettingsScreen() {
                   onValueChange={v => { feedback.toggled(v); setDevFlag('choreography', v); }}
                   {...switchColors(theme, choreography)}
                   accessibilityLabel={t('settings.dev.choreography.title')}
+                />
+              }
+            />
+
+            {/* C-06b: animation frame times in the Feedback log on release builds (dev builds always log) */}
+            <Row
+              label={t('settings.dev.frameLog.title')}
+              sublabel={t('settings.dev.frameLog.sub')}
+              theme={theme}
+              right={
+                <Switch
+                  value={frameLog}
+                  onValueChange={v => { feedback.toggled(v); setDevFlag('frameLog', v); }}
+                  {...switchColors(theme, frameLog)}
+                  accessibilityLabel={t('settings.dev.frameLog.title')}
                 />
               }
             />

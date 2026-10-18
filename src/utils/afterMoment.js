@@ -2,10 +2,14 @@ import { AppState } from 'react-native';
 import { quietIn } from '../services/feedback';
 
 // Background work that must not land inside a check-off moment (plan §4.1: the beats run
-// 0–1500 ms after the tap; C-06a carry). AsyncStorage saves, cloud upserts, the widget
-// refresh, the app badge and notification rescheduling are queued here while a moment is
+// 0–1500 ms after the tap; C-06a carry). Cloud upserts, the widget refresh, the app badge,
+// notification rescheduling and analytics are queued here while a moment is
 // playing (feedback.play in the last 1.5 s) and run once it is over. Outside a moment the
 // work runs at once, so nothing changes for the rest of the app.
+//
+// Never user data on disk (C-06b round 2): a force-stop, `adb install -r` or an OOM kill gives
+// no AppState change, so a queued AsyncStorage save was lost with the last taps. AppContext
+// saves at once; completion upserts also keep a durable copy (completionUpserts.js).
 //
 // - `key` coalesces: queuing the same key again replaces the queued work (the latest state
 //   wins: ten rapid taps save the completions once and upsert the row once). `null` = always

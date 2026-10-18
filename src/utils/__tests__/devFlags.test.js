@@ -29,7 +29,7 @@ test('a stored value wins; unknown keys and non-booleans are ignored', async () 
 test('setDevFlag saves under devFlags only, and ignores unknown flags', () => {
   flags.setDevFlag('choreography', false);
   expect(flags.getDevFlag('choreography')).toBe(false);
-  expect(storage.saveData).toHaveBeenCalledWith('devFlags', { choreography: false });
+  expect(storage.saveData).toHaveBeenCalledWith('devFlags', { choreography: false, frameLog: false });
   flags.setDevFlag('nope', true);
   expect(storage.saveData).toHaveBeenCalledTimes(1);
 });

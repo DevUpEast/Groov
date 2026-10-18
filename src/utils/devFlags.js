@@ -9,9 +9,11 @@ import { loadData, saveData } from './storage';
 // - `choreography`: the C-06a check-off timeline (useCheckoffMoment: beats, cancellation,
 //   no snackbar for single checks). Off = the pre-C-06a behaviour, the rollback switch for
 //   C-06b / C-07.
+// - `frameLog`: release builds also write each check-off animation's first and last frame to
+//   the Feedback log (src/hooks/useTween.js; dev builds always do). For timing checks only.
 
 export const DEV_FLAG_KEY = 'devFlags';
-export const DEV_FLAG_DEFAULTS = Object.freeze({ choreography: true });
+export const DEV_FLAG_DEFAULTS = Object.freeze({ choreography: true, frameLog: false });
 
 let flags = { ...DEV_FLAG_DEFAULTS };
 let loading = null;
