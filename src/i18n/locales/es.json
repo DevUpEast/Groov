@@ -119,26 +119,33 @@
   },
   "today": {
     "sections": {
-      "morning": "🌅 Mañana",
-      "afternoon": "☀️ Tarde",
-      "evening": "🌙 Noche",
-      "anytime": "✨ Cualquier hora"
+      "morning": "Mañana",
+      "afternoon": "Tarde",
+      "evening": "Noche",
+      "anytime": "Cualquier hora"
     },
     "greeting": {
       "morning": "Buenos días",
       "afternoon": "Buenas tardes",
       "evening": "Buenas noches",
-      "withName": "%{greeting}, %{name}"
+      "withName": "%{greeting}, %{name}",
+      "lead": "%{greeting},",
+      "nameLine": "%{name}"
     },
     "ring": {
       "habits": "hábitos",
       "a11y": "%{completed} de %{total} hábitos completados hoy",
-      "allDone": "🎉 ¡Todo listo!",
-      "remaining": "Quedan %{count}",
-      "amazing": "¡Increíble trabajo hoy!",
-      "keepGoing": "Sigue así, vas en un %{percent}%"
+      "progress": "%{completed} de %{total} hechos · faltan %{remaining}",
+      "complete": "Día completo · racha de %{count} días",
+      "completeNoStreak": "Día completo",
+      "rest": "Día de descanso · tu racha de %{count} días sigue",
+      "restCaption": "descanso",
+      "ofTotal": "%{completed} de %{total}",
+      "empty": "Toca un hábito para empezar tu día"
     },
     "coach": "Coach IA",
+    "beats": { "a11y": { "one": "Último %{count} día: %{done} completos, %{rest} de descanso, %{missed} perdidos", "other": "Últimos %{count} días: %{done} completos, %{rest} de descanso, %{missed} perdidos" } },
+    "sticky": { "hint": "Vuelve al principio" },
     "empty": {
       "title": "Entra en ritmo",
       "body": "Añade tu primer hábito",
@@ -151,9 +158,8 @@
     },
     "restDay": {
       "title": "Día de descanso",
-      "body": "Ninguno de tus hábitos está programado para hoy. Disfruta la pausa, tus rachas están a salvo."
+      "body": "Hoy no hay nada programado. Tu ritmo sigue en pie."
     },
-    "sectionHabits": "HÁBITOS DE HOY",
     "markRest": "Marcar el resto como hecho (%{count})",
     "markRestNote": "Los hábitos de cantidad, con tiempo y con límite no cambian",
     "activeChallenges": "RETOS ACTIVOS",

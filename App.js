@@ -74,7 +74,7 @@ function ThemedErrorBoundary({ children }) {
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { mockupParams, postToMockupHost } from './src/utils/mockup';
-import { useAnyOverlayOpen, setOverlayChangesStatusBar } from './src/utils/overlayStatus';
+import { useAnyHeavyOverlayOpen, setOverlayChangesStatusBar, statusBarStyle } from './src/utils/overlayStatus';
 import { supabaseConfigError } from './src/utils/supabase';
 import { AppProvider, useApp } from './src/context/AppContext';
 import { themes } from './src/theme/colors';
@@ -233,20 +233,19 @@ function AppNavigator() {
 
   // Conditional return AFTER all hooks
   // Mirror the status-bar style to the iOS mockup host (web only).
-  // The Today hero sits on the action colour: white icons on light #4F46E5, ink icons on dark
-  // #818CF8, where white would be 2.98:1 (F-01, matching onAction).
-  // While a scrim covers the screen (a sheet, dialog or the habit form), dark mode always uses
-  // light icons: ink on the scrimmed #818CF8 hero is about 1.6:1 (F-02). Light mode keeps its
-  // style, which stays readable under the lighter light-mode scrim.
-  const overlayOpen = useAnyOverlayOpen();
-  const onActionStatus = themeName === 'dark' ? 'dark' : 'light';
-  const baseStatus = !hasOnboarded
-    ? 'light' // OnboardingScreen renders the same style on its brand ground (indigo / deep indigo)
-    : (activeIndex === 0 ? onActionStatus : (themeName === 'dark' ? 'light' : 'dark'));
-  const statusStyle = themeName === 'dark' && (overlayOpen || modalOpen) ? 'light' : baseStatus;
-  // Tells OverlayModal whether an overlay opened now would flip the style (and so must wait for
-  // it on Android). Set during render so it is current before any tap can open a sheet.
-  setOverlayChangesStatusBar(themeName === 'dark' && baseStatus !== 'light');
+  // Every tab, Today included, starts on the theme background (C-04 replaced the indigo Today
+  // hero with the inset brand strip), so the icons follow the theme: ink in light, light in
+  // dark. A normal scrim (0.40 slate) keeps ink icons readable; a heavy celebration scrim (the
+  // trophy, challenge rewards: 70 % black) does not, so light mode switches to light icons
+  // while one is open.
+  const heavyOverlayOpen = useAnyHeavyOverlayOpen();
+  // OnboardingScreen renders 'light' on its brand ground (indigo / deep indigo).
+  const baseStatus = statusBarStyle({ hasOnboarded, themeName, heavyOverlayOpen: false });
+  const statusStyle = statusBarStyle({ hasOnboarded, themeName, heavyOverlayOpen });
+  // Tells OverlayModal whether a heavy-scrim overlay opened now would flip the style (and so must
+  // wait for it on Android, where the Modal window copies the status bar once at creation). Set
+  // during render so it is current before any tap can open one.
+  setOverlayChangesStatusBar(baseStatus !== 'light');
   useEffect(() => {
     if (mockupParams.active) postToMockupHost({ type: 'mockup:statusbar', style: statusStyle });
   }, [statusStyle]);

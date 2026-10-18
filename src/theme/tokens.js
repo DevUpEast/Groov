@@ -40,10 +40,6 @@ const light = {
   actionPressed: '#4338CA',
   actionTint: '#EEF2FF',
   onActionTint: '#3730A3',
-  // Secondary text on an action-coloured ground (onboarding, Today hero)
-  onActionSecondary: '#E0E7FF',
-  // Ring track on an action-coloured ground (Today hero): onAction at 25 % over action, opaque.
-  actionTrack: '#7B74EC',
   // Full-bleed brand ground (onboarding). Light: the action indigo with an inverted white CTA.
   // Dark: the deep brand surface, so the CTA is the normal #818CF8 action with an ink label
   // (a #818CF8 ground would leave the CTA nowhere to go; white-on-#818CF8 is 2.98:1, COL-1).
@@ -98,8 +94,6 @@ const light = {
   // Sign in with Apple button (Apple HIG: black on light, white on dark)
   appleButton: '#000000',
   onAppleButton: '#FFFFFF',
-  // The decorative sprout beside the Today greeting (C-04 redraws the header)
-  sprout: '#F5C518',
   // Translucent roles (rgba by design)
   scrim: 'rgba(15,23,42,0.40)',
   pressedOverlay: 'rgba(15,23,42,0.08)',
@@ -131,8 +125,6 @@ const dark = {
   actionPressed: '#A5B4FC',
   actionTint: '#312E81',
   onActionTint: '#E0E7FF',
-  onActionSecondary: '#0F172A',
-  actionTrack: '#A1A9FA',
   brandGround: '#1E1B4B',
   onBrandGround: '#F8FAFC',
   onBrandGroundSecondary: '#CBD5E1',
@@ -170,7 +162,6 @@ const dark = {
   switchTrackOff: '#334155',
   appleButton: '#FFFFFF',
   onAppleButton: '#000000',
-  sprout: '#F5C518',
   scrim: 'rgba(0,0,0,0.60)',
   pressedOverlay: 'rgba(255,255,255,0.08)',
   ripple: 'rgba(255,255,255,0.16)',
@@ -241,7 +232,9 @@ export const celebrationArt = {
 };
 
 // §2.6
-export const space = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 24, xl: 32, xxl: 48, gutter: 20 };
+// sectionCompact: the gap above a list section label on short windows (height below
+// size.ringTodayCompactBelow, the same breakpoint as the compact Today ring); lg (24) otherwise.
+export const space = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 24, xl: 32, xxl: 48, gutter: 20, sectionCompact: 16 };
 
 export const radius = { control: 8, cell: 4, card: 16, sheet: 24, pill: 999 };
 
@@ -312,7 +305,6 @@ export const pairs = [
   P('light', 'onToast on toast', 'onToast', 'toast', TEXT, 13.98),
   P('light', 'toastAction on toast', 'toastAction', 'toast', TEXT, 7.34),
   P('light', 'onAction (onboarding text) on action', 'onAction', 'action', TEXT, 6.29),
-  P('light', 'onActionSecondary on action', 'onActionSecondary', 'action', TEXT, 5.1),
   P('light', 'brand strip: text on brandSurface', 'text', 'brandSurface', TEXT, 14.49),
   P('light', 'brand strip: textSecondary on brandSurface', 'textSecondary', 'brandSurface', TEXT, 6.15),
   P('light', 'brand strip: success arc on brandSurface', 'success', 'brandSurface', LARGE, 4.07),
@@ -339,10 +331,8 @@ export const pairs = [
   P('light', 'link on overlay', 'link', 'overlay', TEXT, 7.9),
   P('light', 'reward subtitle on celebrationScrim over bg', 'onCelebrationSecondary', 'celebrationScrim', TEXT, 5.89, 'bg'),
   P('light', 'onAppleButton on appleButton', 'onAppleButton', 'appleButton', TEXT, 21),
-  P('light', 'Today hero ring: onAction arc vs actionTrack', 'onAction', 'actionTrack', LARGE, 3.78),
   P('light', 'off Switch: switchThumb vs switchTrackOff', 'switchThumb', 'switchTrackOff', LARGE, 3.47),
   P('light', 'onAccent (check) on the default accent (selectionBorder)', 'onAccent', 'selectionBorder', TEXT, 6.29),
-  P('light', 'sprout on the action hero (decorative)', 'sprout', 'action', null, 3.86),
   P('light', 'brand card: link (title) on brandSurface', 'link', 'brandSurface', TEXT, 6.41),
   P('light', 'brand card: text on brandSurface', 'text', 'brandSurface', TEXT, 14.49),
   // ── Dark ──
@@ -362,7 +352,6 @@ export const pairs = [
   P('dark', 'controlBorder vs overlay', 'controlBorder', 'overlay', LARGE, 3.5),
   P('dark', 'onAction (ink) on action', 'onAction', 'action', TEXT, 5.98),
   P('dark', 'onAction (ink) on actionPressed', 'onAction', 'actionPressed', TEXT, 8.96),
-  P('dark', 'onActionSecondary (ink) on action', 'onActionSecondary', 'action', TEXT, 5.98),
   P('dark', 'action fill boundary vs bg', 'action', 'bg', LARGE, 5.98),
   P('dark', 'action fill boundary vs surface', 'action', 'surface', LARGE, 4.9),
   P('dark', 'action fill boundary vs raised', 'action', 'raised', LARGE, 4.08),
@@ -413,10 +402,8 @@ export const pairs = [
   P('dark', 'link on overlay', 'link', 'overlay', TEXT, 5.01),
   P('dark', 'reward subtitle on celebrationScrim over bg', 'onCelebrationSecondary', 'celebrationScrim', TEXT, 13.57, 'bg'),
   P('dark', 'onAppleButton on appleButton', 'onAppleButton', 'appleButton', TEXT, 21),
-  P('dark', 'Today hero ring: onAction (ink) arc vs actionTrack', 'onAction', 'actionTrack', LARGE, 8.14),
   P('dark', 'off Switch: switchThumb vs switchTrackOff', 'switchThumb', 'switchTrackOff', LARGE, 6.97),
   P('dark', 'off Switch thumb vs surface', 'switchThumb', 'surface', LARGE, 9.85),
   P('dark', 'onAccent (ink check) on the default accent (selectionBorder)', 'onAccent', 'selectionBorder', TEXT, 5.98),
-  P('dark', 'sprout on the action hero (decorative)', 'sprout', 'action', null, 1.83),
   P('dark', 'brand card: link (title) on brandSurface', 'link', 'brandSurface', TEXT, 8.02),
 ];

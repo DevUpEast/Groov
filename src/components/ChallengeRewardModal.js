@@ -60,7 +60,7 @@ export default function ChallengeRewardModal({ challenges, onDismiss, theme }) {
   };
 
   return (
-    <OverlayModal visible transparent animationType="fade" onRequestClose={onDismiss}>
+    <OverlayModal visible transparent heavyScrim animationType="fade" onRequestClose={onDismiss}>
       <View style={[styles.overlay, { backgroundColor: theme.celebrationScrim }]}>
         <ScrollView
           contentContainerStyle={styles.container}

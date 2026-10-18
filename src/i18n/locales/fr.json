@@ -119,26 +119,33 @@
   },
   "today": {
     "sections": {
-      "morning": "🌅 Matin",
-      "afternoon": "☀️ Après-midi",
-      "evening": "🌙 Soir",
-      "anytime": "✨ N'importe quand"
+      "morning": "Matin",
+      "afternoon": "Après-midi",
+      "evening": "Soir",
+      "anytime": "N'importe quand"
     },
     "greeting": {
       "morning": "Bonjour",
       "afternoon": "Bon après-midi",
       "evening": "Bonsoir",
-      "withName": "%{greeting}, %{name}"
+      "withName": "%{greeting}, %{name}",
+      "lead": "%{greeting},",
+      "nameLine": "%{name}"
     },
     "ring": {
       "habits": "habitudes",
       "a11y": "%{completed} habitudes sur %{total} accomplies aujourd'hui",
-      "allDone": "🎉 Tout est fait !",
-      "remaining": "%{count} restantes",
-      "amazing": "Superbe travail aujourd'hui !",
-      "keepGoing": "Continue, tu en es à %{percent}%"
+      "progress": "%{completed} sur %{total} faites · encore %{remaining}",
+      "complete": "Journée bouclée · série de %{count} jours",
+      "completeNoStreak": "Journée bouclée",
+      "rest": "Jour de repos · ta série de %{count} jours tient",
+      "restCaption": "repos",
+      "ofTotal": "%{completed} sur %{total}",
+      "empty": "Touche une habitude pour lancer ta journée"
     },
     "coach": "Coach IA",
+    "beats": { "a11y": { "one": "%{count} dernier jour : %{done} réussis, %{rest} de repos, %{missed} manqués", "other": "%{count} derniers jours : %{done} réussis, %{rest} de repos, %{missed} manqués" } },
+    "sticky": { "hint": "Revient en haut" },
     "empty": {
       "title": "Trouve ton rythme",
       "body": "Ajoute ta première habitude",
@@ -151,9 +158,8 @@
     },
     "restDay": {
       "title": "Jour de repos",
-      "body": "Aucune de tes habitudes n'est prévue aujourd'hui. Profite de la pause, tes séries sont en sécurité."
+      "body": "Rien de prévu aujourd'hui. Ton rythme tient."
     },
-    "sectionHabits": "HABITUDES DU JOUR",
     "markRest": "Cocher le reste (%{count})",
     "markRestNote": "Les habitudes chiffrées, chronométrées et avec limite ne changent pas",
     "activeChallenges": "DÉFIS EN COURS",

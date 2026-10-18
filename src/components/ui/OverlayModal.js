@@ -6,15 +6,17 @@ import { useMotion } from '../../theme/motion';
 /**
  * React Native's `Modal`, plus the status-bar rule for scrimmed overlays (F-02).
  *
- * While it is open the overlay is registered with utils/overlayStatus, so App.js switches the
- * status bar to light icons in dark mode (ink icons on the scrimmed #818CF8 hero are ~1.6:1).
+ * While it is open the overlay is registered with utils/overlayStatus. `heavyScrim` marks a
+ * celebration overlay (70 % black `celebrationScrim`): while one is open App.js switches the
+ * status bar to light icons in light mode, where ink icons over that scrim are ~2.5:1.
  *
  * Android: the Modal's dialog window copies the activity's status-bar appearance once, when it
- * is created (ReactModalHostView.updateSystemAppearance), so the activity must already be light
- * by then. When opening would change the style (`overlayChangesStatusBar()`, dark Today), the
- * overlay is registered at once and the Modal is shown two frames (~32 ms) later, after the
- * StatusBar update has reached the activity. Every other open (light mode, dark screens whose
- * icons are already light) is immediate, as on iOS and web. Closing is always immediate.
+ * is created (ReactModalHostView.updateSystemAppearance), so the activity must already have the
+ * new style by then. When opening would change the style (`overlayChangesStatusBar(heavy)`: a
+ * heavy scrim in light mode), the overlay is registered at once and the Modal is shown two
+ * frames (~32 ms) later, after the StatusBar update has reached the activity. Every other open
+ * (all normal scrims, and dark mode, whose icons are already light) is immediate, as on iOS and
+ * web. Closing is always immediate.
  *
  * The deferred gap: for those ~32 ms no dialog window exists yet, so an Android back press
  * reaches App's BackHandler instead of the Modal's onRequestClose (on a non-Today tab it goes to
@@ -23,14 +25,13 @@ import { useMotion } from '../../theme/motion';
  * Reduced motion (F-05): `animationType="slide"` becomes a fade, so no sheet slides.
  */
 const ANDROID = Platform.OS === 'android';
-const mustDefer = () => ANDROID && overlayChangesStatusBar();
-
-export default function OverlayModal({ visible, animationType, ...props }) {
+export default function OverlayModal({ visible, animationType, heavyScrim = false, ...props }) {
   const want = !!visible;
+  const mustDefer = () => ANDROID && overlayChangesStatusBar(heavyScrim);
   const { reduced } = useMotion();
   const [shown, setShown] = useState(() => want && !mustDefer());
 
-  useEffect(() => (want ? overlayOpened() : undefined), [want]);
+  useEffect(() => (want ? overlayOpened({ heavy: heavyScrim }) : undefined), [want, heavyScrim]);
 
   useEffect(() => {
     if (!want) { setShown(false); return undefined; }

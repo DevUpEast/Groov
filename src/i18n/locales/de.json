@@ -119,26 +119,33 @@
   },
   "today": {
     "sections": {
-      "morning": "🌅 Morgens",
-      "afternoon": "☀️ Nachmittags",
-      "evening": "🌙 Abends",
-      "anytime": "✨ Jederzeit"
+      "morning": "Morgens",
+      "afternoon": "Nachmittags",
+      "evening": "Abends",
+      "anytime": "Jederzeit"
     },
     "greeting": {
       "morning": "Guten Morgen",
       "afternoon": "Guten Tag",
       "evening": "Guten Abend",
-      "withName": "%{greeting}, %{name}"
+      "withName": "%{greeting}, %{name}",
+      "lead": "%{greeting},",
+      "nameLine": "%{name}"
     },
     "ring": {
-      "habits": "Gewohnheiten",
+      "habits": "erledigt",
       "a11y": "%{completed} von %{total} Gewohnheiten heute erledigt",
-      "allDone": "🎉 Alles erledigt!",
-      "remaining": "%{count} übrig",
-      "amazing": "Starke Leistung heute!",
-      "keepGoing": "Weiter so, du bist bei %{percent}%"
+      "progress": "%{completed} von %{total} erledigt · noch %{remaining}",
+      "complete": "Tag geschafft · %{count}-Tage-Serie",
+      "completeNoStreak": "Tag geschafft",
+      "rest": "Ruhetag · %{count}-Tage-Serie hält",
+      "restCaption": "Pause",
+      "ofTotal": "%{completed} von %{total}",
+      "empty": "Tippe auf eine Gewohnheit, um deinen Tag zu starten"
     },
     "coach": "KI-Coach",
+    "beats": { "a11y": { "one": "Letzter %{count} Tag: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst", "other": "Letzte %{count} Tage: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst" } },
+    "sticky": { "hint": "Scrollt zurück nach oben" },
     "empty": {
       "title": "Finde deinen Rhythmus",
       "body": "Füge deine erste Gewohnheit hinzu",
@@ -151,9 +158,8 @@
     },
     "restDay": {
       "title": "Ruhetag",
-      "body": "Heute ist keine deiner Gewohnheiten geplant. Genieße die Pause, deine Serien sind sicher."
+      "body": "Heute ist nichts geplant. Dein Rhythmus hält."
     },
-    "sectionHabits": "HEUTIGE GEWOHNHEITEN",
     "markRest": "Den Rest abhaken (%{count})",
     "markRestNote": "Mengen-, Zeit- und Limit-Gewohnheiten bleiben unverändert",
     "activeChallenges": "AKTIVE CHALLENGES",

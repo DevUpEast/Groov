@@ -119,26 +119,33 @@
   },
   "today": {
     "sections": {
-      "morning": "🌅 Morning",
-      "afternoon": "☀️ Afternoon",
-      "evening": "🌙 Evening",
-      "anytime": "✨ Anytime"
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening",
+      "anytime": "Anytime"
     },
     "greeting": {
       "morning": "Good morning",
       "afternoon": "Good afternoon",
       "evening": "Good evening",
-      "withName": "%{greeting}, %{name}"
+      "withName": "%{greeting}, %{name}",
+      "lead": "%{greeting},",
+      "nameLine": "%{name}"
     },
     "ring": {
       "habits": "habits",
       "a11y": "%{completed} of %{total} habits done today",
-      "allDone": "🎉 All done!",
-      "remaining": "%{count} remaining",
-      "amazing": "Amazing work today!",
-      "keepGoing": "Keep going, you're at %{percent}%"
+      "progress": "%{completed} of %{total} done · %{remaining} to go",
+      "complete": "Day complete · %{count}-day streak",
+      "completeNoStreak": "Day complete",
+      "rest": "Rest day · %{count}-day streak holds",
+      "restCaption": "rest",
+      "ofTotal": "%{completed} of %{total}",
+      "empty": "Tap a habit to start your day"
     },
     "coach": "AI Coach",
+    "beats": { "a11y": { "one": "Last %{count} day: %{done} complete, %{rest} rest, %{missed} missed", "other": "Last %{count} days: %{done} complete, %{rest} rest, %{missed} missed" } },
+    "sticky": { "hint": "Scrolls back to the top" },
     "empty": {
       "title": "Get into Rhythm",
       "body": "Add your first habit",
@@ -151,9 +158,8 @@
     },
     "restDay": {
       "title": "Rest day",
-      "body": "None of your habits are scheduled today. Enjoy the break, your streaks are safe."
+      "body": "Nothing is scheduled today. Your rhythm holds."
     },
-    "sectionHabits": "TODAY'S HABITS",
     "markRest": "Mark the rest done (%{count})",
     "markRestNote": "Volume, timed and limit habits stay as they are",
     "activeChallenges": "ACTIVE CHALLENGES",

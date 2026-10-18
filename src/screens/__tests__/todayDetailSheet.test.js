@@ -52,6 +52,8 @@ function mockMakeCtx() {
     setModalOpen: s.setModalOpen, openRoute: s.openRoute, pendingRoute: s.pendingRoute,
     pendingMilestone: null, clearPendingMilestone: jest.fn(),
     moods: {}, setMood: jest.fn(),
+    themeName: 'light', allHabits: s.habits, getOverallStreak: () => 0,
+    habitsOnDay: () => s.habits, isSnapshotHabitDone: () => false, isExcused: () => false,
   };
 }
 

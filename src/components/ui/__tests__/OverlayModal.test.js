@@ -1,6 +1,7 @@
-// OverlayModal (F-02): registers the overlay at once. On Android, when opening would change the
-// status-bar style (dark Today), the Modal opens two frames later, after the status bar has
-// switched, because the dialog window copies it only on creation. Otherwise it opens at once.
+// OverlayModal (F-02, C-04): registers the overlay at once. On Android, when opening would change
+// the status-bar style (a heavy celebration scrim in light mode), the Modal opens two frames
+// later, after the status bar has switched, because the dialog window copies it only on
+// creation. Normal scrims never change the style, so they always open at once.
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
 function load(os, { changesStatusBar = true } = {}) {
@@ -34,7 +35,7 @@ it('on Android, when the status bar must change, registers first and opens after
   jest.useFakeTimers();
   const env = load('android');
   const before = env.status.openOverlayCount();
-  const { r, modal, update } = mount(env, { visible: true, transparent: true });
+  const { r, modal, update } = mount(env, { visible: true, transparent: true, heavyScrim: true });
   expect(env.status.openOverlayCount()).toBe(before + 1);
   expect(modal().props.visible).toBe(false);
   env.act(() => { jest.advanceTimersByTime(100); });
@@ -49,8 +50,25 @@ it('on Android, when the status bar must change, registers first and opens after
 it('on Android opens at once when the status bar would not change (light mode, other screens)', () => {
   jest.useFakeTimers();
   const env = load('android', { changesStatusBar: false });
+  const { r, modal } = mount(env, { visible: true, heavyScrim: true });
+  expect(modal().props.visible).toBe(true);
+  env.act(() => { r.unmount(); });
+});
+
+it('on Android a normal scrim opens at once even while a heavy one would defer', () => {
+  jest.useFakeTimers();
+  const env = load('android');
   const { r, modal } = mount(env, { visible: true });
   expect(modal().props.visible).toBe(true);
+  env.act(() => { r.unmount(); });
+});
+
+it('a heavy scrim registers as heavy while open', () => {
+  const env = load('ios');
+  const { r, update } = mount(env, { visible: true, heavyScrim: true });
+  expect(env.status.anyHeavyOverlayOpen()).toBe(true);
+  update({ visible: false, heavyScrim: true });
+  expect(env.status.anyHeavyOverlayOpen()).toBe(false);
   env.act(() => { r.unmount(); });
 });
 
@@ -59,7 +77,7 @@ it('unmounting while the open is pending cancels it and restores the overlay cou
   const env = load('android');
   const before = env.status.openOverlayCount();
   const cancel = jest.spyOn(global, 'cancelAnimationFrame');
-  const { r } = mount(env, { visible: true });
+  const { r } = mount(env, { visible: true, heavyScrim: true });
   expect(env.status.openOverlayCount()).toBe(before + 1);
   env.act(() => { r.unmount(); });
   expect(cancel).toHaveBeenCalled();
@@ -71,7 +89,7 @@ it('unmounting while the open is pending cancels it and restores the overlay cou
 it('closing within the two frames never shows the Modal', () => {
   jest.useFakeTimers();
   const env = load('android');
-  const { r, modal, update } = mount(env, { visible: true });
+  const { r, modal, update } = mount(env, { visible: true, heavyScrim: true });
   env.act(() => { jest.advanceTimersByTime(5); });
   update({ visible: false });
   env.act(() => { jest.advanceTimersByTime(200); });
@@ -86,7 +104,7 @@ it('on iOS opens at once', () => {
   env.act(() => { r.unmount(); });
 });
 
-it('Dialog focus still lands through a deferred Android open (onShow passes through)', () => {
+it('Dialog (a normal scrim) opens at once on Android and its focus lands (onShow passes through)', () => {
   jest.useFakeTimers();
   const env = load('android');
   const Dialog = require('../Dialog').default;
@@ -94,8 +112,6 @@ it('Dialog focus still lands through a deferred Android open (onShow passes thro
   let r;
   env.act(() => { r = env.TestRenderer.create(env.React.createElement(Dialog, { visible: true, onClose: jest.fn(), title: 'T', initialFocusRef: { current: field } })); });
   const modal = () => r.root.findAll(n => n.type === env.RN.Modal)[0];
-  expect(modal().props.visible).toBe(false);
-  env.act(() => { jest.advanceTimersByTime(100); });
   expect(modal().props.visible).toBe(true);
   env.act(() => { modal().props.onShow(); });
   env.act(() => { jest.advanceTimersByTime(150); });

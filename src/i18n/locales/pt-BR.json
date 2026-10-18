@@ -119,26 +119,33 @@
   },
   "today": {
     "sections": {
-      "morning": "🌅 Manhã",
-      "afternoon": "☀️ Tarde",
-      "evening": "🌙 Noite",
-      "anytime": "✨ Qualquer hora"
+      "morning": "Manhã",
+      "afternoon": "Tarde",
+      "evening": "Noite",
+      "anytime": "Qualquer hora"
     },
     "greeting": {
       "morning": "Bom dia",
       "afternoon": "Boa tarde",
       "evening": "Boa noite",
-      "withName": "%{greeting}, %{name}"
+      "withName": "%{greeting}, %{name}",
+      "lead": "%{greeting},",
+      "nameLine": "%{name}"
     },
     "ring": {
       "habits": "hábitos",
       "a11y": "%{completed} de %{total} hábitos concluídos hoje",
-      "allDone": "🎉 Tudo feito!",
-      "remaining": "%{count} restantes",
-      "amazing": "Que trabalho incrível hoje!",
-      "keepGoing": "Continue assim, você está em %{percent}%"
+      "progress": "%{completed} de %{total} feitos · faltam %{remaining}",
+      "complete": "Dia completo · sequência de %{count} dias",
+      "completeNoStreak": "Dia completo",
+      "rest": "Dia de descanso · sua sequência de %{count} dias continua",
+      "restCaption": "descanso",
+      "ofTotal": "%{completed} de %{total}",
+      "empty": "Toque em um hábito para começar seu dia"
     },
     "coach": "Coach de IA",
+    "beats": { "a11y": { "one": "Último %{count} dia: %{done} completos, %{rest} de descanso, %{missed} não feitos", "other": "Últimos %{count} dias: %{done} completos, %{rest} de descanso, %{missed} não feitos" } },
+    "sticky": { "hint": "Volta ao topo" },
     "empty": {
       "title": "Entre no Ritmo",
       "body": "Adicione seu primeiro hábito",
@@ -151,9 +158,8 @@
     },
     "restDay": {
       "title": "Dia de descanso",
-      "body": "Nenhum dos seus hábitos está programado para hoje. Aproveite a pausa, suas sequências estão seguras."
+      "body": "Nada programado para hoje. Seu ritmo continua."
     },
-    "sectionHabits": "HÁBITOS DE HOJE",
     "markRest": "Marcar o resto como concluído (%{count})",
     "markRestNote": "Hábitos de quantidade, com tempo e com limite continuam como estão",
     "activeChallenges": "DESAFIOS ATIVOS",

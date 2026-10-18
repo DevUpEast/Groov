@@ -96,6 +96,7 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
     <OverlayModal
       visible
       transparent
+      heavyScrim
       animationType={reducedMotion ? 'none' : 'fade'}
       statusBarTranslucent
       onRequestClose={skip}
