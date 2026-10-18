@@ -17,7 +17,7 @@ export function SheetHeader({ title, onClose, panHandlers, theme }) {
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
         <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
-          <Text style={[styles.closeTxt, { color: theme.textMuted }]}>✕</Text>
+          <Text style={[styles.closeTxt, { color: theme.textSecondary }]}>✕</Text>
         </TouchableOpacity>
       </View>
     </>

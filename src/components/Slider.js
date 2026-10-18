@@ -56,10 +56,10 @@ export default function Slider({ value, min = 1, max, onValueChange, theme, labe
       accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
       onAccessibilityAction={onAccessibilityAction}
     >
-      <View style={[styles.track, { backgroundColor: theme.border }]}>
-        <View style={[styles.fill, { width: `${fillRatio * 100}%`, backgroundColor: theme.primary }]} />
+      <View style={[styles.track, { backgroundColor: theme.track }]}>
+        <View style={[styles.fill, { width: `${fillRatio * 100}%`, backgroundColor: theme.meter }]} />
       </View>
-      <View style={[styles.thumb, { left: `${Math.max(0, Math.min(100, fillRatio * 100))}%`, backgroundColor: theme.primary }]} />
+      <View style={[styles.thumb, { left: `${Math.max(0, Math.min(100, fillRatio * 100))}%`, backgroundColor: theme.meter, shadowColor: theme.shadow }]} />
     </View>
   );
 }
@@ -70,6 +70,6 @@ const styles = StyleSheet.create({
   fill: { height: 6, borderRadius: 3 },
   thumb: {
     position: 'absolute', width: 22, height: 22, borderRadius: 11, marginLeft: -11, top: 11,
-    elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2,
+    elevation: 3, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2,
   },
 });

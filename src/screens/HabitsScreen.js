@@ -23,6 +23,7 @@ import { suggestHabit } from '../services/aiCoaching';
 import { useAuth } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
 import { accentIdFor } from '../theme/accentNames';
+import { LEGACY_HABIT_COLORS } from '../theme/accents';
 
 // Preset icons. The stored value is the emoji; `key` names it for screen readers (habits.icons.<key>).
 const ICONS = [
@@ -37,7 +38,7 @@ const ICONS = [
 const BLANK = { name: '', icon: '⭐', type: 'daily', volumeGoal: 3, customIconUri: null, schedule: DEFAULT_SCHEDULE, color: null, timeOfDay: 'anytime', unit: '', intention: '' };
 
 // Per-habit accent colours (null = theme primary). Chosen to read on light and dark.
-const HABIT_COLORS = [null, '#EF4444', '#F97316', '#EAB308', '#22C55E', '#14B8A6', '#3B82F6', '#A855F7', '#EC4899'];
+const HABIT_COLORS = LEGACY_HABIT_COLORS;
 const TIME_OPTIONS = ['anytime', 'morning', 'afternoon', 'evening'];
 
 const SCHEDULE_OPTIONS = [
@@ -76,12 +77,12 @@ function SchedulePicker({ schedule, onChange, theme }) {
           return (
             <TouchableOpacity
               key={opt.type}
-              style={[styles.scheduleBtn, { borderColor: active ? theme.primary : theme.border }, active && { backgroundColor: theme.primaryLight }]}
+              style={[styles.scheduleBtn, { borderColor: active ? theme.selectionBorder : theme.controlBorder }, active && { backgroundColor: theme.selection }]}
               onPress={() => select(opt.type)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.scheduleBtnText, { color: active ? theme.primary : theme.textSecondary }]}>{t(`habits.form.${opt.key}`)}</Text>
+              <Text style={[styles.scheduleBtnText, { color: active ? theme.onSelection : theme.textSecondary }]}>{t(`habits.form.${opt.key}`)}</Text>
             </TouchableOpacity>
           );
         })}
@@ -94,13 +95,13 @@ function SchedulePicker({ schedule, onChange, theme }) {
             return (
               <TouchableOpacity
                 key={d}
-                style={[styles.dayChip, { borderColor: on ? theme.primary : theme.border, backgroundColor: on ? theme.primary : theme.bg }]}
+                style={[styles.dayChip, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : theme.bg }]}
                 onPress={() => toggleDay(d)}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={dayLabels[d]}
               >
-                <Text style={[styles.dayChipText, { color: on ? '#fff' : theme.textSecondary }]}>{dayLabels[d]}</Text>
+                <Text style={[styles.dayChipText, { color: on ? theme.onSelection : theme.textSecondary }]}>{dayLabels[d]}</Text>
               </TouchableOpacity>
             );
           })}
@@ -153,8 +154,8 @@ function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) 
             key={key}
             style={[
               styles.iconBtn,
-              { backgroundColor: theme.bg, borderColor: active ? theme.primary : theme.border },
-              active && { backgroundColor: theme.primaryLight },
+              { backgroundColor: theme.bg, borderColor: active ? theme.selectionBorder : theme.border },
+              active && { backgroundColor: theme.selection },
             ]}
             onPress={() => onSelect(emoji)}
             accessibilityRole="button"
@@ -169,8 +170,8 @@ function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) 
       <TouchableOpacity
         style={[
           styles.iconBtn,
-          { backgroundColor: theme.bg, borderColor: customIconUri ? theme.primary : theme.border },
-          customIconUri && { backgroundColor: theme.primaryLight },
+          { backgroundColor: theme.bg, borderColor: customIconUri ? theme.selectionBorder : theme.border },
+          customIconUri && { backgroundColor: theme.selection },
         ]}
         onPress={onCustomIcon}
         accessibilityRole="button"
@@ -202,6 +203,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
   // Magic Fill: describe the habit in words, the AI fills the form.
   const [magicText, setMagicText] = useState('');
   const [magicBusy, setMagicBusy] = useState(false);
+  const magicTooShort = !magicBusy && magicText.trim().length < 3;
   const [magicError, setMagicError] = useState('');
   const runMagic = async () => {
     if (magicBusy || magicText.trim().length < 3) return;
@@ -303,7 +305,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
   const habitTypes = getHabitTypes();
 
   return (
-    <BottomSheet visible={internalVisible} onClose={handleClose} translateY={translateY} backgroundColor={theme.surface} maxHeight="90%">
+    <BottomSheet visible={internalVisible} onClose={handleClose} translateY={translateY} maxHeight="90%">
           <SheetDragHandle panHandlers={panResponder.panHandlers} theme={theme} />
 
           <View style={styles.sheetHeader}>
@@ -326,8 +328,8 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
             <View onStartShouldSetResponder={dismissKeyboardOnBlankTap}>
               <View>
                 {!editingId && !!user && (
-                  <View style={[styles.magicBox, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
-                    <Text style={[styles.magicTitle, { color: theme.primary }]}>{t('habits.form.magicTitle')}</Text>
+                  <View style={[styles.magicBox, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
+                    <Text style={[styles.magicTitle, { color: theme.link }]}>{t('habits.form.magicTitle')}</Text>
                     <View style={styles.magicRow}>
                       <TextInput
                         style={[styles.magicInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
@@ -340,15 +342,16 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                         onSubmitEditing={runMagic}
                         accessibilityLabel={t('habits.form.magicA11y')}
                       />
+                      {/* Too short to fill: the disabled pair (F-02 S2); busy keeps the action fill with a spinner. */}
                       <TouchableOpacity
-                        style={[styles.magicBtn, { backgroundColor: theme.primary, opacity: magicBusy || magicText.trim().length < 3 ? 0.5 : 1 }]}
+                        style={[styles.magicBtn, { backgroundColor: magicTooShort ? theme.disabledContainer : theme.action }]}
                         onPress={runMagic}
-                        disabled={magicBusy || magicText.trim().length < 3}
+                        disabled={magicBusy || magicTooShort}
                         accessibilityRole="button"
                         accessibilityLabel={t('habits.form.magicFillA11y')}
-                        accessibilityState={{ disabled: magicBusy, busy: magicBusy }}
+                        accessibilityState={{ disabled: magicBusy || magicTooShort, busy: magicBusy }}
                       >
-                        {magicBusy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.magicBtnText}>{t('habits.form.fill')}</Text>}
+                        {magicBusy ? <ActivityIndicator color={theme.onAction} size="small" /> : <Text style={[styles.magicBtnText, { color: magicTooShort ? theme.onDisabled : theme.onAction }]}>{t('habits.form.fill')}</Text>}
                       </TouchableOpacity>
                     </View>
                     {!!magicError && <Text style={[styles.magicError, { color: theme.dangerText }]}>{magicError}</Text>}
@@ -372,13 +375,13 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                     return (
                       <TouchableOpacity
                         key={c || 'default'}
-                        style={[styles.colorDot, { backgroundColor: c || theme.primary, borderColor: active ? theme.text : 'transparent' }]}
+                        style={[styles.colorDot, { backgroundColor: c || theme.selectionBorder, borderColor: active ? theme.text : 'transparent' }]}
                         onPress={() => setForm(f => ({ ...f, color: c }))}
                         accessibilityRole="button"
                         accessibilityLabel={!c ? t('habits.form.defaultColour') : accentId ? t(`habits.colors.${accentId}`) : t('habits.form.colour')}
                         accessibilityState={{ selected: active }}
                       >
-                        {active && <Text style={styles.colorCheck}>✓</Text>}
+                        {active && <Text style={[styles.colorCheck, { color: theme.onAccent }]}>✓</Text>}
                       </TouchableOpacity>
                     );
                   })}
@@ -418,8 +421,8 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                         key={ht.value}
                         style={[
                           styles.typeChip,
-                          { borderColor: active ? theme.primary : theme.border },
-                          active && { backgroundColor: theme.primaryLight },
+                          { borderColor: active ? theme.selectionBorder : theme.controlBorder },
+                          active && { backgroundColor: theme.selection },
                         ]}
                         onPress={() => setForm(f => ({
                           ...f,
@@ -433,7 +436,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                         accessibilityState={{ selected: active }}
                         accessibilityLabel={t('habits.form.typeA11y', { label: ht.label, hint: ht.hint })}
                       >
-                        <Text style={[styles.typeBtnText, { color: active ? theme.primary : theme.textSecondary }]}>{t('habits.form.typeChip', { emoji: ht.emoji, label: ht.label })}</Text>
+                        <Text style={[styles.typeBtnText, { color: active ? theme.onSelection : theme.textSecondary }]}>{t('habits.form.typeChip', { emoji: ht.emoji, label: ht.label })}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -453,12 +456,12 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                     return (
                       <TouchableOpacity
                         key={opt}
-                        style={[styles.timeChip, { borderColor: active ? theme.primary : theme.border }, active && { backgroundColor: theme.primaryLight }]}
+                        style={[styles.timeChip, { borderColor: active ? theme.selectionBorder : theme.controlBorder }, active && { backgroundColor: theme.selection }]}
                         onPress={() => setForm(f => ({ ...f, timeOfDay: opt }))}
                         accessibilityRole="button"
                         accessibilityState={{ selected: active }}
                       >
-                        <Text style={[styles.timeChipText, { color: active ? theme.primary : theme.textSecondary }]}>{t(`timeOfDay.${opt}`)}</Text>
+                        <Text style={[styles.timeChipText, { color: active ? theme.onSelection : theme.textSecondary }]}>{t(`timeOfDay.${opt}`)}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -507,14 +510,14 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                           key={opt.max}
                           style={[
                             styles.volMaxBtn,
-                            { borderColor: volMax === opt.max ? theme.primary : theme.border },
-                            volMax === opt.max && { backgroundColor: theme.primaryLight },
+                            { borderColor: volMax === opt.max ? theme.selectionBorder : theme.controlBorder },
+                            volMax === opt.max && { backgroundColor: theme.selection },
                           ]}
                           onPress={() => handleVolMaxChange(opt.max)}
                           accessibilityRole="button"
                           accessibilityState={{ selected: volMax === opt.max }}
                         >
-                          <Text style={[styles.volMaxBtnText, { color: volMax === opt.max ? theme.primary : theme.textSecondary }]}>
+                          <Text style={[styles.volMaxBtnText, { color: volMax === opt.max ? theme.onSelection : theme.textSecondary }]}>
                             {t('habits.form.max', { max: opt.label })}
                           </Text>
                         </TouchableOpacity>
@@ -551,13 +554,13 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
 
             {/* Save button at bottom of scroll */}
             <TouchableOpacity
-              style={[styles.saveBtn, { backgroundColor: form.name.trim() ? theme.primary : theme.border, marginTop: 12 }]}
+              style={[styles.saveBtn, { backgroundColor: form.name.trim() ? theme.action : theme.disabledContainer, marginTop: 12 }]}
               onPress={onSave}
               disabled={!form.name.trim()}
               accessibilityRole="button"
               accessibilityState={{ disabled: !form.name.trim() }}
             >
-              <Text style={styles.saveBtnText}>{editingId ? t('habits.form.saveChanges') : t('habits.form.addHabit')}</Text>
+              <Text style={[styles.saveBtnText, { color: form.name.trim() ? theme.onAction : theme.onDisabled }]}>{editingId ? t('habits.form.saveChanges') : t('habits.form.addHabit')}</Text>
             </TouchableOpacity>
           </ScrollView>
     </BottomSheet>
@@ -568,7 +571,7 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen, reorder, onM
   const reminderTime = formatReminder(habit.reminder);
   const reminderOn = habit.reminder?.enabled;
   const scheduleLabel = habit.schedule && habit.schedule.type !== 'daily' ? describeSchedule(habit.schedule) : null;
-  const accent = habit.color || theme.primary;
+  const accent = habit.color || theme.selectionBorder;
   return (
     <View style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
       {habit.color ? <View style={[styles.rowStripe, { backgroundColor: accent }]} /> : null}
@@ -576,24 +579,24 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen, reorder, onM
       <TouchableOpacity style={styles.rowInfo} onPress={onOpen} activeOpacity={0.6} accessibilityRole="button" accessibilityLabel={t('habits.row.detailsA11y', { name: habit.name })}>
         <Text style={[styles.rowName, { color: theme.text }]} numberOfLines={1}>{habit.name}</Text>
         <View style={styles.rowMeta}>
-          <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
-            <Text style={[styles.typePillText, { color: theme.primary }]}>
+          <View style={[styles.typePill, { backgroundColor: theme.selection }]}>
+            <Text style={[styles.typePillText, { color: theme.onSelection }]}>
               {describeGoal(habit)}
             </Text>
           </View>
           {habit.timeOfDay && habit.timeOfDay !== 'anytime' && (
-            <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
-              <Text style={[styles.typePillText, { color: theme.primary }]}>{t(`timeOfDay.${habit.timeOfDay}`)}</Text>
+            <View style={[styles.typePill, { backgroundColor: theme.selection }]}>
+              <Text style={[styles.typePillText, { color: theme.onSelection }]}>{t(`timeOfDay.${habit.timeOfDay}`)}</Text>
             </View>
           )}
           {scheduleLabel && (
-            <View style={[styles.typePill, { backgroundColor: theme.primaryLight }]}>
-              <Text style={[styles.typePillText, { color: theme.primary }]}>{t('habits.row.schedulePill', { schedule: scheduleLabel })}</Text>
+            <View style={[styles.typePill, { backgroundColor: theme.selection }]}>
+              <Text style={[styles.typePillText, { color: theme.onSelection }]}>{t('habits.row.schedulePill', { schedule: scheduleLabel })}</Text>
             </View>
           )}
           {reminderTime && (
-            <View style={[styles.reminderPill, { backgroundColor: theme.primaryLight }]}>
-              <Text style={[styles.reminderPillText, { color: theme.primary }]}>{t('habits.row.reminderPill', { time: reminderTime })}</Text>
+            <View style={[styles.reminderPill, { backgroundColor: theme.selection }]}>
+              <Text style={[styles.reminderPillText, { color: theme.onSelection }]}>{t('habits.row.reminderPill', { time: reminderTime })}</Text>
             </View>
           )}
         </View>
@@ -613,7 +616,7 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen, reorder, onM
             <Ionicons
               name={reminderOn ? 'notifications' : 'notifications-outline'}
               size={20}
-              color={reminderOn ? theme.primary : theme.textSecondary}
+              color={reminderOn ? theme.link : theme.textSecondary}
             />
           </TouchableOpacity>
           <TouchableOpacity style={styles.editBtn} onPress={onEdit} accessibilityRole="button" accessibilityLabel={t('habits.row.editA11y')}>
@@ -636,7 +639,7 @@ function ArchivedRow({ habit, theme, onRestore, onDelete }) {
         <Text style={[styles.rowName, { color: theme.textSecondary }]} numberOfLines={1}>{habit.name}</Text>
       </View>
       <TouchableOpacity style={styles.editBtn} onPress={onRestore} accessibilityRole="button" accessibilityLabel={t('habits.row.restoreA11y')}>
-        <Text style={[styles.editBtnText, { color: theme.primary }]}>{t('habits.row.restore')}</Text>
+        <Text style={[styles.editBtnText, { color: theme.link }]}>{t('habits.row.restore')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} accessibilityRole="button" accessibilityLabel={t('habits.row.deleteForeverA11y')}>
         <Ionicons name="trash-outline" size={18} color={theme.dangerText} />
@@ -777,17 +780,17 @@ export default function HabitsScreen() {
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {habits.length > 1 && (
               <TouchableOpacity
-                style={[styles.reorderBtn, { borderColor: reorder ? theme.primary : theme.border, backgroundColor: reorder ? theme.primaryLight : 'transparent' }]}
+                style={[styles.reorderBtn, { borderColor: reorder ? theme.selectionBorder : theme.controlBorder, backgroundColor: reorder ? theme.selection : 'transparent' }]}
                 onPress={() => { if (settings.hapticsEnabled) lightImpact(); setReorder(r => !r); }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: reorder }}
                 accessibilityLabel={reorder ? t('habits.finishReorder') : t('habits.reorder')}
               >
-                <Ionicons name={reorder ? 'checkmark' : 'swap-vertical'} size={18} color={reorder ? theme.primary : theme.textSecondary} />
+                <Ionicons name={reorder ? 'checkmark' : 'swap-vertical'} size={18} color={reorder ? theme.onSelection : theme.textSecondary} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.primary }]} onPress={openAdd} accessibilityRole="button" accessibilityLabel={t('habits.addA11y')}>
-              <Text style={styles.addBtnText}>{t('habits.add')}</Text>
+            <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.action }]} onPress={openAdd} accessibilityRole="button" accessibilityLabel={t('habits.addA11y')}>
+              <Text style={[styles.addBtnText, { color: theme.onAction }]}>{t('habits.add')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -891,7 +894,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   heading: { fontSize: 28, fontWeight: 'bold' },
   addBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  addBtnText: { fontWeight: '700', fontSize: 15 },
   reorderBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 10 },
   row: {
@@ -902,7 +905,7 @@ const styles = StyleSheet.create({
   moveBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
   colorDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
-  colorCheck: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  colorCheck: { fontWeight: '800', fontSize: 14 },
   timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   timeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
   timeChipText: { fontSize: 13, fontWeight: '600' },
@@ -926,20 +929,6 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 40, marginBottom: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
   emptyBody: { fontSize: 14, textAlign: 'center' },
-  addHabitBtn: {
-    alignSelf: 'center',
-    marginTop: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 4,
-  },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   sheetTitle: { fontSize: 20, fontWeight: 'bold' },
   sheetCloseBtn: { padding: 4 },
@@ -949,7 +938,7 @@ const styles = StyleSheet.create({
   magicRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   magicInput: { flex: 1, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
   magicBtn: { paddingHorizontal: 16, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', minWidth: 60 },
-  magicBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  magicBtnText: { fontWeight: '700', fontSize: 14 },
   magicError: { fontSize: 12, marginTop: 6 },
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   iconBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
@@ -977,5 +966,5 @@ const styles = StyleSheet.create({
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   sliderLabelText: { fontSize: 11 },
   saveBtn: { marginTop: 12, padding: 16, borderRadius: 14, alignItems: 'center' },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  saveBtnText: { fontSize: 16, fontWeight: '700' },
 });

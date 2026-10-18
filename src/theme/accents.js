@@ -36,3 +36,7 @@ export const LEGACY_ACCENT_MAP = {
   '#6366F1': 'sky',
   '#EC4899': 'pink',
 };
+
+// The legacy colour row of the habit form (null = the default indigo). C-01 replaces it with
+// the curated accents above; kept here so screens hold no colour literals.
+export const LEGACY_HABIT_COLORS = [null, '#EF4444', '#F97316', '#EAB308', '#22C55E', '#14B8A6', '#3B82F6', '#A855F7', '#EC4899'];

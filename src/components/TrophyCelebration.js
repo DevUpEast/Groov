@@ -4,6 +4,7 @@ import CelebrationOverlay from './CelebrationOverlay';
 import { heavyImpact, mediumImpact } from '../utils/haptics';
 import { useReducedMotion, announce } from '../utils/a11y';
 import { t } from '../i18n';
+import OverlayModal from './ui/OverlayModal';
 
 // A tap (or the Android back key) dismisses the trophy once it has been up this long (CEL-2).
 export const TROPHY_SKIP_AFTER_MS = 1000;
@@ -92,7 +93,7 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
   });
 
   return (
-    <Modal
+    <OverlayModal
       visible
       transparent
       animationType={reducedMotion ? 'none' : 'fade'}
@@ -112,7 +113,7 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
           <View style={styles.center}>
             {!reducedMotion && <Animated.View style={[
               styles.orbitDot,
-              { backgroundColor: theme.primary, transform: [{ translateX: orbitX }, { translateY: orbitY }] },
+              { backgroundColor: theme.meter, transform: [{ translateX: orbitX }, { translateY: orbitY }] },
             ]} />}
             <Animated.Text style={[styles.emoji, { transform: [{ scale: scaleAnim }] }]}>🏆</Animated.Text>
           </View>
@@ -120,7 +121,7 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
         </View>
         {showConfetti && <CelebrationOverlay visible={true} onDone={() => {}} />}
       </Pressable>
-    </Modal>
+    </OverlayModal>
   );
 }
 

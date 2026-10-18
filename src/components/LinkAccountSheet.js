@@ -6,6 +6,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth, AUTH_CANCELLED } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
+import { elevation, palette } from '../theme/tokens';
+import OverlayModal from './ui/OverlayModal';
+
+// The native Apple button below is always the BLACK style, so its busy stand-in matches it.
+const APPLE_BLACK = { bg: palette.light.appleButton, fg: palette.light.onAppleButton };
 
 // Turns a guest (anonymous) account into a permanent one. Shown from Settings.
 // Linking keeps the same user id, so nothing has to be migrated.
@@ -41,22 +46,22 @@ export default function LinkAccountSheet({ visible, onClose, onLinked, theme }) 
   };
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
-        <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
+    <OverlayModal visible transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.overlay, { backgroundColor: theme.scrim }]}>
+        <View style={[styles.sheet, elevation.sheet, { backgroundColor: theme.raised, shadowColor: theme.shadow }]}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>{t('linkAccount.title')}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
-              <Text style={[styles.closeTxt, { color: theme.textMuted }]}>✕</Text>
+              <Text style={[styles.closeTxt, { color: theme.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
-          <Text style={[styles.body, { color: theme.textMuted }]}>
+          <Text style={[styles.body, { color: theme.textSecondary }]}>
             {t('linkAccount.body')}
           </Text>
 
           {Platform.OS === 'ios' && appleAvailable && (
             busy === 'apple' ? (
-              <View style={[styles.socialBtn, { backgroundColor: '#000' }]}><ActivityIndicator color="#fff" /></View>
+              <View style={[styles.socialBtn, { backgroundColor: APPLE_BLACK.bg }]}><ActivityIndicator color={APPLE_BLACK.fg} /></View>
             ) : (
               <AppleAuthentication.AppleAuthenticationButton
                 buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
@@ -81,31 +86,31 @@ export default function LinkAccountSheet({ visible, onClose, onLinked, theme }) 
 
           <View style={styles.dividerRow}>
             <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-            <Text style={[styles.dividerText, { color: theme.textMuted }]}>{t('linkAccount.orEmail')}</Text>
+            <Text style={[styles.dividerText, { color: theme.textSecondary }]}>{t('linkAccount.orEmail')}</Text>
             <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
           </View>
 
-          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder={t('linkAccount.namePlaceholder')} placeholderTextColor={theme.textMuted} value={name} onChangeText={setName} maxLength={40} accessibilityLabel={t('linkAccount.nameA11y')} />
-          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder={t('linkAccount.emailPlaceholder')} placeholderTextColor={theme.textMuted} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} accessibilityLabel={t('linkAccount.emailPlaceholder')} />
-          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder={t('linkAccount.passwordPlaceholder')} placeholderTextColor={theme.textMuted} value={password} onChangeText={setPassword} secureTextEntry accessibilityLabel={t('auth.password')} />
-          {!!error && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
+          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder={t('linkAccount.namePlaceholder')} placeholderTextColor={theme.textSecondary} value={name} onChangeText={setName} maxLength={40} accessibilityLabel={t('linkAccount.nameA11y')} />
+          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder={t('linkAccount.emailPlaceholder')} placeholderTextColor={theme.textSecondary} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoCorrect={false} accessibilityLabel={t('linkAccount.emailPlaceholder')} />
+          <TextInput style={[styles.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} placeholder={t('linkAccount.passwordPlaceholder')} placeholderTextColor={theme.textSecondary} value={password} onChangeText={setPassword} secureTextEntry accessibilityLabel={t('auth.password')} />
+          {!!error && <Text style={[styles.error, { color: theme.dangerText }]}>{error}</Text>}
           <TouchableOpacity
-            style={[styles.btn, { backgroundColor: theme.primary, opacity: busy ? 0.6 : 1 }]}
+            style={[styles.btn, { backgroundColor: theme.action, opacity: busy ? 0.6 : 1 }]}
             onPress={submitEmail}
             disabled={!!busy}
             accessibilityRole="button"
             accessibilityState={{ disabled: !!busy, busy: busy === 'email' }}
           >
-            {busy === 'email' ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t('linkAccount.create')}</Text>}
+            {busy === 'email' ? <ActivityIndicator color={theme.onAction} /> : <Text style={[styles.btnText, { color: theme.onAction }]}>{t('linkAccount.create')}</Text>}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </OverlayModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 20, fontWeight: 'bold' },
@@ -121,5 +126,5 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginTop: 10 },
   error: { fontSize: 13, marginTop: 8 },
   btn: { marginTop: 14, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  btnText: { fontSize: 16, fontWeight: '700' },
 });

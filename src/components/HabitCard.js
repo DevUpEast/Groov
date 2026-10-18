@@ -18,7 +18,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   } = useApp();
   useLocale();
   // Per-habit accent colour falls back to the theme primary.
-  const accent = habit.color || theme.primary;
+  // No habit colour: the indigo selection pair (C-01 moves every card onto resolveAccent).
+  const accent = habit.color || theme.selectionBorder;
   const count = getHabitCount(habit.id);
   const done = isHabitDone(habit);
   const today = todayStr();
@@ -93,7 +94,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           // Opaque, pre-mixed tints with no elevation: Android draws the shadow through a
           // translucent fill, which framed every done card in a dark border (CHK-8). A skipped
           // card is translucent through `opacity`, so it drops elevation for the same reason.
-          done && { backgroundColor: habit.color ? mixHex(habit.color, theme.surface, 0x1F / 255) : theme.primaryLight },
+          done && { backgroundColor: habit.color ? mixHex(habit.color, theme.surface, 0x1F / 255) : theme.selection },
           overLimit && { borderColor: theme.dangerText, backgroundColor: theme.dangerTint },
           (done || overLimit || skipped) && styles.flat,
           skipped && { opacity: 0.6, borderStyle: 'dashed' },
@@ -151,7 +152,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
               accessibilityRole="button"
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
             >
-              <Text style={[styles.counterBtnText, { color: done && !isLimit ? '#fff' : theme.textSecondary }]}>+</Text>
+              <Text style={[styles.counterBtnText, { color: done && !isLimit ? theme.onAccent : theme.textSecondary }]}>+</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -161,7 +162,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
             { borderColor: done ? accent : theme.border },
             done && { backgroundColor: accent },
           ]}>
-            {done ? <Text style={styles.check}>{isQuit ? '🛡' : '✓'}</Text> : skipped ? <Text style={{ fontSize: 13 }}>💤</Text> : null}
+            {done ? <Text style={[styles.check, { color: theme.onAccent }]}>{isQuit ? '🛡' : '✓'}</Text> : skipped ? <Text style={{ fontSize: 13 }}>💤</Text> : null}
           </View>
         )}
       </TouchableOpacity>
@@ -184,10 +185,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    // Cards are border-only in light and tonal in dark (§2.8); no shadow.
     overflow: 'hidden',
   },
   flat: { elevation: 0, shadowOpacity: 0 },
@@ -201,7 +199,7 @@ const styles = StyleSheet.create({
     width: 28, height: 28, borderRadius: 14,
     borderWidth: 2, alignItems: 'center', justifyContent: 'center',
   },
-  check: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  check: { fontSize: 14, fontWeight: 'bold' },
   counter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   counterBtn: {
     width: 30, height: 30, borderRadius: 15, borderWidth: 1.5,

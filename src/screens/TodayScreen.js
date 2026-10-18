@@ -33,15 +33,15 @@ import { t, getLocale, useLocale } from '../i18n';
 // omitted (plain list) when no habit has a time set at all.
 const TIME_SECTIONS = ['morning', 'afternoon', 'evening', 'anytime'];
 
-function SproutIcon({ size = 24 }) {
+function SproutIcon({ size = 24, color }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20">
       {/* Stem — drawn first so leaves sit on top */}
-      <Rect x="9.25" y="3" width="1.5" height="16" rx="0.75" fill="#F5C518" />
+      <Rect x="9.25" y="3" width="1.5" height="16" rx="0.75" fill={color} />
       {/* Left leaf — branches off the left side of the stem, curves up-left to a point */}
-      <Path d="M 10 13 C 5 12 1 8 3 5 C 5 3 9 5 10 9 Z" fill="#F5C518" />
+      <Path d="M 10 13 C 5 12 1 8 3 5 C 5 3 9 5 10 9 Z" fill={color} />
       {/* Right leaf — mirror image, branches right and curves up-right */}
-      <Path d="M 10 13 C 15 12 19 8 17 5 C 15 3 11 5 10 9 Z" fill="#F5C518" />
+      <Path d="M 10 13 C 15 12 19 8 17 5 C 15 3 11 5 10 9 Z" fill={color} />
     </Svg>
   );
 }
@@ -361,19 +361,19 @@ export default function TodayScreen() {
   }, [restoreHabitCounts, unmarkChallengeDay]);
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.primary }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.action }]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         style={{ backgroundColor: theme.bg }}
       >
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.primary }]}>
+        <View style={[styles.header, { backgroundColor: theme.action, shadowColor: theme.shadow }]}>
           <View style={styles.greetingRow}>
             <Text style={[styles.greeting, { color: theme.onAction }]}>
               {displayName ? t('today.greeting.withName', { greeting: getGreeting(dateOffset), name: displayName }) : getGreeting(dateOffset)}
             </Text>
-            <SproutIcon size={26} />
+            <SproutIcon size={26} color={theme.sprout} />
           </View>
           <Text style={[styles.date, { color: theme.onActionSecondary }]}>{getDateString(dateOffset)}</Text>
 
@@ -383,7 +383,7 @@ export default function TodayScreen() {
               size={110}
               strokeWidth={10}
               color={theme.onAction}
-              bg="rgba(255,255,255,0.25)"
+              bg={theme.actionTrack}
               label={`${completed}/${total}`}
               sublabel={t('today.ring.habits')}
               sublabelColor={theme.onActionSecondary}
@@ -405,12 +405,12 @@ export default function TodayScreen() {
         <View style={styles.content}>
           {/* AI Coach Nudge — hidden on day 1; coach needs prior-day data */}
           {canShowNudge && (nudgeLoading || nudgeMessage) && (
-            <View style={[styles.nudgeCard, { backgroundColor: theme.primaryLight, borderColor: theme.primary }]}>
+            <View style={[styles.nudgeCard, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
               <Text style={styles.nudgeEmoji}>✨</Text>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.nudgeLabel, { color: theme.primary }]}>{t('today.coach')}</Text>
+                <Text style={[styles.nudgeLabel, { color: theme.link }]}>{t('today.coach')}</Text>
                 {nudgeLoading ? (
-                  <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 4 }} />
+                  <ActivityIndicator size="small" color={theme.link} style={{ marginTop: 4 }} />
                 ) : (
                   <Text style={[styles.nudgeText, { color: theme.text }]}>{nudgeMessage}</Text>
                 )}
@@ -428,7 +428,7 @@ export default function TodayScreen() {
                 style={{ backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }}
               >
                 <TouchableOpacity
-                  style={[styles.addHabitBtn, { backgroundColor: theme.primary }]}
+                  style={[styles.addHabitBtn, { backgroundColor: theme.action, shadowColor: theme.shadow }]}
                   onPress={async () => {
                     if (settings.hapticsEnabled) await mediumImpact();
                     setRequestedTab(3);
@@ -437,7 +437,7 @@ export default function TodayScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={t('today.empty.addA11y')}
                 >
-                  <Ionicons name="add" size={28} color="#fff" />
+                  <Ionicons name="add" size={28} color={theme.onAction} />
                 </TouchableOpacity>
               </EmptyCard>
               {effectiveChallenges.length === 0 && (
@@ -502,7 +502,7 @@ export default function TodayScreen() {
                   style={styles.markRestBtn}
                   accessibilityRole="button"
                 >
-                  <Text style={[styles.markRestText, { color: theme.primary }]}>
+                  <Text style={[styles.markRestText, { color: theme.link }]}>
                     {t('today.markRest', { count: markRestCount })}
                   </Text>
                   {/* Counters, timers and limits are never bulk-marked, so say why the count is lower than "N remaining". It sits inside the button, so screen readers read it with the label. */}
@@ -550,7 +550,7 @@ export default function TodayScreen() {
                         }
                       </View>
                       <View style={[styles.challengeMiniProgressBg, { backgroundColor: theme.track }]}>
-                        <View style={[styles.challengeMiniProgressFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: theme.primary }]} />
+                        <View style={[styles.challengeMiniProgressFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: theme.meter }]} />
                       </View>
                     </View>
                   );
@@ -591,7 +591,7 @@ export default function TodayScreen() {
           if (milestoneShown) setTimeout(() => maybeRequestReview(`milestone-${milestoneShown.days}`), 800);
           setMilestoneShown(null);
         }}
-        primaryColor={theme.primary}
+        primaryColor={theme.action}
         emoji={milestoneShown?.emoji ?? '🎉'}
         title={milestoneShown ? t('today.milestone.title', { days: milestoneShown.days }) : t('today.congrats')}
         subtitle={milestoneShown ? t('today.milestone.subtitle', { label: milestoneShown.label }) : t('today.allTasks')}
@@ -626,7 +626,6 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
@@ -671,7 +670,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.18,
     shadowRadius: 6,

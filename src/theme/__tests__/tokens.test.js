@@ -132,11 +132,12 @@ describe('colors.js legacy adapter (plan §2.1)', () => {
       expect(t.tabIconInactive).toBe(p.tabInactive);
       expect(t.progressBarBg).toBe(p.track);
     }
-    // primaryLight is `selection` in light; dark keeps #1E1B4B until F-02, because the legacy
-    // primary text drawn on it must keep 4.5:1 (it would be 3.83:1 on dark selection).
-    expect(themes.light.primaryLight).toBe(palette.light.selection);
+    // F-02: primaryLight is `selection` in both themes (the dark #1E1B4B override is gone;
+    // every selection fill is paired with onSelection), and onPrimary is onAction.
     for (const theme of ['light', 'dark']) {
-      expect(contrastRatio(themes[theme].primary, themes[theme].primaryLight)).toBeGreaterThanOrEqual(TEXT);
+      expect(themes[theme].primaryLight).toBe(palette[theme].selection);
+      expect(themes[theme].onPrimary).toBe(palette[theme].onAction);
+      expect(contrastRatio(themes[theme].onSelection, themes[theme].primaryLight)).toBeGreaterThanOrEqual(TEXT);
       expect(contrastRatio(themes[theme].textMuted, themes[theme].primaryLight)).toBeGreaterThanOrEqual(TEXT);
     }
     // Text/icon meaning of primary: light #4F46E5, dark stays #818CF8.
@@ -151,6 +152,26 @@ describe('colors.js legacy adapter (plan §2.1)', () => {
         if (RGBA_ROLES.includes(k)) continue;
         expect([theme, k, v]).toEqual([theme, k, expect.stringMatching(HEX6)]);
       }
+    }
+  });
+});
+
+describe('F-02 role pairs kept outside `pairs`', () => {
+  it('derives onAccent from ACCENT_ON_FILL (one source for the accent glyph)', () => {
+    expect(palette.light.onAccent).toBe(accentOnFill.light);
+    expect(palette.dark.onAccent).toBe(accentOnFill.dark);
+  });
+
+  it('passes onTier (ink) on every challenge-tier colour in TIER_STYLES', () => {
+    // TIER_STYLES lives in AppContext until X-02 moves it into tokens; read its hexes from source.
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.resolve(__dirname, '../../context/AppContext.js'), 'utf8');
+    const block = src.slice(src.indexOf('TIER_STYLES'), src.indexOf('};', src.indexOf('TIER_STYLES')));
+    const borders = [...block.matchAll(/border:\s*'(#[0-9A-Fa-f]{6})'/g)].map(m => m[1]);
+    expect(borders.length).toBe(4);
+    for (const theme of ['light', 'dark']) {
+      for (const b of borders) expect([theme, b, contrastRatio(palette[theme].onTier, b) >= TEXT]).toEqual([theme, b, true]);
     }
   });
 });

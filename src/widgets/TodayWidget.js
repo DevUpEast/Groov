@@ -2,11 +2,19 @@ import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 import { MAX_WIDGET_ROWS } from './widgetData';
 import { t } from '../i18n';
+import { palette } from '../theme/tokens';
 
 // Today's habits widget. Renders from the model built in widgetData.js. Every row
 // is tappable: the click action carries the habit id and the task handler toggles it.
-const LIGHT = { bg: '#FFFFFF', text: '#111827', muted: '#6B7280', primary: '#4F46E5', primaryLight: '#EEF2FF', border: '#E5E7EB' };
-const DARK = { bg: '#1E293B', text: '#F8FAFC', muted: '#CBD5E1', primary: '#818CF8', primaryLight: '#312E81', border: '#334155' };
+// Headless (no React context), so it reads the role tokens directly (§2.1). The count pill is a
+// meter when the day is complete (onMeter: ink on #818CF8 in dark, 5.98:1; white was 2.98:1)
+// and the selection pair otherwise; the row check uses the habit colour with onAccent.
+const roles = (p) => ({
+  bg: p.surface, text: p.text, muted: p.textSecondary, border: p.border,
+  meter: p.meter, onMeter: p.onMeter, selection: p.selection, onSelection: p.onSelection, onAccent: p.onAccent,
+});
+const LIGHT = roles(palette.light);
+const DARK = roles(palette.dark);
 
 // `maxRows` is derived from the widget height by the caller (about 34dp per row).
 export function TodayWidget({ model, dark = false, maxRows = MAX_WIDGET_ROWS }) {
@@ -22,8 +30,8 @@ export function TodayWidget({ model, dark = false, maxRows = MAX_WIDGET_ROWS }) 
     >
       <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <TextWidget text={t('widget.title')} style={{ fontSize: 15, fontWeight: 'bold', color: c.text }} />
-        <FlexWidget style={{ backgroundColor: model.total > 0 && model.done >= model.total ? c.primary : c.primaryLight, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
-          <TextWidget text={`${model.done}/${model.total}`} style={{ fontSize: 12, fontWeight: 'bold', color: model.total > 0 && model.done >= model.total ? '#FFFFFF' : c.primary }} />
+        <FlexWidget style={{ backgroundColor: model.total > 0 && model.done >= model.total ? c.meter : c.selection, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+          <TextWidget text={`${model.done}/${model.total}`} style={{ fontSize: 12, fontWeight: 'bold', color: model.total > 0 && model.done >= model.total ? c.onMeter : c.onSelection }} />
         </FlexWidget>
       </FlexWidget>
 
@@ -45,8 +53,8 @@ export function TodayWidget({ model, dark = false, maxRows = MAX_WIDGET_ROWS }) 
             <FlexWidget style={{ flex: 1, width: 'match_parent', flexDirection: 'row', alignItems: 'center' }}>
               <TextWidget text={label} truncate="END" maxLines={1} style={{ width: 'match_parent', fontSize: 13, color: r.done ? c.muted : c.text, fontWeight: r.done ? 'normal' : '600' }} />
             </FlexWidget>
-            <FlexWidget style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: r.done ? (r.color || c.primary) : c.border, backgroundColor: r.done ? (r.color || c.primary) : c.bg, alignItems: 'center', justifyContent: 'center' }}>
-              {r.done ? <TextWidget text="✓" style={{ fontSize: 12, color: '#FFFFFF', fontWeight: 'bold' }} /> : null}
+            <FlexWidget style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: r.done ? (r.color || c.meter) : c.border, backgroundColor: r.done ? (r.color || c.meter) : c.bg, alignItems: 'center', justifyContent: 'center' }}>
+              {r.done ? <TextWidget text="✓" style={{ fontSize: 12, color: c.onAccent, fontWeight: 'bold' }} /> : null}
             </FlexWidget>
           </FlexWidget>
         );

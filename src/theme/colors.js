@@ -12,12 +12,9 @@ function legacy(p, fixed) {
   return {
     // Secondary text. Light moves from #6B7280 to #475569 (COL-6).
     textMuted: p.textSecondary,
-    // Text and icon meaning: light #4F46E5, dark #818CF8. Fills move to `action` in F-02.
+    // F-02 moved every consumer to role keys (fills -> action / meter, text -> link,
+    // selected -> selection / onSelection); nothing reads these any more (Z-01a deletes them).
     primary: p.action,
-    // Selected-chip and tip-card fills. Light is the `selection` role (#EEF2FF). Dark keeps
-    // #1E1B4B (set below) until F-02 pairs every selection fill with onSelection: the legacy
-    // `primary` text these sites draw on it would be 3.83:1 on dark `selection` #312E81
-    // (5.36:1 on #1E1B4B).
     primaryLight: p.selection,
     // `success` is already a role with the same value as `successText`.
     // `warning` is retired: cautions use textSecondary plus an icon at the call site.
@@ -29,8 +26,8 @@ function legacy(p, fixed) {
     tabIconActive: p.tabActive,
     tabIconInactive: p.tabInactive,
     progressBarBg: p.track,
-    // The label on a `primary` fill; F-02 moves these to onAction (ink in dark).
-    onPrimary: '#FFFFFF',
+    // The label on a `primary` fill: the onAction role (ink in dark).
+    onPrimary: p.onAction,
     ...fixed,
   };
 }
@@ -54,7 +51,6 @@ export const themes = {
   dark: {
     ...palette.dark,
     ...legacy(palette.dark, {
-      primaryLight: '#1E1B4B',
       primaryDark: '#6366F1',
       headerBg: '#1E293B',
       headerText: '#F1F5F9',

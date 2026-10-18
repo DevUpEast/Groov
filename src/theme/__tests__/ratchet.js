@@ -54,18 +54,45 @@ function stripComments(src) {
 
 const COLOR_LITERAL = /#(?:[0-9A-Fa-f]{8}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})\b|rgba?\(/g;
 
-function countIn(file, re) {
+// `matcher` is a global RegExp (counts its matches) or a function (source -> count).
+function countIn(file, matcher) {
   const src = stripComments(fs.readFileSync(path.join(ROOT, file), 'utf8'));
-  return (src.match(re) || []).length;
+  if (typeof matcher === 'function') return matcher(src);
+  return (src.match(matcher) || []).length;
 }
 
-function scan(re) {
+function scan(matcher) {
   const counts = {};
   for (const f of sourceFiles()) {
-    const n = countIn(f, re);
+    const n = countIn(f, matcher);
     if (n > 0) counts[f] = n;
   }
   return counts;
+}
+
+// The names a theme object goes by in this codebase: `theme` (useApp, props), `scheme` (the
+// crash screen), `colors`, and `themes.light` / `themes.dark` / `themes[...]` (direct imports).
+const THEME_OBJECT = String.raw`(?:theme|scheme|colors|themes\.(?:light|dark)|themes\[[^\]\n]+\])`;
+
+// Counts legacy theme key reads (F-02 extends F-01's `theme.<key>` scan):
+// - member reads: `theme.primary`, `theme?.primary`, `themes.dark.primary`, `themes[name].primary`;
+// - bracket reads: `theme['primary']`;
+// - destructuring from a theme object: `const { primary, textMuted: muted } = theme`, and
+//   destructured props / params: `({ theme: { primary } })`.
+function legacyMatcher(keys) {
+  const k = keys.join('|');
+  const member = new RegExp(String.raw`\b${THEME_OBJECT}\??\.(?:${k})\b`, 'g');
+  const bracket = new RegExp(String.raw`\b${THEME_OBJECT}\??\.?\[\s*['"\x60](?:${k})['"\x60]\s*\]`, 'g');
+  const destructure = new RegExp(String.raw`\{([^{}]*)\}\s*=\s*(?:${THEME_OBJECT}|useApp\(\)\.theme)\b`, 'g');
+  const nested = /\btheme\s*:\s*\{([^{}]*)\}/g;
+  const keyRe = new RegExp(String.raw`(?:^|,)\s*(?:${k})\s*(?=[:,=]|$)`, 'g');
+  const inBraces = (body) => (body.replace(/\s+/g, ' ').match(keyRe) || []).length;
+  return (src) => {
+    let n = (src.match(member) || []).length + (src.match(bracket) || []).length;
+    for (const m of src.matchAll(destructure)) n += inBraces(m[1]);
+    for (const m of src.matchAll(nested)) n += inBraces(m[1]);
+    return n;
+  };
 }
 
 // Lines `file: was -> now` for every file whose count rose (grown) or fell (fallen).
@@ -112,4 +139,4 @@ function compare(counts, baselineFile) {
 
 const total = (counts) => Object.values(counts).reduce((a, b) => a + b, 0);
 
-module.exports = { sourceFiles, stripComments, scan, compare, diffCounts, loweredBaseline, total, COLOR_LITERAL };
+module.exports = { sourceFiles, stripComments, scan, compare, diffCounts, loweredBaseline, total, COLOR_LITERAL, legacyMatcher };

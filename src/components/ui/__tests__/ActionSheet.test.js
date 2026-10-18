@@ -135,7 +135,7 @@ describe('ActionSheet (iOS)', () => {
     act(() => { cancelCallback(3); });
     expect(onCancel).toHaveBeenCalledTimes(2);
     expect(options[0].onPress).not.toHaveBeenCalled();
-    r2.unmount();
+    act(() => { r2.unmount(); });
   });
 });
 
@@ -196,9 +196,11 @@ describe('Android back wiring (source checks)', () => {
     const missing = [];
     let tagCount = 0;
     files.forEach((f) => {
+      // OverlayModal (F-02) only forwards its props to Modal; its callers are checked instead.
+      if (f.endsWith('OverlayModal.js')) return;
       const src = fs.readFileSync(f, 'utf8');
       // Each opening tag runs up to the first '>' that ends a line (an arrow '=>' never does here).
-      (src.match(/<Modal\b[\s\S]*?>\s*\n/g) || []).forEach((tag) => {
+      (src.match(/<(?:Overlay)?Modal\b[\s\S]*?>\s*\n/g) || []).forEach((tag) => {
         tagCount += 1;
         if (!/onRequestClose=/.test(tag)) missing.push(path.relative(root, f));
       });
@@ -206,6 +208,6 @@ describe('Android back wiring (source checks)', () => {
     // 13 Modals today; a broken regex or path must not pass by matching nothing.
     expect(tagCount).toBeGreaterThanOrEqual(13);
     expect(missing).toEqual([]);
-    expect(picker).toMatch(/<Modal[^>]*onRequestClose=\{onClose\}/);
+    expect(picker).toMatch(/<(?:Overlay)?Modal[^>]*onRequestClose=\{onClose\}/);
   });
 });

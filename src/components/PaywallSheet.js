@@ -4,6 +4,8 @@ import { PLANS, PRO_FEATURES, purchasePlan, restorePurchases, purchasesConfigure
 import { lightImpact, mediumImpact } from '../utils/haptics';
 import { track, Events } from '../utils/analytics';
 import { t, useLocale } from '../i18n';
+import { elevation } from '../theme/tokens';
+import OverlayModal from './ui/OverlayModal';
 
 const TERMS_URL = 'https://isaaceast.com/groov/terms';
 const PRIVACY_URL = 'https://isaaceast.com/groov/privacy-policy';
@@ -47,17 +49,17 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
   const reasonLine = t(`paywall.reason.${['habits', 'reminders', 'ai'].includes(reason) ? reason : 'default'}`);
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
+    <OverlayModal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={[styles.overlay, { backgroundColor: theme.scrim }]}>
+        <View style={[styles.sheet, elevation.sheet, { backgroundColor: theme.raised, shadowColor: theme.shadow }]}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>{t('paywall.title')}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.notNow')}>
-              <Text style={[styles.closeTxt, { color: theme.textMuted }]}>✕</Text>
+              <Text style={[styles.closeTxt, { color: theme.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={[styles.reason, { color: theme.textMuted }]}>{reasonLine}</Text>
+            <Text style={[styles.reason, { color: theme.textSecondary }]}>{reasonLine}</Text>
             <View style={styles.features}>
               {PRO_FEATURES.map(f => (
                 <View key={f.text} style={styles.feature}>
@@ -72,32 +74,32 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
                 return (
                   <TouchableOpacity
                     key={p.id}
-                    style={[styles.plan, { borderColor: on ? theme.primary : theme.border, backgroundColor: on ? theme.primaryLight : theme.bg }]}
+                    style={[styles.plan, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : theme.bg }]}
                     onPress={() => { lightImpact(); setPlan(p.id); }}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: on, checked: on }}
                     accessibilityLabel={t('paywall.planA11y', { title: p.title, price: p.price })}
                   >
-                    {p.badge ? <View style={[styles.badge, { backgroundColor: theme.primary }]}><Text style={styles.badgeText}>{p.badge}</Text></View> : null}
-                    <Text style={[styles.planTitle, { color: theme.text }]}>{p.title}</Text>
-                    <Text style={[styles.planPrice, { color: theme.primary }]}>{p.price}</Text>
-                    <Text style={[styles.planNote, { color: theme.textMuted }]}>{p.note}</Text>
+                    {p.badge ? <View style={[styles.badge, { backgroundColor: theme.action }]}><Text style={[styles.badgeText, { color: theme.onAction }]}>{p.badge}</Text></View> : null}
+                    <Text style={[styles.planTitle, { color: on ? theme.onSelection : theme.text }]}>{p.title}</Text>
+                    <Text style={[styles.planPrice, { color: on ? theme.onSelection : theme.link }]}>{p.price}</Text>
+                    <Text style={[styles.planNote, { color: theme.textSecondary }]}>{p.note}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
-            {!!error && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
-            <TouchableOpacity style={[styles.cta, { backgroundColor: theme.primary, opacity: busy ? 0.6 : 1 }]} onPress={buy} disabled={!!busy} accessibilityRole="button" accessibilityState={{ busy: busy === 'buy' }}>
-              {busy === 'buy' ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>{plan === 'yearly' ? t('paywall.trial') : t('paywall.buyLifetime')}</Text>}
+            {!!error && <Text style={[styles.error, { color: theme.dangerText }]}>{error}</Text>}
+            <TouchableOpacity style={[styles.cta, { backgroundColor: theme.action, opacity: busy ? 0.6 : 1 }]} onPress={buy} disabled={!!busy} accessibilityRole="button" accessibilityState={{ busy: busy === 'buy' }}>
+              {busy === 'buy' ? <ActivityIndicator color={theme.onAction} /> : <Text style={[styles.ctaText, { color: theme.onAction }]}>{plan === 'yearly' ? t('paywall.trial') : t('paywall.buyLifetime')}</Text>}
             </TouchableOpacity>
             <View style={styles.footer}>
-              <TouchableOpacity onPress={restore} disabled={!!busy} accessibilityRole="button"><Text style={[styles.link, { color: theme.textMuted }]}>{busy === 'restore' ? t('paywall.restoring') : t('paywall.restore')}</Text></TouchableOpacity>
-              <Text style={[styles.dot, { color: theme.textMuted }]}>·</Text>
-              <TouchableOpacity onPress={() => Linking.openURL(TERMS_URL).catch(() => {})} accessibilityRole="link"><Text style={[styles.link, { color: theme.textMuted }]}>{t('paywall.terms')}</Text></TouchableOpacity>
-              <Text style={[styles.dot, { color: theme.textMuted }]}>·</Text>
-              <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} accessibilityRole="link"><Text style={[styles.link, { color: theme.textMuted }]}>{t('paywall.privacy')}</Text></TouchableOpacity>
+              <TouchableOpacity onPress={restore} disabled={!!busy} accessibilityRole="button"><Text style={[styles.link, { color: theme.textSecondary }]}>{busy === 'restore' ? t('paywall.restoring') : t('paywall.restore')}</Text></TouchableOpacity>
+              <Text style={[styles.dot, { color: theme.textSecondary }]}>·</Text>
+              <TouchableOpacity onPress={() => Linking.openURL(TERMS_URL).catch(() => {})} accessibilityRole="link"><Text style={[styles.link, { color: theme.textSecondary }]}>{t('paywall.terms')}</Text></TouchableOpacity>
+              <Text style={[styles.dot, { color: theme.textSecondary }]}>·</Text>
+              <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} accessibilityRole="link"><Text style={[styles.link, { color: theme.textSecondary }]}>{t('paywall.privacy')}</Text></TouchableOpacity>
             </View>
-            <Text style={[styles.legal, { color: theme.textMuted }]}>
+            <Text style={[styles.legal, { color: theme.textSecondary }]}>
               {purchasesConfigured
                 ? t('paywall.legalLive')
                 : t('paywall.legalNotLive')}
@@ -105,12 +107,12 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </OverlayModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 16, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '92%' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   title: { fontSize: 22, fontWeight: 'bold' },
@@ -124,13 +126,13 @@ const styles = StyleSheet.create({
   plans: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   plan: { flex: 1, borderWidth: 2, borderRadius: 14, padding: 14, alignItems: 'center' },
   badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 6 },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
+  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
   planTitle: { fontSize: 15, fontWeight: '700' },
   planPrice: { fontSize: 16, fontWeight: '800', marginTop: 4 },
   planNote: { fontSize: 11, marginTop: 4, textAlign: 'center' },
   error: { fontSize: 13, marginBottom: 10 },
   cta: { paddingVertical: 15, borderRadius: 14, alignItems: 'center' },
-  ctaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  ctaText: { fontSize: 16, fontWeight: '700' },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 12 },
   link: { fontSize: 13, fontWeight: '600' },
   dot: { fontSize: 13 },

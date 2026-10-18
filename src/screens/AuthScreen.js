@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth, AUTH_CANCELLED } from '../context/AuthContext';
 import { themes } from '../theme/colors';
+import { palette } from '../theme/tokens';
 import { t, useLocale } from '../i18n';
 
 export default function AuthScreen() {
@@ -153,8 +154,8 @@ export default function AuthScreen() {
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
           <View style={s.header}>
-            <Text style={[s.logo, { color: theme.primary }]}>Groov</Text>
-            <Text style={[s.tagline, { color: theme.textMuted }]}>{tagline}</Text>
+            <Text style={[s.logo, { color: theme.link }]}>Groov</Text>
+            <Text style={[s.tagline, { color: theme.textSecondary }]}>{tagline}</Text>
           </View>
 
           <View style={[s.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -165,13 +166,13 @@ export default function AuthScreen() {
                 {['login', 'register'].map(m => (
                   <TouchableOpacity
                     key={m}
-                    style={[s.tab, mode === m && { backgroundColor: theme.primary }]}
+                    style={[s.tab, mode === m && { backgroundColor: theme.selection, borderColor: theme.selectionBorder }]}
                     onPress={() => switchMode(m)}
                     activeOpacity={0.8}
                     accessibilityRole="button"
                     accessibilityState={{ selected: mode === m }}
                   >
-                    <Text style={[s.tabText, { color: mode === m ? '#fff' : theme.textMuted }]}>
+                    <Text style={[s.tabText, { color: mode === m ? theme.onSelection : theme.textSecondary }]}>
                       {m === 'login' ? t('auth.login') : t('auth.register')}
                     </Text>
                   </TouchableOpacity>
@@ -183,22 +184,22 @@ export default function AuthScreen() {
               {/* ── Forgot Password: enter email ── */}
               {mode === 'forgot' && (
                 <>
-                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.email')}</Text>
+                  <Text style={[s.label, { color: theme.textSecondary }]}>{t('auth.email')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={resetEmail}
                     onChangeText={setResetEmail}
                     accessibilityLabel={t('auth.email')}
                     placeholder={t('auth.emailPlaceholder')}
-                    placeholderTextColor={theme.textMuted}
+                    placeholderTextColor={theme.textSecondary}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
-                  {!!error && <Text style={[s.msg, { color: theme.danger }]}>{error}</Text>}
+                  {!!error && <Text style={[s.msg, { color: theme.dangerText }]}>{error}</Text>}
                   {!!successMsg && <Text style={[s.msg, { color: theme.success }]}>{successMsg}</Text>}
                   <TouchableOpacity
-                    style={[s.btn, { backgroundColor: theme.primary }, loading && s.btnDisabled]}
+                    style={[s.btn, { backgroundColor: theme.action }, loading && s.btnDisabled]}
                     onPress={handleForgotSend}
                     disabled={loading}
                     activeOpacity={0.85}
@@ -206,7 +207,7 @@ export default function AuthScreen() {
                     accessibilityLabel={t('auth.sendResetCode')}
                     accessibilityState={{ disabled: loading, busy: loading }}
                   >
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>{t('auth.sendResetCode')}</Text>}
+                    {loading ? <ActivityIndicator color={theme.onAction} /> : <Text style={[s.btnText, { color: theme.onAction }]}>{t('auth.sendResetCode')}</Text>}
                   </TouchableOpacity>
                 </>
               )}
@@ -215,40 +216,40 @@ export default function AuthScreen() {
               {mode === 'reset' && (
                 <>
                   {!!successMsg && <Text style={[s.msg, { color: theme.success, marginBottom: 8 }]}>{successMsg}</Text>}
-                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.resetCode')}</Text>
+                  <Text style={[s.label, { color: theme.textSecondary }]}>{t('auth.resetCode')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={resetCode}
                     onChangeText={setResetCode}
                     accessibilityLabel={t('auth.resetCode')}
                     placeholder={t('auth.codePlaceholder')}
-                    placeholderTextColor={theme.textMuted}
+                    placeholderTextColor={theme.textSecondary}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
-                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.newPassword')}</Text>
+                  <Text style={[s.label, { color: theme.textSecondary }]}>{t('auth.newPassword')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={newPassword}
                     onChangeText={setNewPassword}
                     accessibilityLabel={t('auth.newPassword')}
                     placeholder="••••••••"
-                    placeholderTextColor={theme.textMuted}
+                    placeholderTextColor={theme.textSecondary}
                     secureTextEntry
                   />
-                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.confirmNewPassword')}</Text>
+                  <Text style={[s.label, { color: theme.textSecondary }]}>{t('auth.confirmNewPassword')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={confirmNewPassword}
                     onChangeText={setConfirmNewPassword}
                     accessibilityLabel={t('auth.confirmNewPassword')}
                     placeholder="••••••••"
-                    placeholderTextColor={theme.textMuted}
+                    placeholderTextColor={theme.textSecondary}
                     secureTextEntry
                   />
-                  {!!error && <Text style={[s.msg, { color: theme.danger }]}>{error}</Text>}
+                  {!!error && <Text style={[s.msg, { color: theme.dangerText }]}>{error}</Text>}
                   <TouchableOpacity
-                    style={[s.btn, { backgroundColor: theme.primary }, loading && s.btnDisabled]}
+                    style={[s.btn, { backgroundColor: theme.action }, loading && s.btnDisabled]}
                     onPress={handleResetVerify}
                     disabled={loading}
                     activeOpacity={0.85}
@@ -256,7 +257,7 @@ export default function AuthScreen() {
                     accessibilityLabel={t('auth.setNewPassword')}
                     accessibilityState={{ disabled: loading, busy: loading }}
                   >
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>{t('auth.setNewPassword')}</Text>}
+                    {loading ? <ActivityIndicator color={theme.onAction} /> : <Text style={[s.btnText, { color: theme.onAction }]}>{t('auth.setNewPassword')}</Text>}
                   </TouchableOpacity>
                 </>
               )}
@@ -266,14 +267,14 @@ export default function AuthScreen() {
                 <>
                   {mode === 'register' && (
                     <>
-                      <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.displayName')}</Text>
+                      <Text style={[s.label, { color: theme.textSecondary }]}>{t('auth.displayName')}</Text>
                       <TextInput
                         style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                         value={displayName}
                         onChangeText={setDisplayName}
                         accessibilityLabel={t('auth.displayName')}
                         placeholder={t('auth.displayNamePlaceholder')}
-                        placeholderTextColor={theme.textMuted}
+                        placeholderTextColor={theme.textSecondary}
                         autoCapitalize="words"
                         autoCorrect={false}
                         maxLength={30}
@@ -281,20 +282,20 @@ export default function AuthScreen() {
                     </>
                   )}
 
-                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.email')}</Text>
+                  <Text style={[s.label, { color: theme.textSecondary }]}>{t('auth.email')}</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]}
                     value={email}
                     onChangeText={setEmail}
                     accessibilityLabel={t('auth.email')}
                     placeholder={t('auth.emailPlaceholder')}
-                    placeholderTextColor={theme.textMuted}
+                    placeholderTextColor={theme.textSecondary}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
 
-                  <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.password')}</Text>
+                  <Text style={[s.label, { color: theme.textSecondary }]}>{t('auth.password')}</Text>
                   <View style={[s.inputWrapper, { backgroundColor: theme.bg, borderColor: theme.border }]}>
                     <TextInput
                       style={[s.inputInner, { color: theme.text }]}
@@ -302,7 +303,7 @@ export default function AuthScreen() {
                       onChangeText={setPassword}
                       accessibilityLabel={t('auth.password')}
                       placeholder="••••••••"
-                      placeholderTextColor={theme.textMuted}
+                      placeholderTextColor={theme.textSecondary}
                       secureTextEntry={!showPassword}
                     />
                     <TouchableOpacity
@@ -312,13 +313,13 @@ export default function AuthScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                     >
-                      <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textMuted} />
+                      <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textSecondary} />
                     </TouchableOpacity>
                   </View>
 
                   {mode === 'register' && (
                     <>
-                      <Text style={[s.label, { color: theme.textMuted }]}>{t('auth.confirmPassword')}</Text>
+                      <Text style={[s.label, { color: theme.textSecondary }]}>{t('auth.confirmPassword')}</Text>
                       <View style={[s.inputWrapper, { backgroundColor: theme.bg, borderColor: theme.border }]}>
                         <TextInput
                           style={[s.inputInner, { color: theme.text }]}
@@ -326,7 +327,7 @@ export default function AuthScreen() {
                           onChangeText={setConfirmPassword}
                           accessibilityLabel={t('auth.confirmPassword')}
                           placeholder="••••••••"
-                          placeholderTextColor={theme.textMuted}
+                          placeholderTextColor={theme.textSecondary}
                           secureTextEntry={!showConfirmPassword}
                         />
                         <TouchableOpacity
@@ -336,17 +337,17 @@ export default function AuthScreen() {
                           accessibilityRole="button"
                           accessibilityLabel={showConfirmPassword ? t('auth.hideConfirmPassword') : t('auth.showConfirmPassword')}
                         >
-                          <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textMuted} />
+                          <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textSecondary} />
                         </TouchableOpacity>
                       </View>
                     </>
                   )}
 
-                  {!!error && <Text style={[s.msg, { color: theme.danger }]}>{error}</Text>}
+                  {!!error && <Text style={[s.msg, { color: theme.dangerText }]}>{error}</Text>}
                   {!!successMsg && <Text style={[s.msg, { color: theme.success }]}>{successMsg}</Text>}
 
                   <TouchableOpacity
-                    style={[s.btn, { backgroundColor: theme.primary }, loading && s.btnDisabled]}
+                    style={[s.btn, { backgroundColor: theme.action }, loading && s.btnDisabled]}
                     onPress={handleSubmit}
                     disabled={loading}
                     activeOpacity={0.85}
@@ -355,8 +356,8 @@ export default function AuthScreen() {
                     accessibilityState={{ disabled: loading, busy: loading }}
                   >
                     {loading
-                      ? <ActivityIndicator color="#fff" />
-                      : <Text style={s.btnText}>{mode === 'login' ? t('auth.login') : t('auth.createAccount')}</Text>
+                      ? <ActivityIndicator color={theme.onAction} />
+                      : <Text style={[s.btnText, { color: theme.onAction }]}>{mode === 'login' ? t('auth.login') : t('auth.createAccount')}</Text>
                     }
                   </TouchableOpacity>
 
@@ -367,21 +368,21 @@ export default function AuthScreen() {
                       activeOpacity={0.7}
                       accessibilityRole="link"
                     >
-                      <Text style={[s.forgotText, { color: theme.primary }]}>{t('auth.forgotPassword')}</Text>
+                      <Text style={[s.forgotText, { color: theme.link }]}>{t('auth.forgotPassword')}</Text>
                     </TouchableOpacity>
                   )}
 
                   {/* ── Social sign-in ── */}
                   <View style={s.dividerRow}>
                     <View style={[s.dividerLine, { backgroundColor: theme.border }]} />
-                    <Text style={[s.dividerText, { color: theme.textMuted }]}>{t('auth.orContinue')}</Text>
+                    <Text style={[s.dividerText, { color: theme.textSecondary }]}>{t('auth.orContinue')}</Text>
                     <View style={[s.dividerLine, { backgroundColor: theme.border }]} />
                   </View>
 
                   {Platform.OS === 'ios' && appleAvailable && (
                     socialLoading === 'apple' ? (
-                      <View style={[s.socialBtn, { backgroundColor: isDark ? '#fff' : '#000' }]}>
-                        <ActivityIndicator color={isDark ? '#000' : '#fff'} />
+                      <View style={[s.socialBtn, { backgroundColor: theme.appleButton }]}>
+                        <ActivityIndicator color={theme.onAppleButton} />
                       </View>
                     ) : (
                       <AppleAuthentication.AppleAuthenticationButton
@@ -428,10 +429,10 @@ export default function AuthScreen() {
                     accessibilityLabel={t('auth.guest')}
                   >
                     {socialLoading === 'guest'
-                      ? <ActivityIndicator color={theme.primary} />
-                      : <Text style={[s.guestText, { color: theme.primary }]}>{t('auth.guest')}</Text>}
+                      ? <ActivityIndicator color={theme.link} />
+                      : <Text style={[s.guestText, { color: theme.link }]}>{t('auth.guest')}</Text>}
                   </TouchableOpacity>
-                  <Text style={[s.guestHint, { color: theme.textMuted }]}>
+                  <Text style={[s.guestHint, { color: theme.textSecondary }]}>
                     {t('auth.guestHint')}
                   </Text>
                 </>
@@ -440,17 +441,17 @@ export default function AuthScreen() {
           </View>
 
           {(mode === 'login' || mode === 'register') && (
-            <Text style={[s.footer, { color: theme.textMuted }]}>
+            <Text style={[s.footer, { color: theme.textSecondary }]}>
               {mode === 'login' ? t('auth.noAccount') : t('auth.haveAccount')}
-              <Text style={{ color: theme.primary }} onPress={() => switchMode(mode === 'login' ? 'register' : 'login')} accessibilityRole="link">
+              <Text style={{ color: theme.link }} onPress={() => switchMode(mode === 'login' ? 'register' : 'login')} accessibilityRole="link">
                 {mode === 'login' ? t('auth.registerLink') : t('auth.loginLink')}
               </Text>
             </Text>
           )}
 
           {(mode === 'forgot' || mode === 'reset') && (
-            <Text style={[s.footer, { color: theme.textMuted }]}>
-              <Text style={{ color: theme.primary }} onPress={() => switchMode('login')} accessibilityRole="link">
+            <Text style={[s.footer, { color: theme.textSecondary }]}>
+              <Text style={{ color: theme.link }} onPress={() => switchMode('login')} accessibilityRole="link">
                 {t('auth.backToLogin')}
               </Text>
             </Text>
@@ -473,7 +474,7 @@ const s = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: palette.light.shadow,
     shadowOpacity: 0.06,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -490,6 +491,8 @@ const s = StyleSheet.create({
     flex: 1,
     paddingVertical: 8,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
     alignItems: 'center',
   },
   tabText: { fontSize: 14, fontWeight: '600' },
@@ -528,7 +531,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   btnDisabled: { opacity: 0.7 },
-  btnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  btnText: { fontSize: 15, fontWeight: '700' },
   footer: { textAlign: 'center', marginTop: 24, fontSize: 14 },
   forgotBtn: { alignItems: 'center', marginTop: 10 },
   forgotText: { fontSize: 13 },
