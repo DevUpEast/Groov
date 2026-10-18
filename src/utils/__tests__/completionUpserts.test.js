@@ -124,3 +124,44 @@ describe('live completions (acceptance (c))', () => {
     expect(live.update({})).toEqual({});
   });
 });
+
+describe('C-06b round 2: pending upserts survive a kill', () => {
+  const { configurePendingUpserts, resendPendingUpserts, overlayPendingUpserts, __resetPendingUpsertsForTests, PENDING_UPSERTS_KEY } = require('../completionUpserts');
+  let disk;
+  const store = { load: async (k) => disk[k] ?? null, save: (k, v) => { disk[k] = JSON.parse(JSON.stringify(v)); } };
+  beforeEach(() => { disk = {}; __resetPendingUpsertsForTests(); configurePendingUpserts(store); });
+
+  it('a queued row is on disk at once and leaves it once sent', async () => {
+    const send = jest.fn(async () => true);
+    busyUntil = Date.now() + 1500;
+    queueUpsert(send, 'u1', DAY, 'w', 8, opts);
+    expect(disk[PENDING_UPSERTS_KEY]).toEqual({ [upsertKey(DAY, 'w')]: { userId: 'u1', day: DAY, habitId: 'w', count: 8 } });
+    flushMoment();
+    await Promise.resolve(); await Promise.resolve();
+    expect(send).toHaveBeenCalledWith('u1', DAY, 'w', 8);
+    expect(disk[PENDING_UPSERTS_KEY]).toEqual({});
+  });
+
+  it('killed inside the moment: the next launch sends the row before the pull, for this user only', async () => {
+    busyUntil = Date.now() + 1500;
+    queueUpsert(jest.fn(), 'u1', DAY, 'w', 8, opts);
+    queueUpsert(jest.fn(), 'u2', DAY, 'x', 3, opts);
+    // The kill: the moment never ends, the process goes. A fresh module state on launch.
+    __resetPendingUpsertsForTests();
+    __resetAfterMomentForTests();
+    configurePendingUpserts(store);
+    const send = jest.fn(async () => true);
+    const left = await resendPendingUpserts(send, 'u1');
+    expect(send.mock.calls).toEqual([['u1', DAY, 'w', 8]]);
+    expect(left).toEqual([]);
+    expect(disk[PENDING_UPSERTS_KEY]).toEqual({});
+  });
+
+  it('a row that still fails stays on disk and is laid over the pulled completions', async () => {
+    disk[PENDING_UPSERTS_KEY] = { [upsertKey(DAY, 'w')]: { userId: 'u1', day: DAY, habitId: 'w', count: 8 } };
+    const left = await resendPendingUpserts(async () => false, 'u1');
+    expect(left).toHaveLength(1);
+    expect(Object.keys(disk[PENDING_UPSERTS_KEY])).toEqual([upsertKey(DAY, 'w')]);
+    expect(overlayPendingUpserts({ [DAY]: { w: 7, r: 1 } }, left)).toEqual({ [DAY]: { w: 8, r: 1 } });
+  });
+});

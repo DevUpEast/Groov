@@ -136,6 +136,7 @@
       "habits": "habits",
       "a11y": "%{completed} of %{total} habits done today",
       "progress": "%{completed} of %{total} done · %{remaining} to go",
+      "progressAll": "%{completed} of %{total} done",
       "complete": "Day complete · %{count}-day streak",
       "completeNoStreak": "Day complete",
       "rest": "Rest day · %{count}-day streak holds",

@@ -11,7 +11,9 @@
 //   a change with no beat (a sync pull, the widget, the choreography flag off) tweens, or with
 //   `onlyOnBeat` jumps, which is the immediate state;
 // - `from(prev, next)`: a start value for a change (the check draw restarts from 0);
-// - `anticipate(item, current)`: see the subscription below (the check draw);
+// - `anticipate(item, current)`: start a run from the beat itself, before its render (the
+//   ring's gold sweep at +750); provisional until a render confirms it, else reconciled;
+// - `fromCommit`: a fired beat's run starts at the commit over its full length (the card);
 // - `log` (a name, or a function of the target): in __DEV__ (or with the frameLog dev flag) an Animated listener records the first
 //   and last frame of each beat-driven run and writes them to the Feedback log against the
 //   beat's planned window (acceptance a).
@@ -62,18 +64,23 @@ export default function useTween(target, opts = {}) {
   const {
     beat: match = null, onlyOnBeat = false, duration: ms = durations.value,
     easing = easings.standard, useNativeDriver = false, from = null, log = null, anticipate = null,
+    fromCommit = false,
   } = opts;
   const reduced = useReducedMotion();
   const value = useRef(null);
   if (!value.current) value.current = new Animated.Value(target);
-  const last = useRef(target);
+  const last = useRef(target); // the target the value is at or heading to
+  const latest = useRef(target); // the prop as last rendered
+  latest.current = target;
   const prev = useRef(target);
   const waiting = useRef(false);
+  const provisional = useRef(null); // an anticipated target no render has confirmed yet
+  const reconcileTimer = useRef(null);
   const anim = useRef(null);
   const cfg = useRef(opts);
-  cfg.current = { ms, easing, useNativeDriver, from, log, onlyOnBeat, reduced, anticipate };
+  cfg.current = { ms, easing, useNativeDriver, from, log, onlyOnBeat, reduced, anticipate, fromCommit };
 
-  const run = (item) => {
+  const run = (item, { full = false } = {}) => {
     const c = cfg.current;
     const v = value.current;
     anim.current?.stop();
@@ -81,7 +88,7 @@ export default function useTween(target, opts = {}) {
     waiting.current = false;
     const to = last.current;
     if (!item && c.onlyOnBeat) { v.setValue(to); return; }
-    const length = item ? rideLength(item) : (c.reduced ? reducedDuration(c.ms) : c.ms);
+    const length = item ? (full ? item.duration : rideLength(item)) : (c.reduced ? reducedDuration(c.ms) : c.ms);
     if (length < FRAME_MS) { v.setValue(to); return; }
     const start = c.from ? c.from(prev.current, to) : null;
     if (start != null) v.setValue(start);
@@ -96,15 +103,36 @@ export default function useTween(target, opts = {}) {
     a.start(({ finished }) => { done?.(finished); if (anim.current === a) anim.current = null; });
   };
 
+  // An anticipated target that no render confirmed (round 1 B1: the day broke before the
+  // resolution beat, so `complete` never changed): go back to the real target.
+  const reconcile = () => {
+    reconcileTimer.current = null;
+    if (provisional.current == null) return;
+    provisional.current = null;
+    if (Object.is(last.current, latest.current)) return;
+    prev.current = last.current;
+    last.current = latest.current;
+    const hit = findBeat(match);
+    if (hit && hit.status === 'pending') { waiting.current = true; return; }
+    run(null);
+  };
+
   // A change of target: wait for a pending beat, ride a fired one, or (no moment) tween/jump.
-  // A layout effect, so a jump is in place before the frame paints.
+  // A layout effect, so a jump is in place before the frame paints. With `fromCommit` a fired
+  // beat's run starts here, at the commit, over its full length (the card's confirm: the
+  // tap's render takes ~100 ms, which would otherwise eat most of the 200 ms draw).
   useLayoutEffect(() => {
+    if (provisional.current != null && Object.is(provisional.current, target)) {
+      provisional.current = null; // the render caught up with the anticipated run
+      return;
+    }
     if (Object.is(last.current, target)) return;
+    provisional.current = null;
     prev.current = last.current;
     last.current = target;
     const hit = findBeat(match);
     if (hit && hit.status === 'pending') { waiting.current = true; return; }
-    run(hit ? hit.item : null);
+    run(hit ? hit.item : null, { full: !!(hit && cfg.current.fromCommit) });
   }, [target]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const matchKey = keyOf(match);
@@ -113,14 +141,18 @@ export default function useTween(target, opts = {}) {
     return subscribeBeats(({ type, item }) => {
       if (!matchesBeat(item, match)) return;
       if (!waiting.current) {
-        // A beat at 0 fires inside the tap handler, before React renders the change. With
-        // `anticipate(item, current)` the caller names the target it brings, so a native-driven
-        // run starts now instead of after the render (~100 ms on a release build here).
+        // A beat fires in a timer or the tap handler, before React renders the change it
+        // brings. With `anticipate(item, current)` the caller names that target, so the run
+        // starts now instead of after the render. The target stays provisional until a render
+        // confirms it; if none has by the end of the beat, the value goes back (reconcile).
         const to = type === 'fire' && cfg.current.anticipate ? cfg.current.anticipate(item, last.current) : null;
         if (to == null || Object.is(to, last.current)) return;
         prev.current = last.current;
         last.current = to;
+        provisional.current = to;
         run(item);
+        clearTimeout(reconcileTimer.current);
+        reconcileTimer.current = setTimeout(reconcile, rideLength(item) + FRAME_MS);
         return;
       }
       if (type === 'fire') { run(item); return; }
@@ -130,7 +162,7 @@ export default function useTween(target, opts = {}) {
     });
   }, [matchKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => () => { anim.current?.stop(); }, []);
+  useEffect(() => () => { anim.current?.stop(); clearTimeout(reconcileTimer.current); }, []);
   return value.current;
 }
 

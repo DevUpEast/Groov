@@ -136,6 +136,7 @@
       "habits": "habitudes",
       "a11y": "%{completed} habitudes sur %{total} accomplies aujourd'hui",
       "progress": "%{completed} sur %{total} faites · encore %{remaining}",
+      "progressAll": "%{completed} sur %{total} faites",
       "complete": "Journée bouclée · série de %{count} jours",
       "completeNoStreak": "Journée bouclée",
       "rest": "Jour de repos · ta série de %{count} jours tient",

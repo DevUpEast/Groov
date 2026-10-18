@@ -16,19 +16,19 @@ import Svg, { Path } from 'react-native-svg';
  *   draw could not paint its first frames. Without `progress` the ✓ is static.
  */
 export const CHECK_PATH = 'M3.5 8.5l3 3 6-7';
-// Where the stroke starts, as a share of the box: the left end (3.5) less the round cap
-// (strokeWidth / 2), so the sweep begins at the first painted pixel.
-const DRAW_FROM = 2.3 / 16;
+// Where the stroke starts, as a share of the box: the left end (x 3.5 of 16) less the round
+// cap (strokeWidth / 2), so the sweep begins at the first painted pixel whatever the stroke.
+const drawFrom = (strokeWidth) => Math.max(0, 3.5 - strokeWidth / 2) / 16;
 
 export default function CheckMark({ color, size = 16, strokeWidth = 2.4, testID, progress }) {
   const sweep = useMemo(() => {
     if (!progress) return null;
-    const span = (1 - DRAW_FROM) * size;
+    const span = (1 - drawFrom(strokeWidth)) * size;
     return {
       window: { transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [-span, 0], extrapolate: 'clamp' }) }] },
       content: { transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [span, 0], extrapolate: 'clamp' }) }] },
     };
-  }, [progress, size]);
+  }, [progress, size, strokeWidth]);
   const glyph = (
     <Svg width={size} height={size} viewBox="0 0 16 16" testID={testID} accessible={false}>
       <Path d={CHECK_PATH} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />

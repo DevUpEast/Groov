@@ -282,6 +282,8 @@ export async function syncCompletion(userId, date, habitId, count) {
   const { error } = await supabase.from('completions')
     .upsert({ user_id: userId, date, habit_id: habitId, count: Math.max(0, count) });
   if (error) syncWarn('syncCompletion:', error.message);
+  // completionUpserts keeps the row for the next launch when this is false.
+  return !error;
 }
 
 export async function syncMood(userId, date, mood) {

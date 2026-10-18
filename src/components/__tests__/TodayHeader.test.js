@@ -95,13 +95,13 @@ describe('TodayHeader strip', () => {
   it('complete: a full gold arc stacked on the green one, with a check and "4 of 4"', () => {
     const r = render({ state: 'complete', completed: 4, total: 4, streak: 12 });
     const cs = circles(r);
-    // C-06b: green and gold are two arcs cross-faded by opacity, never a colour tween.
+    // C-06b: the gold arc is swept over the green one (its own dash), never a colour tween
+    // or an opacity cross-fade; at rest the green arc under it is hidden.
     expect(cs[1].props.stroke).toBe(theme.success);
     expect(cs[2].props.stroke).toBe(theme.signature);
     expect(cs[2].props.strokeDashoffset).toBeCloseTo(0);
-    const opacityOf = (c) => { let n = c.parent; while (n && !(n.props && n.props.style && [].concat(n.props.style).some(x => x && x.opacity !== undefined))) n = n.parent; return Object.assign({}, ...[].concat(n.props.style).flat(Infinity).filter(Boolean)).opacity; };
-    expect(opacityOf(cs[2])).toBe(1);
-    expect(opacityOf(cs[1])).toBe(0);
+    expect(cs[2].props.strokeOpacity).toBe(1);
+    expect(cs[1].props.strokeOpacity).toBe(0);
     expect(r.root.findAll(n => n.type === 'Path')).toHaveLength(1);
     expect(texts(r)).toEqual(expect.arrayContaining(['4 of 4', 'Day complete · 12-day streak']));
   });

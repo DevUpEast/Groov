@@ -136,6 +136,7 @@
       "habits": "hábitos",
       "a11y": "%{completed} de %{total} hábitos concluídos hoje",
       "progress": "%{completed} de %{total} feitos · faltam %{remaining}",
+      "progressAll": "%{completed} de %{total} feitos",
       "complete": "Dia completo · sequência de %{count} dias",
       "completeNoStreak": "Dia completo",
       "rest": "Dia de descanso · sua sequência de %{count} dias continua",

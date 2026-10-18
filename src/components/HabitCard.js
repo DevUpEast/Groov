@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useReducer, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { completionsInWeek, describeSchedule } from '../utils/schedule';
@@ -19,51 +19,51 @@ import { space, radius, size } from '../theme/tokens';
 import { FLAGS } from '../utils/flags';
 import RollingNumber from './ui/RollingNumber';
 import useTween from '../hooks/useTween';
-import { findBeat, matchesBeat, rideLength, subscribeBeats } from '../utils/beatBus';
-import { duration as durations, easing as easings, useMotion } from '../theme/motion';
+import { findBeat, matchesBeat, subscribeBeats } from '../utils/beatBus';
+import { amount, duration as durations, easing as easings, useMotion } from '../theme/motion';
 
 // C-06b (plan §4.1): the card's part of the check-off moment, on the beats useCheckoffMoment
 // emits (src/utils/beatBus.js). Outside a moment (a sync pull, the widget, the choreography
 // flag off) every change shows at once.
 // - confirm (0): the ✓ draws in over 200 ms (emphasizedDecel) and the previous look (the open
 //   card and ring, or on an un-check the tinted card and filled disc) fades out over the new
-//   one, so the accent fill and the opaque tint fade in by opacity, never by a colour tween;
-// - count (0) / confirm: the counter's number rolls;
+//   one, so the accent fill and the opaque tint fade in by opacity, never by a colour tween.
+//   Both start at the commit of the new done state, over their full length (round 1 M2: on
+//   the beat clock the ~100 ms tap render ate them, and no partial frame ever painted);
+// - count (0) / confirm of this habit: the counter's number rolls;
 // - habitStreak (375): the sub-line with the streak pulses 1 -> 1.06 -> 1 over 200 ms.
-// Reduced motion: the ✓ appears with the 150 ms fade, the number cross-fades in place and the
-// streak flashes (opacity) instead of scaling.
+// Reduced motion: the ✓ appears under the 150 ms fade, the number cross-fades in place and
+// the streak gets a signature-colour flash instead of a scale (§4.3).
 const confirmMatch = (habitId) => ({ beat: 'confirm', habitId });
-const countMatch = (habitId) => ({ beat: ['count', 'confirm'], habitId });
-const STREAK_PULSE = 1.06;
-const STREAK_FLASH = 0.55;
+const ownBeat = (item, habitId) => item.habitId === habitId;
 
-// The previous done look while it fades out over the new one: { from: wasDone | null, opacity }.
+// The previous done look while it fades out over the new one: { from: { done } | null,
+// opacity }. Decided in render, so the frame that commits the new state already carries the
+// old look on top at full opacity (round 1 S5: no frame of "Done" before the ✓).
 function useDoneFade(done, habitId) {
-  const [from, setFrom] = useState(null);
+  const [, force] = useReducer((x) => x + 1, 0);
   const opacity = useRef(new Animated.Value(0)).current;
-  const last = useRef(done);
-  const start = (was, ms) => {
-    opacity.setValue(1);
-    setFrom({ done: was });
-    Animated.timing(opacity, { toValue: 0, duration: ms, easing: easings.standard, useNativeDriver: true })
-      .start(({ finished }) => { if (finished) setFrom(null); });
-  };
-  // The confirm beat for this card fires inside the tap handler, before the render: start the
-  // fade there (the state update joins the tap's render), so it is not ~100 ms late.
-  useEffect(() => subscribeBeats(({ type, item }) => {
-    if (type !== 'fire' || item.beat !== 'confirm' || item.habitId !== habitId) return;
-    const was = last.current;
-    last.current = !was;
-    start(was, rideLength(item));
-  }), [habitId]); // eslint-disable-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => {
-    if (last.current === done) return;
-    const was = last.current;
-    last.current = done;
+  const committed = useRef(done);
+  const fading = useRef(null);
+  let from = fading.current;
+  if (done !== committed.current) {
     const hit = findBeat(confirmMatch(habitId));
-    const ms = hit ? (hit.status === 'fired' ? rideLength(hit.item) : hit.item.duration) : 0;
-    if (ms < FRAME_MS) { setFrom(null); return; }
-    start(was, ms);
+    if (hit) {
+      from = { done: committed.current };
+      opacity.setValue(1);
+    } else {
+      from = null;
+    }
+  }
+  useLayoutEffect(() => {
+    if (committed.current === done) return;
+    const was = committed.current;
+    committed.current = done;
+    const hit = findBeat(confirmMatch(habitId));
+    if (!hit || hit.item.duration < FRAME_MS) { fading.current = null; opacity.setValue(0); return; }
+    fading.current = { done: was };
+    Animated.timing(opacity, { toValue: 0, duration: hit.item.duration, easing: easings.standard, useNativeDriver: true })
+      .start(({ finished }) => { if (finished) { fading.current = null; force(); } });
   }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
   return { from, opacity };
 }
@@ -122,26 +122,25 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   // C-06b motion (see the top of the file).
   const m = useMotion();
   const fade = useDoneFade(done, habit.id);
-  const doneRef = useRef(done);
-  doneRef.current = done;
-  // Native driver, started from the confirm beat itself (anticipate): the tap's render costs
-  // ~100 ms of JS on a release build, and a JS-driven draw could not paint a frame before it.
+  // Native driver, started at the commit over the full 200 ms (fromCommit, round 1 M2).
   const draw = useTween(m.reduced || done ? 1 : 0, {
-    beat: confirmMatch(habit.id), onlyOnBeat: true, easing: easings.emphasizedDecel, useNativeDriver: true,
+    beat: confirmMatch(habit.id), onlyOnBeat: true, fromCommit: true, easing: easings.emphasizedDecel, useNativeDriver: true,
     from: (_prev, next) => (next === 1 ? 0 : null), log: (to) => (to === 1 ? 'check' : null),
-    anticipate: (item) => (item.habitId === habit.id && !doneRef.current && !m.reduced ? 1 : null),
   });
-  const countHit = findBeat(countMatch(habit.id));
-  const countRoll = { roll: !!countHit, duration: countHit ? countHit.item.duration : durations.state };
+  // A roll only for this habit's own count or confirm beat (not Mark the rest's, round 1 n3).
+  const countHit = findBeat({ beat: ['count', 'confirm'], habitId: habit.id });
+  const rolls = !!countHit && ownBeat(countHit.item, habit.id);
+  const countRoll = { roll: rolls, duration: rolls ? countHit.item.duration : durations.state };
   const streakPulse = useRef(new Animated.Value(1)).current;
-  const streakFlash = useRef(new Animated.Value(1)).current;
+  const streakFlash = useRef(new Animated.Value(0)).current;
   useEffect(() => subscribeBeats(({ type, item }) => {
     if (type !== 'fire' || !matchesBeat(item, { beat: 'habitStreak', habitId: habit.id })) return;
     const half = item.duration / 2;
-    const [v, peak] = m.reduced ? [streakFlash, STREAK_FLASH] : [streakPulse, STREAK_PULSE];
+    // Reduced motion: a signature-colour wash behind the sub-line, like the streak chip (m2).
+    const [v, peak, rest] = m.reduced ? [streakFlash, 1, 0] : [streakPulse, amount.streakPulse, 1];
     Animated.sequence([
       m.timing(v, { toValue: peak, duration: half }),
-      m.timing(v, { toValue: 1, duration: half }),
+      m.timing(v, { toValue: rest, duration: half }),
     ]).start();
   }), [habit.id, m]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -269,7 +268,10 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           {/* Always rendered (schedule fallback). Counter and timer cards have a narrow info
               column beside 3 or 4 controls, so their sub-line may wrap to a second line rather
               than cut the streak off (code review m2). */}
-          <Animated.Text style={[styles.sub, { color: theme.textSecondary, opacity: streakFlash, transform: [{ scale: streakPulse }], transformOrigin: 'left center' }]} numberOfLines={isVolume ? 2 : 1}>{subLine}</Animated.Text>
+          <View>
+            <Animated.View pointerEvents="none" style={[styles.subFlash, { backgroundColor: theme.signatureTint, opacity: streakFlash }]} />
+            <Animated.Text style={[styles.sub, { color: theme.textSecondary, transform: [{ scale: streakPulse }], transformOrigin: 'left center' }]} numberOfLines={isVolume ? 2 : 1}>{subLine}</Animated.Text>
+          </View>
         </View>
 
         {donePill ? (
@@ -352,7 +354,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
                 done && { backgroundColor: accent.fill },
               ]}
             >
-              {done ? <CheckMark color={accent.onFill} progress={draw} /> : null}
+              {/* The previous look fades out under the ✓, which draws on top (round 1 m1). */}
               {fade.from ? (
                 <Animated.View
                   pointerEvents="none"
@@ -361,6 +363,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
                   {fade.from.done ? <CheckMark color={accent.onFill} /> : null}
                 </Animated.View>
               ) : null}
+              {done ? <CheckMark color={accent.onFill} progress={draw} /> : null}
             </View>
           </View>
         )}
@@ -414,6 +417,7 @@ const styles = StyleSheet.create({
   sub: { ...type.footnote, marginTop: 2, ...numeric },
   slot: { width: size.trailingSlot, alignItems: 'center', justifyContent: 'center' },
   // C-06b fade layers: they cover the border too (the card clips them to its rounded box).
+  subFlash: { position: 'absolute', top: 1, bottom: -1, left: -space.xxs, right: 0, borderRadius: radius.cell },
   fadeLayer: { position: 'absolute', top: -1, left: -1, right: -1, bottom: -1, borderRadius: radius.card, borderWidth: 1 },
   discFade: {
     position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: radius.pill, borderWidth: 2,

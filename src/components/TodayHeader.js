@@ -9,7 +9,7 @@ import AppText from './ui/AppText';
 import CheckMark from './ui/CheckMark';
 import RollingNumber from './ui/RollingNumber';
 import useTween, { useBeatValue } from '../hooks/useTween';
-import { useMotion } from '../theme/motion';
+import { useMotion, amount } from '../theme/motion';
 import { space, radius, size, elevation } from '../theme/tokens';
 import { type, numeric } from '../theme/typography';
 import { t, useLocale } from '../i18n';
@@ -56,11 +56,6 @@ function Greeting({ greeting, name, theme }) {
 const CHIP_H = 24;
 // (48 - 24) / 2: the vertical hitSlop that grows a chip to the 48 dp touch minimum.
 const SLOP = 12;
-// C-06b motion amounts (§4.1): the flame pulse at the streak tick, the reduced-motion colour
-// flash (signature over the chip tint), and the scale a claimed challenge chip springs from.
-const PULSE_FLAME = 1.12;
-const FLASH_OPACITY = 0.35;
-const POP_FROM = 0.8;
 
 // The streak (C-05): a gold Ionicons flame and the count in the system face at 600 with
 // tabular figures (< 24 pt, F-03). `frozen`: a freeze covered yesterday, so it holds the
@@ -88,13 +83,13 @@ export function StreakChip({ streak, frozen = false, theme, style, onPress, tick
       return;
     }
     Animated.sequence([
-      m.timing(pulse, { toValue: PULSE_FLAME, duration: m.duration.press, easing: m.easing.emphasizedDecel }),
+      m.timing(pulse, { toValue: amount.flamePulse, duration: m.duration.press, easing: m.easing.emphasizedDecel }),
       m.springTo(pulse, m.spring.snappy, { toValue: 1 }),
     ]).start();
   }, [streak]); // eslint-disable-line react-hooks/exhaustive-deps
   const body = (
     <>
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, { backgroundColor: theme.signature, opacity: flash.interpolate({ inputRange: [0, 1], outputRange: [0, FLASH_OPACITY] }) }]} />
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, { backgroundColor: theme.signature, opacity: flash.interpolate({ inputRange: [0, 1], outputRange: [0, amount.flashOpacity] }) }]} />
       <Animated.View style={{ transform: [{ scale: pulse }] }}>
         <Ionicons name="flame" size={15} color={theme.signature} />
       </Animated.View>
@@ -162,7 +157,7 @@ export function ChallengeChip({ name, day, days, done, theme, onPress, pop = nul
       m.timing(mark, { toValue: 1, duration: m.duration.reduced }).start();
       return;
     }
-    scale.setValue(POP_FROM);
+    scale.setValue(amount.chipPopFrom);
     m.springTo(scale, m.spring.snappy, { toValue: 1 }).start();
   }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -232,11 +227,42 @@ export function slotChallenge(list) {
 // Touch targets: a chip's 12 pt hitSlop is clipped to its parent on Android, so each row is
 // padded to the slop and pulled back with a negative margin (no layout change). The two
 // stacked rows sit 4 pt apart and split that gap, so their touch zones never overlap.
+// A chip that arrives on a beat (the streak chip at +875 on the first day of a streak) grows
+// in from zero width instead of shoving its neighbour across in one frame (C-06b round 1 S1).
+// It measures its child off-layout, then widens over duration.state (JS driver: a width).
+// `active` is read once, at mount; reduced motion shows it at once.
+function GrowIn({ active, children }) {
+  const m = useMotion();
+  const [growing, setGrowing] = useState(() => !!active && !m.reduced);
+  const [box, setBox] = useState(null);
+  const width = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!growing || !box) return undefined;
+    const a = Animated.timing(width, { toValue: box.w, duration: m.duration.state, easing: m.easing.emphasizedDecel, useNativeDriver: false });
+    a.start(({ finished }) => { if (finished) setGrowing(false); });
+    return () => a.stop();
+  }, [growing, box]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!growing) return children;
+  return (
+    <Animated.View style={[styles.growBox, { width, height: box ? box.h : CHIP_H }]}>
+      <View style={styles.growMeasure} onLayout={e => { const { width: w, height: h } = e.nativeEvent.layout; if (!box) setBox({ w, h }); }}>
+        {children}
+      </View>
+    </Animated.View>
+  );
+}
+
 function BeatsAndChips({ beats, streak, frozen, challenges, theme, onStreakPress, onChallengePress, streakTick = null, chipsBeat = null }) {
   const list = challenges || [];
   const stacked = list.length >= 2;
   let streakItem = null;
-  if (streak > 0) streakItem = <StreakChip key="streak" streak={streak} frozen={frozen} theme={theme} onPress={onStreakPress} tick={streakTick} />;
+  if (streak > 0) {
+    streakItem = (
+      <GrowIn key="streak" active={!!streakTick}>
+        <StreakChip streak={streak} frozen={frozen} theme={theme} onPress={onStreakPress} tick={streakTick} />
+      </GrowIn>
+    );
+  }
   else if (list.length === 0) streakItem = <StreakStartChip key="start" theme={theme} onPress={onStreakPress} />;
   const slot = slotChallenge(list);
   const first = slot
@@ -295,34 +321,51 @@ function BeatRow({ beats, theme, inline = false }) {
   );
 }
 
-// The ring in each state. `state`: 'progress' | 'complete' | 'rest'. Empty progress (0 done)
+/// The ring in each state. `state`: 'progress' | 'complete' | 'rest'. Empty progress (0 done)
 // draws the dashed brandInk track, so no state relies on the decorative brandTrack.
 // `bare`: the 28 pt sticky ring, which has no room for a count or glyph.
 // C-06b (§4.1): the props are the held values of useHeaderMoment, so they change on the beat.
-// The green arc tweens on the progress beat (+125, 300 ms); the gold arc is stacked on it and
-// cross-fades in by opacity on the resolution beat (+750, 200 ms), when the count gives way to
-// a ✓ that draws in; an un-check fades the gold back out on the progress beat. `roll`: the
-// beat that changed the count (it rolls).
+// - The green arc tweens on the progress beat (+125, 300 ms).
+// - On the resolution beat (+750) a gold arc sweeps clockwise over it (200 ms,
+//   emphasizedDecel), the numeral fades out and a ✓ draws in. No green/gold cross-fade:
+//   pixels go from green to gold at the sweep edge, never through olive (round 1 M1).
+// - Leaving complete (an un-check) is a cut: gold, ✓, numeral and caption switch in the one
+//   frame with the line, and only the arc tweens back (round 1 M3).
+// - Reduced motion: the gold arc cuts in one frame; only the numeral and ✓ fade (150 ms).
+// `roll`: the beat that changed the count (it rolls). `liveComplete`: the live (not held)
+// state is complete; the gold sweep is started from the resolution beat only then (round 1
+// B1: a step that broke the day inside the window must not leave the ring gold).
 const PROGRESS_BEAT = Object.freeze({ beat: 'progress' });
 const RESOLUTION_BEAT = Object.freeze({ beat: 'resolution' });
-const GOLD_BEATS = Object.freeze({ beat: ['resolution', 'progress'] });
 const STREAK_BEAT = Object.freeze({ beat: 'streakTick' });
 const LINKED_BEAT = Object.freeze({ beat: 'linkedReward' });
 
-export function TodayRing({ state, completed, total, theme, ringSize, stroke, caption = true, bare = false, roll = null }) {
+export function TodayRing({ state, completed, total, theme, ringSize, stroke, caption = true, bare = false, roll = null, liveComplete = null }) {
   const m = useMotion();
   const dashed = state === 'rest' || (state === 'progress' && completed === 0);
   const complete = state === 'complete';
-  // Both start from the resolution beat itself (anticipate), before the re-render it causes
-  // (the held state, the confetti), so the native fade lands on +750 instead of after it.
-  const toGold = (item) => (item.beat === 'resolution' ? 1 : null);
-  const gold = useTween(complete ? 1 : 0, { beat: GOLD_BEATS, onlyOnBeat: true, useNativeDriver: true, log: bare ? null : 'gold', anticipate: toGold });
-  // The ✓ draws in on the resolution beat; under reduced motion it fades with the gold arc.
-  const draw = useTween(m.reduced || complete ? 1 : 0, {
-    beat: GOLD_BEATS, onlyOnBeat: true, useNativeDriver: true, easing: m.easing.emphasizedDecel, log: bare ? null : 'ringCheck', anticipate: m.reduced ? null : toGold, from: (_p, next) => (next === 1 ? 0 : null),
+  const live = useRef(liveComplete);
+  live.current = liveComplete == null ? complete : liveComplete;
+  // Started from the resolution beat itself (anticipate), before the re-render it causes (the
+  // held state), so they land on +750; provisional until that render confirms them.
+  const toComplete = (item) => (item.beat === 'resolution' && live.current ? 1 : null);
+  const sweep = useTween(complete ? 1 : 0, m.reduced ? { onlyOnBeat: true } : {
+    beat: RESOLUTION_BEAT, onlyOnBeat: true, easing: m.easing.emphasizedDecel, log: bare ? null : 'gold', anticipate: toComplete,
   });
-  const countFade = useMemo(() => gold.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }), [gold]);
-  const ringProps = { size: ringSize, strokeWidth: stroke, color: theme.success, completeColor: theme.signature, completeOpacity: gold };
+  // The numeral / ✓ swap (native): a fade on the resolution beat (150 ms reduced), a cut back.
+  const swap = useTween(complete ? 1 : 0, {
+    beat: RESOLUTION_BEAT, onlyOnBeat: true, useNativeDriver: true, log: bare ? null : 'ringCheck', anticipate: toComplete,
+  });
+  // The ✓ draws in (full motion); under reduced motion it only fades with `swap`.
+  const draw = useTween(m.reduced || complete ? 1 : 0, {
+    beat: RESOLUTION_BEAT, onlyOnBeat: true, useNativeDriver: true, easing: m.easing.emphasizedDecel,
+    anticipate: m.reduced ? null : toComplete, from: (_p, next) => (next === 1 ? 0 : null),
+  });
+  const fades = useMemo(() => ({
+    numeral: swap.interpolate({ inputRange: [0, amount.numeralOutBy], outputRange: [1, 0], extrapolate: 'clamp' }),
+    check: swap.interpolate({ inputRange: [0, amount.checkInFrom], outputRange: [0, 1], extrapolate: 'clamp' }),
+  }), [swap]);
+  const ringProps = { size: ringSize, strokeWidth: stroke, color: theme.success, completeColor: theme.signature, completeProgress: sweep };
   const tween = { beat: PROGRESS_BEAT, onlyOnBeat: true, log: bare ? null : 'ring' };
   if (state === 'rest') {
     return (
@@ -338,11 +381,11 @@ export function TodayRing({ state, completed, total, theme, ringSize, stroke, ca
       />
     );
   }
-  // Progress and complete share one centre: the count and the ✓ stacked, cross-faded with the
-  // gold arc, so the change never re-mounts the label mid-moment.
+  // Progress and complete share one centre: the count and the ✓ stacked and swapped by
+  // opacity, so the change never re-mounts the label mid-moment.
   const center = bare ? <View /> : (
     <View style={styles.ringCenter}>
-      <Animated.View style={{ opacity: countFade }}>
+      <Animated.View style={{ opacity: fades.numeral }}>
         <RollingNumber
           value={`${completed}/${total}`}
           roll={!!roll}
@@ -355,7 +398,7 @@ export function TodayRing({ state, completed, total, theme, ringSize, stroke, ca
           style={{ color: theme.text, maxWidth: ringSize - stroke * 2 - 8, textAlign: 'center' }}
         />
       </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.ringCheck, { opacity: gold }]} pointerEvents="none">
+      <Animated.View style={[StyleSheet.absoluteFill, styles.ringCheck, { opacity: fades.check }]} pointerEvents="none">
         <CheckMark color={theme.signature} size={RING_CHECK} strokeWidth={RING_CHECK_STROKE} progress={draw} />
       </Animated.View>
     </View>
@@ -383,6 +426,9 @@ export function dayLine({ state, completed, total, streak }) {
   if (state === 'rest') return streak > 0 ? t('today.ring.rest', { count: streak }) : t('today.restDay.title');
   // Nothing done yet: the first-run nudge (plan §1.2 8b) instead of "0 of 4 done".
   if (completed === 0) return t('today.ring.empty');
+  // Every habit counted but the day not yet resolved (125-750 ms of a completing check, C-06b
+  // round 1 M3): "5 of 5 done", never "0 to go".
+  if (total > 0 && completed >= total) return t('today.ring.progressAll', { completed, total });
   return t('today.ring.progress', { completed, total, remaining: Math.max(0, total - completed) });
 }
 
@@ -393,32 +439,39 @@ const chipsKey = (list) => (list || []).map(c => `${c.id}:${c.name}:${c.day}:${c
 const sameChips = (a, b) => a === b || chipsKey(a) === chipsKey(b);
 
 /**
- * C-06b: what the strip shows during a check-off moment (§4.1). Each value is the live prop,
- * held until its beat when a moment is running (src/hooks/useTween.js `useBeatValue`):
- * - the count and the ring arc at +125 (progress), the beat-row mark at +425 (the end of the
- *   progress tween);
+ * C-06b: what the strip shows during a check-off moment (§4.1). Moving forward, each value is
+ * held until its beat (src/hooks/useTween.js `useBeatValue`):
+ * - the count, the arc and the progress line at +125 (progress); the beat-row mark at +425;
  * - the challenge chips at +250 (linkedReward), where the claimed chip springs;
- * - the complete state (gold ring, ✓, "Day complete" line) at +750 (resolution); leaving it
- *   (an un-check) happens on the progress beat;
+ * - the complete state (gold sweep, ✓, caption, "Day complete" line) at +750 (resolution);
  * - the streak chip at +875 (streakTick), where its number rolls and the flame pulses.
+ * Moving back (an un-check, a limit broken, a pull that lowers the count) nothing is held:
+ * the centre, caption, line and chips switch in the one frame and only the arc tweens (round 1
+ * M3). The line is derived from the shown state and count, so it never contradicts the ring.
  * Outside a moment (a sync pull, the choreography flag off) every value is live.
  * Screen-reader labels always use the live values.
  */
 export function useHeaderMoment({ state, completed, total, streak, beats, challenges }) {
-  const stateMatch = state === 'complete' ? RESOLUTION_BEAT : PROGRESS_BEAT;
-  const shownState = useBeatValue(state, stateMatch);
-  const count = useBeatValue({ completed, total }, PROGRESS_BEAT, { isEqual: sameCount });
-  const line = useBeatValue(state ? dayLine({ state, completed, total, streak }) : null, stateMatch);
-  const shownStreak = useBeatValue(streak, STREAK_BEAT);
-  const shownBeats = useBeatValue(beats, PROGRESS_BEAT, { isEqual: sameBeats, release: 'end' });
+  const was = useRef(null);
+  const prev = was.current || { state, completed, total, streak };
+  // Back, or a different day size: shown at once.
+  const back = completed < prev.completed || total !== prev.total || (prev.state === 'complete' && state !== 'complete');
+  const shownState = useBeatValue(state, state === 'complete' && !back ? RESOLUTION_BEAT : null);
+  const count = useBeatValue({ completed, total }, back ? null : PROGRESS_BEAT, { isEqual: sameCount });
+  const shownStreak = useBeatValue(streak, streak < prev.streak ? null : STREAK_BEAT);
+  const shownBeats = useBeatValue(beats, back ? null : PROGRESS_BEAT, { isEqual: sameBeats, release: 'end' });
   const chips = useBeatValue(challenges, LINKED_BEAT, { isEqual: sameChips });
-  return {
+  const shown = {
     state: shownState.value,
     completed: count.value.completed,
     total: count.value.total,
-    countBeat: count.beat,
-    line: line.value,
     streak: shownStreak.value,
+  };
+  was.current = shown;
+  return {
+    ...shown,
+    countBeat: count.beat,
+    line: shown.state ? dayLine({ state: shown.state, completed: shown.completed, total: shown.total, streak }) : null,
     streakTick: shownStreak.beat,
     beats: shownBeats.value,
     challenges: chips.value,
@@ -459,7 +512,7 @@ export default function TodayHeader({
           <View accessible accessibilityRole="progressbar" accessibilityLabel={ringLabel}
             accessibilityValue={state === 'progress' || state === 'complete' ? { min: 0, max: total, now: completed } : undefined}
           >
-            <TodayRing state={shownState} completed={shown.completed} total={shown.total} theme={theme} ringSize={ringSize} stroke={stroke} caption={!compact} roll={shown.countBeat} />
+            <TodayRing state={shownState} completed={shown.completed} total={shown.total} theme={theme} ringSize={ringSize} stroke={stroke} caption={!compact} roll={shown.countBeat} liveComplete={state === 'complete'} />
           </View>
           <View style={styles.right}>
             {/* Short windows (SE) keep the line to one line (shrinking a little on native, then
@@ -504,7 +557,7 @@ export function TodayStickyBar({ theme, state, completed, total, greeting, strea
       accessibilityHint={t('today.sticky.hint')}
       style={[styles.sticky, { backgroundColor: theme.bg, borderBottomColor: theme.border }]}
     >
-      <TodayRing state={shownState} completed={shown.completed} total={shown.total} theme={theme} ringSize={size.ringCollapsed} stroke={4} bare />
+      <TodayRing state={shownState} completed={shown.completed} total={shown.total} theme={theme} ringSize={size.ringCollapsed} stroke={4} bare liveComplete={state === 'complete'} />
       {shownState !== 'rest' ? (
         <RollingNumber value={`${shown.completed}/${shown.total}`} roll={!!shown.countBeat} style={[styles.stickyCount, { color: theme.text }]} maxFontSizeMultiplier={1.3} />
       ) : null}
@@ -565,6 +618,8 @@ const styles = StyleSheet.create({
   stickyChip: { alignSelf: 'center' },
   flash: { borderRadius: radius.pill },
   popWrap: { flexDirection: 'row' },
+  growBox: { overflow: 'hidden', flexShrink: 0 },
+  growMeasure: { position: 'absolute', left: 0, top: 0, flexDirection: 'row' },
   ringCenter: { alignItems: 'center', justifyContent: 'center' },
   ringCheck: { alignItems: 'center', justifyContent: 'center' },
   stickyCount: { fontSize: 15, fontWeight: '600', ...numeric },

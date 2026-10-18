@@ -50,6 +50,18 @@ export const spring = {
   celebrate: { stiffness: 180, damping: 16, mass: 1 }, // ζ ≈ 0.6: celebration layer only
 };
 
+// How far the check-off moment's motions travel (plan §4.1, C-06b). Amounts, not times.
+export const amount = Object.freeze({
+  rollPx: 8, // a count rolls 8 px
+  rollOutBy: 0.5, // the outgoing digit is gone by half the roll
+  chipPopFrom: 0.8, // a claimed challenge chip springs in from 0.8
+  flamePulse: 1.12, // the streak chip's flame at the streak tick
+  streakPulse: 1.06, // a habit card's streak sub-line at bDot8
+  flashOpacity: 0.35, // reduced-motion colour flash (signature wash) instead of a scale
+  numeralOutBy: 0.4, // the ring numeral is gone by 40 % of the resolution, before the ✓ mid-draw
+  checkInFrom: 0.2, // the ring ✓ starts to show at 20 % of the resolution
+});
+
 // The celebration layer's own timings (CompletionCelebration, TrophyCelebration, the
 // perfect-day confetti). Only full motion uses them; reduced motion shows the static variants.
 export const celebration = {

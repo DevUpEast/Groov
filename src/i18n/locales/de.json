@@ -136,6 +136,7 @@
       "habits": "erledigt",
       "a11y": "%{completed} von %{total} Gewohnheiten heute erledigt",
       "progress": "%{completed} von %{total} erledigt · noch %{remaining}",
+      "progressAll": "%{completed} von %{total} erledigt",
       "complete": "Tag geschafft · %{count}-Tage-Serie",
       "completeNoStreak": "Tag geschafft",
       "rest": "Ruhetag · %{count}-Tage-Serie hält",
