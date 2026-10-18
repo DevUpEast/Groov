@@ -19,8 +19,9 @@ import { data, elevation } from '../theme/tokens';
 import OverlayModal from '../components/ui/OverlayModal';
 import AppText from '../components/ui/AppText';
 import { numeric } from '../theme/typography';
+import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, useMotion } from '../theme/motion';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_H = 150;
 // The pre-§2.4 heat-map colours (same in both themes); V-02 moves the map onto the data ramp.
 const { heatPartial: PARTIAL_COLOR, heatFrozen: FROZEN_COLOR } = data.light;
@@ -144,19 +145,20 @@ function HeatmapCell({ day, size, gap, theme, onPress }) {
 // ─── Day detail sheet ─────────────────────────────────────────────────────────
 
 function DayDetailModal({ visible, day, onClose, theme }) {
-  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
   const [internalVisible, setInternalVisible] = useState(false);
+  const motion = useMotion();
 
   React.useEffect(() => {
     if (visible && day) {
       setInternalVisible(true);
-      translateY.setValue(SCREEN_HEIGHT);
-      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
+      translateY.setValue(SHEET_OFFSCREEN);
+      sheetIn(translateY).start();
     }
   }, [visible, day]);
 
   const doClose = useCallback(() => {
-    Animated.timing(translateY, { toValue: SCREEN_HEIGHT, duration: 220, useNativeDriver: true }).start(() => {
+    sheetOut(translateY).start(() => {
       setInternalVisible(false);
       onClose();
     });
@@ -169,7 +171,7 @@ function DayDetailModal({ visible, day, onClose, theme }) {
       onPanResponderMove: (_, gs) => { if (gs.dy > 0) translateY.setValue(gs.dy); },
       onPanResponderRelease: (_, gs) => {
         if (gs.dy > 80) doClose();
-        else Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 80 }).start();
+        else sheetSettle(translateY).start();
       },
     })
   ).current;
@@ -184,7 +186,7 @@ function DayDetailModal({ visible, day, onClose, theme }) {
   return (
     <OverlayModal visible={internalVisible} animationType="none" transparent onRequestClose={doClose}>
       <View style={[styles.overlay, { backgroundColor: theme.scrim }]}>
-        <Animated.View style={[styles.sheet, elevation.sheet, { backgroundColor: theme.raised, shadowColor: theme.shadow, transform: [{ translateY }] }]}>
+        <Animated.View style={[styles.sheet, elevation.sheet, { backgroundColor: theme.raised, shadowColor: theme.shadow }, motion.sheetStyle(translateY)]}>
           <View {...panResponder.panHandlers} style={styles.dragHandleArea}>
             <View style={[styles.handleBar, { backgroundColor: theme.border }]} />
           </View>

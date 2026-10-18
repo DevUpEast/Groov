@@ -2,7 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity,
 } from 'react-native';
-import { useReducedMotion, announce } from '../utils/a11y';
+import { announce } from '../utils/a11y';
+import { useMotion, celebration, spring } from '../theme/motion';
+import { celebrationArt } from '../theme/tokens';
 import { t } from '../i18n';
 
 const { width: W, height: H } = Dimensions.get('window');
@@ -13,10 +15,7 @@ const CIRCLE_D = Math.ceil(Math.sqrt(W * W + H * H) * 2.2);
 const RING_CX = 79;
 const RING_CY = 190;
 
-const CONFETTI_COLORS = [
-  '#818CF8', '#A78BFA', '#C4B5FD', '#E879F9', '#34D399',
-  '#FDE68A', '#FB923C', '#F472B6', '#60A5FA', '#FFFFFF',
-];
+const CONFETTI_COLORS = celebrationArt.confettiMilestone;
 const CONFETTI_COUNT = 60;
 
 function ConfettiPiece({ index, color }) {
@@ -27,7 +26,7 @@ function ConfettiPiece({ index, color }) {
   const rotate = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(Math.random() * 0.7 + 0.5)).current;
   const delay = index * 35 + Math.random() * 200;
-  const duration = 2000 + Math.random() * 1500;
+  const duration = celebration.fullConfettiFall + Math.random() * celebration.fullConfettiFallJitter;
   const isWide = Math.random() > 0.5;
 
   useEffect(() => {
@@ -66,44 +65,44 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
   const circleScale = useRef(new Animated.Value(0.06)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
   const textScale = useRef(new Animated.Value(0.8)).current;
-  const reducedMotion = useReducedMotion();
+  const { reduced: reducedMotion } = useMotion();
 
   useEffect(() => {
     if (!visible) return;
     announce(`${title} ${subtitle}`);
     if (reducedMotion) {
       // Static card instead of the expanding circle and confetti.
-      const t = setTimeout(onDone, 2500);
+      const t = setTimeout(onDone, celebration.staticHold);
       return () => clearTimeout(t);
     }
 
     // Expand the circle
     Animated.timing(circleScale, {
       toValue: 1,
-      duration: 650,
+      duration: celebration.circleExpand,
       useNativeDriver: true,
     }).start();
 
     // Text springs in after circle covers screen
     setTimeout(() => {
       Animated.parallel([
-        Animated.spring(textScale, { toValue: 1, useNativeDriver: true, tension: 60 }),
-        Animated.timing(textOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.spring(textScale, { toValue: 1, useNativeDriver: true, ...spring.celebrate }),
+        Animated.timing(textOpacity, { toValue: 1, duration: celebration.textIn, useNativeDriver: true }),
       ]).start();
-    }, 550);
+    }, celebration.textInAt);
 
     // Auto-dismiss after 3.8 seconds
     const t = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(textOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-        Animated.timing(circleScale, { toValue: 0.06, duration: 500, useNativeDriver: true }),
+        Animated.timing(textOpacity, { toValue: 0, duration: celebration.textOut, useNativeDriver: true }),
+        Animated.timing(circleScale, { toValue: 0.06, duration: celebration.circleCollapse, useNativeDriver: true }),
       ]).start(() => {
         circleScale.setValue(0.06);
         textOpacity.setValue(0);
         textScale.setValue(0.8);
         onDone();
       });
-    }, 3800);
+    }, celebration.autoDismissAt);
 
     return () => clearTimeout(t);
   }, [visible]);
@@ -162,8 +161,8 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
         style={StyleSheet.absoluteFill}
         onPress={() => {
           Animated.parallel([
-            Animated.timing(textOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-            Animated.timing(circleScale, { toValue: 0.06, duration: 400, useNativeDriver: true }),
+            Animated.timing(textOpacity, { toValue: 0, duration: celebration.tapTextOut, useNativeDriver: true }),
+            Animated.timing(circleScale, { toValue: 0.06, duration: celebration.tapCircleCollapse, useNativeDriver: true }),
           ]).start(() => {
             circleScale.setValue(0.06);
             textOpacity.setValue(0);
@@ -178,7 +177,7 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
 }
 
 const styles = StyleSheet.create({
-  staticWrap: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
+  staticWrap: { alignItems: 'center', justifyContent: 'center', backgroundColor: celebrationArt.staticScrim },
   staticCard: { borderRadius: 24, paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center', width: '85%' },
   expandCircle: {
     position: 'absolute',
@@ -213,11 +212,11 @@ const styles = StyleSheet.create({
   },
   emoji: { fontSize: 72, marginBottom: 16 },
   congrats: {
-    fontSize: 42, fontWeight: 'bold', color: '#fff',
-    textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
+    fontSize: 42, fontWeight: 'bold', color: celebrationArt.title,
+    textShadowColor: celebrationArt.titleShadow, textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
   },
   subText: {
-    fontSize: 18, color: 'rgba(255,255,255,0.9)', marginTop: 12,
+    fontSize: 18, color: celebrationArt.subtitle, marginTop: 12,
     textAlign: 'center', paddingHorizontal: 40, lineHeight: 26,
     fontWeight: '500',
   },

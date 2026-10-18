@@ -1,13 +1,15 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, Animated, PanResponder, BackHandler,
-  Dimensions, Platform, StyleSheet, Easing, useColorScheme, ScrollView,
+  Dimensions, Platform, StyleSheet, useColorScheme, ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { initSentry, captureException, wrapRoot } from './src/utils/sentry';
 import { t, useLocale, initLocale } from './src/i18n';
+import { duration, spring, timing, springTo } from './src/theme/motion';
+import { isReducedMotion } from './src/utils/a11y';
 
 // Crash reporting is a no-op until EXPO_PUBLIC_SENTRY_DSN is set (see src/utils/sentry.js).
 initSentry();
@@ -89,7 +91,6 @@ import DesignPreview from './src/screens/DesignPreview';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const NUM_TABS = 5;
-const SLIDE_DURATION = 180;
 
 // The longest tab label (characters) that keeps equal tabs: 10 characters fit a fifth of a
 // 375 pt phone at 12 pt, bold when focused; fr "Aujourd'hui" (11) already does not.
@@ -117,6 +118,9 @@ function AppNavigator() {
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
   const translateX = useRef(new Animated.Value(0)).current;
+  // Reduced motion (F-05): a tab change jumps the row and fades the new screen in over
+  // duration.reduced instead of sliding. Swipe paging still follows the finger.
+  const pagerOpacity = useRef(new Animated.Value(1)).current;
   const isAnimating = useRef(false);
   // Each slide gets an id; only the latest one may clear isAnimating, so an interrupted slide's
   // late completion callback cannot unlock the pager while the next slide is still running.
@@ -135,6 +139,8 @@ function AppNavigator() {
   const goToTab = useCallback((newIndex, { interrupt = false } = {}) => {
     if (interrupt && isAnimating.current && newIndex !== activeIndexRef.current) {
       translateX.stopAnimation();
+      pagerOpacity.stopAnimation();
+      pagerOpacity.setValue(1);
       isAnimating.current = false;
     }
     if (newIndex === activeIndexRef.current || isAnimating.current) return;
@@ -142,13 +148,14 @@ function AppNavigator() {
     isAnimating.current = true;
     activeIndexRef.current = newIndex;
     setActiveIndex(newIndex);
-    Animated.timing(translateX, {
-      toValue: -newIndex * SCREEN_WIDTH,
-      duration: SLIDE_DURATION,
-      useNativeDriver: true,
-      easing: Easing.out(Easing.quad),
-    }).start(onSlideEnd());
-  }, [translateX]);
+    if (isReducedMotion()) {
+      translateX.setValue(-newIndex * SCREEN_WIDTH);
+      pagerOpacity.setValue(0);
+      timing(pagerOpacity, { toValue: 1, duration: duration.reduced }, true).start(onSlideEnd());
+      return;
+    }
+    timing(translateX, { toValue: -newIndex * SCREEN_WIDTH, duration: duration.state }, false).start(onSlideEnd());
+  }, [translateX, pagerOpacity]);
 
   // Fresh onboarding always lands on Today, whatever tab was active before a reset.
   useEffect(() => {
@@ -156,6 +163,7 @@ function AppNavigator() {
       activeIndexRef.current = 0;
       setActiveIndex(0);
       translateX.setValue(0);
+      pagerOpacity.setValue(1);
     }
   }, [hasOnboarded]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -201,39 +209,19 @@ function AppNavigator() {
           isAnimating.current = true;
           activeIndexRef.current = cur + 1;
           setActiveIndex(cur + 1);
-          Animated.timing(translateX, {
-            toValue: -(cur + 1) * SCREEN_WIDTH,
-            duration: SLIDE_DURATION,
-            useNativeDriver: true,
-            easing: Easing.out(Easing.quad),
-          }).start(onSlideEnd());
+          timing(translateX, { toValue: -(cur + 1) * SCREEN_WIDTH, duration: duration.state }).start(onSlideEnd());
         } else if (gs.dx > threshold && cur > 0) {
           isAnimating.current = true;
           activeIndexRef.current = cur - 1;
           setActiveIndex(cur - 1);
-          Animated.timing(translateX, {
-            toValue: -(cur - 1) * SCREEN_WIDTH,
-            duration: SLIDE_DURATION,
-            useNativeDriver: true,
-            easing: Easing.out(Easing.quad),
-          }).start(onSlideEnd());
+          timing(translateX, { toValue: -(cur - 1) * SCREEN_WIDTH, duration: duration.state }).start(onSlideEnd());
         } else {
-          Animated.spring(translateX, {
-            toValue: -cur * SCREEN_WIDTH,
-            useNativeDriver: true,
-            tension: 100,
-            friction: 12,
-          }).start(onSlideEnd());
+          springTo(translateX, spring.snappy, { toValue: -cur * SCREEN_WIDTH }).start(onSlideEnd());
         }
       },
       onPanResponderTerminate: () => {
         const cur = activeIndexRef.current;
-        Animated.spring(translateX, {
-          toValue: -cur * SCREEN_WIDTH,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 12,
-        }).start(onSlideEnd());
+        springTo(translateX, spring.snappy, { toValue: -cur * SCREEN_WIDTH }).start(onSlideEnd());
       },
     })
   ).current;
@@ -292,7 +280,7 @@ function AppNavigator() {
       />
 
       <Animated.View
-        style={[styles.screenRow, { transform: [{ translateX }] }]}
+        style={[styles.screenRow, { opacity: pagerOpacity, transform: [{ translateX }] }]}
         {...panResponder.panHandlers}
       >
         {SCREENS.map((Screen, i) => (

@@ -172,7 +172,7 @@ describe('Android back wiring (source checks)', () => {
     expect(app).toMatch(/BackHandler\.addEventListener\('hardwareBackPress'/);
     expect(app).toMatch(/if \(activeIndexRef\.current === 0\) return false;[\s\S]{0,200}?goToTab\(0, \{ interrupt: true \}\);\s*return true;/);
     // A running slide is stopped rather than the press swallowed.
-    expect(app).toMatch(/if \(interrupt && isAnimating\.current[^)]*\) \{\s*translateX\.stopAnimation\(\);\s*isAnimating\.current = false;/);
+    expect(app).toMatch(/if \(interrupt && isAnimating\.current[^)]*\) \{\s*translateX\.stopAnimation\(\);[\s\S]{0,120}?isAnimating\.current = false;/);
   });
 
   it('hides inactive tab slots from TalkBack and VoiceOver', () => {

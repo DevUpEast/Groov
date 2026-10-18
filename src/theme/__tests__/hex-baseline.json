@@ -1,6 +1,3 @@
 {
-  "src/components/CelebrationOverlay.js": 7,
-  "src/components/CompletionCelebration.js": 14,
-  "src/components/UndoToast.js": 1,
   "src/context/AppContext.js": 12
 }
