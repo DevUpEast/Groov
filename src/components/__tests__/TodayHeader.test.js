@@ -167,7 +167,7 @@ describe('C-05 chips', () => {
   it('frozen today: a snowflake, and the label reads the whole state', () => {
     const r = render({ frozen: true, onStreakPress: () => {} });
     expect(icons(r, 'snow')).toHaveLength(1);
-    expect(byLabel(r, '11-day streak. A freeze holds it today.')).toHaveLength(1);
+    expect(byLabel(r, '11-day streak. A freeze covered yesterday.')).toHaveLength(1);
     expect(icons(render(), 'snow')).toHaveLength(0);
   });
 
@@ -222,11 +222,43 @@ describe('C-05 chips', () => {
     expect(texts(r)).toContain('3-Day Kickstart');
     expect(texts(r)).not.toContain('7-Day Reset');
     expect(texts(r)).toContain('+2');
-    const more = byLabel(r, '2 more challenges')[0];
+    const more = byLabel(r, '2 more challenges: 7-Day Reset, day 4 of 7, done; 21-Day Habit Builder, day 9 of 21, pending')[0];
     expect(bottom.findAll(n => n === more)).toHaveLength(1);
     act(() => { more.props.onPress(); });
     expect(onChallengePress).toHaveBeenCalled();
-    expect(byLabel(render({ challenges: [kick, reset] }), '1 more challenge')).toHaveLength(1);
+    expect(byLabel(render({ challenges: [kick, reset] }), '1 more challenge: 7-Day Reset, day 4 of 7, done')).toHaveLength(1);
+  });
+
+  it('the single slot shows the first unclaimed challenge; "+N" marks ✓ only when every hidden one is claimed', () => {
+    const { slotChallenge } = require('../TodayHeader');
+    expect(slotChallenge([reset, kick]).id).toBe('k');
+    expect(slotChallenge([reset, { ...kick, done: true }]).id).toBe('r'); // all claimed: the first
+    expect(slotChallenge([])).toBeNull();
+    const r = render({ challenges: [reset, kick] });
+    expect(texts(r)).toContain('3-Day Kickstart');
+    expect(texts(r)).not.toContain('7-Day Reset');
+    const more = byLabel(r, '1 more challenge: 7-Day Reset, day 4 of 7, done')[0];
+    expect(more.findAll(n => n.type === 'Ionicons' && n.props.name === 'checkmark')).toHaveLength(1);
+    const open = byLabel(render({ challenges: [kick, builder] }), '1 more challenge: 21-Day Habit Builder, day 9 of 21, pending')[0];
+    expect(open.findAll(n => n.type === 'Ionicons' && n.props.name === 'ellipse-outline')).toHaveLength(1);
+    // "+N" is at least 40 pt wide.
+    expect(Object.assign({}, ...[].concat(more.props.style).flat(Infinity).filter(Boolean)).minWidth).toBe(40);
+  });
+
+  it('chip rows carry the 12 pt touch slop in padding, cancelled by margins (Android clips hitSlop to the parent)', () => {
+    const net = (row) => {
+      const st = Object.assign({}, ...[].concat(row.props.style).flat(Infinity).filter(Boolean));
+      return { st, top: (st.paddingTop ?? st.paddingVertical ?? 0) + (st.marginTop ?? 0), bottom: (st.paddingBottom ?? st.paddingVertical ?? 0) + (st.marginBottom ?? 0) };
+    };
+    const [one] = rows(render({ challenges: [kick] }));
+    expect(net(one).st.paddingVertical).toBe(12);
+    expect(net(one)).toMatchObject({ top: 6, bottom: 0 }); // layout unchanged: 6 pt above, nothing below
+    const [a, b] = rows(render({ challenges: [kick, reset] }));
+    expect(net(a).st.paddingTop).toBe(12);
+    expect(net(b).st.paddingBottom).toBe(12);
+    // The 4 pt gap is split, so the two touch zones meet without overlapping.
+    expect(net(a).st.paddingBottom + net(b).st.paddingTop).toBe(4);
+    expect(net(a).bottom + net(b).top).toBe(4);
   });
 
   it('keeps the locale word order around the name (ja: name first, then N日目)', async () => {

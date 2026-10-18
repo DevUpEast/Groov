@@ -164,13 +164,14 @@
     "markRestNote": "Volume, timed and limit habits stay as they are",
     "streak": {
       "a11y": { "one": "%{count}-day streak", "other": "%{count}-day streak" },
-      "frozenToday": { "one": "%{count}-day streak. A freeze holds it today.", "other": "%{count}-day streak. A freeze holds it today." },
+      "frozenYesterday": { "one": "%{count}-day streak. A freeze covered yesterday.", "other": "%{count}-day streak. A freeze covered yesterday." },
       "start": "Start a streak",
       "hint": "Shows how streaks work"
     },
     "challengeChip": "%{name} · day %{day}",
     "challengeChipHint": "Opens Challenges",
-    "challengeMore": { "one": "%{count} more challenge", "other": "%{count} more challenges" },
+    "challengeMore": { "one": "%{count} more challenge: %{list}", "other": "%{count} more challenges: %{list}" },
+    "challengeListSep": "; ",
     "challenge": {
       "a11yDone": "%{name}, day %{day} of %{days}, done",
       "a11yPending": "%{name}, day %{day} of %{days}, pending"

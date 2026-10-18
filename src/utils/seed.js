@@ -33,7 +33,7 @@ export function backdateCreatedAt(habit, floor) {
 // Fills the SEED_DAYS days before `today` with completions and a snapshot of `habits` for
 // each of those days. The `streakDays` days before today are perfect, the day before them
 // misses its first habit (so the overall streak is exactly `streakDays`), and older days
-// are random (each habit hits its goal on 55-95 % of days).
+// are random. `streakDays: 0` (the dev tool) gives all-random days with no forced gap (each habit hits its goal on 55-95 % of days).
 //
 // - Existing data wins: seeded days go underneath `completions` and `snapshot`.
 // - Today's snapshot is never replaced by a seeded or empty one: a non-empty
@@ -55,7 +55,7 @@ export function buildSeed(habits, completions, snapshot, today, rand = Math.rand
       // Always draw, so the older random days do not depend on `streakDays`.
       const rate = 0.55 + rand() * 0.4;
       const hit = rand() < rate;
-      const done = i <= streakDays ? true : i === streakDays + 1 && n === gapIndex ? false : hit;
+      const done = i <= streakDays ? true : streakDays > 0 && i === streakDays + 1 && n === gapIndex ? false : hit;
       if (done) day[h.id] = h.volumeGoal || 1;
     });
     if (Object.keys(day).length > 0) pastCompletions[key] = day;

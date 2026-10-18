@@ -227,10 +227,10 @@ export default function TodayScreen() {
   // The strip's state: no strip before the first habit; a rest day when nothing is asked today.
   const headerState = habits.length === 0 ? null : total === 0 ? 'rest' : completed >= total ? 'complete' : 'progress';
   const liveStreak = habits.length > 0 ? getOverallStreak() : 0;
-  // C-05 chips. "Frozen today": a freeze holds the streak right now. Freezes are spent on the
-  // missed day itself, which is always a past day, so this is today or, in practice,
-  // yesterday (the miss the streak is standing on).
-  const liveFrozen = liveStreak > 0 && (isDayFrozen(today) || isDayFrozen(addDays(today, -1)));
+  // C-05 chips. "Frozen": a freeze covered yesterday, so the streak stands on it today.
+  // Freezes are spent on the missed day itself (reconcileFreezes looks back from day -1), so
+  // today is never frozen.
+  const liveFrozen = liveStreak > 0 && isDayFrozen(addDays(today, -1));
   // The web mockup's `?streak=<n>` / `?streak=frozen` shows a chip state for review shots.
   const mockStreak = mockupParams.streak;
   const streak = mockStreak ? mockStreak.count : liveStreak;

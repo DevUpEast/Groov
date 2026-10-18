@@ -141,7 +141,7 @@
       "rest": "Jour de repos · ta série de %{count} jours tient",
       "restCaption": "repos",
       "ofTotal": "%{completed} sur %{total}",
-      "empty": "Touche une habitude pour lancer ta journée"
+      "empty": "Touche une habitude"
     },
     "coach": "Coach IA",
     "beats": { "a11y": { "one": "%{count} dernier jour : %{done} réussis, %{rest} de repos, %{missed} manqués", "other": "%{count} derniers jours : %{done} réussis, %{rest} de repos, %{missed} manqués" } },
@@ -164,13 +164,14 @@
     "markRestNote": "Les habitudes chiffrées, chronométrées et avec limite ne changent pas",
     "streak": {
       "a11y": { "one": "Série de %{count} jour", "other": "Série de %{count} jours" },
-      "frozenToday": { "one": "Série de %{count} jour. Avec un gel, elle tient aujourd'hui.", "other": "Série de %{count} jours. Avec un gel, elle tient aujourd'hui." },
+      "frozenYesterday": { "one": "Série de %{count} jour. Un gel a couvert hier.", "other": "Série de %{count} jours. Un gel a couvert hier." },
       "start": "Lance une série",
       "hint": "Explique comment les séries fonctionnent"
     },
     "challengeChip": "%{name} · jour %{day}",
     "challengeChipHint": "Ouvre Défis",
-    "challengeMore": { "one": "%{count} autre défi", "other": "%{count} autres défis" },
+    "challengeMore": { "one": "%{count} autre défi : %{list}", "other": "%{count} autres défis : %{list}" },
+    "challengeListSep": " ; ",
     "challenge": {
       "a11yDone": "%{name}, jour %{day} sur %{days}, fait",
       "a11yPending": "%{name}, jour %{day} sur %{days}, en attente"

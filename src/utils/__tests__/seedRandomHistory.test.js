@@ -105,6 +105,18 @@ describe('the demo streak (C-05)', () => {
     expect(overallStreak(TODAY, TODAY, rules.habitsOn, rules.isDone)).toBe(SEED_STREAK_DAYS);
   });
 
+  it('streakDays 0 (the dev tool) forces nothing: no perfect run and no gap day', () => {
+    const rand = seededRandom(DEMO_SEED);
+    const seed = buildSeed(four, {}, {}, TODAY, rand, { streakDays: 0 });
+    // The same draws without any forcing: replay the PRNG the way buildSeed does.
+    const replay = seededRandom(DEMO_SEED);
+    for (let i = 1; i <= SEED_DAYS; i++) {
+      const day = {};
+      four.forEach(h => { const rate = 0.55 + replay() * 0.4; if (replay() < rate) day[h.id] = h.volumeGoal || 1; });
+      expect(seed.pastCompletions[addDays(TODAY, -i)] || {}).toEqual(day);
+    }
+  });
+
   it('older days stay random and do not depend on the streak length', () => {
     const a = buildSeed(four, {}, {}, TODAY, seededRandom(DEMO_SEED));
     const b = buildSeed(four, {}, {}, TODAY, seededRandom(DEMO_SEED), { streakDays: 3 });

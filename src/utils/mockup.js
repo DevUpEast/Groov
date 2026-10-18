@@ -27,7 +27,7 @@ export const mockupParams = {
   // streak=<n> | streak=frozen[:<n>]: the Today streak chip shows that state (review shots;
   // the stored history is untouched). null when absent.
   get streak() {
-    const raw = isWeb ? params().get('streak') : null;
+    const raw = isWeb && this.active ? params().get('streak') : null;
     if (raw == null || raw === '') return null;
     const m = /^(frozen)?:?(\d+)?$/.exec(raw);
     if (!m) return null;
@@ -35,7 +35,7 @@ export const mockupParams = {
   },
   // challenges=<n>: Today shows n challenge chips, the real ones first, then samples.
   get challenges() {
-    const raw = isWeb ? params().get('challenges') : null;
+    const raw = isWeb && this.active ? params().get('challenges') : null;
     return raw != null && /^\d+$/.test(raw) ? Number(raw) : null;
   },
   get theme() { const t = params().get('theme'); return t === 'light' || t === 'dark' ? t : null; },

@@ -164,13 +164,14 @@
     "markRestNote": "数量目標・時間目標・上限の習慣はそのままです",
     "streak": {
       "a11y": { "one": "%{count}日連続", "other": "%{count}日連続" },
-      "frozenToday": { "one": "%{count}日連続。フリーズで今日も記録は続いています。", "other": "%{count}日連続。フリーズで今日も記録は続いています。" },
+      "frozenYesterday": { "one": "%{count}日連続。フリーズが昨日をカバーしました。", "other": "%{count}日連続。フリーズが昨日をカバーしました。" },
       "start": "連続記録を始めよう",
       "hint": "連続記録の数え方を表示します"
     },
     "challengeChip": "%{name} · %{day}日目",
     "challengeChipHint": "チャレンジを開きます",
-    "challengeMore": { "one": "ほかに%{count}件のチャレンジ", "other": "ほかに%{count}件のチャレンジ" },
+    "challengeMore": { "one": "ほかに%{count}件のチャレンジ：%{list}", "other": "ほかに%{count}件のチャレンジ：%{list}" },
+    "challengeListSep": "、",
     "challenge": {
       "a11yDone": "%{name}、%{days}日中%{day}日目、完了",
       "a11yPending": "%{name}、%{days}日中%{day}日目、未完了"

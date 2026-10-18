@@ -141,7 +141,7 @@
       "rest": "Dia de descanso · sua sequência de %{count} dias continua",
       "restCaption": "descanso",
       "ofTotal": "%{completed} de %{total}",
-      "empty": "Toque em um hábito para começar seu dia"
+      "empty": "Toque em um hábito"
     },
     "coach": "Coach de IA",
     "beats": { "a11y": { "one": "Último %{count} dia: %{done} completos, %{rest} de descanso, %{missed} não feitos", "other": "Últimos %{count} dias: %{done} completos, %{rest} de descanso, %{missed} não feitos" } },
@@ -164,13 +164,14 @@
     "markRestNote": "Hábitos de quantidade, com tempo e com limite continuam como estão",
     "streak": {
       "a11y": { "one": "Sequência de %{count} dia", "other": "Sequência de %{count} dias" },
-      "frozenToday": { "one": "Sequência de %{count} dia. Com um congelamento, ela continua hoje.", "other": "Sequência de %{count} dias. Com um congelamento, ela continua hoje." },
+      "frozenYesterday": { "one": "Sequência de %{count} dia. Um congelamento cobriu ontem.", "other": "Sequência de %{count} dias. Um congelamento cobriu ontem." },
       "start": "Comece uma sequência",
       "hint": "Mostra como as sequências funcionam"
     },
     "challengeChip": "%{name} · dia %{day}",
     "challengeChipHint": "Abre Desafios",
-    "challengeMore": { "one": "Mais %{count} desafio", "other": "Mais %{count} desafios" },
+    "challengeMore": { "one": "Mais %{count} desafio: %{list}", "other": "Mais %{count} desafios: %{list}" },
+    "challengeListSep": "; ",
     "challenge": {
       "a11yDone": "%{name}, dia %{day} de %{days}, concluído",
       "a11yPending": "%{name}, dia %{day} de %{days}, pendente"

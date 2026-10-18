@@ -31,7 +31,7 @@ import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
 import { snapshotOf, isHabitDoneOnDay, makeDayRules, stampCreatedAt, earliestCreatedAt } from '../utils/dayStatus';
-import { buildSeed, applySeedCompletions, applySeedSnapshot, backdateCreatedAt, seededRandom, DEMO_SEED } from '../utils/seed';
+import { buildSeed, SEED_STREAK_DAYS, applySeedCompletions, applySeedSnapshot, backdateCreatedAt, seededRandom, DEMO_SEED } from '../utils/seed';
 import { mergeBackup } from '../utils/backup';
 import { initAnalytics, track, Events } from '../utils/analytics';
 import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup';
@@ -1315,7 +1315,9 @@ export function AppProvider({ children }) {
   const seedRandomHistory = useCallback(async ({ deterministic = false } = {}) => {
     const realToday = localDateKey();
     const rand = deterministic ? seededRandom(DEMO_SEED) : Math.random;
-    const seed = buildSeed(habits, completions, dailySnapshot, realToday, rand);
+    // Only the mockup demo ends in a perfect run (SEED_STREAK_DAYS); the dev tool stays random,
+    // so milestones and freezes remain testable and no milestone is recorded on a real account.
+    const seed = buildSeed(habits, completions, dailySnapshot, realToday, rand, { streakDays: deterministic ? SEED_STREAK_DAYS : 0 });
     const seededIds = new Set(habits.map(h => h.id));
     const backdate = (h) => (seededIds.has(h.id) ? backdateCreatedAt(h, seed.floor) : h);
     const nextAllHabits = allHabits.map(backdate);
