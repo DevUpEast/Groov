@@ -216,6 +216,25 @@ describe('Sheet lifecycle', () => {
   beforeEach(() => { jest.useFakeTimers(); mockReduced = false; });
   afterEach(() => { jest.useRealTimers(); jest.restoreAllMocks(); });
 
+  it('M2 (F-10): a first mount already visible waits for onShow before the enter spring', () => {
+    const springs = jest.spyOn(Animated, 'spring');
+    let r;
+    act(() => { r = TestRenderer.create(el({ visible: true, onClose: jest.fn() })); });
+    expect(sheetModal(r).props.visible).toBe(true); // the window is requested at once
+    expect(springs).not.toHaveBeenCalled(); // ...but nothing moves before it exists
+    act(() => sheetModal(r).props.onShow());
+    expect(springs).toHaveBeenCalledTimes(1);
+    expect(lastTo(springs)).toBe(0);
+  });
+
+  it('M2 (F-10): without onShow the first-mount enter still runs after the fallback', () => {
+    const springs = jest.spyOn(Animated, 'spring');
+    act(() => { TestRenderer.create(el({ visible: true, onClose: jest.fn() })); });
+    expect(springs).not.toHaveBeenCalled();
+    advance(400);
+    expect(springs).toHaveBeenCalledTimes(1);
+  });
+
   it('B1: a header touch during the exit cannot stop it; the Modal unmounts and onDismiss fires', () => {
     const p = { onClose: jest.fn(), onDismiss: jest.fn() };
     const r = mount(p);
@@ -354,5 +373,159 @@ describe('keyboard (F-09b review m2, m3, m6)', () => {
   it('scrolls a focused input that ends at the body edge in by its border and some air', () => {
     expect(revealOverflow({ bodyY: 100, bodyHeight: 500, inputY: 552, inputHeight: 48 })).toBe(REVEAL_MARGIN);
     expect(revealOverflow({ bodyY: 100, bodyHeight: 500, inputY: 300, inputHeight: 48 })).toBe(0);
+  });
+});
+
+// F-10: the medium detent keeps a pinned footer on screen and the whole body reachable.
+describe('medium detent (F-10)', () => {
+  const { Dimensions, View, StyleSheet } = require('react-native');
+  afterEach(() => { mockReduced = false; });
+  const renderMedium = (extra = {}) => {
+    let r;
+    act(() => {
+      r = TestRenderer.create(React.createElement(Sheet, {
+        visible: true, onClose: jest.fn(), title: 'Share', detents: ['medium', 'large'],
+        footer: React.createElement(Text, null, 'Share image'), contentContainerStyle: { paddingBottom: 8 }, ...extra,
+      }, React.createElement(Text, null, 'Body')));
+    });
+    return r;
+  };
+  const footerOf = (r) => r.root.findAll(n => n.type === Animated.View
+    && n.findAll(c => c.type === Text && c.props.children === 'Share image').length > 0
+    && !n.props.accessibilityViewIsModal)[0];
+
+  it('pads the body by the hidden height at medium, and lifts the footer with the visible edge', () => {
+    const offset = mediumOffsetFor(Dimensions.get('window').height);
+    const r = renderMedium({ initialDetent: 'medium' });
+    const scroll = r.root.findAllByType(ScrollView)[0];
+    expect(StyleSheet.flatten(scroll.props.contentContainerStyle).paddingBottom).toBe(8 + offset);
+    const lift = StyleSheet.flatten(footerOf(r).props.style).transform[0].translateY;
+    // Follows the sheet value, clamped to the medium offset.
+    // The rendered host style carries the resolved value.
+    const v = typeof lift === 'number' ? lift : lift.__getValue();
+    expect(v).toBe(-offset); // the value starts off screen: clamped
+  });
+
+  it('M1: the lifted footer is backed down to the window edge, with a hairline on top', () => {
+    const r = renderMedium({ initialDetent: 'medium' });
+    const footer = StyleSheet.flatten(r.root.findAll(n => n.props.testID === 'sheet-footer' && typeof n.type !== 'string')[0].props.style);
+    const { themes } = jest.requireActual('../../../theme/colors');
+    expect(footer.backgroundColor).toBe(themes.light.raised);
+    // The surface's bottom pad (no inset in this test) is covered by the footer.
+    expect(footer.paddingBottom).toBe(SheetModule.surfaceBottomPad(0, 0));
+    expect(footer.marginBottom).toBe(-SheetModule.surfaceBottomPad(0, 0));
+    expect(footer.borderTopWidth).toBeGreaterThan(0);
+  });
+
+  it('a large-first sheet has no extra body padding', () => {
+    const r = renderMedium({ initialDetent: 'large' });
+    const scroll = r.root.findAllByType(ScrollView)[0];
+    expect(StyleSheet.flatten(scroll.props.contentContainerStyle).paddingBottom).toBe(8);
+  });
+
+  it('under reduced motion the footer sits at the fixed medium rest', () => {
+    mockReduced = true;
+    const offset = mediumOffsetFor(Dimensions.get('window').height);
+    const r = renderMedium({ initialDetent: 'medium' });
+    expect(StyleSheet.flatten(footerOf(r).props.style).transform[0].translateY).toBe(-offset);
+  });
+
+  it('takes a tinted surface and grabber', () => {
+    const r = renderMedium({ backgroundColor: '#FEF3C7', grabberColor: '#F59E0B' });
+    const frame = r.root.findByType(SheetFrame);
+    expect(frame.props.backgroundColor).toBe('#FEF3C7');
+    const grabber = r.root.findAll(n => n.type === View && StyleSheet.flatten(n.props.style)?.backgroundColor === '#F59E0B');
+    expect(grabber.length).toBeGreaterThan(0);
+  });
+});
+
+// The opening tag of each <Modal / <OverlayModal: up to the first '>' outside braces and strings,
+// so a prop such as onRequestClose={() => close()} cannot end it early (review n1).
+function modalTags(src) {
+  const tags = [];
+  const re = /<(?:Overlay)?Modal\b/g;
+  let m;
+  while ((m = re.exec(src))) {
+    let depth = 0;
+    let quote = null;
+    let i = m.index + 1;
+    for (; i < src.length; i += 1) {
+      const c = src[i];
+      if (quote) { if (c === quote && src[i - 1] !== '\\') quote = null; continue; }
+      if (c === '"' || c === "'" || c === '`') quote = c;
+      else if (c === '{') depth += 1;
+      else if (c === '}') depth -= 1;
+      else if (c === '>' && depth === 0) break;
+    }
+    tags.push(src.slice(m.index, i + 1));
+  }
+  return tags;
+}
+
+describe('modalTags', () => {
+  it('reads past an arrow function in a prop', () => {
+    const [tag] = modalTags('<OverlayModal visible onRequestClose={() =>\n  close()} statusBarTranslucent navigationBarTranslucent>\n</OverlayModal>');
+    expect(tag).toMatch(/navigationBarTranslucent>$/);
+  });
+});
+
+// F-10: every remaining sheet is a ui/Sheet; every Modal is translucent; the old helpers are gone.
+describe('F-10 migration (source checks)', () => {
+  const walk = (dir, out = []) => {
+    fs.readdirSync(dir, { withFileTypes: true }).forEach((e) => {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) { if (e.name !== '__tests__') walk(p, out); } else if (p.endsWith('.js')) out.push(p);
+    });
+    return out;
+  };
+  const files = [...walk(path.join(ROOT, 'src')), path.join(ROOT, 'App.js')];
+
+  it('no slide Modal remains (a), and every Modal is translucent under both system bars (c)', () => {
+    const slides = [];
+    const opaque = [];
+    let tags = 0;
+    files.forEach((f) => {
+      const src = fs.readFileSync(f, 'utf8');
+      if (/animationType="slide"/.test(src)) slides.push(path.relative(ROOT, f));
+      if (f.endsWith('OverlayModal.js')) return; // forwards its props to Modal
+      modalTags(src).forEach((tag) => {
+        tags += 1;
+        if (!/statusBarTranslucent(?!=\{false\})/.test(tag) || !/navigationBarTranslucent(?!=\{false\})/.test(tag)) opaque.push(path.relative(ROOT, f));
+      });
+    });
+    expect(tags).toBeGreaterThanOrEqual(8);
+    expect(slides).toEqual([]);
+    expect(opaque).toEqual([]);
+  });
+
+  it('the 7 remaining sheets render the shared Sheet (b)', () => {
+    [
+      'src/components/LinkAccountSheet.js', 'src/components/PaywallSheet.js', 'src/components/ShareCards.js',
+      'src/components/WhatsNewSheet.js', 'src/components/ui/ActionSheet.js',
+    ].forEach((f) => {
+      const src = read(f);
+      expect(src).toMatch(/<Sheet\b/);
+      expect(src).not.toMatch(/OverlayModal|PanResponder/);
+    });
+    const progress = read('src/screens/ProgressScreen.js');
+    const day = progress.slice(progress.indexOf('function DayDetailModal('), progress.indexOf('// ─── Bar tooltip'));
+    expect(day).toMatch(/<Sheet\b[\s\S]*detents=\{\['medium', 'large'\]\}/);
+    expect(progress).not.toMatch(/OverlayModal|PanResponder|sheetIn|sheetSettle/);
+    const challenges = read('src/screens/ChallengeScreen.js');
+    const past = challenges.slice(challenges.indexOf('function PastChallengeDetailModal('), challenges.indexOf('function ChallengeCard('));
+    expect(past).toMatch(/<Sheet\b/);
+    expect(challenges).not.toMatch(/OverlayModal|PanResponder|useSheetAnim|makeDragPanResponder|SheetHeader/);
+    ['PaywallSheet', 'ShareCards'].forEach((f) => expect(read(`src/components/${f}.js`)).toMatch(/detents=\{\['medium', 'large'\]\}/));
+    // NoteModal is a centred Dialog with the field focused through initialFocusRef.
+    const note = read('src/components/NoteModal.js');
+    expect(note).toMatch(/<Dialog\b[\s\S]*initialFocusRef=\{inputRef\}/);
+    expect(note).not.toMatch(/<TextInput[^>]*autoFocus/);
+  });
+
+  it('the old sheet helpers are gone', () => {
+    expect(fs.existsSync(path.join(ROOT, 'src/components/SheetHeader.js'))).toBe(false);
+    const motion = read('src/theme/motion.js');
+    expect(motion).not.toMatch(/export function (sheetIn|sheetSettle|sheetMotionStyle)\b/);
+    expect(motion).not.toMatch(/sheetStyle:/);
   });
 });

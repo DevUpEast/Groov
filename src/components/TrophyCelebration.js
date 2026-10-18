@@ -169,6 +169,7 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
       heavyScrim
       animationType={reducedMotion ? 'none' : 'fade'}
       statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={skip}
     >
       <Pressable

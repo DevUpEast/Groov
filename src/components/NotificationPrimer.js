@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { t, useLocale } from '../i18n';
 import { elevation, space, radius } from '../theme/tokens';
 import OverlayModal from './ui/OverlayModal';
@@ -10,7 +10,7 @@ export default function NotificationPrimer({ visible, onAllow, onLater, theme })
   useLocale();
   if (!visible) return null;
   return (
-    <OverlayModal visible transparent animationType="fade" onRequestClose={onLater}>
+    <OverlayModal visible transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onLater}>
       <View style={[styles.overlay, { backgroundColor: theme.scrim }]}>
         <View style={[styles.card, elevation.dialog, { backgroundColor: theme.overlay, borderColor: theme.border, shadowColor: theme.shadow }]}>
           <Text style={styles.emoji}>🔔</Text>

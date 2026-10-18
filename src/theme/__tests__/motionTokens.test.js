@@ -125,19 +125,10 @@ describe('reduced motion (§4.3)', () => {
     t.mockRestore(); s.mockRestore();
   });
 
-  it('sheets slide in full motion and fade (no translate) when reduced', () => {
-    const { sheetMotionStyle, sheetOut, duration, SHEET_FADE_RANGE } = require('../motion');
+  it('sheetOut slides off screen in full motion and fades to the fade range when reduced', () => {
+    // (The fade itself, the value mapped to opacity, lives in ui/Sheet's SheetFrame since F-10.)
+    const { sheetOut, duration, SHEET_FADE_RANGE } = require('../motion');
     const v = new Animated.Value(0);
-    expect(sheetMotionStyle(v, false)).toEqual({ transform: [{ translateY: v }] });
-    const r = sheetMotionStyle(v, true);
-    expect(r.transform).toBeUndefined();
-    expect(typeof r.opacity.interpolate).toBe('function');
-    // A drag to the 80 dp dismiss threshold visibly fades the sheet (M1).
-    v.setValue(80);
-    expect(r.opacity.__getValue()).toBeCloseTo(1 - 80 / SHEET_FADE_RANGE, 3);
-    expect(r.opacity.__getValue()).toBeLessThan(0.7);
-    v.setValue(SHEET_FADE_RANGE * 3);
-    expect(r.opacity.__getValue()).toBe(0);
     v.setValue(0);
     const t = jest.spyOn(Animated, 'timing');
     sheetOut(v, 800, false);

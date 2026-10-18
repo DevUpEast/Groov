@@ -413,7 +413,7 @@ describe('source checks', () => {
     expect(card).not.toMatch(/TouchableOpacity/);
     expect(card).toMatch(/<PressableScale\b/);
     expect(iconButtonTags(card)).toHaveLength(3); // timer, −, +
-    expect(read('src/components/SheetHeader.js')).not.toMatch(/TouchableOpacity/);
+    expect(fs.existsSync(path.join(root, 'src/components/SheetHeader.js'))).toBe(false); // F-10: deleted
     expect(read('src/components/UndoToast.js')).not.toMatch(/TouchableOpacity/);
     const app = read('App.js');
     expect(app).toMatch(/<PressableScale[\s\S]{0,400}accessibilityRole="tab"/);
