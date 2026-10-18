@@ -16,7 +16,8 @@
     "undo": "Rückgängig",
     "slider": "Schieberegler",
     "shortDays": "%{count} T",
-    "charCount": { "one": "%{count} von %{max} Zeichen", "other": "%{count} von %{max} Zeichen" }
+    "charCount": { "one": "%{count} von %{max} Zeichen", "other": "%{count} von %{max} Zeichen" },
+    "discardChanges": { "title": "Änderungen verwerfen?", "body": "Deine Änderungen gehen verloren.", "keep": "Weiter bearbeiten", "discard": "Verwerfen" }
   },
   "app": {
     "tabs": {
@@ -411,10 +412,12 @@
     "editA11y": "Gewohnheit bearbeiten",
     "stats": { "current": "Aktuell", "best": "Beste", "done": "Erledigt", "total": "Gesamt", "a11y": "%{label}: %{value}" },
     "history": "Verlauf",
-    "hint": "Tippe auf einen vergangenen Tag, um ihn zu korrigieren",
+    "hintToday": "Tippe auf einen Tag, um ihn einzutragen oder zu korrigieren",
+    "hintHabits": "Tippe auf einen vergangenen Tag, um ihn zu korrigieren. Heute trägst du im Tab „Heute“ ein.",
     "todayOnToday": "Den heutigen Fortschritt erfasst du im Tab „Heute“.",
     "cellA11y": "%{date}: %{status}",
-    "status": { "future": "Zukunft", "done": "erledigt", "rest": "Ruhetag", "missed": "verpasst", "none": "keine", "pending": "offen" },
+    "cellA11yCount": "%{date}: %{status}, %{count} von %{goal}",
+    "status": { "future": "Zukunft", "done": "erledigt", "rest": "Ruhetag", "missed": "verpasst", "none": "keine", "pending": "offen", "partial": "teilweise erledigt", "skipped": "übersprungen oder eingefroren" },
     "legend": { "done": "Erledigt", "partial": "Teilweise", "missed": "Verpasst", "pending": "Heute offen", "skippedFrozen": "Übersprungen / eingefroren", "rest": "Ruhetag" },
     "byWeekday": "Nach Wochentag",
     "since": "Erfolgsquote seit %{date}",

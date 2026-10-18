@@ -16,7 +16,8 @@
     "undo": "元に戻す",
     "slider": "スライダー",
     "shortDays": "%{count}日",
-    "charCount": { "one": "%{max}文字中%{count}文字", "other": "%{max}文字中%{count}文字" }
+    "charCount": { "one": "%{max}文字中%{count}文字", "other": "%{max}文字中%{count}文字" },
+    "discardChanges": { "title": "変更を破棄しますか？", "body": "編集内容は失われます。", "keep": "編集を続ける", "discard": "破棄" }
   },
   "app": {
     "tabs": {
@@ -411,10 +412,12 @@
     "editA11y": "習慣を編集",
     "stats": { "current": "現在", "best": "最高", "done": "達成", "total": "合計", "a11y": "%{label}：%{value}" },
     "history": "履歴",
-    "hint": "過去の日をタップして修正できます",
+    "hintToday": "日をタップして記録・修正できます",
+    "hintHabits": "過去の日をタップして修正できます。今日の記録は「今日」タブで行えます。",
     "todayOnToday": "今日の記録は「今日」タブで行えます。",
     "cellA11y": "%{date}：%{status}",
-    "status": { "future": "未来", "done": "完了", "rest": "休み", "missed": "未達成", "none": "なし", "pending": "未完了" },
+    "cellA11yCount": "%{date}：%{status}、%{count}/%{goal}",
+    "status": { "future": "未来", "done": "完了", "rest": "休み", "missed": "未達成", "none": "なし", "pending": "未完了", "partial": "一部達成", "skipped": "スキップ/フリーズ" },
     "legend": { "done": "完了", "partial": "一部", "missed": "未達成", "pending": "今日の未完了", "skippedFrozen": "スキップ/フリーズ", "rest": "休み" },
     "byWeekday": "曜日別",
     "since": "%{date}からの達成率",

@@ -16,7 +16,8 @@
     "undo": "Desfazer",
     "slider": "Controle deslizante",
     "shortDays": "%{count}d",
-    "charCount": { "one": "%{count} de %{max} caracteres", "other": "%{count} de %{max} caracteres" }
+    "charCount": { "one": "%{count} de %{max} caracteres", "other": "%{count} de %{max} caracteres" },
+    "discardChanges": { "title": "Descartar alterações?", "body": "Suas alterações não serão salvas.", "keep": "Continuar editando", "discard": "Descartar" }
   },
   "app": {
     "tabs": {
@@ -411,10 +412,12 @@
     "editA11y": "Editar hábito",
     "stats": { "current": "Atual", "best": "Melhor", "done": "Feitos", "total": "Total", "a11y": "%{label}: %{value}" },
     "history": "Histórico",
-    "hint": "Toque em qualquer dia passado para corrigi-lo",
+    "hintToday": "Toque em um dia para registrar ou corrigir",
+    "hintHabits": "Toque em um dia passado para corrigi-lo. Registre hoje na aba Hoje.",
     "todayOnToday": "Registre o progresso de hoje na aba Hoje.",
     "cellA11y": "%{date}: %{status}",
-    "status": { "future": "futuro", "done": "concluído", "rest": "descanso", "missed": "não feito", "none": "nenhum", "pending": "pendente" },
+    "cellA11yCount": "%{date}: %{status}, %{count} de %{goal}",
+    "status": { "future": "futuro", "done": "concluído", "rest": "descanso", "missed": "não feito", "none": "nenhum", "pending": "pendente", "partial": "feito em parte", "skipped": "pulado ou congelado" },
     "legend": { "done": "Feito", "partial": "Parcial", "missed": "Não feito", "pending": "A fazer hoje", "skippedFrozen": "Pulado / congelado", "rest": "Descanso" },
     "byWeekday": "Por dia da semana",
     "since": "Taxa de conclusão desde %{date}",

@@ -16,7 +16,8 @@
     "undo": "Annuler",
     "slider": "Curseur",
     "shortDays": "%{count}j",
-    "charCount": { "one": "%{count} caractère sur %{max}", "other": "%{count} caractères sur %{max}" }
+    "charCount": { "one": "%{count} caractère sur %{max}", "other": "%{count} caractères sur %{max}" },
+    "discardChanges": { "title": "Abandonner les modifications ?", "body": "Tes modifications seront perdues.", "keep": "Continuer", "discard": "Abandonner" }
   },
   "app": {
     "tabs": {
@@ -411,10 +412,12 @@
     "editA11y": "Modifier l'habitude",
     "stats": { "current": "Actuelle", "best": "Record", "done": "Faits", "total": "Total", "a11y": "%{label} : %{value}" },
     "history": "Historique",
-    "hint": "Appuie sur un jour passé pour le corriger",
+    "hintToday": "Appuie sur un jour pour le noter ou le corriger",
+    "hintHabits": "Appuie sur un jour passé pour le corriger. Note aujourd'hui dans l'onglet Aujourd'hui.",
     "todayOnToday": "Note les progrès du jour dans l'onglet Aujourd'hui.",
     "cellA11y": "%{date} : %{status}",
-    "status": { "future": "à venir", "done": "fait", "rest": "repos", "missed": "manqué", "none": "aucun", "pending": "en attente" },
+    "cellA11yCount": "%{date} : %{status}, %{count} sur %{goal}",
+    "status": { "future": "à venir", "done": "fait", "rest": "repos", "missed": "manqué", "none": "aucun", "pending": "en attente", "partial": "fait en partie", "skipped": "sauté ou gelé" },
     "legend": { "done": "Fait", "partial": "Partiel", "missed": "Manqué", "pending": "À faire aujourd’hui", "skippedFrozen": "Sauté / gelé", "rest": "Repos" },
     "byWeekday": "Par jour de la semaine",
     "since": "Taux de réussite depuis le %{date}",
