@@ -65,8 +65,9 @@ export const TYPE_FLOOR = type.caption.fontSize;
 // Spread into a style to make digits the same width (counters, timers, stats).
 export const numeric = { fontVariant: TABULAR };
 
-// Latin-1 and Latin Extended (A, B, Additional). Anything else (Cyrillic, Greek, CJK, emoji
-// excluded below) is outside what Space Grotesk covers well.
+// Latin-1, Latin Extended (A, B, Additional), General Punctuation, Arrows and the minus sign.
+// Anything else (Cyrillic, Greek, CJK, emoji) is outside what Space Grotesk covers, so a
+// string containing it renders in the system face.
 const OUTSIDE_LATIN = /[^\u0000-ɏḀ-ỿ -⁯←-⇿−]/u;
 
 // Faces that have finished loading (src/theme/fonts.js marks them). Until a face is marked,

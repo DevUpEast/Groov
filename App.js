@@ -76,9 +76,6 @@ import { AppProvider, useApp } from './src/context/AppContext';
 import { themes } from './src/theme/colors';
 import { loadAppFonts } from './src/theme/fonts';
 import { type } from './src/theme/typography';
-
-// The longest tab label (characters) that fits a fifth of a 375 pt phone at 12 pt.
-const TAB_LABEL_EQUAL_MAX = 11;
 import AuthScreen from './src/screens/AuthScreen';
 import TodayScreen from './src/screens/TodayScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
@@ -93,6 +90,10 @@ import DesignPreview from './src/screens/DesignPreview';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const NUM_TABS = 5;
 const SLIDE_DURATION = 180;
+
+// The longest tab label (characters) that keeps equal tabs: 10 characters fit a fifth of a
+// 375 pt phone at 12 pt, bold when focused; fr "Aujourd'hui" (11) already does not.
+const TAB_LABEL_EQUAL_MAX = 10;
 
 const TABS = [
   { key: 'today',     icon: 'home-outline' },
@@ -312,8 +313,8 @@ function AppNavigator() {
       </Animated.View>
 
       {/* Equal tabs keep the icons on an even rhythm; a locale with a label too long for a
-          fifth of a phone at the 12 pt floor (de "Einstellungen", pt-BR "Configurações") shares
-          the bar by label width instead, so nothing wraps or clips (until G-01's short labels). */}
+          fifth of a phone at the 12 pt floor (de "Einstellungen", fr "Aujourd'hui") shares the
+          bar by label width instead, so nothing wraps or clips (until G-01's short labels). */}
       <View style={[
         styles.tabBar,
         {

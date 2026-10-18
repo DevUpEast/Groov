@@ -30,8 +30,20 @@ export default function ProgressRing({ progress, size = 120, strokeWidth = 10, c
         />
       </Svg>
       <View style={styles.labelContainer}>
-        {/* The count is a display numeral (Space Grotesk, tabular, §2.7 displayRing). */}
-        {label && <AppText variant="displayRing" style={{ color }}>{label}</AppText>}
+        {/* The count is a display numeral (Space Grotesk, tabular, §2.7 displayRing). One line,
+            never wider than the ring's inside: the font scale is capped at 1.2 and a long
+            count ("12/15" at large text) shrinks to fit (native; on web the count is 1.0x and
+            fits). */}
+        {label && (
+          <AppText
+            variant="displayRing"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+            maxFontSizeMultiplier={1.2}
+            style={{ color, maxWidth: size - strokeWidth * 2 - 8, textAlign: 'center' }}
+          >{label}</AppText>
+        )}
         {sublabel && <Text style={[styles.sublabel, sublabelColor && { color: sublabelColor }]}>{sublabel}</Text>}
       </View>
     </View>

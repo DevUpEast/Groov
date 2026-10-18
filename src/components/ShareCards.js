@@ -216,8 +216,9 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 12, fontWeight: '700' },
   card: { borderRadius: 24, padding: 20, width: CARD_W },
   cardKicker: { color: shareCard.fgSecondary, fontSize: 13, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
-  // The display face at share-card scale (fixed brand art, not the in-app scale).
-  bigNumber: { color: shareCard.fg, fontSize: 72, fontWeight: '900', marginTop: 6, lineHeight: 80 },
+  // The display face at share-card scale (fixed brand art, not the in-app scale). No weight:
+  // AppText supplies the face (Bold) or, after a font timeout, the system display weight.
+  bigNumber: { color: shareCard.fg, fontSize: 72, marginTop: 6, lineHeight: 80 },
   bigLabel: { color: shareCard.fgStrong, fontSize: 16, fontWeight: '600', marginTop: -4 },
   statRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   stat: { flex: 1, backgroundColor: shareCard.well, borderRadius: 12, paddingVertical: 10, alignItems: 'center' },

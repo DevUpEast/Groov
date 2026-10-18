@@ -207,21 +207,19 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
 
         {/* Month labels */}
         <View style={{ flexDirection: 'row', marginLeft: DAY_LABEL_W, marginBottom: 2 }}>
-          {/* A month name at 12 pt is wider than one week column; it runs into the empty
-              columns after it (months are >= 4 columns apart), right-aligned near the end. */}
-          {grid.monthLabels.map((m, i) => {
-            const tail = i >= grid.monthLabels.length - 2;
-            return (
-              <View key={i} style={{ width: cell + GRID_GAP, overflow: 'visible' }}>
-                {!!m && (
-                  <Text
-                    style={[{ width: (cell + GRID_GAP) * 3, fontSize: 12, lineHeight: 16, color: theme.textSecondary }, tail && { position: 'absolute', right: 0, textAlign: 'right' }]}
-                    numberOfLines={1}
-                  >{m}</Text>
-                )}
-              </View>
-            );
-          })}
+          {/* A month name at 12 pt is wider than one week column. It starts at its first
+              week's column and runs into the empty columns after it (months are >= 4 columns
+              apart); in the last column it runs into the sheet's side padding. */}
+          {grid.monthLabels.map((m, i) => (
+            <View key={i} style={{ width: cell + GRID_GAP, overflow: 'visible' }}>
+              {!!m && (
+                <Text
+                  style={{ width: (cell + GRID_GAP) * 3, fontSize: 12, lineHeight: 16, color: theme.textSecondary }}
+                  numberOfLines={1}
+                >{m}</Text>
+              )}
+            </View>
+          ))}
         </View>
         <View style={{ flexDirection: 'row' }}>
           <View style={{ width: DAY_LABEL_W }}>

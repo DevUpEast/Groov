@@ -20,11 +20,17 @@ function walk(dir, out = []) {
 }
 
 const FONT_SIZE = /fontSize\s*(?::|=\s*\{)\s*(\d+(?:\.\d+)?)/g;
+// Both branches of a ternary size: `fontSize: small ? 10 : 14`, `const fontSize = a ? 22 : 17`.
+const TERNARY = /fontSize\s*[:=][^,;}\n]*\?\s*(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)/g;
 
 function belowFloor(src) {
   const hits = [];
-  for (const m of stripComments(src).matchAll(FONT_SIZE)) {
+  const code = stripComments(src);
+  for (const m of code.matchAll(FONT_SIZE)) {
     if (Number(m[1]) < TYPE_FLOOR) hits.push(m[0]);
+  }
+  for (const m of code.matchAll(TERNARY)) {
+    if (Number(m[1]) < TYPE_FLOOR || Number(m[2]) < TYPE_FLOOR) hits.push(m[0]);
   }
   return hits;
 }
@@ -53,5 +59,10 @@ describe('12 pt type floor', () => {
   it('catches style and prop forms, ignoring comments', () => {
     expect(belowFloor("const s = { fontSize: 11 }; <T fontSize={9} /> // fontSize: 10\n{ fontSize: 12 } { fontSize: 110 }"))
       .toEqual(['fontSize: 11', 'fontSize={9']);
+  });
+
+  it('catches either branch of a ternary size', () => {
+    expect(belowFloor('const s = { fontSize: small ? 10 : 14 }; const fontSize = big ? 22 : 17;'))
+      .toEqual(['fontSize: small ? 10 : 14']);
   });
 });

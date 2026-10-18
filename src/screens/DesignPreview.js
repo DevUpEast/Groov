@@ -6,6 +6,8 @@ import { useApp } from '../context/AppContext';
 import { themes } from '../theme/colors';
 import { palette, pairs, data, accents, accentOnFill, space, radius, RGBA_ROLES } from '../theme/tokens';
 import { contrastRatio } from '../theme/contrast';
+import ProgressRing from '../components/ProgressRing';
+import AppText from '../components/ui/AppText';
 import { t } from '../i18n';
 
 // Dev-only token preview (F-01, plan §2.1). Opened with groov://dev/design in a dev build or
@@ -58,6 +60,20 @@ export default function DesignPreview({ visible, onClose }) {
           <Text style={[styles.summary, { color: failing.length ? theme.dangerText : theme.successText }]}>
             {`${themePairs.length - failing.length}/${themePairs.length} pairs pass`}
           </Text>
+
+          <Section title="Type (§2.7)" theme={theme}>
+            <View style={styles.ringRow}>
+              {['0/5', '12/15', '100/120'].map((label, i) => (
+                <ProgressRing key={label} progress={[0, 0.8, 0.83][i]} size={110} strokeWidth={10} color={theme.meter} bg={theme.track} label={label} sublabel="habits" sublabelColor={theme.textSecondary} />
+              ))}
+            </View>
+            <AppText variant="display" style={{ color: theme.link }}>365</AppText>
+            <AppText variant="title" style={{ color: theme.text }}>Title 28</AppText>
+            <AppText variant="headline" style={{ color: theme.text }}>Headline 20</AppText>
+            <AppText variant="body" style={{ color: theme.text }}>Body</AppText>
+            <AppText variant="footnote" style={{ color: theme.textSecondary }}>Footnote 13</AppText>
+            <AppText variant="caption" style={{ color: theme.textSecondary }}>Caption 12 (the floor)</AppText>
+          </Section>
 
           <Section title="Roles" theme={theme}>
             <View style={styles.grid}>
@@ -157,6 +173,7 @@ export default function DesignPreview({ visible, onClose }) {
 }
 
 const styles = StyleSheet.create({
+  ringRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   safe: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   title: { flex: 1, fontSize: 20, fontWeight: '600' },
