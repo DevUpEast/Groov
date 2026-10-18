@@ -1,4 +1,4 @@
-import { buildSeed, applySeedSnapshot, applySeedCompletions, backdateCreatedAt, SEED_DAYS, seededRandom, DEMO_SEED } from '../seed';
+import { buildSeed, applySeedSnapshot, applySeedCompletions, backdateCreatedAt, SEED_DAYS, SEED_STREAK_DAYS, seededRandom, DEMO_SEED } from '../seed';
 import { makeDayRules, snapshotOf } from '../dayStatus';
 import { overallStreak, bestOverallStreak } from '../streaks';
 import { addDays } from '../dates';
@@ -47,7 +47,7 @@ describe('buildSeed (demo / dev-tool history)', () => {
   });
 
   it('seeded history counts after backdating: Mark-all today gives a 31-day streak', () => {
-    const seed = buildSeed(habits, { [TODAY]: { 1: 1, 2: 8 } }, { [TODAY]: [] }, TODAY, always);
+    const seed = buildSeed(habits, { [TODAY]: { 1: 1, 2: 8 } }, { [TODAY]: [] }, TODAY, always, { streakDays: SEED_DAYS });
     const rules = makeDayRules({ today: TODAY, snapshot: seed.snapshot, liveHabits: seed.habits, allHabits: seed.habits, completions: seed.completions });
     expect(rules.summary(TODAY)).toMatchObject({ completed: 2, total: 2 });
     expect(overallStreak(TODAY, TODAY, rules.habitsOn, rules.isDone)).toBe(SEED_DAYS + 1);
@@ -74,5 +74,41 @@ describe('seededRandom (deterministic mockup demo history)', () => {
     const two = buildSeed(habits, {}, {}, TODAY, seededRandom(DEMO_SEED));
     expect(two.completions).toEqual(one.completions);
     expect(two.snapshot).toEqual(one.snapshot);
+  });
+});
+
+describe('the demo streak (C-05)', () => {
+  const four = [
+    { id: 'w', type: 'volume', volumeGoal: 8, createdAt: TODAY },
+    { id: 'm', type: 'daily', volumeGoal: 1, createdAt: TODAY },
+    { id: 'r', type: 'daily', volumeGoal: 1, createdAt: TODAY },
+    { id: 'z', type: 'daily', volumeGoal: 1, createdAt: TODAY },
+  ];
+  const rulesFor = (seed) => makeDayRules({ today: TODAY, snapshot: seed.snapshot, liveHabits: seed.habits, allHabits: seed.habits, completions: seed.completions });
+
+  it('ends in SEED_STREAK_DAYS perfect days after a gap, so the demo opens on that streak', () => {
+    const seed = buildSeed(four, {}, {}, TODAY, seededRandom(DEMO_SEED));
+    const rules = rulesFor(seed);
+    for (let i = 1; i <= SEED_STREAK_DAYS; i++) {
+      expect(rules.summary(addDays(TODAY, -i))).toMatchObject({ completed: 4, total: 4 });
+    }
+    const gap = rules.summary(addDays(TODAY, -(SEED_STREAK_DAYS + 1)));
+    expect(gap.completed).toBeLessThan(gap.total);
+    // An unfinished today never breaks the streak.
+    expect(overallStreak(TODAY, TODAY, rules.habitsOn, rules.isDone)).toBe(SEED_STREAK_DAYS);
+  });
+
+  it('puts the gap miss on a habit an untouched day does not satisfy (not an at-most limit)', () => {
+    const withLimit = [{ id: 'l', type: 'atMost', volumeGoal: 2, createdAt: TODAY }, ...four];
+    const seed = buildSeed(withLimit, {}, {}, TODAY, seededRandom(DEMO_SEED));
+    const rules = rulesFor(seed);
+    expect(overallStreak(TODAY, TODAY, rules.habitsOn, rules.isDone)).toBe(SEED_STREAK_DAYS);
+  });
+
+  it('older days stay random and do not depend on the streak length', () => {
+    const a = buildSeed(four, {}, {}, TODAY, seededRandom(DEMO_SEED));
+    const b = buildSeed(four, {}, {}, TODAY, seededRandom(DEMO_SEED), { streakDays: 3 });
+    const old = addDays(TODAY, -20);
+    expect(b.completions[old]).toEqual(a.completions[old]);
   });
 });

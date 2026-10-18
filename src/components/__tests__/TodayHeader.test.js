@@ -71,6 +71,13 @@ describe('TodayHeader strip', () => {
     expect(label).toBe('2 of 4 habits done today');
   });
 
+  it('compact windows keep the day line to one line; taller windows let it wrap (C-05 fold budget)', () => {
+    const lineOf = (r) => r.root.findAll(n => n.type === 'Text' && [].concat(n.props.children).join('') === '2 of 4 done · 2 to go')[0];
+    expect(lineOf(render({ compact: true })).props.numberOfLines).toBe(1);
+    expect(lineOf(render({ compact: true })).props.minimumFontScale).toBeGreaterThanOrEqual(0.8);
+    expect(lineOf(render()).props.numberOfLines).toBeUndefined();
+  });
+
   it('progress: green arc on the solid indigo track', () => {
     const cs = circles(render());
     expect(cs[0].props.stroke).toBe(theme.brandTrack);
@@ -126,11 +133,112 @@ describe('TodayHeader strip', () => {
     expect(outlined.length).toBe(3); // rest, missed, open today
   });
 
-  it('streak chip: flame plus the count, read as "11-day streak"; hidden at 0', () => {
+  it('streak chip: flame plus the count, read as "11-day streak"', () => {
     const r = render();
     expect(r.root.findAll(n => n.type === 'Ionicons' && n.props.name === 'flame')).toHaveLength(1);
     expect(r.root.findAll(n => n.props && n.props.accessibilityLabel === '11-day streak').length).toBeGreaterThan(0);
-    expect(render({ streak: 0 }).root.findAll(n => n.type === 'Ionicons' && n.props.name === 'flame')).toHaveLength(0);
+  });
+});
+
+describe('C-05 chips', () => {
+  const kick = { id: 'k', name: '3-Day Kickstart', day: 2, days: 3, done: false };
+  const reset = { id: 'r', name: '7-Day Reset', day: 4, days: 7, done: true };
+  const builder = { id: 'b', name: '21-Day Habit Builder', day: 9, days: 21, done: false };
+  const PressableScale = require('../ui/PressableScale').default;
+  const buttons = (r) => r.root.findAll(n => n.type === PressableScale);
+  const byLabel = (r, label) => buttons(r).filter(n => n.props.accessibilityLabel === label);
+  const icons = (r, name) => r.root.findAll(n => n.type === 'Ionicons' && n.props.name === name);
+
+  it('the streak chip is a button that opens the rule dialog, with the gold Ionicons flame and a 600 tabular count', () => {
+    const onStreakPress = jest.fn();
+    const r = render({ onStreakPress });
+    const [chip] = byLabel(r, '11-day streak');
+    expect(chip.props.accessibilityHint).toBe('Shows how streaks work');
+    act(() => { chip.props.onPress(); });
+    expect(onStreakPress).toHaveBeenCalledTimes(1);
+    expect(icons(r, 'flame')[0].props.color).toBe(theme.signature);
+    const num = r.root.findAll(n => n.type === 'Text' && [].concat(n.props.children).join('') === '11')[0];
+    const st = Object.assign({}, ...[].concat(num.props.style).flat(Infinity).filter(Boolean));
+    expect(st.fontWeight).toBe('600');
+    expect(st.fontVariant).toEqual(['tabular-nums']);
+    expect(st.fontFamily).toBeUndefined(); // the system face, never Space Grotesk below 24 pt
+  });
+
+  it('frozen today: a snowflake, and the label reads the whole state', () => {
+    const r = render({ frozen: true, onStreakPress: () => {} });
+    expect(icons(r, 'snow')).toHaveLength(1);
+    expect(byLabel(r, '11-day streak. A freeze holds it today.')).toHaveLength(1);
+    expect(icons(render(), 'snow')).toHaveLength(0);
+  });
+
+  it('streak 0 with no challenge: a muted "Start a streak" chip that opens the rule', () => {
+    const onStreakPress = jest.fn();
+    const r = render({ streak: 0, challenges: [], onStreakPress });
+    expect(icons(r, 'flame')).toHaveLength(0);
+    expect(icons(r, 'flame-outline')).toHaveLength(1);
+    expect(texts(r)).toContain('Start a streak');
+    act(() => { byLabel(r, 'Start a streak')[0].props.onPress(); });
+    expect(onStreakPress).toHaveBeenCalled();
+  });
+
+  it('streak 0 with a challenge: the challenge chip takes the row, no streak chip', () => {
+    const r = render({ streak: 0, challenges: [kick] });
+    expect(icons(r, 'flame')).toHaveLength(0);
+    expect(icons(r, 'flame-outline')).toHaveLength(0);
+    expect(texts(r)).toEqual(expect.arrayContaining(['3-Day Kickstart', '· day 2']));
+  });
+
+  it('a challenge chip reads "name · day N" with ✓ or ○ and its full state, and opens Challenges', () => {
+    const onChallengePress = jest.fn();
+    const r = render({ challenges: [kick], onChallengePress });
+    expect(icons(r, 'ellipse-outline')).toHaveLength(1);
+    const pending = byLabel(r, '3-Day Kickstart, day 2 of 3, pending')[0];
+    expect(pending.props.accessibilityHint).toBe('Opens Challenges');
+    act(() => { pending.props.onPress(); });
+    expect(onChallengePress).toHaveBeenCalledTimes(1);
+    expect(icons(render({ challenges: [reset] }), 'checkmark')).toHaveLength(1);
+    expect(byLabel(render({ challenges: [reset] }), '7-Day Reset, day 4 of 7, done')).toHaveLength(1);
+    // The name truncates; the day never does.
+    const name = r.root.findAll(n => n.type === 'Text' && n.props.children === '3-Day Kickstart')[0];
+    expect(name.props.numberOfLines).toBe(1);
+    expect(name.props.ellipsizeMode).toBe('tail');
+  });
+
+  const rows = (r) => r.root.findAll(n => n.type === 'View' && [].concat(n.props.style).flat(Infinity).some(x => x && x.flexDirection === 'row' && x.gap === 8 && x.marginTop !== undefined));
+
+  it('0 or 1 challenge: the beats, then one row [streak][challenge] (D-00)', () => {
+    const r = render({ challenges: [kick], onStreakPress: () => {} });
+    const chipRows = rows(r);
+    expect(chipRows).toHaveLength(1);
+    expect(chipRows[0].findAll(n => n.type === PressableScale)).toHaveLength(2);
+  });
+
+  it('2+ challenges: the streak moves beside the beats; one challenge chip and "+N", which also opens Challenges', () => {
+    const onChallengePress = jest.fn();
+    const r = render({ challenges: [kick, reset, builder], onChallengePress, onStreakPress: () => {} });
+    const [top, bottom] = rows(r);
+    expect(top.findAll(n => n.props && typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel.startsWith('Last ')).length).toBeGreaterThan(0);
+    expect(top.findAll(n => n.type === PressableScale && n.props.accessibilityLabel === '11-day streak')).toHaveLength(1);
+    expect(texts(r)).toContain('3-Day Kickstart');
+    expect(texts(r)).not.toContain('7-Day Reset');
+    expect(texts(r)).toContain('+2');
+    const more = byLabel(r, '2 more challenges')[0];
+    expect(bottom.findAll(n => n === more)).toHaveLength(1);
+    act(() => { more.props.onPress(); });
+    expect(onChallengePress).toHaveBeenCalled();
+    expect(byLabel(render({ challenges: [kick, reset] }), '1 more challenge')).toHaveLength(1);
+  });
+
+  it('keeps the locale word order around the name (ja: name first, then N日目)', async () => {
+    const { setLocale } = require('../../i18n');
+    await act(async () => { await setLocale('ja'); });
+    try {
+      const r = render({ challenges: [kick] });
+      expect(texts(r)).toEqual(expect.arrayContaining(['3-Day Kickstart', '· 2日目']));
+      act(() => { r.unmount(); });
+    } finally {
+      await act(async () => { await setLocale('en'); });
+    }
   });
 });
 

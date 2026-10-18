@@ -162,11 +162,16 @@
     },
     "markRest": "Marcar el resto como hecho (%{count})",
     "markRestNote": "Los hábitos de cantidad, con tiempo y con límite no cambian",
-    "activeChallenges": "RETOS ACTIVOS",
+    "streak": {
+      "a11y": { "one": "Racha de %{count} día", "other": "Racha de %{count} días" },
+      "frozenToday": { "one": "Racha de %{count} día. Con una congelación, sigue hoy.", "other": "Racha de %{count} días. Con una congelación, sigue hoy." },
+      "start": "Empieza una racha",
+      "hint": "Muestra cómo funcionan las rachas"
+    },
+    "challengeChip": "%{name} · día %{day}",
+    "challengeChipHint": "Abre Retos",
+    "challengeMore": { "one": "%{count} reto más", "other": "%{count} retos más" },
     "challenge": {
-      "sub": "Día %{day} de %{days} · %{count} registrados",
-      "done": "✅ Listo",
-      "pending": "Pendiente",
       "a11yDone": "%{name}, día %{day} de %{days}, hecho",
       "a11yPending": "%{name}, día %{day} de %{days}, pendiente"
     },

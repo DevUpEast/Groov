@@ -3,7 +3,9 @@
 //   query params on the app URL: theme=light|dark|system, insets=top,right,bottom,left,
 //     route=<path> (consumed by parseDeepLink), guest=1 (auto anonymous session),
 //     demo=1 (seed starter habits + 30 days of history), lang=<locale code> (UI language
-//     for this page load, not persisted), nudge=1 (a sample AI nudge card on Today), mockup=1
+//     for this page load, not persisted), nudge=1 (a sample AI nudge card on Today),
+//     streak=<n>|frozen (the Today streak chip state), challenges=<n> (n challenge chips on
+//     Today, padded with samples), mockup=1
 //   window messages from the host: { type: 'mockup:theme', theme }, { type: 'mockup:navigate', route }
 //   messages to the host: { type: 'mockup:statusbar', style }, { type: 'mockup:ready' }
 import { Platform } from 'react-native';
@@ -22,6 +24,20 @@ export const mockupParams = {
   get lang() { return (isWeb && params().get('lang')) || null; },
   // nudge=1: Today shows a fixed sample AI nudge card (review shots; no AI call).
   get nudge() { return isWeb && params().get('nudge') === '1'; },
+  // streak=<n> | streak=frozen[:<n>]: the Today streak chip shows that state (review shots;
+  // the stored history is untouched). null when absent.
+  get streak() {
+    const raw = isWeb ? params().get('streak') : null;
+    if (raw == null || raw === '') return null;
+    const m = /^(frozen)?:?(\d+)?$/.exec(raw);
+    if (!m) return null;
+    return { count: m[2] != null ? Number(m[2]) : 12, frozen: !!m[1] };
+  },
+  // challenges=<n>: Today shows n challenge chips, the real ones first, then samples.
+  get challenges() {
+    const raw = isWeb ? params().get('challenges') : null;
+    return raw != null && /^\d+$/.test(raw) ? Number(raw) : null;
+  },
   get theme() { const t = params().get('theme'); return t === 'light' || t === 'dark' ? t : null; },
   get insets() {
     const raw = params().get('insets');

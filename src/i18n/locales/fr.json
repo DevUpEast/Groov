@@ -162,11 +162,16 @@
     },
     "markRest": "Cocher le reste (%{count})",
     "markRestNote": "Les habitudes chiffrées, chronométrées et avec limite ne changent pas",
-    "activeChallenges": "DÉFIS EN COURS",
+    "streak": {
+      "a11y": { "one": "Série de %{count} jour", "other": "Série de %{count} jours" },
+      "frozenToday": { "one": "Série de %{count} jour. Avec un gel, elle tient aujourd'hui.", "other": "Série de %{count} jours. Avec un gel, elle tient aujourd'hui." },
+      "start": "Lance une série",
+      "hint": "Explique comment les séries fonctionnent"
+    },
+    "challengeChip": "%{name} · jour %{day}",
+    "challengeChipHint": "Ouvre Défis",
+    "challengeMore": { "one": "%{count} autre défi", "other": "%{count} autres défis" },
     "challenge": {
-      "sub": "Jour %{day} sur %{days} · %{count} validés",
-      "done": "✅ Fait",
-      "pending": "En attente",
       "a11yDone": "%{name}, jour %{day} sur %{days}, fait",
       "a11yPending": "%{name}, jour %{day} sur %{days}, en attente"
     },

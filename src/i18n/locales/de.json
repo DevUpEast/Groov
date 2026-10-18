@@ -162,11 +162,16 @@
     },
     "markRest": "Den Rest abhaken (%{count})",
     "markRestNote": "Mengen-, Zeit- und Limit-Gewohnheiten bleiben unverändert",
-    "activeChallenges": "AKTIVE CHALLENGES",
+    "streak": {
+      "a11y": { "one": "Serie von %{count} Tag", "other": "%{count}-Tage-Serie" },
+      "frozenToday": { "one": "Serie von %{count} Tag. Mit einem Freeze bleibt sie heute.", "other": "%{count}-Tage-Serie. Mit einem Freeze bleibt sie heute." },
+      "start": "Serie starten",
+      "hint": "Zeigt, wie Serien zählen"
+    },
+    "challengeChip": "%{name} · Tag %{day}",
+    "challengeChipHint": "Öffnet Challenges",
+    "challengeMore": { "one": "%{count} weitere Challenge", "other": "%{count} weitere Challenges" },
     "challenge": {
-      "sub": "Tag %{day} von %{days} · %{count} erfasst",
-      "done": "✅ Erledigt",
-      "pending": "Offen",
       "a11yDone": "%{name}, Tag %{day} von %{days}, erledigt",
       "a11yPending": "%{name}, Tag %{day} von %{days}, offen"
     },

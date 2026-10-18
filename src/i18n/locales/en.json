@@ -162,11 +162,16 @@
     },
     "markRest": "Mark the rest done (%{count})",
     "markRestNote": "Volume, timed and limit habits stay as they are",
-    "activeChallenges": "ACTIVE CHALLENGES",
+    "streak": {
+      "a11y": { "one": "%{count}-day streak", "other": "%{count}-day streak" },
+      "frozenToday": { "one": "%{count}-day streak. A freeze holds it today.", "other": "%{count}-day streak. A freeze holds it today." },
+      "start": "Start a streak",
+      "hint": "Shows how streaks work"
+    },
+    "challengeChip": "%{name} · day %{day}",
+    "challengeChipHint": "Opens Challenges",
+    "challengeMore": { "one": "%{count} more challenge", "other": "%{count} more challenges" },
     "challenge": {
-      "sub": "Day %{day} of %{days} · %{count} logged",
-      "done": "✅ Done",
-      "pending": "Pending",
       "a11yDone": "%{name}, day %{day} of %{days}, done",
       "a11yPending": "%{name}, day %{day} of %{days}, pending"
     },

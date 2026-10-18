@@ -28,6 +28,20 @@ const TODAY_HEADER_CASES = [
   { id: 'compact', props: { name: 'Claude', state: 'progress', completed: 2, total: 4, streak: 11, beats: BEATS('open'), compact: true } },
 ];
 
+// The C-05 chip states: streak, frozen, streak 0, and 1 / 2 / 3 challenges.
+const KICK = { id: 'k', name: '3-Day Kickstart', day: 2, days: 3, done: false };
+const RESET = { id: 'r', name: '7-Day Reset', day: 4, days: 7, done: true };
+const BUILDER = { id: 'b', name: '21-Day Habit Builder', day: 9, days: 21, done: false };
+const CHIP_BASE = { name: 'Claude', state: 'progress', completed: 2, total: 4, beats: BEATS('open') };
+const TODAY_CHIP_CASES = [
+  { id: 'streak-1ch', props: { ...CHIP_BASE, streak: 12, challenges: [KICK] } },
+  { id: 'frozen', props: { ...CHIP_BASE, streak: 12, frozen: true, challenges: [{ ...KICK, done: true }] } },
+  { id: 'zero-none', props: { ...CHIP_BASE, completed: 0, streak: 0, challenges: [] } },
+  { id: 'zero-1ch', props: { ...CHIP_BASE, completed: 0, streak: 0, challenges: [{ ...KICK, day: 1 }] } },
+  { id: '2ch', props: { ...CHIP_BASE, streak: 12, challenges: [KICK, RESET] } },
+  { id: '3ch', props: { ...CHIP_BASE, streak: 12, challenges: [KICK, RESET, BUILDER] } },
+];
+
 function Section({ title, theme, children }) {
   return (
     <View style={styles.section}>
@@ -79,6 +93,15 @@ export default function DesignPreview({ visible, onClose }) {
             {TODAY_HEADER_CASES.slice(0, 3).map(c => (
               <View key={`sticky-${c.id}`} style={styles.stickyCase}>
                 <TodayStickyBar theme={theme} greeting={t('today.greeting.evening')} {...c.props} />
+              </View>
+            ))}
+          </Section>
+
+          <Section title="Today chips (C-05)" theme={theme}>
+            {TODAY_CHIP_CASES.map(c => (
+              <View key={c.id} style={styles.headerCase} testID={`today-chips-${c.id}`}>
+                <Text style={[styles.swatchHex, { color: theme.textTertiary }]}>{c.id}</Text>
+                <TodayHeader theme={theme} isDark={shown === 'dark'} date="Thursday, October 15" greeting={t('today.greeting.evening')} compact={false} onStreakPress={() => {}} onChallengePress={() => {}} {...c.props} />
               </View>
             ))}
           </Section>
