@@ -6,7 +6,7 @@ import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { useApp } from '../context/AppContext';
 import { addDays, parseDateKey } from '../utils/dates';
-import { lightImpact, mediumImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import { track, Events } from '../utils/analytics';
 import { weekdayInitials } from '../utils/schedule';
 import { t, getLocale, useLocale } from '../i18n';
@@ -113,7 +113,7 @@ function Footer({ date }) {
 }
 
 export default function ShareCards({ visible, onClose, initialKind = 'streak' }) {
-  const { theme, settings, getOverallStreak, getBestStreak, getLastNDays, getDaySummary, habits, displayName, todayStr } = useApp();
+  const { theme, getOverallStreak, getBestStreak, getLastNDays, getDaySummary, habits, displayName, todayStr } = useApp();
   useLocale();
   const [kind, setKind] = useState(initialKind);
   const [busy, setBusy] = useState(false);
@@ -152,7 +152,6 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
     if (busy) return;
     setBusy(true);
     try {
-      if (settings.hapticsEnabled) mediumImpact();
       const uri = await captureRef(ref, { format: 'png', quality: 1, result: Platform.OS === 'web' ? 'data-uri' : 'tmpfile' });
       track(Events.SHARE_CARD, { kind });
       if (Platform.OS === 'web') {
@@ -165,7 +164,7 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
     } finally {
       setBusy(false);
     }
-  }, [busy, kind, settings.hapticsEnabled]);
+  }, [busy, kind]);
 
   if (!visible) return null;
   return (
@@ -182,7 +181,7 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
             {CARD_KINDS.map(k => {
               const on = kind === k.key;
               return (
-                <TouchableOpacity key={k.key} style={[styles.tab, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : 'transparent' }]} onPress={() => { if (settings.hapticsEnabled) lightImpact(); setKind(k.key); }} accessibilityRole="button" accessibilityState={{ selected: on }}>
+                <TouchableOpacity key={k.key} style={[styles.tab, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : 'transparent' }]} onPress={() => { feedback.play(EVENTS.selection); setKind(k.key); }} accessibilityRole="button" accessibilityState={{ selected: on }}>
                   <Text style={[styles.tabText, { color: on ? theme.onSelection : theme.textSecondary }]}>{t('shareCards.kindTab', { emoji: k.emoji, label: k.label })}</Text>
                 </TouchableOpacity>
               );

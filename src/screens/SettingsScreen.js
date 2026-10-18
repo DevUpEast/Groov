@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import TimePicker from '../components/TimePicker';
 import Dialog from '../components/ui/Dialog';
 import { sendTestNotification } from '../utils/notifications';
-import { lightImpact } from '../utils/haptics';
+import feedback, { EVENTS, recent as recentFeedback, clearRecent as clearFeedbackLog } from '../services/feedback';
 import { playSuccessChime } from '../utils/sounds';
 import { to12h, to24h, formatTime12 as formatTime } from '../utils/time';
 import { exportBackup, pickBackup } from '../services/backup';
@@ -52,6 +52,16 @@ const TERMS_URL = `${SITE_URL}/terms`;
 const SUPPORT_URL = `${SITE_URL}/support`;
 // Public issue tracker doubles as the feedback channel until a support mailbox exists.
 const FEEDBACK_URL = 'https://github.com/DevUpEast/Groov/issues/new?labels=feedback&title=Feedback%3A%20';
+// One Feedback log line: wall time, offset from the triggering tap, event, what fired.
+// Developer tooling; the event and call names are code identifiers, never translated.
+function formatFeedbackEntry(e) {
+  const d = new Date(e.t);
+  const pad = (n, w = 2) => String(n).padStart(w, '0');
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+  const what = e.haptic ? e.haptic : `sound:${e.sound}`;
+  return `${time}  +${e.offset}ms  ${e.event}  ${what}`;
+}
+
 const SUPPORT_EMAIL = null; // e.g. 'support@example.com' — when set, Feedback opens mail instead
 
 function feedbackMailto() {
@@ -145,7 +155,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
         )}
         <Switch
           value={enabled && masterOn && permitted}
-          onValueChange={toggle}
+          onValueChange={(v) => { feedback.toggled(v); toggle(v); }}
           {...switchColors(theme, enabled && masterOn && permitted)}
           style={{ opacity: masterOn && permitted ? 1 : 0.4 }}
           accessibilityLabel={label}
@@ -192,19 +202,17 @@ export default function SettingsScreen() {
   const localeLabel = SUPPORTED_LOCALES.find(l => l.code === locale)?.label ?? locale;
   const languageSub = localePreference ? localeLabel : t('settings.languageSystemSub', { label: localeLabel });
   const chooseLocale = (code) => {
-    if (settings.hapticsEnabled) lightImpact();
+    feedback.play(EVENTS.selection);
     setLocale(code);
     setLangModal(false);
   };
 
   const [whatsNew, setWhatsNew] = useState(false);
   const handleRate = async () => {
-    if (settings.hapticsEnabled) lightImpact();
     const ok = await openRateApp();
     if (!ok) Alert.alert(t('settings.about.rateThanks.title'), t('settings.about.rateThanks.body'));
   };
   const handleFeedback = () => {
-    if (settings.hapticsEnabled) lightImpact();
     Linking.openURL(SUPPORT_EMAIL ? feedbackMailto() : FEEDBACK_URL).catch(() => {});
   };
 
@@ -218,7 +226,6 @@ export default function SettingsScreen() {
     : t('settings.backup.never');
 
   const handleExport = async () => {
-    if (settings.hapticsEnabled) lightImpact();
     setBackupBusy(true);
     try {
       await exportBackup({ habits: allHabits, completions, notes, moods, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt });
@@ -231,7 +238,6 @@ export default function SettingsScreen() {
   };
 
   const handleImport = async () => {
-    if (settings.hapticsEnabled) lightImpact();
     let picked;
     try {
       picked = await pickBackup();
@@ -423,6 +429,8 @@ export default function SettingsScreen() {
   const showDevTools = devMode;
   // Throws during render so the root ErrorBoundary (and Sentry, when configured) can be exercised.
   const [crashTest, setCrashTest] = useState(false);
+  // Dev: the feedback service's ring buffer (null = closed). A snapshot, re-read on each open.
+  const [feedbackLog, setFeedbackLog] = useState(null);
   if (crashTest) throw new Error('Test crash from Settings dev tools');
 
   const handleVersionTap = () => {
@@ -443,7 +451,6 @@ export default function SettingsScreen() {
       afterDialogAlert.current = [t('settings.dev.unlocked.title'), t('settings.dev.unlocked.body')];
       setShowDevInput(false);
       setDevCodeDraft('');
-      lightImpact();
     } else {
       Alert.alert(t('settings.dev.invalid.title'), t('settings.dev.invalid.body'));
       setDevCodeDraft('');
@@ -471,7 +478,7 @@ export default function SettingsScreen() {
     updateReminders(reminders.map((r, i) => i === idx ? { ...r, time } : r));
 
   const removeReminder = (idx) => {
-    if (settings.hapticsEnabled) lightImpact();
+    feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(t('settings.removeReminder.title'), t('settings.removeReminder.body'), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.remove'), style: 'destructive', onPress: () => updateReminders(reminders.filter((_, i) => i !== idx)) },
@@ -479,7 +486,6 @@ export default function SettingsScreen() {
   };
 
   const addReminder = async () => {
-    if (settings.hapticsEnabled) lightImpact();
     if (!canAddReminder()) return;
     if (!(await ensureNotificationPermission())) return;
     updateReminders([
@@ -495,7 +501,7 @@ export default function SettingsScreen() {
     updateHabit(habit.id, { reminder: { ...habit.reminder, hour12: t.hour12, minute: t.minute, ampm: t.ampm, enabled: true } });
 
   const removeHabitReminder = (habit) => {
-    if (settings.hapticsEnabled) lightImpact();
+    feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(t('settings.removeReminder.title'), t('settings.removeReminder.habitBody', { name: habit.name }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.remove'), style: 'destructive', onPress: () => updateHabit(habit.id, { reminder: { ...habit.reminder, enabled: false } }) },
@@ -571,7 +577,7 @@ export default function SettingsScreen() {
                   <TouchableOpacity
                     key={opt}
                     style={[styles.segmentBtn, active && { backgroundColor: theme.selection, borderColor: theme.selectionBorder }]}
-                    onPress={() => updateSettings({ theme: opt })}
+                    onPress={() => { feedback.play(EVENTS.selection); updateSettings({ theme: opt }); }}
                     activeOpacity={0.7}
                     accessibilityRole="button"
                     accessibilityLabel={t('settings.themeA11y', { label })}
@@ -585,7 +591,7 @@ export default function SettingsScreen() {
           </View>
           <TouchableOpacity
             style={[styles.row, { borderBottomColor: 'transparent' }]}
-            onPress={() => { if (settings.hapticsEnabled) lightImpact(); setLangModal(true); }}
+            onPress={() => setLangModal(true)}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={`${t('settings.language')}, ${languageSub}`}
@@ -610,6 +616,7 @@ export default function SettingsScreen() {
               <Switch
                 value={settings.notificationsEnabled && permitted}
                 onValueChange={async v => {
+                  feedback.toggled(v);
                   if (v && !(await ensureNotificationPermission())) return;
                   updateSettings({ notificationsEnabled: v });
                 }}
@@ -698,6 +705,7 @@ export default function SettingsScreen() {
               <Switch
                 value={settings.soundEnabled}
                 onValueChange={v => {
+                  feedback.toggled(v);
                   updateSettings({ soundEnabled: v });
                   if (v) playSuccessChime();
                 }}
@@ -713,7 +721,11 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={settings.hapticsEnabled}
-                onValueChange={v => updateSettings({ hapticsEnabled: v })}
+                onValueChange={v => {
+                  // updateSettings applies the gate synchronously: turning haptics on is felt.
+                  updateSettings({ hapticsEnabled: v });
+                  feedback.toggled(v);
+                }}
                 {...switchColors(theme, settings.hapticsEnabled)}
                 accessibilityLabel={t('settings.haptics')}
               />
@@ -800,6 +812,21 @@ export default function SettingsScreen() {
               <Ionicons name="calendar-outline" size={20} color={theme.link} />
             </TouchableOpacity>
 
+            {/* Feedback log: what fired, and when, relative to the tap (plan §7.4) */}
+            <TouchableOpacity
+              style={[styles.row, { borderBottomColor: theme.border }]}
+              onPress={() => setFeedbackLog(recentFeedback())}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.dev.feedbackLog.title')}
+            >
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.feedbackLog.title')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{t('settings.dev.feedbackLog.sub')}</Text>
+              </View>
+              <Ionicons name="pulse-outline" size={20} color={theme.link} />
+            </TouchableOpacity>
+
             {/* Crash test */}
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: theme.border }]}
@@ -854,7 +881,7 @@ export default function SettingsScreen() {
             label={isPro ? t('settings.pro.have') : t('settings.pro.upgrade')}
             sublabel={isPro ? t('settings.pro.haveSub') : t('settings.pro.upgradeSub')}
             theme={theme}
-            onPress={isPro ? undefined : () => { if (settings.hapticsEnabled) lightImpact(); openPaywall('settings'); }}
+            onPress={isPro ? undefined : () => openPaywall('settings')}
             right={<Ionicons name={isPro ? 'checkmark-circle' : 'sparkles-outline'} size={20} color={theme.link} />}
           />
         </Section>
@@ -873,7 +900,7 @@ export default function SettingsScreen() {
               label={t('settings.account.guest')}
               sublabel={t('settings.account.guestSub')}
               theme={theme}
-              onPress={() => { if (settings.hapticsEnabled) lightImpact(); setLinkSheet(true); }}
+              onPress={() => setLinkSheet(true)}
               right={<View style={[styles.linkPill, { backgroundColor: theme.action }]}><Text style={[styles.linkPillText, { color: theme.onAction }]}>{t('settings.account.addSignIn')}</Text></View>}
             />
           ) : (
@@ -964,7 +991,6 @@ export default function SettingsScreen() {
               sublabel={t('settings.about.widgetSub')}
               theme={theme}
               onPress={async () => {
-                if (settings.hapticsEnabled) lightImpact();
                 try {
                   const { requestPinWidget } = require('react-native-android-widget');
                   const ok = await requestPinWidget({ widgetName: WIDGET_NAME });
@@ -994,7 +1020,7 @@ export default function SettingsScreen() {
             label={t('settings.about.whatsNew')}
             sublabel={t('settings.about.whatsNewSub', { version: VERSION_LABEL })}
             theme={theme}
-            onPress={() => { if (settings.hapticsEnabled) lightImpact(); setWhatsNew(true); }}
+            onPress={() => setWhatsNew(true)}
             right={<Ionicons name="sparkles-outline" size={18} color={theme.textSecondary} />}
           />
           <Row
@@ -1035,6 +1061,22 @@ export default function SettingsScreen() {
         onClose={() => setLinkSheet(false)}
         onLinked={() => { setLinkSheet(false); Alert.alert(t('settings.account.linked.title'), t('settings.account.linked.body')); }}
       />
+
+      {/* Dev: feedback log */}
+      <Dialog
+        visible={!!feedbackLog}
+        onClose={() => setFeedbackLog(null)}
+        title={t('settings.dev.feedbackLog.title')}
+        body={feedbackLog && feedbackLog.length === 0 ? t('settings.dev.feedbackLog.empty') : undefined}
+        actions={[
+          { label: t('settings.dev.feedbackLog.clear'), onPress: () => { clearFeedbackLog(); setFeedbackLog([]); } },
+          { label: t('common.close'), variant: 'primary', onPress: () => setFeedbackLog(null) },
+        ]}
+      >
+        {(feedbackLog || []).slice().reverse().map((e, i) => (
+          <Text key={`${e.t}-${i}`} style={[styles.feedbackLogLine, { color: theme.text }]}>{formatFeedbackEntry(e)}</Text>
+        ))}
+      </Dialog>
 
       {/* Password Reset dialog */}
       <Dialog
@@ -1242,6 +1284,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   devBtnText: { fontSize: 16, fontWeight: '700' },
+  feedbackLogLine: { fontSize: 12, lineHeight: 18, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   backupHint: { fontSize: 12, lineHeight: 17, paddingHorizontal: 16, paddingBottom: 12 },
   linkPill: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   linkPillText: { fontSize: 12, fontWeight: '700' },

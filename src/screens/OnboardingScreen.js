@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import SafeAreaView from '../components/SafeAreaView';
 import { useApp } from '../context/AppContext';
 import { palette } from '../theme/tokens';
-import { lightImpact, mediumImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import { t, useLocale } from '../i18n';
 import { STARTER_HABITS, getStarterHabits } from '../utils/habits';
 import { reminderTimeForTimeOfDay } from '../utils/settings';
@@ -42,17 +42,15 @@ export default function OnboardingScreen() {
 }
 
 function OnboardingFlow() {
-  const { completeOnboarding, theme, settings, ensureNotificationPermission } = useApp();
+  const { completeOnboarding, theme, ensureNotificationPermission } = useApp();
   const { locale } = useLocale();
   const [step, setStep] = useState(0); // 0,1 intro · 2 pick · 3 intentions · 4 reminders
   const [asking, setAsking] = useState(false);
   const [picked, setPicked] = useState(DEFAULT_PICK);
   const [plans, setPlans] = useState({}); // key -> { timeOfDay, intention }
 
-  const haptic = () => { if (settings?.hapticsEnabled !== false) lightImpact(); };
-
   const togglePick = (key) => {
-    haptic();
+    feedback.play(EVENTS.selection);
     setPicked(p => (p.includes(key) ? p.filter(k => k !== key) : p.length >= MAX_PICK ? p : [...p, key]));
   };
 
@@ -72,7 +70,6 @@ function OnboardingFlow() {
   // `remindersOn`: the user allowed notifications on the reminders step. Otherwise the
   // times are still saved, switched off, so Settings can turn them on later.
   const finish = (withHabits, remindersOn = false) => {
-    if (settings?.hapticsEnabled !== false) mediumImpact();
     const habits = withHabits
       ? chosen.map(h => {
           const plan = plans[h.key] || {};
@@ -92,7 +89,6 @@ function OnboardingFlow() {
 
   const turnOnReminders = async () => {
     if (asking) return;
-    haptic();
     setAsking(true);
     const granted = await ensureNotificationPermission();
     setAsking(false);
@@ -120,7 +116,7 @@ function OnboardingFlow() {
             <Text style={[styles.title, { color: theme.text }]}>{t(`onboarding.intro.${s.key}.title`)}</Text>
             <Text style={[styles.body, { color: theme.textSecondary }]}>{t(`onboarding.intro.${s.key}.body`)}</Text>
           </View>
-          <TouchableOpacity style={[styles.btn, { backgroundColor: theme.brandGroundCta }]} onPress={() => { haptic(); setStep(step + 1); }} accessibilityRole="button">
+          <TouchableOpacity style={[styles.btn, { backgroundColor: theme.brandGroundCta }]} onPress={() => { setStep(step + 1); }} accessibilityRole="button">
             <Text style={[styles.btnText, { color: theme.onBrandGroundCta }]}>{t('common.next')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => finish(false)} style={styles.skipBtn} accessibilityRole="button" accessibilityLabel={t('onboarding.skipA11y')}>
@@ -172,12 +168,12 @@ function OnboardingFlow() {
           </View>
           <TouchableOpacity
             style={[styles.btn, { backgroundColor: theme.brandGroundCta, opacity: picked.length === 0 ? 0.6 : 1 }]}
-            onPress={() => { haptic(); picked.length === 0 ? finish(false) : setStep(3); }}
+            onPress={() => { picked.length === 0 ? finish(false) : setStep(3); }}
             accessibilityRole="button"
           >
             <Text style={[styles.btnText, { color: theme.onBrandGroundCta }]}>{picked.length === 0 ? t('onboarding.pick.startEmpty') : t('common.next')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { haptic(); setStep(1); }} style={styles.skipBtn} accessibilityRole="button">
+          <TouchableOpacity onPress={() => { setStep(1); }} style={styles.skipBtn} accessibilityRole="button">
             <Text style={[styles.skipText, { color: theme.onBrandGroundSecondary }]}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
@@ -227,7 +223,7 @@ function OnboardingFlow() {
           <TouchableOpacity onPress={() => finish(true, false)} disabled={asking} style={styles.skipBtn} accessibilityRole="button" accessibilityLabel={t('onboarding.reminders.notNowA11y')}>
             <Text style={[styles.skipText, { color: theme.onBrandGroundSecondary }]}>{t('common.notNow')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { haptic(); setStep(3); }} disabled={asking} style={styles.backBtn} accessibilityRole="button">
+          <TouchableOpacity onPress={() => { setStep(3); }} disabled={asking} style={styles.backBtn} accessibilityRole="button">
             <Text style={[styles.skipText, { color: theme.onBrandGroundSecondary }]}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
@@ -260,7 +256,7 @@ function OnboardingFlow() {
                           <TouchableOpacity
                             key={c}
                             style={[styles.chip, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : 'transparent' }]}
-                            onPress={() => { haptic(); setPlans(p => ({ ...p, [h.key]: { ...p[h.key], timeOfDay: c } })); }}
+                            onPress={() => { feedback.play(EVENTS.selection); setPlans(p => ({ ...p, [h.key]: { ...p[h.key], timeOfDay: c } })); }}
                             accessibilityRole="button"
                             accessibilityState={{ selected: on }}
                           >
@@ -287,12 +283,12 @@ function OnboardingFlow() {
           </View>
           <TouchableOpacity
             style={[styles.btn, { backgroundColor: theme.brandGroundCta }]}
-            onPress={() => { if (hasReminders) { haptic(); Keyboard.dismiss(); setStep(4); } else finish(true); }}
+            onPress={() => { if (hasReminders) { Keyboard.dismiss(); setStep(4); } else finish(true); }}
             accessibilityRole="button"
           >
             <Text style={[styles.btnText, { color: theme.onBrandGroundCta }]}>{hasReminders ? t('common.next') : t('onboarding.plan.start')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { haptic(); setStep(2); }} style={styles.skipBtn} accessibilityRole="button">
+          <TouchableOpacity onPress={() => { setStep(2); }} style={styles.skipBtn} accessibilityRole="button">
             <Text style={[styles.skipText, { color: theme.onBrandGroundSecondary }]}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>

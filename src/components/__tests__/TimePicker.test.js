@@ -15,7 +15,7 @@ jest.mock('@react-native-community/datetimepicker', () => {
   };
 });
 jest.mock('expo-localization', () => ({ getCalendars: jest.fn(() => [{ uses24hourClock: false }]) }));
-jest.mock('../../utils/haptics', () => ({ lightImpact: jest.fn() }));
+jest.mock('../../services/feedback', () => ({ __esModule: true, default: { play: jest.fn() }, EVENTS: { selection: 'selection' } }));
 
 const { DateTimePickerAndroid } = require('@react-native-community/datetimepicker');
 const { getCalendars } = require('expo-localization');

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import SafeAreaView from '../components/SafeAreaView';
 import { useApp, STREAK_MILESTONES, TIER_STYLES } from '../context/AppContext';
-import { lightImpact, mediumImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import { fetchReflection } from '../services/aiCoaching';
 import { localDateKey, addDays } from '../utils/dates';
 import { moodSummary, habitMoodCorrelations, describeCorrelation, moodEmoji, MIN_SAMPLES } from '../utils/mood';
@@ -323,7 +323,6 @@ export default function ProgressScreen() {
     setReflectionLoading(true);
     setReflectionMessage(null);
     setReflectionError(false);
-    lightImpact();
     try {
       const data = await fetchReflection(reflectionPeriod, accountCreatedAt, displayName, coachToday);
       if (data?.message) {
@@ -331,6 +330,7 @@ export default function ProgressScreen() {
         setReflectionGeneratedAt(data.generatedAt ?? new Date().toISOString());
       }
     } catch (e) {
+      feedback.play(EVENTS.error);
       setReflectionError(true);
       setReflectionErrorMsg(e?.message || '');
     } finally {
@@ -377,14 +377,13 @@ export default function ProgressScreen() {
   const handleBarPress = (i, val) => {
     const d = last7[i];
     if (d.future || d.before) return;
-    lightImpact();
+    feedback.play(EVENTS.selection);
     const date = new Date(d.date + 'T00:00:00');
     const label = date.toLocaleDateString(getLocale(), { weekday: 'short', month: 'short', day: 'numeric' });
     setTooltipInfo({ label, value: val });
   };
 
   const handleDayPress = (day) => {
-    lightImpact();
     const raw = completions[day.date] || {};
     setSelectedDay({ ...day, rawCompletions: raw });
   };
@@ -398,7 +397,7 @@ export default function ProgressScreen() {
           <AppText variant="title" style={[styles.heading, { color: theme.text }]}>{t('progress.title')}</AppText>
           <TouchableOpacity
             style={[styles.shareChip, { borderColor: theme.border, backgroundColor: theme.surface }]}
-            onPress={() => { lightImpact(); setShareOpen(true); }}
+            onPress={() => setShareOpen(true)}
             accessibilityRole="button"
             accessibilityLabel={t('progress.shareA11y')}
           >
@@ -424,7 +423,7 @@ export default function ProgressScreen() {
                 // A sibling of the card, not a child: the card is one accessible element.
                 <TouchableOpacity
                   style={styles.statInfo}
-                  onPress={() => { lightImpact(); setStreakRuleOpen(true); }}
+                  onPress={() => setStreakRuleOpen(true)}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   accessibilityRole="button"
                   accessibilityLabel={t('progress.streakRule.a11y')}
@@ -459,7 +458,7 @@ export default function ProgressScreen() {
                     { borderColor: theme.controlBorder },
                     heatPeriodIdx === i && { backgroundColor: theme.selection, borderColor: theme.selectionBorder },
                   ]}
-                  onPress={() => { lightImpact(); setHeatPeriodIdx(i); }}
+                  onPress={() => { feedback.play(EVENTS.selection); setHeatPeriodIdx(i); }}
                   accessibilityRole="button"
                   accessibilityLabel={t('progress.lastDaysA11y', { count: cfg.days })}
                   accessibilityState={{ selected: heatPeriodIdx === i }}
@@ -599,7 +598,7 @@ export default function ProgressScreen() {
                       locked && { opacity: 0.4 },
                     ]}
                     onPress={() => {
-                      lightImpact();
+                      feedback.play(EVENTS.selection);
                       setReflectionPeriod(value);
                       setReflectionMessage(null);
                       setReflectionError(false);

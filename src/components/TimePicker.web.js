@@ -7,7 +7,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView,
   Animated, Easing,
 } from 'react-native';
-import { lightImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import { t } from '../i18n';
 import OverlayModal from './ui/OverlayModal';
 
@@ -78,7 +78,7 @@ function WheelColumn({ items, selectedValue, onValueChange, loop, theme, width }
       if (val !== lastEmitted.current) {
         lastEmitted.current = val;
         skipEffect.current = true;
-        lightImpact();
+        feedback.play(EVENTS.selection);
         onValueChange(val);
       }
     } else {
@@ -87,7 +87,7 @@ function WheelColumn({ items, selectedValue, onValueChange, loop, theme, width }
       if (val !== lastEmitted.current) {
         lastEmitted.current = val;
         skipEffect.current = true;
-        lightImpact();
+        feedback.play(EVENTS.selection);
         onValueChange(val);
       }
     }
@@ -160,7 +160,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
   const handleSave = () => {
     const safeH = Math.min(12, Math.max(1, parseInt(h) || 12));
     const safeM = Math.min(59, Math.max(0, parseInt(m) || 0));
-    lightImpact();
+    feedback.play(EVENTS.selection);
     onSave({ hour12: safeH, minute: safeM, ampm: period });
     onClose();
   };

@@ -13,10 +13,10 @@ jest.mock('../../../context/AppContext', () => {
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
-jest.mock('../../../utils/haptics', () => ({ lightImpact: jest.fn() }));
+jest.mock('../../../services/feedback', () => ({ __esModule: true, default: { play: jest.fn() }, EVENTS: { longPress: 'longPress' } }));
 
 const ActionSheet = require('../ActionSheet').default;
-const { lightImpact } = require('../../../utils/haptics');
+const feedback = require('../../../services/feedback').default;
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -106,11 +106,12 @@ describe('ActionSheet (Android)', () => {
     expect(options[0].onPress).toHaveBeenCalledTimes(2);
   });
 
-  it('plays the haptic when it opens, not while hidden', () => {
+  it('plays the longPress feedback when it opens, not while hidden', () => {
     const r = render({ visible: false, title: 'T', options: makeOptions(), onCancel: jest.fn() });
-    expect(lightImpact).not.toHaveBeenCalled();
+    expect(feedback.play).not.toHaveBeenCalled();
     act(() => { r.update(React.createElement(ActionSheet, { visible: true, title: 'T', options: makeOptions(), onCancel: jest.fn() })); });
-    expect(lightImpact).toHaveBeenCalledTimes(1);
+    expect(feedback.play).toHaveBeenCalledTimes(1);
+    expect(feedback.play).toHaveBeenCalledWith('longPress');
   });
 });
 

@@ -12,7 +12,7 @@ import BottomSheet from '../components/BottomSheet';
 import EmptyCard from '../components/EmptyCard';
 import { SheetDragHandle, SheetHeader } from '../components/SheetHeader';
 import CelebrationOverlay from '../components/CelebrationOverlay';
-import { lightImpact, mediumImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import { addDays } from '../utils/dates';
 import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
 import { getChallengeTemplates } from '../utils/habits';
@@ -92,7 +92,6 @@ const CHALLENGE_ICONS = ['🏆', '🎯', '💪', '🔥', '⚡', '🌟', '🏃', 
 // ── Challenge form modal (includes inline habit linking) ──────────────────────
 
 function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHabit, theme }) {
-  const { settings } = useApp();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [days, setDays] = useState(7);
@@ -124,8 +123,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
   const canSave = name.trim().length > 0 && (habits.length === 0 || selectedHabitIds.length > 0);
 
   const handleSave = () => {
-    if (!canSave) return;
-    if (settings.hapticsEnabled) mediumImpact();
+    if (!canSave) { feedback.play(EVENTS.refused); return; }
     onSave({ name: name.trim(), description: description.trim(), days, icon, linkedHabitIds: selectedHabitIds });
     sheet.close(onClose);
   };
@@ -166,7 +164,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
                     key={tpl.key}
                     style={[styles.templateChip, { borderColor: active ? theme.selectionBorder : theme.border, backgroundColor: active ? theme.selection : theme.bg }]}
                     onPress={() => {
-                      if (settings.hapticsEnabled) lightImpact();
+                      feedback.play(EVENTS.selection);
                       setName(tpl.name); setDescription(tpl.description); setIcon(tpl.icon);
                       setDays(tpl.days); setRangeMax(tpl.days <= 7 ? 7 : tpl.days <= 30 ? 30 : 365);
                       if (selectedHabitIds.length === 0) setSelectedHabitIds(habits.map(h => h.id));
@@ -541,7 +539,7 @@ function ChallengeCard({ challenge, habits, today, onEdit, onDelete, theme }) {
 export default function ChallengeScreen() {
   const {
     habits, challenges, effectiveChallenges, effectivePastChallenges,
-    theme, settings,
+    theme,
     editChallenge, createChallenge, deleteChallenge,
     setRequestedTab, setPendingHabitLinkChallenge,
     setModalOpen,
@@ -559,7 +557,7 @@ export default function ChallengeScreen() {
   useEffect(() => { setModalOpen(anyModalOpen); }, [anyModalOpen]);
 
   const handleDelete = (challenge) => {
-    if (settings.hapticsEnabled) lightImpact();
+    feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(t('challenges.delete.title'), t('challenges.delete.body', { name: challenge.name }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: () => deleteChallenge(challenge.id) },
@@ -567,7 +565,6 @@ export default function ChallengeScreen() {
   };
 
   const openNew = () => {
-    if (settings.hapticsEnabled) lightImpact();
     setEditingChallenge(null);
     setFormVisible(true);
   };

@@ -3,7 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { completionsInWeek } from '../utils/schedule';
 import { addDays } from '../utils/dates';
-import { lightImpact } from '../utils/haptics';
+import feedback from '../services/feedback';
 import { announce } from '../utils/a11y';
 import HabitIcon from './HabitIcon';
 import ActionSheet from './ui/ActionSheet';
@@ -15,7 +15,7 @@ import { type, numeric } from '../theme/typography';
 export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkipToggle }) {
   const {
     getHabitCount, isHabitDone, isHabitDoneOn, getStreakForHabit, theme, themeName, todayStr,
-    isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, settings, getNote,
+    isHabitSkippedOn, toggleSkipHabitOn, toggleHabitDoneOn, getNote,
   } = useApp();
   useLocale();
   // The habit's curated accent for this theme (C-01): legacy, unknown and missing colours are
@@ -47,11 +47,12 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   }, [timerStart]);
   const elapsedSec = timerStart ? Math.floor((Date.now() - timerStart) / 1000) : 0;
   const toggleTimer = () => {
-    if (settings.hapticsEnabled) lightImpact();
-    if (!timerStart) { setTimerStart(Date.now()); return; }
+    if (!timerStart) { feedback.toggled(true); setTimerStart(Date.now()); return; }
     const mins = Math.round(elapsedSec / 60);
     setTimerStart(null);
+    // A stop that logs minutes gets the increment's feedback (counter.step or habit.done).
     if (mins >= 1) onIncrement(mins);
+    else feedback.toggled(false);
   };
   // perWeek habits show weekly progress instead of a per-day count.
   const perWeek = habit.schedule?.type === 'perWeek' ? habit.schedule.target : 0;

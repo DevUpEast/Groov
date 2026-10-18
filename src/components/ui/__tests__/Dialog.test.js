@@ -11,7 +11,12 @@ jest.mock('../../../context/AppContext', () => {
   return { useApp: () => ({ theme: themes.light }) };
 });
 
+jest.mock('../../../services/feedback', () => ({
+  __esModule: true, default: { play: jest.fn() }, EVENTS: { destructiveConfirm: 'destructiveConfirm' },
+}));
+
 const Dialog = require('../Dialog').default;
+const feedback = require('../../../services/feedback').default;
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -237,8 +242,8 @@ describe('Dialog actions (F-02)', () => {
 describe('SettingsScreen dialogs', () => {
   const settings = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'screens', 'SettingsScreen.js'), 'utf8');
 
-  it('uses Dialog for all four overlays and no longer has the absolute overlay', () => {
-    expect((settings.match(/<Dialog\b/g) || []).length).toBe(4);
+  it('uses Dialog for all four overlays (plus the F-04a dev Feedback log) and no longer has the absolute overlay', () => {
+    expect((settings.match(/<Dialog\b/g) || []).length).toBe(5);
     expect(settings).not.toMatch(/devModal/);
     expect(settings).not.toMatch(/zIndex: 999/);
   });
@@ -247,5 +252,33 @@ describe('SettingsScreen dialogs', () => {
     expect(settings).not.toMatch(/Alert\.alert\(t\('settings\.resetModal\.success/);
     expect(settings).not.toMatch(/Alert\.alert\(t\('settings\.dev\.unlocked/);
     expect((settings.match(/onDismiss=\{flushAfterDialogAlert\}/g) || []).length).toBe(2);
+  });
+});
+
+describe('Dialog destructiveConfirm haptic (F-04a)', () => {
+  beforeEach(() => feedback.play.mockClear());
+  const actions = (variant) => [{ label: 'Cancel', onPress: jest.fn() }, { label: 'Delete', variant, onPress: jest.fn() }];
+
+  it('plays once per open when an action is destructive, never while hidden', () => {
+    const r = render({ visible: false, onClose: jest.fn(), title: 'T', actions: actions('destructive') });
+    expect(feedback.play).not.toHaveBeenCalled();
+    act(() => { r.update(React.createElement(Dialog, { visible: true, onClose: jest.fn(), title: 'T', actions: actions('destructive') })); });
+    expect(feedback.play).toHaveBeenCalledTimes(1);
+    expect(feedback.play).toHaveBeenCalledWith('destructiveConfirm');
+    act(() => { r.update(React.createElement(Dialog, { visible: true, onClose: jest.fn(), title: 'T2', actions: actions('destructive') })); });
+    expect(feedback.play).toHaveBeenCalledTimes(1);
+    act(() => { r.update(React.createElement(Dialog, { visible: false, onClose: jest.fn(), title: 'T', actions: actions('destructive') })); });
+    act(() => { r.update(React.createElement(Dialog, { visible: true, onClose: jest.fn(), title: 'T', actions: actions('destructive') })); });
+    expect(feedback.play).toHaveBeenCalledTimes(2);
+  });
+
+  it('plays for the legacy destructive shorthand and when mounted open', () => {
+    render({ visible: true, destructive: true, onClose: jest.fn(), title: 'T', actions: actions('primary') });
+    expect(feedback.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays silent for a non-destructive dialog', () => {
+    render({ visible: true, onClose: jest.fn(), title: 'T', actions: actions('primary') });
+    expect(feedback.play).not.toHaveBeenCalled();
   });
 });
