@@ -126,17 +126,25 @@ describe('reduced motion (§4.3)', () => {
   });
 
   it('sheets slide in full motion and fade (no translate) when reduced', () => {
-    const { sheetMotionStyle, sheetOut, duration } = require('../motion');
+    const { sheetMotionStyle, sheetOut, duration, SHEET_FADE_RANGE } = require('../motion');
     const v = new Animated.Value(0);
     expect(sheetMotionStyle(v, false)).toEqual({ transform: [{ translateY: v }] });
-    const r = sheetMotionStyle(v, true, 800);
+    const r = sheetMotionStyle(v, true);
     expect(r.transform).toBeUndefined();
     expect(typeof r.opacity.interpolate).toBe('function');
+    // A drag to the 80 dp dismiss threshold visibly fades the sheet (M1).
+    v.setValue(80);
+    expect(r.opacity.__getValue()).toBeCloseTo(1 - 80 / SHEET_FADE_RANGE, 3);
+    expect(r.opacity.__getValue()).toBeLessThan(0.7);
+    v.setValue(SHEET_FADE_RANGE * 3);
+    expect(r.opacity.__getValue()).toBe(0);
+    v.setValue(0);
     const t = jest.spyOn(Animated, 'timing');
     sheetOut(v, 800, false);
     expect(t.mock.calls[0][1]).toMatchObject({ toValue: 800, duration: duration.exit(duration.enter) });
+    // Reduced: closes to the fade range (opacity 0) in 150 ms, not to the screen edge.
     sheetOut(v, 800, true);
-    expect(t.mock.calls[1][1]).toMatchObject({ toValue: 800, duration: 150 });
+    expect(t.mock.calls[1][1]).toMatchObject({ toValue: SHEET_FADE_RANGE, duration: 150 });
     t.mockRestore();
   });
 });
@@ -194,30 +202,108 @@ describe('useMotion() follows the OS setting', () => {
 });
 
 describe('literal ratchet: durations and springs come from src/theme/motion.js', () => {
-  // sourceFiles(): src/**/*.js plus App.js, outside src/theme/ and __tests__.
-  const files = sourceFiles();
+  // sourceFiles() is src/**/*.js plus App.js outside src/theme/ and __tests__; the other
+  // src/theme/ modules are scanned too, only motion.js itself is exempt.
+  const themeDir = path.join(ROOT, 'src/theme');
+  const themeFiles = fs.readdirSync(themeDir)
+    .filter(f => /\.jsx?$/.test(f) && f !== 'motion.js')
+    .map(f => `src/theme/${f}`);
+  const files = sourceFiles().concat(themeFiles);
+  const read = (f) => stripComments(fs.readFileSync(path.join(ROOT, f), 'utf8'));
+  const lineOf = (src, index) => src.slice(0, index).split('\n').length;
+
+  // Whole-file regexes (`\s` spans newlines, so `duration:\n  220` is caught).
   const RULES = [
-    ['tension:', /\btension\s*:/g],
-    ['friction:', /\bfriction\s*:/g],
-    ['stiffness:', /\bstiffness\s*:/g],
-    ['damping:', /\bdamping\s*:/g],
+    ['spring params (tension/friction/stiffness/damping/bounciness/speed)', /\b(?:tension|friction|stiffness|damping|bounciness|speed)\s*:/g],
     ['duration: <number>', /\bduration\s*:\s*\d/g],
+    ['delay: <number>', /\bdelay\s*:\s*\d/g],
+    ['Animated.delay(<number>)', /Animated\s*\.\s*delay\s*\(\s*\d/g],
   ];
 
-  it.each(RULES)('no %s literal outside motion.js', (_, re) => {
+  function hitsFor(re, list = files) {
     const hits = [];
-    for (const f of files) {
-      const src = stripComments(fs.readFileSync(path.join(ROOT, f), 'utf8'));
-      const lines = src.split('\n');
-      lines.forEach((line, i) => { if (line.match(re)) hits.push(`${f}:${i + 1}: ${line.trim()}`); });
+    for (const f of list) {
+      const src = read(f);
+      for (const m of src.matchAll(re)) hits.push(`${f}:${lineOf(src, m.index)}: ${m[0].replace(/\s+/g, ' ')}`);
     }
-    expect(hits).toEqual([]);
+    return hits;
+  }
+
+  it.each(RULES)('no %s outside motion.js', (_, re) => {
+    expect(hitsFor(re)).toEqual([]);
   });
 
-  it('the scanner sees App.js and catches a literal', () => {
+  // setTimeout(fn, <number literal>): a timer whose delay is a bare number. Animation hand-offs
+  // must use completion callbacks (sheetOut(...).start(cb)) or a motion token instead. The
+  // timers below are not animation hand-offs; each is allowed by file and value, with a reason.
+  const TIMER_ALLOWLIST = [
+    ['src/components/TimePicker.web.js', 80, 'web wheel: scroll to the initial row after layout'],
+    ['src/components/ui/Dialog.js', 0, 'iOS/web: focus the initial field on the next tick'],
+    ['src/screens/SettingsScreen.js', 2000, 'dev tools: window for the 7-tap unlock'],
+    ['src/screens/TodayScreen.js', 900, 'milestone screen waits for the check-off beats; C-06a/C-07 move it onto the beat grid'],
+    ['src/screens/TodayScreen.js', 600, "reward modal waits for AppContext's load-time archiving"],
+    ['src/screens/TodayScreen.js', 100, 'trophy opens after the check-off commit; C-07 moves it onto the beat grid'],
+    ['src/screens/TodayScreen.js', 800, 'store review prompt after a milestone closes (not motion)'],
+    ['src/screens/TodayScreen.js', 800, 'store review prompt after the trophy closes (not motion)'],
+    ['src/services/backup.js', 1000, 'web: revoke the download URL once the browser has it'],
+  ];
+
+  // Finds each setTimeout( ... ) call and returns its last top-level argument.
+  function timerLiterals(src) {
+    const out = [];
+    const re = /\bsetTimeout\s*\(/g;
+    let m;
+    while ((m = re.exec(src))) {
+      let depth = 1;
+      let i = m.index + m[0].length;
+      let lastComma = -1;
+      let quote = null;
+      for (; i < src.length && depth > 0; i++) {
+        const c = src[i];
+        if (quote) { if (c === '\\') i++; else if (c === quote) quote = null; continue; }
+        if (c === '"' || c === "'" || c === '`') quote = c;
+        else if (c === '(' || c === '[' || c === '{') depth++;
+        else if (c === ')' || c === ']' || c === '}') depth--;
+        else if (c === ',' && depth === 1) lastComma = i;
+      }
+      if (lastComma < 0) continue;
+      const arg = src.slice(lastComma + 1, i - 1).trim();
+      if (/^\d+$/.test(arg)) out.push({ ms: Number(arg), line: lineOf(src, m.index) });
+    }
+    return out;
+  }
+
+  it('no setTimeout with a literal delay outside the allowlist', () => {
+    const found = [];
+    for (const f of files) for (const { ms, line } of timerLiterals(read(f))) found.push({ f, ms, line });
+    const allowed = TIMER_ALLOWLIST.map(([f, ms]) => ({ f, ms }));
+    const unexpected = [];
+    for (const hit of found) {
+      const k = allowed.findIndex(a => a.f === hit.f && a.ms === hit.ms);
+      if (k >= 0) allowed.splice(k, 1);
+      else unexpected.push(`${hit.f}:${hit.line}: setTimeout(…, ${hit.ms})`);
+    }
+    expect(unexpected).toEqual([]);
+    // Stale entries must be removed so the list cannot hide a new timer later.
+    expect(allowed).toEqual([]);
+  });
+
+  it('the scanners see App.js and src/theme, and catch each form', () => {
     expect(files).toContain('App.js');
-    expect('Animated.spring(v, { tension: 65, friction: 11 })'.match(/\btension\s*:/g)).toHaveLength(1);
-    expect('{ duration: 220, useNativeDriver: true }'.match(/\bduration\s*:\s*\d/g)).toHaveLength(1);
-    expect('{ duration: duration.state }'.match(/\bduration\s*:\s*\d/g)).toBeNull();
+    expect(files).toContain('src/theme/tokens.js');
+    expect(files).not.toContain('src/theme/motion.js');
+    const count = (re, text) => (text.match(re) || []).length;
+    const [spring, dur, delay, aDelay] = RULES.map(r => new RegExp(r[1].source, 'g'));
+    expect(count(spring, 'Animated.spring(v, { tension: 65, friction: 11 })')).toBe(2);
+    expect(count(spring, '{ bounciness: 8, speed: 12 }')).toBe(2);
+    expect(count(dur, '{ duration: 220, useNativeDriver: true }')).toBe(1);
+    expect(count(dur, '{ duration:\n    220 }')).toBe(1);
+    expect(count(dur, '{ duration: duration.state }')).toBe(0);
+    expect(count(delay, '{ delay: 125 }')).toBe(1);
+    expect(count(aDelay, 'Animated.delay(600)')).toBe(1);
+    expect(count(aDelay, 'Animated.delay(beat.b16)')).toBe(0);
+    expect(timerLiterals('setTimeout(() => { f(a, b); }, 250); setTimeout(g, X); setTimeout(h, n + 5);'))
+      .toEqual([{ ms: 250, line: 1 }]);
+    expect(timerLiterals('setTimeout(() => {\n  x();\n},\n  400);')).toEqual([{ ms: 400, line: 1 }]);
   });
 });

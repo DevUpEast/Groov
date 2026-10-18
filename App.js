@@ -158,12 +158,15 @@ function AppNavigator() {
   }, [translateX, pagerOpacity]);
 
   // Fresh onboarding always lands on Today, whatever tab was active before a reset.
+  // The row is always fully opaque after onboarding, even if a reduced-motion fade was cut off.
   useEffect(() => {
-    if (hasOnboarded && activeIndexRef.current !== 0) {
+    if (!hasOnboarded) return;
+    pagerOpacity.stopAnimation();
+    pagerOpacity.setValue(1);
+    if (activeIndexRef.current !== 0) {
       activeIndexRef.current = 0;
       setActiveIndex(0);
       translateX.setValue(0);
-      pagerOpacity.setValue(1);
     }
   }, [hasOnboarded]); // eslint-disable-line react-hooks/exhaustive-deps
 

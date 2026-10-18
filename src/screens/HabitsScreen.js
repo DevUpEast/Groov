@@ -23,7 +23,7 @@ import { suggestHabit } from '../services/aiCoaching';
 import { useAuth } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
 import { ACCENT_IDS, resolveAccent, storedHexFor } from '../theme/accents';
-import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle } from '../theme/motion';
+import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, handoff } from '../theme/motion';
 import { BLANK_FORM, formFromHabit, habitFromForm, pickAccent, selectedAccentId, suggestedColor } from '../utils/habitForm';
 import AppText from '../components/ui/AppText';
 
@@ -704,7 +704,7 @@ export default function HabitsScreen() {
         if (h) setDetailHabit(h);
       }
       clearPendingRoute();
-    }, 350);
+    }, handoff.afterTabChange);
     return () => clearTimeout(t);
   }, [pendingRoute]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -715,7 +715,7 @@ export default function HabitsScreen() {
         setEditingId(null);
         setForm(BLANK);
         setModalVisible(true);
-      }, 400);
+      }, handoff.afterTabChange); // the challenge sheet has already closed (M5)
       return () => clearTimeout(t);
     }
   }, [pendingHabitLinkChallenge]);

@@ -50,10 +50,14 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
       sheetIn(translateY).start();
     }
   }, [habit]); // eslint-disable-line react-hooks/exhaustive-deps
-  const close = useCallback(() => {
+  // `then` runs once the exit has finished and the sheet's Modal is gone (a frame after the
+  // unmount commit), so the next overlay never opens over this one. Ignores non-function
+  // arguments (onPress / onRequestClose pass an event).
+  const close = useCallback((then) => {
     sheetOut(translateY).start(() => {
       setVisible(false);
       onClose();
+      if (typeof then === 'function') requestAnimationFrame(() => then());
     });
   }, [translateY, onClose]);
   const closeRef = useRef(close);
@@ -180,7 +184,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
             )}
           </View>
           {onEdit && (
-            <TouchableOpacity onPress={() => { close(); setTimeout(() => onEdit(habit), 250); }} style={[styles.editBtn, { borderColor: theme.border }]} accessibilityRole="button" accessibilityLabel={t('habitDetail.editA11y')}>
+            <TouchableOpacity onPress={() => close(() => onEdit(habit))} style={[styles.editBtn, { borderColor: theme.border }]} accessibilityRole="button" accessibilityLabel={t('habitDetail.editA11y')}>
               <Text style={[styles.editBtnText, { color: theme.link }]}>{t('common.edit')}</Text>
             </TouchableOpacity>
           )}

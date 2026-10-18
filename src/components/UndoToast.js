@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Text, TouchableOpacity, StyleSheet, View } from 'react-native';
 import { t } from '../i18n';
 import { duration, easing, useMotion } from '../theme/motion';
@@ -7,23 +7,32 @@ const OFFSET = 80; // starts this far below its resting place
 
 // Bottom toast shown after a check-in: "<habit> logged · Undo". Auto-hides after
 // `toast.duration` (falls back to `duration`; Mark the rest done uses 8 s).
-// Enters over duration.value (emphasized decel) and leaves in duration.exit(value); under
-// reduced motion it does not slide and fades in 150 ms instead (F-05).
+// Enters over duration.value (emphasized decel) and leaves in duration.exit(value) (emphasized
+// accel); the last toast stays rendered until its exit has finished. Under reduced motion it
+// never slides: it fades in and out in 150 ms (F-05).
 export default function UndoToast({ toast, onUndo, onHide, theme, bottom = 16, duration: hideAfter = 4000 }) {
   const motion = useMotion();
   const y = useRef(new Animated.Value(OFFSET)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const timer = useRef(null);
+  // What is on screen: the current toast, or the previous one while it animates out.
+  const [shown, setShown] = useState(toast);
+  const exiting = !toast && !!shown;
 
   useEffect(() => {
     clearTimeout(timer.current);
     if (!toast) {
-      Animated.parallel([
-        motion.timing(y, { toValue: OFFSET, duration: duration.exit(duration.value), easing: easing.emphasizedAccel }),
-        motion.timing(opacity, { toValue: 0, duration: duration.exit(duration.value), easing: easing.emphasizedAccel }),
-      ]).start();
-      return;
+      if (!shown) return undefined;
+      const out = duration.exit(duration.value);
+      const parts = [motion.timing(opacity, { toValue: 0, duration: out, easing: easing.emphasizedAccel })];
+      if (!motion.reduced) parts.push(motion.timing(y, { toValue: OFFSET, duration: out, easing: easing.emphasizedAccel }));
+      const anim = Animated.parallel(parts);
+      anim.start(({ finished }) => { if (finished) setShown(null); });
+      return () => anim.stop();
     }
+    setShown(toast);
+    y.stopAnimation();
+    opacity.stopAnimation();
     if (motion.reduced) {
       y.setValue(0);
       opacity.setValue(0);
@@ -36,15 +45,17 @@ export default function UndoToast({ toast, onUndo, onHide, theme, bottom = 16, d
     return () => clearTimeout(timer.current);
   }, [toast]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!toast) return null;
+  if (!shown) return null;
   return (
     <Animated.View
       style={[styles.wrap, { bottom, opacity, transform: [{ translateY: y }] }]}
-      pointerEvents="box-none"
+      pointerEvents={exiting ? 'none' : 'box-none'}
       accessibilityLiveRegion="polite"
+      accessibilityElementsHidden={exiting}
+      importantForAccessibility={exiting ? 'no-hide-descendants' : 'auto'}
     >
       <View style={[styles.toast, { backgroundColor: theme.toast, borderColor: theme.toastEdge, shadowColor: theme.shadow }]}>
-        <Text style={[styles.msg, { color: theme.onToast }]} numberOfLines={1}>{toast.message}</Text>
+        <Text style={[styles.msg, { color: theme.onToast }]} numberOfLines={1}>{shown.message}</Text>
         <TouchableOpacity onPress={onUndo} style={styles.undoBtn} accessibilityRole="button" accessibilityLabel={t('common.undo')}>
           <Text style={[styles.undo, { color: theme.toastAction }]}>{t('common.undo')}</Text>
         </TouchableOpacity>

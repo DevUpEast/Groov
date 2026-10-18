@@ -45,7 +45,7 @@ function useSheetAnim() {
   const close = useCallback((cb) => {
     sheetOut(translateY).start(() => {
       setInternalVisible(false);
-      cb?.();
+      if (typeof cb === 'function') cb();
     });
   }, [translateY]);
 
@@ -321,7 +321,8 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
 
         <TouchableOpacity
           style={[styles.addHabitInModalBtn, { borderColor: theme.border }]}
-          onPress={() => { doClose(); onAddHabit?.(); }}
+          // The tab change starts once the sheet has closed, not underneath it.
+          onPress={() => sheet.close(() => { onClose(); onAddHabit?.(); })}
           accessibilityRole="button"
           accessibilityLabel={t('challenges.form.addNewA11y')}
         >

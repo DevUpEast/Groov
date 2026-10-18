@@ -78,8 +78,20 @@ export const celebration = {
   trophyStaticHold: 2000, // reduced-motion trophy
 };
 
+// Hand-offs between surfaces that do not expose a completion callback. Sheet-to-sheet and
+// sheet-to-tab hand-offs use the close callback instead (sheetOut(...).start(cb)).
+export const handoff = {
+  // A screen opening its own sheet after a tab change (deep link, Challenge -> Add habit):
+  // the pager slide (duration.state) plus room for the screen to settle.
+  afterTabChange: 350,
+};
+
 // Off-screen start/end for bottom sheets that slide on translateY.
 export const SHEET_OFFSCREEN = Dimensions.get('window').height;
+// Under reduced motion the sheet value maps to opacity over this distance instead: a drag to
+// the 80 dp dismiss threshold reads as a clear fade (opacity 0.67), and open/close run over
+// the same range so the 150 ms fade is spread evenly.
+export const SHEET_FADE_RANGE = 240;
 
 // The timing config every slide, scale and spring becomes under reduced motion (§2.9):
 // `reduced(spring.gentle)` -> { duration: 150, easing: easing.standard }.
@@ -118,12 +130,16 @@ export function springTo(value, token, config = {}, reducedMotion) {
 
 // Bottom sheets (interim until F-09a's Sheet primitive). One Animated value drives the sheet:
 // translateY in full motion, opacity under reduced motion (see sheetMotionStyle).
+// Opens from closed (callers set the value to SHEET_OFFSCREEN first).
 export function sheetIn(value, reducedMotion) {
-  return springTo(value, spring.gentle, { toValue: 0 }, reducedMotion);
+  const r = flag(reducedMotion);
+  if (r) value.setValue(SHEET_FADE_RANGE);
+  return springTo(value, spring.gentle, { toValue: 0 }, r);
 }
 
 export function sheetOut(value, offscreen = SHEET_OFFSCREEN, reducedMotion) {
-  return timing(value, { toValue: offscreen, duration: duration.exit(duration.enter), easing: easing.emphasizedAccel }, reducedMotion);
+  const r = flag(reducedMotion);
+  return timing(value, { toValue: r ? SHEET_FADE_RANGE : offscreen, duration: duration.exit(duration.enter), easing: easing.emphasizedAccel }, r);
 }
 
 // A drag that did not pass the dismiss threshold settles back.
@@ -132,10 +148,11 @@ export function sheetSettle(value, reducedMotion) {
 }
 
 // Style for the sheet body: slides in full motion; under reduced motion it stays put and the
-// same value (0 = open, offscreen = closed) becomes its opacity, so open/close is a fade.
-export function sheetMotionStyle(value, reducedMotion, offscreen = SHEET_OFFSCREEN) {
+// same value (0 = open, SHEET_FADE_RANGE or more = closed) becomes its opacity, so open,
+// close and drag-to-dismiss are fades.
+export function sheetMotionStyle(value, reducedMotion) {
   if (reducedMotion) {
-    return { opacity: value.interpolate({ inputRange: [0, offscreen], outputRange: [1, 0], extrapolate: 'clamp' }) };
+    return { opacity: value.interpolate({ inputRange: [0, SHEET_FADE_RANGE], outputRange: [1, 0], extrapolate: 'clamp' }) };
   }
   return { transform: [{ translateY: value }] };
 }
@@ -167,7 +184,7 @@ export function useMotion() {
       sheetIn: (value) => sheetIn(value, r),
       sheetOut: (value, offscreen) => sheetOut(value, offscreen, r),
       sheetSettle: (value) => sheetSettle(value, r),
-      sheetStyle: (value, offscreen) => sheetMotionStyle(value, r, offscreen),
+      sheetStyle: (value) => sheetMotionStyle(value, r),
     };
   }, [r]);
 }
