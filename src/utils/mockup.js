@@ -6,7 +6,8 @@
 //     for this page load, not persisted), nudge=1 (a sample AI nudge card on Today),
 //     streak=<n>|frozen (the Today streak chip state), challenges=<n> (n challenge chips on
 //     Today, padded with samples), hint=longPress (the C-03 one-time tip on Today; without it
-//     the mockup never shows the tip), mockup=1
+//     the mockup never shows the tip), celebrate=<days> (C-08: Today holds that streak
+//     milestone: 7/30/100/365 the full screen, 1/3/14 the strip beat), mockup=1
 //   window messages from the host: { type: 'mockup:theme', theme }, { type: 'mockup:navigate', route }
 //   messages to the host: { type: 'mockup:statusbar', style }, { type: 'mockup:ready' }
 import { Platform } from 'react-native';
@@ -37,6 +38,11 @@ export const mockupParams = {
   // challenges=<n>: Today shows n challenge chips, the real ones first, then samples.
   get challenges() {
     const raw = isWeb && this.active ? params().get('challenges') : null;
+    return raw != null && /^\d+$/.test(raw) ? Number(raw) : null;
+  },
+  // celebrate=<days>: Today shows that milestone, held (review stills). null when absent.
+  get celebrate() {
+    const raw = isWeb && this.active ? params().get('celebrate') : null;
     return raw != null && /^\d+$/.test(raw) ? Number(raw) : null;
   },
   // hint=<id>: Today shows that one-time tip (until it is dismissed in this profile).

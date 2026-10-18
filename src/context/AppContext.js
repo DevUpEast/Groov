@@ -32,7 +32,7 @@ import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
 import { snapshotOf, isHabitDoneOnDay, makeDayRules, stampCreatedAt, earliestCreatedAt } from '../utils/dayStatus';
-import { buildSeed, SEED_STREAK_DAYS, applySeedCompletions, applySeedSnapshot, backdateCreatedAt, seededRandom, DEMO_SEED } from '../utils/seed';
+import { buildSeed, buildPerfectStreak, SEED_STREAK_DAYS, applySeedCompletions, applySeedSnapshot, backdateCreatedAt, seededRandom, DEMO_SEED } from '../utils/seed';
 import { mergeBackup } from '../utils/backup';
 import { initAnalytics, track, Events } from '../utils/analytics';
 import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup';
@@ -47,7 +47,7 @@ import { announce } from '../utils/a11y';
 import { queueUpsert, queueUpserts, withoutPendingRows, configurePendingUpserts, resendPendingUpserts, retryPendingUpserts, overlayPendingUpserts, dropPendingUpserts } from '../utils/completionUpserts';
 
 import { createLiveCompletions } from '../utils/liveCompletions';
-import { planMilestones } from '../utils/milestones';
+import { planMilestones, createMilestoneArm } from '../utils/milestones';
 import { ThemeContext } from '../theme/ThemeContext';
 
 // Pending cloud upserts survive a kill (C-06b round 2): see completionUpserts.js.
@@ -66,12 +66,21 @@ const DEFAULT_HABITS = [
 ];
 
 // Labels are translated on read so a locale change applies without a reload.
+// `emoji` is the Progress trophy case's; `icon` (Ionicons) is the milestone screen's (C-08).
 export const STREAK_MILESTONES = [
-  { days: 7, emoji: '🥉', get label() { return t('milestones.week'); } },
-  { days: 30, emoji: '🥈', get label() { return t('milestones.month'); } },
-  { days: 100, emoji: '🥇', get label() { return t('milestones.hundred'); } },
-  { days: 365, emoji: '💎', get label() { return t('milestones.year'); } },
+  { days: 7, emoji: '🥉', icon: 'flame', get label() { return t('milestones.week'); } },
+  { days: 30, emoji: '🥈', icon: 'ribbon', get label() { return t('milestones.month'); } },
+  { days: 100, emoji: '🥇', icon: 'trophy', get label() { return t('milestones.hundred'); } },
+  { days: 365, emoji: '💎', icon: 'diamond', get label() { return t('milestones.year'); } },
 ];
+// The small beats (C-08 CEL-3 / CEL-4): a line in the Today strip, not the full screen, and
+// never in the trophy case. Day 1 is the first day a streak ever starts.
+export const SMALL_MILESTONES = [
+  { days: 1, small: true, icon: 'sparkles', get text() { return t('today.beat.first'); } },
+  { days: 3, small: true, icon: 'flame', get text() { return t('today.beat.three'); } },
+  { days: 14, small: true, icon: 'flame', get text() { return t('today.beat.fourteen'); } },
+];
+const ALL_MILESTONES = [...SMALL_MILESTONES, ...STREAK_MILESTONES].sort((a, b) => a.days - b.days);
 
 // The challenge promised on the last onboarding slide. An empty linkedHabitIds means
 // "every habit", so it works however many habits the user goes on to create.
@@ -150,8 +159,17 @@ export function AppProvider({ children }) {
   // on the old state cannot use it up, and a later pull never finds it armed.
   const completionsStateRef = useRef(completions);
   completionsStateRef.current = completions;
-  const milestoneArmRef = useRef(null);
-  const armMilestone = () => { milestoneArmRef.current = { before: completionsStateRef.current }; };
+  // Today's skips count too: a skip of today that completes the day arms it (C-08 m2).
+  const skipsStateRef = useRef(null);
+  const milestoneArm = useRef(null);
+  if (!milestoneArm.current) milestoneArm.current = createMilestoneArm();
+  const armMilestone = (meta) => milestoneArm.current.arm({ completions: completionsStateRef.current, skips: skipsStateRef.current }, meta);
+  // Mark the rest's Undo (C-08 review M2): the completions it reverted from, so the milestone
+  // effect can take back a milestone that the undone action had just recorded.
+  const milestoneUndoRef = useRef(null);
+  // A milestone a background notification Done crossed (m5): shown on the next foreground,
+  // the same day only.
+  const deferredMilestoneRef = useRef(null);
   const updateCompletions = (fnOrValue) => {
     liveRef.current.update(fnOrValue);
     setCompletions(fnOrValue);
@@ -164,6 +182,7 @@ export function AppProvider({ children }) {
   // Optional daily mood 1-5: { 'YYYY-MM-DD': 4 }.
   const [moods, setMoods] = useState({});
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  skipsStateRef.current = settings.skips;
   const [challenges, setChallenges] = useState([]);
   const [pastChallenges, setPastChallenges] = useState([]);
   const [hasOnboarded, setHasOnboarded] = useState(false);
@@ -453,6 +472,11 @@ export function AppProvider({ children }) {
         const h = allHabits.find(x => x.id === data.habitId && !x.archived);
         if (!h) return;
         const key = localDateKey();
+        // C-08 m1: a Done tapped while the app is in the foreground (a heads-up banner over
+        // Groov) is a today action like a tap on the card, so it celebrates. From the
+        // background (the shade; the action does not open the app) the milestone is recorded
+        // and its moment waits for the next foreground, the same day (review m5).
+        armMilestone(AppState.currentState === 'active' ? null : { deferred: true });
         updateCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
         setDailySnapshot(prev => withSnapshot(prev, key, habits));
         upsertCount(key, h.id, h.volumeGoal);
@@ -485,6 +509,10 @@ export function AppProvider({ children }) {
         const h = allHabits.find(x => x.id === habitId && !x.archived);
         if (!h) return;
         const key = localDateKey();
+        // C-08 m1: groov://habit/<id>/done opens Today, so a link handled while the app is in
+        // the foreground celebrates like a tap. A cold start's initial URL lands on the first
+        // milestone evaluation (no previous streak), which always records silently.
+        if (AppState.currentState === 'active') armMilestone();
         updateCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
         setDailySnapshot(prev => withSnapshot(prev, key, habits));
         upsertCount(key, h.id, h.volumeGoal);
@@ -754,6 +782,10 @@ export function AppProvider({ children }) {
           if (cloudData.challenges) setChallenges(migrateChallenges(cloudData.challenges));
           if (cloudData.pastChallenges) setPastChallenges(cloudData.pastChallenges);
           if (cloudData.dailySnapshot) setDailySnapshot(cloudData.dailySnapshot);
+          // C-08 review B1: the history just arrived, so the next milestone evaluation is a
+          // first one again and backfills silently against it (the spec's cloudSynced gate).
+          prevStreakRef.current = null;
+          setMilestoneEpoch(e => e + 1);
           setHasOnboarded(true);
           settleAccountCreatedAt(cloudData.completions, cloudData.habits);
         } else {
@@ -1112,11 +1144,15 @@ export function AppProvider({ children }) {
   // the streak is preserved without counting it.
   const toggleSkipHabitOn = useCallback((habitId, key) => {
     const current = settings.skips?.[key] || [];
+    // C-08 m2: skipping the last open habit of today completes the day, and the streak rises
+    // like it does for a check-off. Milestones are recorded once ever, so recording it
+    // silently would take the moment away for good: a skip of today arms the celebration.
+    if (key === todayStr()) armMilestone();
     const nextDay = current.includes(habitId) ? current.filter(id => id !== habitId) : [...current, habitId];
     const skips = { ...(settings.skips || {}) };
     if (nextDay.length > 0) skips[key] = nextDay; else delete skips[key];
     updateSettings({ skips });
-  }, [settings.skips, updateSettings]);
+  }, [settings.skips, updateSettings, todayStr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isDayFrozen = useCallback((key) => (settings.streakFreezes || []).includes(key), [settings.streakFreezes]);
 
@@ -1246,6 +1282,7 @@ export function AppProvider({ children }) {
   // to `before` (revertMarkRest); anything edited inside the window is kept.
   const restoreHabitCounts = useCallback((before, changedIds, key) => {
     const day = key || todayStr();
+    milestoneUndoRef.current = { before: completionsStateRef.current };
     const { syncMap } = revertMarkRest(liveCompletions(), day, before, changedIds);
     updateCompletions(prev => revertMarkRest(prev, day, before, changedIds).completions);
     // Same per-habit keys as Mark the rest's own upserts: the restored value replaces a
@@ -1475,6 +1512,35 @@ export function AppProvider({ children }) {
   }, [habits, allHabits, completions, dailySnapshot, accountCreatedAt, userId]);
   seedRandomHistoryRef.current = seedRandomHistory;
 
+  // Settings → Dev tools → "Seed perfect streak N" (C-08): exactly N perfect days ending
+  // yesterday for the current habits, today cleared (src/utils/seed.js buildPerfectStreak). The
+  // milestone effect records what the new streak reaches silently (no action armed it), so
+  // checking every habit today then crosses N + 1 (6 → the 7-day screen, 2 → the 3-day beat).
+  const seedPerfectStreak = useCallback(async (n) => {
+    const today = todayStr();
+    const seed = buildPerfectStreak({
+      habits, completions: liveCompletions(), snapshot: dailySnapshot, skips: settings.skips,
+      milestones: settings.milestones, today, n, isScheduledOn,
+    });
+    const byId = new Map(seed.habits.map(h => [h.id, h]));
+    const nextAllHabits = allHabits.map(h => byId.get(h.id) || h);
+    updateCompletions(seed.completions);
+    setDailySnapshot(seed.snapshot);
+    setHabits(nextAllHabits);
+    updateSettings({ skips: seed.skips, milestones: seed.milestones });
+    await saveData('completions', seed.completions);
+    await saveData('dailySnapshot', seed.snapshot);
+    await saveData('habits', nextAllHabits);
+    if (!accountCreatedAt || accountCreatedAt > seed.start) {
+      setAccountCreatedAt(seed.start);
+      saveData('accountCreatedAt', seed.start);
+    }
+    if (userId) {
+      habits.forEach(h => upsertCount(today, h.id, 0));
+      await pushAllLocalData(userId, { ...stateRef.current, habits: nextAllHabits, completions: seed.completions, dailySnapshot: seed.snapshot });
+    }
+  }, [habits, allHabits, dailySnapshot, settings.skips, settings.milestones, accountCreatedAt, userId, todayStr, updateSettings]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Streak / progress helpers ────────────────────────────────────────────────
 
   // Habits on a given day (utils/dayStatus.js): today is always the live list, past
@@ -1514,24 +1580,54 @@ export function AppProvider({ children }) {
   // are recorded silently; only a check-off on today that takes the streak across one
   // queues the celebration (src/utils/milestones.js).
   const prevStreakRef = useRef(null);
+  const [milestoneEpoch, setMilestoneEpoch] = useState(0);
   useEffect(() => {
     if (!loaded) return;
     const streak = getOverallStreak();
-    const arm = milestoneArmRef.current;
-    const armed = !!arm && arm.before !== completions;
-    if (armed) milestoneArmRef.current = null;
+    const today = todayStr();
+    const armed = milestoneArm.current.consume({ completions, skips: settings.skips });
+    let recorded = settings.milestones || [];
+    let takenBack = false;
+    // Mark the rest's Undo took the streak back below a milestone the undone action had just
+    // celebrated: forget that record, so completing the day for real celebrates it again.
+    // Silent entries stay (a first-run backfill at or below the best streak is not the undone
+    // action's).
+    const undo = milestoneUndoRef.current;
+    if (undo && undo.before !== completions) {
+      milestoneUndoRef.current = null;
+      const keep = recorded.filter(m => !(m.date === today && !m.silent && m.days > streak));
+      if (keep.length !== recorded.length) {
+        recorded = keep;
+        takenBack = true;
+        setPendingMilestone(p => (p && p.days > streak ? null : p));
+        if (deferredMilestoneRef.current?.milestone.days > streak) deferredMilestoneRef.current = null;
+      }
+    }
     const { added, celebrate } = planMilestones({
-      streak, prevStreak: prevStreakRef.current, recorded: settings.milestones, armed,
-      milestones: STREAK_MILESTONES, today: todayStr(),
+      streak, prevStreak: prevStreakRef.current, recorded, armed: !!armed,
+      milestones: ALL_MILESTONES, today, bestStreak: getBestStreak,
     });
     prevStreakRef.current = streak;
-    if (added.length === 0) return;
-    updateSettings({ milestones: [...(settings.milestones || []), ...added] });
+    if (added.length === 0 && !takenBack) return;
+    updateSettings({ milestones: [...recorded, ...added] });
     if (celebrate) {
-      setPendingMilestone(celebrate);
+      if (armed && armed.deferred) deferredMilestoneRef.current = { milestone: celebrate, date: today };
+      else setPendingMilestone(celebrate);
       track(Events.MILESTONE, { days: celebrate.days });
     }
-  }, [loaded, getOverallStreak, settings.milestones, completions]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded, getOverallStreak, settings.milestones, settings.skips, completions, milestoneEpoch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A milestone a background notification Done crossed plays when the app comes back, the
+  // same day (useCelebrationQueue then waits for Today to be the visible tab).
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      const d = deferredMilestoneRef.current;
+      if (state !== 'active' || !d) return;
+      deferredMilestoneRef.current = null;
+      if (d.date === todayStr()) setPendingMilestone(d.milestone);
+    });
+    return () => sub.remove();
+  }, [todayStr]);
 
   // Auto streak freezes: once the data is loaded and whenever the date or history
   // changes, cover up to two missed days per month in the last week. A frozen day
@@ -1626,7 +1722,7 @@ export function AppProvider({ children }) {
       archiveExpiredChallenge, completeChallengeImmediately,
       markRestDone, planMarkRest, restoreHabitCounts, isHabitSatisfiedWith,
       linkHabitToChallenge, unlinkHabitFromChallenge, linkAllHabitsToChallenge,
-      completeOnboarding, resetAll, pushAllData, seedRandomHistory,
+      completeOnboarding, resetAll, pushAllData, seedRandomHistory, seedPerfectStreak,
       lastBackupAt, markBackedUp, importBackup,
       ensureNotificationPermission, notificationPermission, refreshNotificationPermission, notificationPrimer: { visible: primerVisible, answer: answerPrimer },
       isPro, refreshPro, paywall, openPaywall, closePaywall, canAddHabit, canAddReminder,

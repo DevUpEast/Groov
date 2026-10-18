@@ -88,17 +88,20 @@ export const celebration = {
   overlayDone: 3000, // the trophy's confetti unmounts after this
   burst: 750, // RingBurst: 750 -> 1500 ms of the check-off moment (§4.1 7c)
   milestoneSkipAfter: 1000, // the milestone screen is skippable after 1 s (§4.1 row 9)
+  // iOS: hand off after the milestone screen's hide if the Modal's onDismiss never came.
+  hiddenFallback: 500,
   fullConfettiFall: 2000, // plus up to fullConfettiFallJitter
   fullConfettiFallJitter: 1500,
   circleExpand: 650,
   textIn: 350,
   textInAt: 550,
-  autoDismissAt: 3800,
-  textOut: duration.value,
-  circleCollapse: 500,
+  // The milestone screen closes itself after this (C-08: long enough to reach Share; never
+  // while a screen reader is on).
+  autoDismissAt: 6000,
   tapTextOut: duration.state,
   tapCircleCollapse: 400,
-  staticHold: 2500, // reduced-motion milestone card
+  // Today strip: how long a small streak beat (Day 1, 3, 14) replaces the day line (C-08).
+  smallBeatHold: 5000,
   trophyOrbitAt: 600,
   trophyOrbit: 1400,
   trophyHoldAfterOrbit: 3500,

@@ -189,11 +189,17 @@
       "markedRest": { "one": "Marked %{count} habit done", "other": "Marked %{count} habits done" }
     },
     "milestone": {
-      "title": "%{days}-day streak!",
-      "subtitle": "%{label} of showing up. That's a real habit now."
+      "streak": { "one": "%{count}-day streak", "other": "%{count}-day streak" },
+      "unit": { "one": "day in a row", "other": "days in a row" },
+      "subtitle": "%{label} of showing up. That's a real habit now.",
+      "share": "Share your streak",
+      "continue": "Tap to continue"
     },
-    "congrats": "Congrats!",
-    "allTasks": "You completed all tasks for the day!"
+    "beat": {
+      "first": "Day 1. Your streak has started.",
+      "three": "3 days in a row. A rhythm is forming.",
+      "fourteen": "14 days in a row. Two steady weeks."
+    }
   },
   "onboarding": {
     "intro": {
@@ -631,6 +637,7 @@
       "sendTestSub": "Fires a reminder for your first habit, with Done / Snooze",
       "sent": { "title": "Sent", "body": "Test notification fired. Check your notification tray." },
       "seed": { "title": "Generate 30-Day History", "body": "This fills the last 30 days with random completions; days you already logged are kept. It also moves your habits' start dates back 31 days so the history counts. The changes sync to the cloud and cannot be undone.", "generate": "Generate", "done": "30 days of random history added.", "sub": "Random completions for the past 30 days" },
+      "perfectStreak": { "title": "Seed perfect streak", "sub": "N perfect days ending yesterday, today cleared", "body": "For your current habits: every scheduled habit meets its goal on each of the last N days, start dates move to the first of them, today's check-offs are cleared and milestones above N are forgotten. Syncs to the cloud.", "option": { "one": "%{count} day", "other": "%{count} days" } },
       "crash": { "title": "Test Crash", "body": "This throws a render error so you can check the crash screen and Sentry.", "crash": "Crash", "sub": "Throws an error to exercise the crash screen" },
       "feedbackLog": { "title": "Feedback log", "sub": "The last 50 haptics and sounds, with their delay from the tap", "empty": "Nothing yet. Check off a habit, then come back.", "clear": "Clear" },
       "choreography": { "title": "Check-off choreography", "sub": "Haptics, sounds and animations on the beat, no toast for a single check-off. Off = the old timing" },
@@ -935,9 +942,6 @@
     "announce": "Challenge complete. Trophy earned.",
     "a11y": "Challenge complete, trophy earned",
     "tapToContinue": "Tap to continue"
-  },
-  "celebration": {
-    "a11y": "%{title}. %{subtitle}. Dismiss"
   },
   "whatsNew": {
     "title": "What's new",

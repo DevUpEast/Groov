@@ -189,11 +189,17 @@
       "markedRest": { "one": "%{count} hábito marcado como hecho", "other": "%{count} hábitos marcados como hechos" }
     },
     "milestone": {
-      "title": "¡Racha de %{days} días!",
-      "subtitle": "%{label} presentándote. Ya es un hábito de verdad."
+      "streak": { "one": "Racha de %{count} día", "other": "Racha de %{count} días" },
+      "unit": { "one": "día seguido", "other": "días seguidos" },
+      "subtitle": "%{label} presentándote. Ya es un hábito de verdad.",
+      "share": "Compartir tu racha",
+      "continue": "Toca para continuar"
     },
-    "congrats": "¡Felicidades!",
-    "allTasks": "¡Completaste todas las tareas del día!"
+    "beat": {
+      "first": "Día 1. Tu racha ha empezado.",
+      "three": "3 días seguidos. Ya hay ritmo.",
+      "fourteen": "14 días seguidos. Dos semanas constantes."
+    }
   },
   "onboarding": {
     "intro": {
@@ -631,6 +637,7 @@
       "sendTestSub": "Lanza un recordatorio de tu primer hábito, con Hecho / Posponer",
       "sent": { "title": "Enviada", "body": "Se envió la notificación de prueba. Revisa tu bandeja de notificaciones." },
       "seed": { "title": "Generar historial de 30 días", "body": "Esto llena los últimos 30 días con registros aleatorios; los días que ya registraste se conservan. También mueve 31 días atrás la fecha de inicio de tus hábitos para que el historial cuente. Los cambios se sincronizan con la nube y no se pueden deshacer.", "generate": "Generar", "done": "Se añadieron 30 días de historial aleatorio.", "sub": "Registros aleatorios de los últimos 30 días" },
+      "perfectStreak": { "title": "Generar racha perfecta", "sub": "N días perfectos hasta ayer; hoy queda vacío", "body": "Para tus hábitos actuales: cada hábito programado cumple su meta en cada uno de los últimos N días, la fecha de inicio pasa al primero de ellos, se borran las marcas de hoy y se olvidan los hitos por encima de N. Se sincroniza con la nube.", "option": { "one": "%{count} día", "other": "%{count} días" } },
       "crash": { "title": "Probar fallo", "body": "Esto provoca un error de renderizado para que puedas comprobar la pantalla de fallo y Sentry.", "crash": "Provocar fallo", "sub": "Lanza un error para probar la pantalla de fallo" },
       "feedbackLog": { "title": "Registro de respuesta", "sub": "Las últimas 50 vibraciones y sonidos, con su retraso desde el toque", "empty": "Nada todavía. Marca un hábito y vuelve.", "clear": "Borrar" },
       "choreography": { "title": "Coreografía al marcar", "sub": "Vibraciones, sonidos y animaciones a tiempo, sin aviso al marcar un solo hábito. Desactivada = el ritmo anterior" },
@@ -935,9 +942,6 @@
     "announce": "Reto completado. Trofeo conseguido.",
     "a11y": "Reto completado, trofeo conseguido",
     "tapToContinue": "Toca para continuar"
-  },
-  "celebration": {
-    "a11y": "%{title}. %{subtitle}. Cerrar"
   },
   "whatsNew": {
     "title": "Novedades",

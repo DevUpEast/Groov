@@ -4,6 +4,19 @@ const path = require('path');
 const React = require('react');
 const TestRenderer = require('react-test-renderer');
 const { act } = TestRenderer;
+// Every renderer is unmounted after its test: a Sheet left mounted keeps its 400 ms enter
+// fallback (and settle) timers, which fire after this file's environment is torn down and
+// crash the worker, failing whichever file it runs next (C-08 review, the creditFlight flake).
+const mountedRenderers = [];
+const createRenderer = TestRenderer.create;
+TestRenderer.create = (...args) => { const r = createRenderer(...args); mountedRenderers.push(r); return r; };
+afterEach(() => {
+  while (mountedRenderers.length) {
+    const r = mountedRenderers.pop();
+    try { act(() => { r.unmount(); }); } catch (_) { /* already unmounted */ }
+  }
+});
+afterAll(() => { TestRenderer.create = createRenderer; });
 const { Modal, Platform, View, Text, StyleSheet, ActionSheetIOS } = require('react-native');
 
 jest.mock('../../../context/AppContext', () => {

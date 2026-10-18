@@ -189,11 +189,17 @@
       "markedRest": { "one": "%{count} habitude cochée", "other": "%{count} habitudes cochées" }
     },
     "milestone": {
-      "title": "Série de %{days} jours !",
-      "subtitle": "%{label} de régularité. C'est une vraie habitude maintenant."
+      "streak": { "one": "Série de %{count} jour", "other": "Série de %{count} jours" },
+      "unit": { "one": "jour d'affilée", "other": "jours d'affilée" },
+      "subtitle": "%{label} de régularité. C'est une vraie habitude maintenant.",
+      "share": "Partager ta série",
+      "continue": "Appuie pour continuer"
     },
-    "congrats": "Bravo !",
-    "allTasks": "Tu as accompli toutes tes tâches du jour !"
+    "beat": {
+      "first": "Jour 1. Ta série a commencé.",
+      "three": "3 jours d'affilée. Un rythme s'installe.",
+      "fourteen": "14 jours d'affilée. Deux semaines régulières."
+    }
   },
   "onboarding": {
     "intro": {
@@ -631,6 +637,7 @@
       "sendTestSub": "Déclenche un rappel pour ta première habitude, avec Fait / Reporter",
       "sent": { "title": "Envoyée", "body": "Notification de test envoyée. Regarde dans ton centre de notifications." },
       "seed": { "title": "Générer 30 jours d'historique", "body": "Cela remplit les 30 derniers jours avec des validations aléatoires ; les jours déjà enregistrés sont conservés. La date de début de tes habitudes est aussi reculée de 31 jours pour que l'historique compte. Les modifications sont synchronisées avec le cloud et ne peuvent pas être annulées.", "generate": "Générer", "done": "30 jours d'historique aléatoire ajoutés.", "sub": "Validations aléatoires pour les 30 derniers jours" },
+      "perfectStreak": { "title": "Générer une série parfaite", "sub": "N jours parfaits jusqu'à hier, aujourd'hui vidé", "body": "Pour tes habitudes actuelles : chaque habitude prévue atteint son objectif chacun des N derniers jours, la date de début passe au premier d'entre eux, les validations d'aujourd'hui sont effacées et les paliers au-delà de N sont oubliés. Synchronisé avec le cloud.", "option": { "one": "%{count} jour", "other": "%{count} jours" } },
       "crash": { "title": "Tester un plantage", "body": "Cela déclenche une erreur d'affichage pour que tu puisses vérifier l'écran de plantage et Sentry.", "crash": "Planter", "sub": "Déclenche une erreur pour tester l'écran de plantage" },
       "feedbackLog": { "title": "Journal des retours", "sub": "Les 50 derniers retours haptiques et sons, avec leur délai depuis le toucher", "empty": "Rien pour l’instant. Coche une habitude, puis reviens.", "clear": "Effacer" },
       "choreography": { "title": "Chorégraphie de la validation", "sub": "Vibrations, sons et animations en rythme, pas de bandeau pour une seule habitude cochée. Désactivée = l’ancien rythme" },
@@ -935,9 +942,6 @@
     "announce": "Défi terminé. Trophée obtenu.",
     "a11y": "Défi terminé, trophée obtenu",
     "tapToContinue": "Appuie pour continuer"
-  },
-  "celebration": {
-    "a11y": "%{title}. %{subtitle}. Fermer"
   },
   "whatsNew": {
     "title": "Nouveautés",

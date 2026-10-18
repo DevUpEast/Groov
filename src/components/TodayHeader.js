@@ -507,6 +507,40 @@ export function RingPulse({ live, anchorKey, children }) {
   );
 }
 
+// Two lines everywhere (review m3): on a short window (SE) the overlay also covers the top of the
+// chip row for those seconds rather than cutting the beat's own words.
+// A small streak beat (C-08: Day 1, 3 and 14 days in a row) takes the day line's place for a
+// few seconds, with an Ionicons mark in `signature`. Each change of what the line shows (the
+// beat arriving, then leaving) fades in over duration.state (150 ms under reduced motion).
+// Screen readers hear the beat through TodayScreen's announce(); the line stays hidden from
+// them like the day line, whose content the ring's label already speaks.
+function useBannerFade(key) {
+  const m = useMotion();
+  const opacity = useRef(new Animated.Value(1)).current;
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    opacity.setValue(0);
+    m.timing(opacity, { toValue: 1, duration: m.duration.state }).start();
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return opacity;
+}
+
+function StripBanner({ banner, theme, compact, style }) {
+  return (
+    <View style={styles.bannerRow} testID="today-beat">
+      <Ionicons name={banner.icon || 'flame'} size={16} color={theme.signature} />
+      <Text
+        style={[style, styles.bannerText, { color: theme.text }]}
+        numberOfLines={2}
+        {...(compact ? { adjustsFontSizeToFit: true, minimumFontScale: 0.85 } : null)}
+      >
+        {banner.text}
+      </Text>
+    </View>
+  );
+}
+
 // ── Header ──────────────────────────────────────────────────────────────────────────────
 /**
  * `state`: 'progress' | 'complete' | 'rest', or null for no strip (no habits yet).
@@ -518,9 +552,10 @@ export function RingPulse({ live, anchorKey, children }) {
  */
 export default function TodayHeader({
   theme, isDark, date, greeting, name, state, completed, total, streak, beats, compact, onStripLayout, stripRef,
-  frozen = false, challenges, onStreakPress, onChallengePress,
+  frozen = false, challenges, onStreakPress, onChallengePress, banner = null,
 }) {
   useLocale();
+  const bannerFade = useBannerFade(banner ? banner.key : null);
   const ringSize = compact ? size.ringTodayCompact : size.ringToday;
   const stroke = compact ? size.ringTodayCompactStroke : size.ringTodayStroke;
   const shown = useHeaderMoment({ state, completed, total, streak, beats, challenges });
@@ -554,19 +589,33 @@ export default function TodayHeader({
             {/* Short windows (SE) keep the line to one line (shrinking a little on native, then
                 truncating), so a long locale's line plus the chip row never grows the strip past
                 the 76 pt ring and card 4 stays above the tab bar (C-05). */}
-            <Text
-              style={[styles.line, { color: theme.text }]}
-              importantForAccessibility="no"
-              accessibilityElementsHidden
-              {...(compact ? { numberOfLines: 1, ellipsizeMode: 'tail', adjustsFontSizeToFit: true, minimumFontScale: 0.85 } : null)}
-            >
-              {shown.line ?? liveLine}
-            </Text>
+            <Animated.View style={{ opacity: bannerFade }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+              {/* The day line keeps its place while a beat shows, so the strip never changes
+                  height (C-08). */}
+              <Text
+                style={[styles.line, { color: theme.text }, banner && styles.hidden]}
+                {...(compact ? { numberOfLines: 1, ellipsizeMode: 'tail', adjustsFontSizeToFit: true, minimumFontScale: 0.85 } : null)}
+              >
+                {shown.line ?? liveLine}
+              </Text>
+            </Animated.View>
             <BeatsAndChips
               beats={shown.beats} streak={shown.streak} frozen={frozen} challenges={shown.challenges} theme={theme}
               onStreakPress={onStreakPress} onChallengePress={onChallengePress}
               streakTick={shown.streakTick} chipsBeat={shown.chipsBeat}
             />
+            {/* A small beat lies over the line (and, when it wraps, the beat row under it) on the
+                strip's own surface, so it never grows the strip. */}
+            {banner ? (
+              <Animated.View
+                pointerEvents="none"
+                style={[styles.bannerOverlay, { backgroundColor: theme.brandSurface, opacity: bannerFade }]}
+                importantForAccessibility="no-hide-descendants"
+                accessibilityElementsHidden
+              >
+                <StripBanner banner={banner} theme={theme} compact={compact} style={styles.line} />
+              </Animated.View>
+            ) : null}
           </View>
         </View>
       ) : null}
@@ -580,8 +629,9 @@ export default function TodayHeader({
  * greeting and the streak. Tapping it scrolls back to the top. It follows the same beats as
  * the strip (useHeaderMoment).
  */
-export function TodayStickyBar({ theme, state, completed, total, greeting, streak, frozen = false, onPress, a11yLabel }) {
+export function TodayStickyBar({ theme, state, completed, total, greeting, streak, frozen = false, onPress, a11yLabel, banner = null }) {
   useLocale();
+  const bannerFade = useBannerFade(banner ? banner.key : null);
   const shown = useHeaderMoment({ state, completed, total, streak, beats: null, challenges: null });
   const barAnchor = useAnchor('sticky');
   if (!state) return null;
@@ -601,7 +651,12 @@ export function TodayStickyBar({ theme, state, completed, total, greeting, strea
       {shownState !== 'rest' ? (
         <RollingNumber value={`${shown.completed}/${shown.total}`} roll={!!shown.countBeat} style={[styles.stickyCount, { color: theme.text }]} maxFontSizeMultiplier={1.3} />
       ) : null}
-      <Text style={[styles.stickyTitle, { color: theme.text }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>{greeting}</Text>
+      {/* A small streak beat (C-08) takes the greeting's place while the strip is scrolled away. */}
+      <Animated.View style={[styles.stickyTitleBox, { opacity: bannerFade }]}>
+        <Text style={[styles.stickyTitle, { color: theme.text }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>
+          {banner ? banner.text : greeting}
+        </Text>
+      </Animated.View>
       {shown.streak > 0 ? <StreakChip streak={shown.streak} frozen={frozen} theme={theme} style={styles.stickyChip} tick={shown.streakTick} /> : null}
     </Pressable>
   );
@@ -663,5 +718,11 @@ const styles = StyleSheet.create({
   ringCenter: { alignItems: 'center', justifyContent: 'center' },
   ringCheck: { alignItems: 'center', justifyContent: 'center' },
   stickyCount: { fontSize: 15, fontWeight: '600', ...numeric },
-  stickyTitle: { flex: 1, minWidth: 0, fontSize: 17, fontWeight: '600' },
+  stickyTitleBox: { flex: 1, minWidth: 0 },
+  stickyTitle: { fontSize: 17, fontWeight: '600' },
+  bannerRow: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
+  // Two lines of the beat plus this padding cover the line and the beat row under it.
+  bannerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, paddingBottom: space.xs },
+  hidden: { opacity: 0 },
+  bannerText: { flexShrink: 1 },
 });
