@@ -158,7 +158,7 @@ export function prewarm({ isBusy = () => false } = {}) {
     while (id && (uriCache[id] || failed[id])) id = queue.shift();
     if (!id) return;
     getOrCreateWav(id)
-      .then(uri => warmAudioStack(uri))
+      .then(uri => warmPlayer(id, uri))
       .catch(() => {})
       .finally(() => setTimeout(step, PREWARM_GAP_MS));
   };
@@ -172,12 +172,11 @@ export function prewarm({ isBusy = () => false } = {}) {
 }
 
 // The first createAudioPlayer of a session pays a one-time native setup (~270 ms of blocked JS
-// on the emulator, against ~20 ms after). Pay it here at idle with a player that never plays.
-let audioStackWarm = false;
-function warmAudioStack(uri) {
-  if (audioStackWarm || !uri) return;
-  audioStackWarm = true;
-  try { createAudioPlayer({ uri }, { updateInterval: 100 }).remove(); } catch { /* the real play reports */ }
+// on the emulator, against ~20 ms after). Pay it here at idle: the priority sounds (chord,
+// first habit note, goal, challenge motif, fanfare) get their pooled player now, unplayed.
+function warmPlayer(id, uri) {
+  if (!uri || !PREWARM_PRIORITY.includes(id) || pool.has(id)) return;
+  try { entryFor(id, uri); } catch { /* the real play reports */ }
 }
 
 // Old cache files: the pre-kit chimes (documentDirectory/snd_*.wav) and kit files whose hash is
@@ -196,39 +195,80 @@ function removeStaleFiles() {
   sweep(cacheDir(), n => /^groov-snd-.*\.wav(\.tmp)?$/.test(n) && !current.has(n));
 }
 
-// ─── Players ─────────────────────────────────────────────────────────────────
+// ─── Players (pooled) ────────────────────────────────────────────────────────
 
-// Live players, oldest first. At most MAX_PLAYERS at once: a new sound releases the oldest.
-const active = [];
+// One expo-audio player per sound, created once and reused: a replay seeks to 0 and plays
+// (C-06a), so a tap never pays createAudioPlayer (a native object and a bridge round trip,
+// ~20 ms of blocked JS on the emulator and ~270 ms for the first of a session). At most
+// MAX_PLAYERS sound at once (a new sound pauses the oldest); at most MAX_POOL players are
+// kept, and the least recently used idle one is released to make room.
+export const MAX_POOL = 10;
+const pool = new Map(); // id -> entry, least recently used first
 
-function startPlayer(uri, capMs) {
-  while (active.length >= MAX_PLAYERS) active[0].release();
+function stopped(entry) {
+  entry.playing = false;
+  if (entry.timer) { clearTimeout(entry.timer); entry.timer = null; }
+}
+
+function releaseEntry(entry) {
+  stopped(entry);
+  if (pool.get(entry.id) === entry) pool.delete(entry.id);
+  try { entry.sub?.remove(); } catch {}
+  try { entry.player.remove(); } catch {}
+}
+
+function makeEntry(id, uri) {
+  while (pool.size >= MAX_POOL) {
+    const all = [...pool.values()];
+    releaseEntry(all.find(e => !e.playing) || all[0]);
+  }
   const player = createAudioPlayer({ uri }, { updateInterval: 100 });
-  let released = false;
-  let sub = null;
-  const entry = {
-    release() {
-      if (released) return;
-      released = true;
-      const i = active.indexOf(entry);
-      if (i >= 0) active.splice(i, 1);
-      try { sub?.remove(); } catch {}
-      try { player.remove(); } catch {}
-    },
-  };
-  active.push(entry);
-  // Safety net in case didJustFinish never arrives (interrupted playback, or a throw below).
-  setTimeout(() => entry.release(), capMs + 1500);
+  const entry = { id, player, playing: false, used: false, sub: null, timer: null, startedAt: 0 };
+  pool.set(id, entry);
   try {
-    sub = player.addListener('playbackStatusUpdate', (status) => {
-      if (status.didJustFinish) entry.release();
+    entry.sub = player.addListener('playbackStatusUpdate', (status) => {
+      if (status.didJustFinish) stopped(entry);
     });
-    player.volume = 1.0;
-    player.play();
   } catch (e) {
-    entry.release(); // free the slot now
+    releaseEntry(entry);
     throw e;
   }
+  return entry;
+}
+
+// The pooled player for `id` (created on first use), marked most recently used.
+function entryFor(id, uri) {
+  const e = pool.get(id);
+  if (!e) return makeEntry(id, uri);
+  pool.delete(id);
+  pool.set(id, e);
+  return e;
+}
+
+function startPlayer(id, uri, capMs) {
+  const entry = entryFor(id, uri);
+  const others = [...pool.values()].filter(e => e.playing && e !== entry).sort((a, b) => a.startedAt - b.startedAt);
+  while (others.length >= MAX_PLAYERS) {
+    const oldest = others.shift();
+    try { oldest.player.pause(); } catch {}
+    stopped(oldest);
+  }
+  try {
+    // A player that has played sits at its end: rewind it. Both calls run on the native main
+    // queue in order, so the play starts from 0.
+    if (entry.used && entry.player.seekTo) Promise.resolve(entry.player.seekTo(0)).catch(() => {});
+    entry.player.volume = 1.0;
+    entry.player.play();
+  } catch (e) {
+    releaseEntry(entry); // free the slot now
+    throw e;
+  }
+  entry.used = true;
+  entry.playing = true;
+  entry.startedAt = Date.now();
+  if (entry.timer) clearTimeout(entry.timer);
+  // Safety net in case didJustFinish never arrives (interrupted playback).
+  entry.timer = setTimeout(() => stopped(entry), capMs + 1500);
 }
 
 function playNative(id) {
@@ -238,7 +278,7 @@ function playNative(id) {
   // dev build is hundreds of ms.
   if (audioModeReady && uriCache[id]) {
     try {
-      startPlayer(uriCache[id], SOUND_DEFS[id].capMs);
+      startPlayer(id, uriCache[id], SOUND_DEFS[id].capMs);
     } catch (e) {
       failed[id] = true;
       warnOnce('playback failed', e);
@@ -252,16 +292,21 @@ async function playNativeCold(id) {
   try {
     await ensureAudioMode();
     const uri = await getOrCreateWav(id);
-    startPlayer(uri, SOUND_DEFS[id].capMs);
+    startPlayer(id, uri, SOUND_DEFS[id].capMs);
   } catch (e) {
     failed[id] = true;
     warnOnce('playback failed', e);
   }
 }
 
-/** Number of live native players (tests, and the max-3 rule). */
+/** Number of native players sounding now (tests, and the max-3 rule). */
 export function activePlayerCount() {
-  return active.length;
+  return [...pool.values()].filter(e => e.playing).length;
+}
+
+/** Number of pooled native players, playing or idle (tests). */
+export function pooledPlayerCount() {
+  return pool.size;
 }
 
 /** Play one sound of the kit by id (see SOUND_DEFS). Unknown ids are ignored. */

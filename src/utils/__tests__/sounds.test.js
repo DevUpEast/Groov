@@ -5,6 +5,8 @@ jest.mock('expo-audio', () => ({
   createAudioPlayer: jest.fn(() => ({
     addListener: jest.fn(() => ({ remove: jest.fn() })),
     play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn(() => Promise.resolve()),
     remove: jest.fn(),
   })),
 }));
@@ -132,17 +134,52 @@ describe('sounds: the kit on native (F-04b)', () => {
     expect(fsys.writeAsStringAsync).not.toHaveBeenCalled();
   });
 
-  test('at most 3 players at once: a 4th releases the oldest', async () => {
-    const removed = [];
-    audio.createAudioPlayer.mockImplementation(() => {
-      const p = { addListener: jest.fn(() => ({ remove: jest.fn() })), play: jest.fn(), remove: jest.fn(() => removed.push(p)) };
-      return p;
-    });
+  const pooledMock = () => ({
+    addListener: jest.fn(() => ({ remove: jest.fn() })), play: jest.fn(), pause: jest.fn(),
+    seekTo: jest.fn(() => Promise.resolve()), remove: jest.fn(),
+  });
+
+  test('at most 3 sound at once: a 4th pauses the oldest, which stays pooled', async () => {
+    audio.createAudioPlayer.mockImplementation(pooledMock);
     ['habit-1', 'habit-2', 'habit-3', 'habit-4'].forEach(id => sounds.playSound(id));
     await flush();
     expect(audio.createAudioPlayer).toHaveBeenCalledTimes(4);
     expect(sounds.activePlayerCount()).toBe(3);
-    expect(removed).toEqual([audio.createAudioPlayer.mock.results[0].value]);
+    const first = audio.createAudioPlayer.mock.results[0].value;
+    expect(first.pause).toHaveBeenCalled();
+    expect(first.remove).not.toHaveBeenCalled();
+    expect(sounds.pooledPlayerCount()).toBe(4);
+  });
+
+  test('a pooled player is reused: replay = seek to 0 + play, no new player (C-06a)', async () => {
+    audio.createAudioPlayer.mockImplementation(pooledMock);
+    sounds.playSound('counter-2');
+    await flush();
+    for (let i = 0; i < 4; i++) sounds.playSound('counter-2');
+    expect(audio.createAudioPlayer).toHaveBeenCalledTimes(1);
+    const p = audio.createAudioPlayer.mock.results[0].value;
+    expect(p.play).toHaveBeenCalledTimes(5);
+    expect(p.seekTo).toHaveBeenCalledTimes(4);
+    expect(p.seekTo).toHaveBeenCalledWith(0);
+    // didJustFinish frees the slot without releasing the player.
+    p.addListener.mock.calls[0][1]({ didJustFinish: true });
+    expect(sounds.activePlayerCount()).toBe(0);
+    expect(sounds.pooledPlayerCount()).toBe(1);
+  });
+
+  test('the pool keeps at most MAX_POOL players: the least recently used idle one is released', async () => {
+    audio.createAudioPlayer.mockImplementation(pooledMock);
+    const { SOUND_DEFS } = require('../soundKit');
+    const ids = Object.keys(SOUND_DEFS).slice(0, sounds.MAX_POOL + 1);
+    for (const id of ids) {
+      sounds.playSound(id);
+      await flush();
+      const n = audio.createAudioPlayer.mock.results.length;
+      audio.createAudioPlayer.mock.results[n - 1].value.addListener.mock.calls[0][1]({ didJustFinish: true });
+    }
+    expect(sounds.pooledPlayerCount()).toBe(sounds.MAX_POOL);
+    expect(audio.createAudioPlayer.mock.results[0].value.remove).toHaveBeenCalled();
+    expect(audio.createAudioPlayer.mock.results[1].value.remove).not.toHaveBeenCalled();
   });
 
   test('addListener throwing frees the player slot at once', async () => {
@@ -158,9 +195,11 @@ describe('sounds: the kit on native (F-04b)', () => {
     sounds.playSound('habit-1');
     await flush();
     expect(audio.createAudioPlayer).toHaveBeenCalledTimes(1);
+    sounds.playSound('habit-2');
+    expect(audio.createAudioPlayer).toHaveBeenCalledTimes(1); // habit-2's WAV is not known yet
     sounds.playSound('habit-1');
-    expect(audio.createAudioPlayer).toHaveBeenCalledTimes(2); // no await in between
-    expect(audio.createAudioPlayer.mock.results[1].value.play).toHaveBeenCalled();
+    const p = audio.createAudioPlayer.mock.results[0].value;
+    expect(p.play).toHaveBeenCalledTimes(2); // no await in between
   });
 
   test('unknown ids create no player', async () => {
@@ -191,11 +230,15 @@ describe('sounds: the kit on native (F-04b)', () => {
       const { SOUND_DEFS } = require('../soundKit');
       expect(writtenIds()).toEqual(sounds.prewarmOrder());
       expect([...writtenIds()].sort()).toEqual(Object.keys(SOUND_DEFS).sort());
-      // One player is created and removed at idle to pay the native setup cost; none plays.
-      expect(audio.createAudioPlayer).toHaveBeenCalledTimes(1);
-      const warm = audio.createAudioPlayer.mock.results[0].value;
-      expect(warm.play).not.toHaveBeenCalled();
-      expect(warm.remove).toHaveBeenCalled();
+      // The priority sounds get their pooled player at idle (pays the native setup); none plays.
+      expect(audio.createAudioPlayer).toHaveBeenCalledTimes(sounds.PREWARM_PRIORITY.length);
+      expect(audio.createAudioPlayer.mock.calls.map(([src]) => src.uri.match(/groov-snd-(.+)-[0-9a-f]{8}\.wav/)[1]))
+        .toEqual([...sounds.PREWARM_PRIORITY]);
+      audio.createAudioPlayer.mock.results.forEach(r => {
+        expect(r.value.play).not.toHaveBeenCalled();
+        expect(r.value.remove).not.toHaveBeenCalled();
+      });
+      expect(sounds.pooledPlayerCount()).toBe(sounds.PREWARM_PRIORITY.length);
       expect(audio.setAudioModeAsync).toHaveBeenCalled();
       sounds.prewarm(); // idempotent
       expect(RN.InteractionManager.runAfterInteractions).toHaveBeenCalledTimes(1);
