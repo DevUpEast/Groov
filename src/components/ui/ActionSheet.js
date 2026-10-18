@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import feedback, { EVENTS } from '../../services/feedback';
 import { t, useLocale } from '../../i18n';
-import { elevation } from '../../theme/tokens';
+import { elevation, space, radius } from '../../theme/tokens';
 import OverlayModal from './OverlayModal';
 
 /**
@@ -96,7 +96,7 @@ export default function ActionSheet({ visible, title, message, options = [], onC
           style={[
             styles.panel,
             elevation.sheet,
-            { backgroundColor: theme.raised, borderColor: theme.border, shadowColor: theme.shadow, paddingBottom: 8 + insets.bottom },
+            { backgroundColor: theme.raised, borderColor: theme.border, shadowColor: theme.shadow, paddingBottom: space.xs + insets.bottom },
           ]}
           accessibilityViewIsModal
           onAccessibilityEscape={() => onCancel?.()}
@@ -141,20 +141,20 @@ export default function ActionSheet({ visible, title, message, options = [], onC
 const styles = StyleSheet.create({
   anchor: { flex: 1, justifyContent: 'flex-end' },
   panel: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
     borderWidth: 1,
     borderBottomWidth: 0,
-    paddingTop: 8,
+    paddingTop: space.xs,
     width: '100%',
     maxWidth: 560,
     alignSelf: 'center',
   },
-  header: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  header: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.sm, borderBottomWidth: StyleSheet.hairlineWidth },
   title: { fontSize: 17, fontWeight: '700' },
-  message: { fontSize: 13, marginTop: 4 },
-  row: { minHeight: 56, paddingHorizontal: 24, justifyContent: 'center' },
+  message: { fontSize: 13, marginTop: space.xxs },
+  row: { minHeight: 56, paddingHorizontal: space.lg, justifyContent: 'center' },
   rowText: { fontSize: 16 },
   cancelText: { fontWeight: '600' },
-  divider: { height: StyleSheet.hairlineWidth, marginHorizontal: 24 },
+  divider: { height: StyleSheet.hairlineWidth, marginHorizontal: space.lg },
 });

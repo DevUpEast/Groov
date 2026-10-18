@@ -274,7 +274,7 @@ export default function DesignPreview({ visible, onClose }) {
             {Object.entries(space).map(([k, v]) => (
               <View key={k} style={styles.spaceRow}>
                 <Text style={[styles.spaceName, { color: theme.textSecondary }]}>{`${k} ${v}`}</Text>
-                <View style={{ width: v * 2, height: 8, backgroundColor: theme.action, borderRadius: 2 }} />
+                <View style={{ width: v * 2, height: 8, backgroundColor: theme.action, borderRadius: radius.cell }} />
               </View>
             ))}
             <View style={styles.rampRow}>
@@ -292,41 +292,41 @@ export default function DesignPreview({ visible, onClose }) {
 }
 
 const styles = StyleSheet.create({
-  headerCase: { marginBottom: 16 },
-  stickyCase: { height: 48, marginBottom: 8 },
-  ringRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  headerCase: { marginBottom: space.md },
+  stickyCase: { height: 48, marginBottom: space.xs },
+  ringRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: space.sm },
   safe: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.md, paddingVertical: space.sm, borderBottomWidth: 1 },
   title: { flex: 1, fontSize: 20, fontWeight: '600' },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: space.sm },
   gap: { height: 12 },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   closeText: { fontSize: 18 },
-  scroll: { padding: 16, paddingBottom: 48 },
-  summary: { fontSize: 15, fontWeight: '600', marginBottom: 8 },
-  section: { marginTop: 16 },
-  sectionTitle: { fontSize: 17, fontWeight: '600', marginBottom: 8 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  scroll: { padding: space.md, paddingBottom: space.xxl },
+  summary: { fontSize: 15, fontWeight: '600', marginBottom: space.xs },
+  section: { marginTop: space.md },
+  sectionTitle: { fontSize: 17, fontWeight: '600', marginBottom: space.xs },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
   swatchCell: { width: 104 },
-  swatch: { height: 40, borderRadius: 8, borderWidth: 1 },
-  swatchName: { fontSize: 12, fontWeight: '600', marginTop: 4 },
+  swatch: { height: 40, borderRadius: radius.control, borderWidth: 1 },
+  swatchName: { fontSize: 12, fontWeight: '600', marginTop: space.xxs },
   swatchHex: { fontSize: 12 },
-  pairRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 4 },
+  pairRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs, borderWidth: 1, borderRadius: radius.control, paddingHorizontal: space.sm, paddingVertical: space.xs, marginBottom: space.xxs },
   pairText: { flex: 1, fontSize: 13 },
   pairRatio: { fontSize: 13, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  accentRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 12, marginBottom: 8 },
-  check: { width: 32, height: 32, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  accentRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderRadius: radius.card, padding: space.sm, marginBottom: space.xs },
+  check: { width: 32, height: 32, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   checkText: { fontSize: 16, fontWeight: '700' },
   accentName: { fontSize: 15, fontWeight: '600', width: 72 },
-  rampRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 8 },
-  cell: { width: 24, height: 24, borderRadius: 4 },
-  strip: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 16, flexWrap: 'wrap' },
-  ring: { width: 40, height: 40, borderRadius: 20, borderWidth: 4 },
+  rampRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.xs, marginBottom: space.xs },
+  cell: { width: 24, height: 24, borderRadius: radius.cell },
+  strip: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderRadius: radius.card, padding: space.md, flexWrap: 'wrap' },
+  ring: { width: 40, height: 40, borderRadius: radius.pill, borderWidth: 4 },
   stripText: { fontSize: 13, fontWeight: '600' },
-  btn: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 },
+  btn: { borderRadius: radius.card, paddingHorizontal: space.md, paddingVertical: space.sm },
   btnText: { fontSize: 15, fontWeight: '600' },
-  toast: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 },
-  spaceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  toast: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: radius.card, paddingHorizontal: space.md, paddingVertical: space.sm },
+  spaceRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginBottom: space.xxs },
   spaceName: { fontSize: 12, width: 72 },
   radiusBox: { width: 64, height: 48, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
 });

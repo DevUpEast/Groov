@@ -10,7 +10,7 @@ import SegmentedControl from './ui/SegmentedControl';
 import { track, Events } from '../utils/analytics';
 import { weekdayInitials } from '../utils/schedule';
 import { t, getLocale, useLocale } from '../i18n';
-import { elevation, shareCard } from '../theme/tokens';
+import { elevation, shareCard, space, radius } from '../theme/tokens';
 import OverlayModal from './ui/OverlayModal';
 import AppText from './ui/AppText';
 import { numeric } from '../theme/typography';
@@ -87,13 +87,13 @@ function YearCard({ year, cells, displayName, today }) {
           {rowCols.map((col, i) => (
             <View key={i} style={{ marginRight: 2 }}>
               {col.map((c, j) => (
-                <View key={j} style={{ width: cellBig, height: cellBig, marginBottom: 2, borderRadius: 2, backgroundColor: c === null ? 'transparent' : c >= 1 ? shareCard.cellPerfect : c > 0 ? shareCard.cellPartial : shareCard.cellNone }} />
+                <View key={j} style={{ width: cellBig, height: cellBig, marginBottom: 2, borderRadius: radius.cell, backgroundColor: c === null ? 'transparent' : c >= 1 ? shareCard.cellPerfect : c > 0 ? shareCard.cellPartial : shareCard.cellNone }} />
               ))}
             </View>
           ))}
         </View>
       ))}
-      <View style={[styles.legendRow, { marginTop: 12 }]}>
+      <View style={[styles.legendRow, { marginTop: space.sm }]}>
         {[[shareCard.cellNone, 'none'], [shareCard.cellPartial, 'partial'], [shareCard.cellPerfect, 'perfect']].map(([c, l]) => (
           <View key={l} style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: c }]} /><Text style={styles.legendText}>{t(`shareCards.legend.${l}`)}</Text></View>
         ))}
@@ -187,7 +187,7 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
             onChange={setKind}
             options={CARD_KINDS.map(k => ({ value: k.key, label: t('shareCards.kindTab', { emoji: k.emoji, label: k.label }), accessibilityLabel: k.label }))}
           />
-          <ScrollView contentContainerStyle={{ alignItems: 'center', paddingVertical: 8 }} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={{ alignItems: 'center', paddingVertical: space.xs }} showsVerticalScrollIndicator={false}>
             <View ref={ref} collapsable={false} style={{ width: CARD_W }}>
               {kind === 'streak' && <StreakCard streak={getOverallStreak()} best={getBestStreak()} perfectDays={perfectDays} habits={habits.length} displayName={displayName} today={today} />}
               {kind === 'week' && <WeekCard days={last7} displayName={displayName} today={today} />}
@@ -205,34 +205,34 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 16, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '92%' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  sheet: { borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '92%' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.sm },
   title: { fontSize: 20, fontWeight: 'bold' },
-  closeBtn: { padding: 4 },
+  closeBtn: { padding: space.xxs },
   closeTxt: { fontSize: 20, fontWeight: 'bold' },
-  tabs: { marginBottom: 8 },
-  card: { borderRadius: 24, padding: 20, width: CARD_W },
+  tabs: { marginBottom: space.xs },
+  card: { borderRadius: radius.sheet, padding: 20, width: CARD_W },
   cardKicker: { color: shareCard.fgSecondary, fontSize: 13, fontWeight: '700' },
   // The display face at share-card scale (fixed brand art, not the in-app scale). No weight:
   // AppText supplies the face (Bold) or, after a font timeout, the system display weight.
   bigNumber: { color: shareCard.fg, fontSize: 72, marginTop: 6, lineHeight: 80 },
-  bigLabel: { color: shareCard.fgStrong, fontSize: 16, fontWeight: '600', marginTop: -4 },
+  bigLabel: { color: shareCard.fgStrong, fontSize: 16, fontWeight: '600', marginTop: -space.xxs },
   statRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  stat: { flex: 1, backgroundColor: shareCard.well, borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
+  stat: { flex: 1, backgroundColor: shareCard.well, borderRadius: radius.card, paddingVertical: 10, alignItems: 'center' },
   statValue: { color: shareCard.fg, fontSize: 20, fontWeight: '800', ...numeric },
   statLabel: { color: shareCard.fgSecondary, fontSize: 12, marginTop: 2 },
-  weekRow: { flexDirection: 'row', gap: 8, height: 110, alignItems: 'flex-end', marginTop: 18 },
+  weekRow: { flexDirection: 'row', gap: space.xs, height: 110, alignItems: 'flex-end', marginTop: 18 },
   weekDay: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
-  weekBarTrack: { flex: 1, width: '70%', backgroundColor: shareCard.well, borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end' },
-  weekBarFill: { width: '100%', backgroundColor: shareCard.fg, borderRadius: 6 },
-  weekLabel: { color: shareCard.fgSecondary, fontSize: 12, marginTop: 4, fontWeight: '700' },
-  legendRow: { flexDirection: 'row', gap: 12 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  legendDot: { width: 9, height: 9, borderRadius: 2 },
+  weekBarTrack: { flex: 1, width: '70%', backgroundColor: shareCard.well, borderRadius: radius.control, overflow: 'hidden', justifyContent: 'flex-end' },
+  weekBarFill: { width: '100%', backgroundColor: shareCard.fg, borderRadius: radius.control },
+  weekLabel: { color: shareCard.fgSecondary, fontSize: 12, marginTop: space.xxs, fontWeight: '700' },
+  legendRow: { flexDirection: 'row', gap: space.sm },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
+  legendDot: { width: 9, height: 9, borderRadius: radius.cell },
   legendText: { color: shareCard.fgTertiary, fontSize: 12 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 },
   footerBrand: { color: shareCard.fg, fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
   footerDate: { color: shareCard.fgTertiary, fontSize: 12 },
-  shareBtn: { marginTop: 12, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
+  shareBtn: { marginTop: space.sm, paddingVertical: 14, borderRadius: radius.card, alignItems: 'center' },
   shareBtnText: { fontSize: 16, fontWeight: '700' },
 });

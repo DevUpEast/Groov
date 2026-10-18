@@ -24,6 +24,7 @@ import AppText from '../components/ui/AppText';
 import SectionLabel from '../components/ui/SectionLabel';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { useDevFlag, setDevFlag } from '../utils/devFlags';
+import { space, radius } from '../theme/tokens';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
 const DEV_CODE = 'devmode';
@@ -1158,7 +1159,7 @@ export default function SettingsScreen() {
           secureTextEntry
         />
         <TextInput
-          style={[styles.dialogInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text, marginBottom: 4 }]}
+          style={[styles.dialogInput, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text, marginBottom: space.xxs }]}
           value={resetConfirmPassword}
           onChangeText={setResetConfirmPassword}
           accessibilityLabel={t('settings.resetModal.confirmPassword')}
@@ -1284,71 +1285,71 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 24, paddingBottom: 48 },
-  heading: { marginBottom: 20 },
-  section: { borderRadius: 16, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
-  sectionTitle: { paddingHorizontal: 16, paddingTop: 12, marginBottom: 0, paddingBottom: 4 },
+  scroll: { paddingHorizontal: space.gutter, paddingTop: space.lg, paddingBottom: space.xxl },
+  heading: { marginBottom: space.lg },
+  section: { borderRadius: radius.card, borderWidth: 1, marginBottom: space.lg, overflow: 'hidden' },
+  sectionTitle: { paddingHorizontal: space.md, paddingTop: space.sm, marginBottom: 0, paddingBottom: space.xxs },
   row: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1,
+    paddingHorizontal: space.md, paddingVertical: 14, borderBottomWidth: 1,
   },
   rowLeft: { flex: 1 },
   rowLabel: { fontSize: 15, fontWeight: '500' },
   rowSub: { fontSize: 12, marginTop: 2 },
-  rowRight: { marginLeft: 12 },
+  rowRight: { marginLeft: space.sm },
   themeRow: { flexDirection: 'column', alignItems: 'stretch' },
-  themeSegment: { marginTop: 12 },
+  themeSegment: { marginTop: space.sm },
   reminderBlock: {
-    borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8,
+    borderTopWidth: 1, paddingHorizontal: space.md, paddingTop: space.sm, paddingBottom: space.xs,
   },
-  reminderLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  reminderLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: space.xs },
   reminderLabelInner: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   habitReminderIcon: { fontSize: 16 },
-  habitBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  habitBadge: { borderRadius: radius.pill, paddingHorizontal: 6, paddingVertical: 2 },
   habitBadgeText: { fontSize: 12, fontWeight: '700' },
   labelInput: {
     flex: 1, fontSize: 15, fontWeight: '500', borderBottomWidth: 1,
-    paddingVertical: 2, marginRight: 8,
+    paddingVertical: 2, marginRight: space.xs,
   },
   reminderLabel: { fontSize: 15, fontWeight: '500' },
   reminderSublabel: { fontSize: 12, marginTop: 2 },
   reminderActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  timeBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, flex: 1 },
+  timeBtn: { borderWidth: 1, borderRadius: radius.control, paddingHorizontal: space.sm, paddingVertical: 6, flex: 1 },
   timeBtnText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
   deleteReminderBtn: { padding: 6 },
   addReminderBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, margin: 12, padding: 10, borderRadius: 10, borderWidth: 1.5, borderStyle: 'dashed',
+    gap: 6, margin: space.sm, padding: 10, borderRadius: radius.control, borderWidth: 1.5, borderStyle: 'dashed',
   },
   addReminderText: { fontSize: 14, fontWeight: '600' },
   devDayControls: { flexDirection: 'row', gap: 6 },
   devBtn: {
-    width: 36, height: 36, borderRadius: 8, borderWidth: 1.5,
+    width: 36, height: 36, borderRadius: radius.control, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
   devBtnText: { fontSize: 16, fontWeight: '700' },
   feedbackLogLine: { fontSize: 12, lineHeight: 18, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  backupHint: { fontSize: 12, lineHeight: 17, paddingHorizontal: 16, paddingBottom: 12 },
-  linkPill: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  backupHint: { fontSize: 12, lineHeight: 17, paddingHorizontal: space.md, paddingBottom: space.sm },
+  linkPill: { borderRadius: radius.control, paddingHorizontal: 10, paddingVertical: 6 },
   linkPillText: { fontSize: 12, fontWeight: '700' },
-  dangerRow: { paddingHorizontal: 16, paddingVertical: 14 },
+  dangerRow: { paddingHorizontal: space.md, paddingVertical: 14 },
   dangerText: { fontSize: 15, fontWeight: '600' },
   dangerSub: { fontSize: 12, marginTop: 2 },
-  version: { textAlign: 'center', fontSize: 12, marginTop: 8 },
-  versionBtn: { alignItems: 'center', marginTop: 8 },
-  devHint: { fontSize: 12, marginTop: 4 },
+  version: { textAlign: 'center', fontSize: 12, marginTop: space.xs },
+  versionBtn: { alignItems: 'center', marginTop: space.xs },
+  devHint: { fontSize: 12, marginTop: space.xxs },
   dialogInput: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: radius.control,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: space.sm,
     fontSize: 15,
-    marginBottom: 16,
+    marginBottom: space.md,
   },
-  dialogError: { fontSize: 13, marginBottom: 8 },
+  dialogError: { fontSize: 13, marginBottom: space.xs },
   langOption: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 12, borderBottomWidth: 1,
+    paddingVertical: space.sm, borderBottomWidth: 1,
   },
   langOptionText: { fontSize: 15, fontWeight: '500' },
 });

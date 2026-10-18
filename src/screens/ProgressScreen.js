@@ -15,7 +15,7 @@ import Dialog from '../components/ui/Dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { weekdayLabels } from '../utils/schedule';
 import { t, getLocale, useLocale } from '../i18n';
-import { data, elevation } from '../theme/tokens';
+import { data, elevation, space, radius } from '../theme/tokens';
 import OverlayModal from '../components/ui/OverlayModal';
 import AppText from '../components/ui/AppText';
 import SegmentedControl from '../components/ui/SegmentedControl';
@@ -31,8 +31,8 @@ const { heatPartial: PARTIAL_COLOR, heatFrozen: FROZEN_COLOR } = data.light;
 const HEAT_INNER = SCREEN_WIDTH - 90;
 
 const PERIOD_CONFIG = [
-  { key: 'd7',  days: 7,   cellsPerRow: 7,  gap: 4 },
-  { key: 'd30', days: 30,  cellsPerRow: 10, gap: 4 },
+  { key: 'd7',  days: 7,   cellsPerRow: 7,  gap: space.xxs },
+  { key: 'd30', days: 30,  cellsPerRow: 10, gap: space.xxs },
   { key: 'd90', days: 90,  cellsPerRow: 10, gap: 3 },
 ];
 
@@ -48,7 +48,7 @@ const AXIS_MAX_SCALE = 1.3;
 
 function BarChart({ data, labels, theme, onBarPress, futureFlags, a11yLabels }) {
   return (
-    <View style={{ marginTop: 8 }}>
+    <View style={{ marginTop: space.xs }}>
       <View style={{ flexDirection: 'row', height: CHART_H }}>
         {/* Y-axis */}
         <View style={{ width: Y_AXIS_W, height: CHART_H }}>
@@ -74,7 +74,7 @@ function BarChart({ data, labels, theme, onBarPress, futureFlags, a11yLabels }) 
           ))}
         </View>
         {/* Bars */}
-        <View style={{ flex: 1, height: CHART_H, flexDirection: 'row', alignItems: 'flex-end', gap: 4 }}>
+        <View style={{ flex: 1, height: CHART_H, flexDirection: 'row', alignItems: 'flex-end', gap: space.xxs }}>
           {data.map((val, i) => {
             const isFuture = futureFlags?.[i];
             const barH = Math.max((val / 100) * CHART_H, 3);
@@ -89,7 +89,7 @@ function BarChart({ data, labels, theme, onBarPress, futureFlags, a11yLabels }) 
                 accessibilityState={{ disabled: !!isFuture }}
               >
                 {!isFuture && (
-                  <View style={{ width: '70%', height: barH, backgroundColor: theme.meter, borderRadius: 4 }} />
+                  <View style={{ width: '70%', height: barH, backgroundColor: theme.meter, borderRadius: radius.cell }} />
                 )}
               </TouchableOpacity>
             );
@@ -97,7 +97,7 @@ function BarChart({ data, labels, theme, onBarPress, futureFlags, a11yLabels }) 
         </View>
       </View>
       {/* X-axis */}
-      <View style={{ flexDirection: 'row', marginLeft: Y_AXIS_W, marginTop: 4 }}>
+      <View style={{ flexDirection: 'row', marginLeft: Y_AXIS_W, marginTop: space.xxs }}>
         {labels.map((l, i) => (
           <View key={i} style={{ flex: 1, alignItems: 'center' }}>
             <Text style={{ fontSize: 12, color: theme.textSecondary }}>{l}</Text>
@@ -216,7 +216,7 @@ function DayDetailModal({ visible, day, onClose, theme }) {
             }]} />
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 16 }}>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: space.md }}>
             {dayHabits.length === 0 ? (
               <Text style={[styles.noData, { color: theme.textSecondary }]}>{t('progress.day.noData')}</Text>
             ) : (
@@ -520,7 +520,7 @@ export default function ProgressScreen() {
             ))}
           </View>
           {moodInsights.summary.count < MIN_SAMPLES ? (
-            <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: 8 }]}>
+            <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: space.xs }]}>
               {t('progress.mood.rateMore', { count: moodInsights.summary.count, min: MIN_SAMPLES })}
             </Text>
           ) : (
@@ -542,7 +542,7 @@ export default function ProgressScreen() {
               {moodInsights.headline ? (
                 <Text style={[styles.moodHeadline, { color: theme.text }]}>{moodInsights.headline}</Text>
               ) : (
-                <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: 8 }]}>{t('progress.mood.noLink')}</Text>
+                <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: space.xs }]}>{t('progress.mood.noLink')}</Text>
               )}
               {moodInsights.correlations.slice(0, 3).map(c => (
                 <View key={c.habitId} style={styles.corrRow}>
@@ -581,7 +581,7 @@ export default function ProgressScreen() {
               ))}
             </View>
           ) : (
-            <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: 8 }]}>{t('progress.trophy.firstMedal')}</Text>
+            <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: space.xs }]}>{t('progress.trophy.firstMedal')}</Text>
           )}
         </View>
 
@@ -631,7 +631,7 @@ export default function ProgressScreen() {
           ) : reflectionLoading ? (
             <View style={styles.reflectionLoading}>
               <ActivityIndicator size="small" color={theme.link} />
-              <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: 8 }]}>
+              <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: space.xs }]}>
                 {reflectionPeriod === 'weekly' ? t('progress.reflection.generatingWeekly') : t('progress.reflection.generatingMonthly')}
               </Text>
             </View>
@@ -639,7 +639,7 @@ export default function ProgressScreen() {
             <>
               <Text style={[styles.reflectionText, { color: theme.text }]}>{reflectionMessage}</Text>
               {reflectionGeneratedAt && (
-                <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: 8 }]}>
+                <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: space.xs }]}>
                   {t('progress.reflection.generated', { date: new Date(reflectionGeneratedAt).toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' }) })}
                 </Text>
               )}
@@ -647,7 +647,7 @@ export default function ProgressScreen() {
           ) : (
             <>
               {reflectionError && (
-                <Text style={[styles.cardHint, { color: theme.dangerText, marginTop: 4 }]}>
+                <Text style={[styles.cardHint, { color: theme.dangerText, marginTop: space.xxs }]}>
                   {reflectionErrorMsg && /limit/i.test(reflectionErrorMsg) ? reflectionErrorMsg : t('progress.reflection.failed')}
                   {reflectionErrorMsg && /limit/i.test(reflectionErrorMsg) && !isPro ? (
                     <Text style={{ color: theme.link, fontWeight: '700' }} onPress={() => openPaywall('ai')}>{t('progress.reflection.seePro')}</Text>
@@ -702,75 +702,75 @@ export default function ProgressScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 24, paddingBottom: 48 },
-  headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+  scroll: { paddingHorizontal: space.gutter, paddingTop: space.lg, paddingBottom: space.xxl },
+  headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.lg },
   heading: {},
-  shareChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
+  shareChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: 7 },
   shareChipText: { fontSize: 13, fontWeight: '700' },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  freezeLine: { fontSize: 12, textAlign: 'center', marginBottom: 24, lineHeight: 17 },
+  freezeLine: { fontSize: 12, textAlign: 'center', marginBottom: space.lg, lineHeight: 17 },
   statSlot: { flex: 1 },
   statInfo: { position: 'absolute', top: 6, right: 6, padding: 2 },
   statCard: {
-    flex: 1, alignItems: 'center', paddingVertical: 20, paddingHorizontal: 8,
-    borderRadius: 14, borderWidth: 1, gap: 6,
+    flex: 1, alignItems: 'center', paddingVertical: 20, paddingHorizontal: space.xs,
+    borderRadius: radius.card, borderWidth: 1, gap: 6,
   },
   statEmoji: { fontSize: 26 },
   statLabel: { fontSize: 12, textAlign: 'center', lineHeight: 14 },
-  card: { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 24 },
+  card: { borderRadius: radius.card, borderWidth: 1, padding: 20, marginBottom: space.lg },
   cardTitle: { fontSize: 15, fontWeight: '700' },
   cardHint: { fontSize: 12, marginTop: 2, marginBottom: 6 },
-  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.xxs },
   // SegmentedControl (F-07): 40 tall, slop to the touch minimum; it wraps under the title when
   // the card is too narrow (flexShrink lets the title keep its line).
-  periodToggle: { flexShrink: 1, justifyContent: 'flex-end', marginLeft: 8 },
+  periodToggle: { flexShrink: 1, justifyContent: 'flex-end', marginLeft: space.xs },
   heatGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
   moodStrip: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   moodDay: { alignItems: 'center', flex: 1 },
   moodDayEmoji: { fontSize: 22 },
   moodDayLabel: { fontSize: 12, marginTop: 2 },
-  moodStats: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  moodStat: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
+  moodStats: { flexDirection: 'row', gap: space.xs, marginTop: space.sm },
+  moodStat: { flex: 1, alignItems: 'center', paddingVertical: space.xs, borderRadius: radius.card, borderWidth: 1 },
   moodStatValue: { fontSize: 18, fontWeight: '800', ...numeric },
   moodStatLabel: { fontSize: 12, marginTop: 2 },
-  moodHeadline: { fontSize: 13, lineHeight: 19, marginTop: 12 },
-  corrRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  moodHeadline: { fontSize: 13, lineHeight: 19, marginTop: space.sm },
+  corrRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.xs },
   corrIcon: { fontSize: 16 },
   corrName: { flex: 1, fontSize: 13, fontWeight: '600' },
   corrDelta: { fontSize: 13, fontWeight: '800', ...numeric },
-  trophyRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  trophyTile: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, gap: 2 },
+  trophyRow: { flexDirection: 'row', gap: space.xs, marginTop: 10 },
+  trophyTile: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: radius.card, borderWidth: 1.5, gap: 2 },
   trophyEmoji: { fontSize: 24 },
   trophyDays: { fontSize: 14, fontWeight: '800', ...numeric },
   trophyLabel: { fontSize: 12 },
-  medalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  medal: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '100%' },
+  medalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginTop: space.sm },
+  medal: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '100%' },
   medalEmoji: { fontSize: 16 },
   medalName: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
   heatLegend: { flexDirection: 'row', gap: 14, marginBottom: 2 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendDot: { width: 10, height: 10, borderRadius: 2 },
+  legendDot: { width: 10, height: 10, borderRadius: radius.cell },
   legendLabel: { fontSize: 12 },
   // Day detail modal
   overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingHorizontal: 24, paddingBottom: 8, maxHeight: '85%',
+    borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
+    paddingHorizontal: space.lg, paddingBottom: space.xs, maxHeight: '85%',
   },
-  dragHandleArea: { alignItems: 'center', paddingVertical: 12 },
-  handleBar: { width: 40, height: 4, borderRadius: 2 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  dragHandleArea: { alignItems: 'center', paddingVertical: space.sm },
+  handleBar: { width: 40, height: 4, borderRadius: radius.pill },
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: space.sm },
   sheetTitle: { fontSize: 18, fontWeight: 'bold' },
   sheetSub: { fontSize: 13, marginTop: 2 },
-  frozenRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  frozenRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: space.xs },
   frozenText: { flex: 1, marginTop: 0 },
-  closeBtn: { padding: 4, marginLeft: 8 },
+  closeBtn: { padding: space.xxs, marginLeft: space.xs },
   closeBtnTxt: { fontSize: 18, fontWeight: 'bold' },
-  ratioBarBg: { height: 8, borderRadius: 4, overflow: 'hidden' },
-  ratioBarFill: { height: 8, borderRadius: 4 },
-  noData: { fontSize: 14, textAlign: 'center', paddingVertical: 24 },
+  ratioBarBg: { height: 8, borderRadius: radius.cell, overflow: 'hidden' },
+  ratioBarFill: { height: 8, borderRadius: radius.cell },
+  noData: { fontSize: 14, textAlign: 'center', paddingVertical: space.lg },
   habitRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: space.sm,
     paddingVertical: 10, borderBottomWidth: 1,
   },
   habitIcon: { fontSize: 22 },
@@ -778,10 +778,10 @@ const styles = StyleSheet.create({
   habitSub: { fontSize: 12, marginTop: 2 },
   // AI reflection
   reflectionLoading: { alignItems: 'center', paddingVertical: 20 },
-  reflectionText: { fontSize: 14, lineHeight: 22, marginTop: 12 },
-  generateBtn: { borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 12 },
+  reflectionText: { fontSize: 14, lineHeight: 22, marginTop: space.sm },
+  generateBtn: { borderRadius: radius.card, paddingVertical: space.sm, alignItems: 'center', marginTop: space.sm },
   generateBtnText: { fontWeight: '700', fontSize: 14 },
-  lockedMsg: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 12, marginTop: 8, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed' },
+  lockedMsg: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: space.sm, marginTop: space.xs, borderRadius: radius.card, borderWidth: 1, borderStyle: 'dashed' },
   lockedIcon: { fontSize: 28, marginBottom: 6 },
   lockedTitle: { fontSize: 15, fontWeight: '700' },
   // Bar tooltip
@@ -791,9 +791,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tooltip: {
-    borderRadius: 16, borderWidth: 1, paddingHorizontal: 28, paddingVertical: 18,
+    borderRadius: radius.card, borderWidth: 1, paddingHorizontal: 28, paddingVertical: 18,
     alignItems: 'center', minWidth: 150,
   },
-  tooltipLabel: { fontSize: 13, marginBottom: 4 },
+  tooltipLabel: { fontSize: 13, marginBottom: space.xxs },
   tooltipHint: { fontSize: 12, marginTop: 2 },
 });

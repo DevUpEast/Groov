@@ -8,6 +8,7 @@ import { themes } from '../theme/colors';
 import { t } from '../i18n';
 import OverlayModal from './ui/OverlayModal';
 import { numeric } from '../theme/typography';
+import { space, radius } from '../theme/tokens';
 
 // Native time picker (S-07). Same props and the same { hour12, minute, ampm } result as before,
 // so callers did not change.
@@ -104,14 +105,14 @@ export default function TimePicker(props) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  card: { width: '100%', maxWidth: 340, borderRadius: 20, padding: 24 },
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: space.lg },
+  card: { width: '100%', maxWidth: 340, borderRadius: radius.sheet, padding: space.lg },
   title: { fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
-  preview: { fontSize: 15, fontWeight: '600', textAlign: 'center', marginTop: 6, marginBottom: 8, ...numeric },
-  spinner: { alignSelf: 'stretch', marginBottom: 16 },
-  actions: { flexDirection: 'row', gap: 12 },
-  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },
+  preview: { fontSize: 15, fontWeight: '600', textAlign: 'center', marginTop: 6, marginBottom: space.xs, ...numeric },
+  spinner: { alignSelf: 'stretch', marginBottom: space.md },
+  actions: { flexDirection: 'row', gap: space.sm },
+  cancelBtn: { flex: 1, padding: 14, borderRadius: radius.card, borderWidth: 1.5, alignItems: 'center' },
   cancelText: { fontSize: 15, fontWeight: '600' },
-  saveBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
+  saveBtn: { flex: 1, padding: 14, borderRadius: radius.card, alignItems: 'center' },
   saveText: { fontSize: 15, fontWeight: '700' },
 });

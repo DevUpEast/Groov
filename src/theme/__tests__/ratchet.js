@@ -1,5 +1,5 @@
-// Shared scanner for the colour ratchets (plan §2.1, §7.1): legacyTokens.test.js and
-// noHexLiterals.test.js. Not a test file itself (no `.test.js` suffix).
+// Shared scanner for the token ratchets (plan §2.1, §2.6, §7.1): legacyTokens.test.js,
+// noHexLiterals.test.js and spacingTokens.test.js. Not a test file itself (no `.test.js` suffix).
 //
 // Scope: every .js/.jsx/.ts/.tsx file under src/ plus App.js, except src/theme/ (where tokens live) and
 // __tests__ folders. Comments are stripped before counting, so issue numbers such as
@@ -95,6 +95,19 @@ function legacyMatcher(keys) {
   };
 }
 
+// Spacing and radius literals (F-08, plan §2.6): a padding*, margin*, gap / rowGap / columnGap
+// or border*Radius property whose value starts with a non-zero number literal, including a
+// negative one (`marginTop: -4`) and the head of an expression (`padding: 8 + inset`).
+// `space.md`, `radius.card` and 0 are not counted.
+const SPACING_LITERAL = /\b(?:(?:padding|margin)(?:Top|Bottom|Left|Right|Horizontal|Vertical|Start|End)?|gap|rowGap|columnGap)\s*:\s*-?(?:[1-9]\d*(?:\.\d+)?|0\.\d*[1-9]\d*)(?![\w.])/g;
+const RADIUS_LITERAL = /\bborder(?:TopLeft|TopRight|BottomLeft|BottomRight|TopStart|TopEnd|BottomStart|BottomEnd)?Radius\s*:\s*((?:[1-9]\d*(?:\.\d+)?|0\.\d*[1-9]\d*))(?![\w.])/g;
+const LAYOUT_LITERAL = new RegExp(`${SPACING_LITERAL.source}|${RADIUS_LITERAL.source}`, 'g');
+
+// The distinct literal borderRadius values in a source (comments stripped by the caller).
+function radiusValues(src) {
+  return [...src.matchAll(RADIUS_LITERAL)].map(m => Number(m[1]));
+}
+
 // Lines `file: was -> now` for every file whose count rose (grown) or fell (fallen).
 // A file not in the baseline has a baseline of 0.
 function diffCounts(counts, baseline) {
@@ -139,4 +152,4 @@ function compare(counts, baselineFile) {
 
 const total = (counts) => Object.values(counts).reduce((a, b) => a + b, 0);
 
-module.exports = { sourceFiles, stripComments, scan, compare, diffCounts, loweredBaseline, total, COLOR_LITERAL, legacyMatcher };
+module.exports = { sourceFiles, stripComments, scan, compare, diffCounts, loweredBaseline, total, COLOR_LITERAL, legacyMatcher, SPACING_LITERAL, RADIUS_LITERAL, LAYOUT_LITERAL, radiusValues };

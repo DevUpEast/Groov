@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Image, Text } from 'react-native';
+import { radius } from '../theme/tokens';
 
 // Renders a habit's custom image when it exists and loads, otherwise its emoji
 // (or a placeholder). The Image's onError covers a purged cache or missing file.
@@ -11,7 +12,7 @@ export default function HabitIcon({ habit, size = 26, imageStyle, textStyle }) {
     return (
       <Image
         source={{ uri: habit.customIconUri }}
-        style={[{ width: size + 6, height: size + 6, borderRadius: 6 }, imageStyle]}
+        style={[{ width: size + 6, height: size + 6, borderRadius: radius.control }, imageStyle]}
         onError={() => setFailed(true)}
         accessibilityIgnoresInvertColors
       />

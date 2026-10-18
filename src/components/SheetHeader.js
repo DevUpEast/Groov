@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { t } from '../i18n';
 import IconButton from './ui/IconButton';
+import { space, radius } from '../theme/tokens';
 
 export function SheetDragHandle({ panHandlers, theme, color }) {
   return (
@@ -24,10 +25,10 @@ export function SheetHeader({ title, onClose, panHandlers, theme }) {
 }
 
 const styles = StyleSheet.create({
-  dragHandleArea: { alignItems: 'center', paddingVertical: 12 },
-  handleBar: { width: 40, height: 4, borderRadius: 2 },
+  dragHandleArea: { alignItems: 'center', paddingVertical: space.sm },
+  handleBar: { width: 40, height: 4, borderRadius: radius.pill },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   title: { fontSize: 20, fontWeight: 'bold' },
   // The 40 pt button's icon lines up with the sheet's content edge.
-  closeBtn: { marginRight: -8 },
+  closeBtn: { marginRight: -space.xs },
 });

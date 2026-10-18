@@ -5,7 +5,7 @@ import {
 import { measureNode, measureAnchor, relativeTo, centreOf } from '../utils/creditAnchors';
 import { announce } from '../utils/a11y';
 import { useMotion, celebration, spring } from '../theme/motion';
-import { celebrationArt } from '../theme/tokens';
+import { celebrationArt, space, radius } from '../theme/tokens';
 import { t } from '../i18n';
 
 const { width: W, height: H } = Dimensions.get('window');
@@ -214,7 +214,7 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
 
 const styles = StyleSheet.create({
   staticWrap: { alignItems: 'center', justifyContent: 'center', backgroundColor: celebrationArt.staticScrim },
-  staticCard: { borderRadius: 24, paddingVertical: 32, paddingHorizontal: 24, alignItems: 'center', width: '85%' },
+  staticCard: { borderRadius: radius.sheet, paddingVertical: space.xl, paddingHorizontal: space.lg, alignItems: 'center', width: '85%' },
   expandCircle: {
     position: 'absolute',
     width: CIRCLE_D,
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 9,
     height: 9,
-    borderRadius: 2,
+    borderRadius: radius.cell,
     top: 0,
     left: 0,
   },
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 14,
     height: 6,
-    borderRadius: 2,
+    borderRadius: radius.cell,
     top: 0,
     left: 0,
   },
@@ -246,13 +246,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: { fontSize: 72, marginBottom: 16 },
+  emoji: { fontSize: 72, marginBottom: space.md },
   congrats: {
     fontSize: 42, fontWeight: 'bold', color: celebrationArt.title,
     textShadowColor: celebrationArt.titleShadow, textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
   },
   subText: {
-    fontSize: 18, color: celebrationArt.subtitle, marginTop: 12,
+    fontSize: 18, color: celebrationArt.subtitle, marginTop: space.sm,
     textAlign: 'center', paddingHorizontal: 40, lineHeight: 26,
     fontWeight: '500',
   },

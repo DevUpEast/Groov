@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, PanResponder } from 'react-native';
 import { t } from '../i18n';
+import { space, radius } from '../theme/tokens';
 
 export default function Slider({ value, min = 1, max, onValueChange, theme, label }) {
   const layoutRef = useRef({ x: 0, width: 1 });
@@ -65,11 +66,11 @@ export default function Slider({ value, min = 1, max, onValueChange, theme, labe
 }
 
 const styles = StyleSheet.create({
-  trackArea: { height: 44, justifyContent: 'center', marginBottom: 4, marginHorizontal: 11 },
-  track: { height: 6, borderRadius: 3 },
-  fill: { height: 6, borderRadius: 3 },
+  trackArea: { height: 44, justifyContent: 'center', marginBottom: space.xxs, marginHorizontal: 11 },
+  track: { height: 6, borderRadius: radius.pill },
+  fill: { height: 6, borderRadius: radius.pill },
   thumb: {
-    position: 'absolute', width: 22, height: 22, borderRadius: 11, marginLeft: -11, top: 11,
+    position: 'absolute', width: 22, height: 22, borderRadius: radius.pill, marginLeft: -11, top: 11,
     elevation: 3, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2,
   },
 });

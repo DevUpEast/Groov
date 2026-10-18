@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MOODS } from '../utils/mood';
 import feedback, { EVENTS } from '../services/feedback';
 import { t, useLocale } from '../i18n';
+import { radius } from '../theme/tokens';
 
 // One-tap daily mood row for the Today screen. Tapping the selected mood clears it.
 export default function MoodCheckIn({ value, onChange, theme }) {
@@ -40,12 +41,12 @@ export default function MoodCheckIn({ value, onChange, theme }) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 14, borderWidth: 1, padding: 14, marginTop: 20 },
+  card: { borderRadius: radius.card, borderWidth: 1, padding: 14, marginTop: 20 },
   header: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 },
   title: { fontSize: 14, fontWeight: '700' },
   sub: { fontSize: 12 },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
-  btn: { width: 52, height: 48, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  btn: { width: 52, height: 48, borderRadius: radius.control, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   emoji: { fontSize: 26 },
   dim: { opacity: 0.45 },
 });

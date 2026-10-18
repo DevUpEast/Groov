@@ -10,6 +10,7 @@ import {
 import feedback, { EVENTS } from '../services/feedback';
 import { t } from '../i18n';
 import OverlayModal from './ui/OverlayModal';
+import { space, radius } from '../theme/tokens';
 
 const ITEM_H = 50;
 const VISIBLE = 5;  // rows shown in wheel
@@ -104,7 +105,7 @@ function WheelColumn({ items, selectedValue, onValueChange, loop, theme, width }
         left: 0, right: 0,
         height: ITEM_H,
         backgroundColor: theme.border,
-        borderRadius: 8,
+        borderRadius: radius.control,
         opacity: 0.6,
       }} />
 
@@ -231,15 +232,15 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
 const styles = StyleSheet.create({
   overlay: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
-    padding: 24,
+    padding: space.lg,
   },
   card: {
-    width: '100%', maxWidth: 340, borderRadius: 20, padding: 24,
+    width: '100%', maxWidth: 340, borderRadius: radius.sheet, padding: space.lg,
   },
   title: { fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
   wheelsRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 4, marginBottom: 24,
+    gap: space.xxs, marginBottom: space.lg,
   },
   wheelCol: { alignItems: 'center', gap: 6 },
   colLabel: { fontSize: 12, fontWeight: '600' },
@@ -252,9 +253,9 @@ const styles = StyleSheet.create({
     top: '60%',
     opacity: 0.85,
   },
-  actions: { flexDirection: 'row', gap: 12 },
-  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },
+  actions: { flexDirection: 'row', gap: space.sm },
+  cancelBtn: { flex: 1, padding: 14, borderRadius: radius.card, borderWidth: 1.5, alignItems: 'center' },
   cancelText: { fontSize: 15, fontWeight: '600' },
-  saveBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
+  saveBtn: { flex: 1, padding: 14, borderRadius: radius.card, alignItems: 'center' },
   saveText: { fontSize: 15, fontWeight: '700' },
 });

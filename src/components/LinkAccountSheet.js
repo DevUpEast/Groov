@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth, AUTH_CANCELLED } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
-import { elevation, palette } from '../theme/tokens';
+import { elevation, palette, space, radius } from '../theme/tokens';
 import OverlayModal from './ui/OverlayModal';
 
 // The native Apple button below is always the BLACK style, so its busy stand-in matches it.
@@ -111,20 +111,20 @@ export default function LinkAccountSheet({ visible, onClose, onLinked, theme }) 
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 },
+  sheet: { borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet, padding: space.lg, paddingBottom: Platform.OS === 'ios' ? 40 : 24 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 20, fontWeight: 'bold' },
-  closeBtn: { padding: 4 },
+  closeBtn: { padding: space.xxs },
   closeTxt: { fontSize: 20, fontWeight: 'bold' },
   body: { fontSize: 14, lineHeight: 20, marginTop: 6, marginBottom: 14 },
-  socialBtn: { height: 48, borderRadius: 12, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
-  googleBtn: { flexDirection: 'row', gap: 8, borderWidth: 1 },
+  socialBtn: { height: 48, borderRadius: radius.card, marginTop: space.xs, alignItems: 'center', justifyContent: 'center' },
+  googleBtn: { flexDirection: 'row', gap: space.xs, borderWidth: 1 },
   googleText: { fontSize: 15, fontWeight: '600' },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 18, marginBottom: 6 },
   dividerLine: { flex: 1, height: 1 },
   dividerText: { marginHorizontal: 10, fontSize: 12 },
-  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginTop: 10 },
-  error: { fontSize: 13, marginTop: 8 },
-  btn: { marginTop: 14, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  input: { borderWidth: 1, borderRadius: radius.control, paddingHorizontal: 14, paddingVertical: space.sm, fontSize: 15, marginTop: 10 },
+  error: { fontSize: 13, marginTop: space.xs },
+  btn: { marginTop: 14, paddingVertical: 14, borderRadius: radius.card, alignItems: 'center' },
   btnText: { fontSize: 16, fontWeight: '700' },
 });

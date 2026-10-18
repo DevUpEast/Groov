@@ -627,8 +627,8 @@ const styles = StyleSheet.create({
   beatSlot: { width: 14, height: 14 },
   beat: { width: 14, height: 14, borderRadius: radius.cell },
   beatOutline: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  restBar: { width: 7, height: 2, borderRadius: 1 },
-  todayRing: { position: 'absolute', top: -3, left: -3, width: 20, height: 20, borderRadius: 6, borderWidth: 2 },
+  restBar: { width: 7, height: 2, borderRadius: radius.pill },
+  todayRing: { position: 'absolute', top: -3, left: -3, width: 20, height: 20, borderRadius: radius.cell + 2, borderWidth: 2 },
   // One row per line of chips, no wrap: a challenge name truncates instead (BeatsAndChips).
   chips: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: 6 },
   // Two rows under the line (2+ challenges): 20 + 4 + 24 + 4 + 24 = 76, the compact ring.

@@ -2,7 +2,7 @@ import React from 'react';
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 import { MAX_WIDGET_ROWS } from './widgetData';
 import { t } from '../i18n';
-import { palette } from '../theme/tokens';
+import { palette, space } from '../theme/tokens';
 import { resolveAccent } from '../theme/accents';
 
 // Today's habits widget. Renders from the model built in widgetData.js. Every row
@@ -30,9 +30,9 @@ export function TodayWidget({ model, dark = false, maxRows = MAX_WIDGET_ROWS }) 
       clickActionData={{ uri: 'groov://today' }}
       accessibilityLabel={t('widget.a11y', { done: model.done, total: model.total })}
     >
-      <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.xs }}>
         <TextWidget text={t('widget.title')} style={{ fontSize: 15, fontWeight: 'bold', color: c.text }} />
-        <FlexWidget style={{ backgroundColor: model.total > 0 && model.done >= model.total ? c.meter : c.selection, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+        <FlexWidget style={{ backgroundColor: model.total > 0 && model.done >= model.total ? c.meter : c.selection, borderRadius: 10, paddingHorizontal: space.xs, paddingVertical: 3 }}>
           <TextWidget text={`${model.done}/${model.total}`} style={{ fontSize: 12, fontWeight: 'bold', color: model.total > 0 && model.done >= model.total ? c.onMeter : c.onSelection }} />
         </FlexWidget>
       </FlexWidget>
@@ -52,7 +52,7 @@ export function TodayWidget({ model, dark = false, maxRows = MAX_WIDGET_ROWS }) 
             clickActionData={{ habitId: r.id }}
             accessibilityLabel={r.done ? t('widget.rowDone', { name: r.name }) : r.name}
           >
-            <TextWidget text={r.icon} style={{ fontSize: 16, marginRight: 8 }} />
+            <TextWidget text={r.icon} style={{ fontSize: 16, marginRight: space.xs }} />
             <FlexWidget style={{ flex: 1, width: 'match_parent', flexDirection: 'row', alignItems: 'center' }}>
               <TextWidget text={label} truncate="END" maxLines={1} style={{ width: 'match_parent', fontSize: 13, color: r.done ? c.muted : c.text, fontWeight: r.done ? 'normal' : '600' }} />
             </FlexWidget>

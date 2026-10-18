@@ -34,6 +34,7 @@ import Chip from '../components/ui/Chip';
 import SectionLabel from '../components/ui/SectionLabel';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import TextField from '../components/ui/TextField';
+import { space, radius } from '../theme/tokens';
 
 // Preset icons. The stored value is the emoji; `key` names it for screen readers (habits.icons.<key>).
 const ICONS = [
@@ -200,7 +201,7 @@ function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) 
         aria-selected={!!customIconUri}
       >
         {customIconUri ? (
-          <Image source={{ uri: customIconUri }} style={{ width: 28, height: 28, borderRadius: 4 }} />
+          <Image source={{ uri: customIconUri }} style={{ width: 28, height: 28, borderRadius: radius.cell }} />
         ) : (
           <Ionicons name="add-outline" size={26} color={theme.textSecondary} />
         )}
@@ -342,7 +343,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
           <ScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: 8 }}
+            contentContainerStyle={{ paddingBottom: space.xs }}
           >
             {/* Tapping blank space dismisses the keyboard. A responder (not a Touchable) keeps the
                 wrapper out of the accessibility tree: a clickable wrapper made TalkBack merge every
@@ -775,7 +776,7 @@ export default function HabitsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
           <AppText variant="title" style={[styles.heading, { color: theme.text }]}>{t('habits.title')}</AppText>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: space.xs }}>
             {habits.length > 1 && (
               <TouchableOpacity
                 style={[styles.reorderBtn, { borderColor: reorder ? theme.selectionBorder : theme.controlBorder, backgroundColor: reorder ? theme.selection : 'transparent' }]}
@@ -888,73 +889,73 @@ export default function HabitsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { padding: 24, paddingBottom: 40 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  scroll: { paddingHorizontal: space.gutter, paddingTop: space.lg, paddingBottom: 40 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.lg },
   heading: {},
-  addBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  addBtn: { paddingHorizontal: space.md, paddingVertical: space.xs, borderRadius: radius.pill },
   addBtnText: { fontWeight: '700', fontSize: 15 },
-  reorderBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  sectionLabel: { marginBottom: 10 },
+  reorderBtn: { width: 36, height: 36, borderRadius: radius.pill, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  sectionLabel: { marginBottom: space.xs },
   row: {
-    flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1,
-    padding: 14, marginBottom: 10, overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center', borderRadius: radius.card, borderWidth: 1,
+    padding: 14, marginBottom: space.xs, overflow: 'hidden',
   },
   rowStripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
-  moveBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
+  moveBtn: { width: 34, height: 34, borderRadius: radius.pill, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginLeft: 6 },
   colorRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  colorDot: { width: 36, height: 36, borderRadius: 18, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
+  colorDot: { width: 36, height: 36, borderRadius: radius.pill, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
   colorCheck: { fontWeight: '800', fontSize: 14 },
-  timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  rowIcon: { fontSize: 26, marginRight: 12 },
-  rowIconImage: { width: 32, height: 32, borderRadius: 6, marginRight: 12 },
+  timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: 20 },
+  rowIcon: { fontSize: 26, marginRight: space.sm },
+  rowIconImage: { width: 32, height: 32, borderRadius: radius.control, marginRight: space.sm },
   rowInfo: { flex: 1 },
   rowName: { fontSize: 15, fontWeight: '600' },
-  rowMeta: { flexDirection: 'row', marginTop: 4, gap: 6, flexWrap: 'wrap' },
-  typePill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
+  rowMeta: { flexDirection: 'row', marginTop: space.xxs, gap: 6, flexWrap: 'wrap' },
+  typePill: { borderRadius: radius.pill, paddingHorizontal: space.xs, paddingVertical: 2 },
   typePillText: { fontSize: 12, fontWeight: '600' },
-  reminderPill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
+  reminderPill: { borderRadius: radius.pill, paddingHorizontal: space.xs, paddingVertical: 2 },
   reminderPillText: { fontSize: 12, fontWeight: '600' },
   // Neighbouring 40 pt IconButtons sit two slops apart, so their touch targets meet without
   // overlapping (8 dp on Android, 4 pt on iOS). H-02 replaces the three with one control.
   rowIconBtn: { marginLeft: 2 * hitSlopFor(40).left },
-  editBtn: { padding: 6, marginRight: 4 },
+  editBtn: { padding: 6, marginRight: space.xxs },
   editBtnText: { fontSize: 13, fontWeight: '600' },
   deleteBtn: { padding: 6 },
   empty: {
-    borderWidth: 2, borderStyle: 'dashed', borderRadius: 16,
-    padding: 36, alignItems: 'center', marginTop: 24,
+    borderWidth: 2, borderStyle: 'dashed', borderRadius: radius.card,
+    padding: 36, alignItems: 'center', marginTop: space.lg,
   },
-  emptyEmoji: { fontSize: 40, marginBottom: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  emptyEmoji: { fontSize: 40, marginBottom: space.sm },
+  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: space.xs },
   emptyBody: { fontSize: 14, textAlign: 'center' },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   sheetTitle: { fontSize: 20, fontWeight: 'bold' },
-  sheetCloseBtn: { padding: 4 },
+  sheetCloseBtn: { padding: space.xxs },
   formLabel: { marginBottom: 10 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: space.sm },
   field: { marginBottom: 20 },
-  magicBox: { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 20 },
-  magicTitle: { fontSize: 12, fontWeight: '700', marginBottom: 8 },
-  magicRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  magicInput: { flex: 1, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
-  magicBtn: { paddingHorizontal: 16, height: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', minWidth: 60 },
+  magicBox: { borderWidth: 1, borderRadius: radius.card, padding: space.sm, marginBottom: 20 },
+  magicTitle: { fontSize: 12, fontWeight: '700', marginBottom: space.xs },
+  magicRow: { flexDirection: 'row', gap: space.xs, alignItems: 'center' },
+  magicInput: { flex: 1, borderWidth: 1, borderRadius: radius.control, paddingHorizontal: space.sm, paddingVertical: 10, fontSize: 14 },
+  magicBtn: { paddingHorizontal: space.md, height: 42, borderRadius: radius.control, alignItems: 'center', justifyContent: 'center', minWidth: 60 },
   magicBtnText: { fontWeight: '700', fontSize: 14 },
   magicError: { fontSize: 12, marginTop: 6 },
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: ICON_GAP, marginBottom: 20 },
-  iconBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 44, height: 44, borderRadius: radius.control, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   iconBtnText: { fontSize: 22 },
-  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: space.xs },
   typeHint: { fontSize: 12, marginBottom: 20 },
   dayRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   dayChip: { width: 40, paddingHorizontal: 0 },
   perWeekRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  perWeekText: { fontSize: 14, flex: 1, marginRight: 12 },
+  perWeekText: { fontSize: 14, flex: 1, marginRight: space.sm },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stepBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  stepBtn: { width: 36, height: 36, borderRadius: radius.pill, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   stepBtnText: { fontSize: 18, fontWeight: '600' },
   stepValue: { fontSize: 18, fontWeight: '700', minWidth: 20, textAlign: 'center' },
-  volMaxRow: { marginBottom: 12 },
-  sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  volMaxRow: { marginBottom: space.sm },
+  sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: space.md },
   sliderLabelText: { fontSize: 12 },
-  saveBtn: { marginTop: 12, minHeight: 52 },
+  saveBtn: { marginTop: space.sm, minHeight: 52 },
 });

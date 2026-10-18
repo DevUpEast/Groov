@@ -355,7 +355,7 @@ export default function TodayScreen() {
       <View style={{ flex: 1 }}>
         <SectionLabel label={t('today.coach')} theme={theme} color={theme.link} first style={styles.nudgeLabel} />
         {nudgeLoading && !shownNudge ? (
-          <ActivityIndicator size="small" color={theme.link} style={{ marginTop: 4 }} />
+          <ActivityIndicator size="small" color={theme.link} style={{ marginTop: space.xxs }} />
         ) : (
           <Text style={[styles.nudgeText, { color: theme.text }]}>{shownNudge}</Text>
         )}
@@ -710,9 +710,9 @@ export default function TodayScreen() {
             </View>
           ) : (
             <>
-              {grouped ? grouped.map(section => (
+              {grouped ? grouped.map((section, i) => (
                 <View key={section.key}>
-                  <SectionLabel icon={SECTION_ICONS[section.key]} label={t(`today.sections.${section.key}`)} theme={theme} style={compactRing && styles.sectionCompact} />
+                  <SectionLabel icon={SECTION_ICONS[section.key]} label={t(`today.sections.${section.key}`)} theme={theme} style={i > 0 ? styles.groupAfterCards : compactRing && styles.sectionCompact} />
                   {section.habits.map(habit => (
                     <HabitCard
                       key={habit.id}
@@ -856,14 +856,17 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { paddingBottom: 32 },
+  scroll: { paddingBottom: space.xl },
   body: { flex: 1 },
   header: { paddingHorizontal: space.gutter, paddingTop: HEADER_TOP },
   content: { paddingHorizontal: space.gutter },
   plainList: { marginTop: space.md },
-  // Short windows (SE): 16 between groups instead of 24, so a third time-of-day group still
-  // leaves the fourth card above the tab bar.
+  // Short windows (SE): the first group label sits 16 under the header instead of 24, so the
+  // fourth card stays above the tab bar.
   sectionCompact: { marginTop: space.sectionCompact },
+  // A later group label sits under a card, whose own marginBottom (xs) already spaces it, so
+  // card bottom to label is lg (24) between groups (§2.6, D-00; M2 gate M3-5), on every height.
+  groupAfterCards: { marginTop: space.lg - space.xs },
   stickyLayer: { position: 'absolute', top: 0, left: 0, right: 0, height: STICKY_H },
   restCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: space.sm,
@@ -872,26 +875,26 @@ const styles = StyleSheet.create({
   restText: { flex: 1 },
   restTitle: { fontSize: 17, lineHeight: 22, fontWeight: '600' },
   restBody: { fontSize: 13, lineHeight: 18, marginTop: 2 },
-  markRestBtn: { alignSelf: 'center', minHeight: 48, borderRadius: radius.control, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, marginTop: 4 },
+  markRestBtn: { alignSelf: 'center', minHeight: 48, borderRadius: radius.control, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', paddingHorizontal: space.md, marginTop: space.xxs },
   markRestText: { fontSize: 15, fontWeight: '700' },
   markRestNote: { fontSize: 13, marginTop: 2, textAlign: 'center' },
   nudgeCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    borderWidth: 1, borderRadius: 14, padding: 14, marginTop: space.md,
+    borderWidth: 1, borderRadius: radius.card, padding: 14, marginTop: space.md,
   },
   nudgeIcon: { marginTop: 1 },
-  nudgeLabel: { marginBottom: 4 },
+  nudgeLabel: { marginBottom: space.xxs },
   nudgeText: { fontSize: 13, lineHeight: 20 },
   empty: {
-    borderWidth: 2, borderStyle: 'dashed', borderRadius: 16,
-    padding: 36, alignItems: 'center', marginTop: 24,
+    borderWidth: 2, borderStyle: 'dashed', borderRadius: radius.card,
+    padding: 36, alignItems: 'center', marginTop: space.lg,
   },
-  emptyEmoji: { fontSize: 40, marginBottom: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  emptyEmoji: { fontSize: 40, marginBottom: space.sm },
+  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: space.xs },
   emptyBody: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   // Button (block, primary) gives the fill, radius and 48 min height; this adds the lift.
   addHabitBtn: {
-    marginTop: 8,
+    marginTop: space.xs,
     minHeight: 56,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.18,
@@ -899,8 +902,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   challengeEmptyRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    borderRadius: 16, borderWidth: 1, padding: 16, marginTop: 20,
+    flexDirection: 'row', alignItems: 'center', gap: space.sm,
+    borderRadius: radius.card, borderWidth: 1, padding: space.md, marginTop: 20,
   },
   challengeEmptyIcon: { fontSize: 28 },
   challengeEmptyText: { flex: 1 },
