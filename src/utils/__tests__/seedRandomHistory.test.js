@@ -1,4 +1,4 @@
-import { buildSeed, applySeedSnapshot, applySeedCompletions, backdateCreatedAt, SEED_DAYS } from '../seed';
+import { buildSeed, applySeedSnapshot, applySeedCompletions, backdateCreatedAt, SEED_DAYS, seededRandom, DEMO_SEED } from '../seed';
 import { makeDayRules, snapshotOf } from '../dayStatus';
 import { overallStreak, bestOverallStreak } from '../streaks';
 import { addDays } from '../dates';
@@ -55,5 +55,24 @@ describe('buildSeed (demo / dev-tool history)', () => {
     // Without the backdate every seeded day would be before createdAt and excluded.
     const notBackdated = makeDayRules({ today: TODAY, snapshot: seed.snapshot, liveHabits: habits, allHabits: habits, completions: seed.completions });
     expect(notBackdated.summary(addDays(TODAY, -1))).toMatchObject({ before: true, total: 0 });
+  });
+});
+
+describe('seededRandom (deterministic mockup demo history)', () => {
+  it('repeats the same sequence for the same seed and stays in [0, 1)', () => {
+    const a = seededRandom(DEMO_SEED);
+    const b = seededRandom(DEMO_SEED);
+    const xs = Array.from({ length: 200 }, () => a());
+    expect(Array.from({ length: 200 }, () => b())).toEqual(xs);
+    expect(xs.every(x => x >= 0 && x < 1)).toBe(true);
+    expect(new Set(xs).size).toBeGreaterThan(190);
+    expect(seededRandom(DEMO_SEED + 1)()).not.toBe(xs[0]);
+  });
+
+  it('gives buildSeed identical history on every run', () => {
+    const one = buildSeed(habits, {}, {}, TODAY, seededRandom(DEMO_SEED));
+    const two = buildSeed(habits, {}, {}, TODAY, seededRandom(DEMO_SEED));
+    expect(two.completions).toEqual(one.completions);
+    expect(two.snapshot).toEqual(one.snapshot);
   });
 });

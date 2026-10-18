@@ -16,6 +16,7 @@ import TimePicker from '../components/TimePicker';
 import HabitDetailSheet from '../components/HabitDetailSheet';
 import HabitIcon from '../components/HabitIcon';
 import { lightImpact, mediumImpact } from '../utils/haptics';
+import { routeLeavesTab } from '../utils/links';
 import { describeSchedule, weekdayLabels, DEFAULT_SCHEDULE } from '../utils/schedule';
 import { getHabitTypes, describeGoal } from '../utils/habits';
 import { suggestHabit } from '../services/aiCoaching';
@@ -68,7 +69,7 @@ function SchedulePicker({ schedule, onChange, theme }) {
   const dayLabels = weekdayLabels();
   return (
     <>
-      <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.schedule')}</Text>
+      <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.schedule')}</Text>
       <View style={styles.typeRow}>
         {SCHEDULE_OPTIONS.map(opt => {
           const active = type === opt.type;
@@ -80,7 +81,7 @@ function SchedulePicker({ schedule, onChange, theme }) {
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
             >
-              <Text style={[styles.scheduleBtnText, { color: active ? theme.primary : theme.textMuted }]}>{t(`habits.form.${opt.key}`)}</Text>
+              <Text style={[styles.scheduleBtnText, { color: active ? theme.primary : theme.textSecondary }]}>{t(`habits.form.${opt.key}`)}</Text>
             </TouchableOpacity>
           );
         })}
@@ -99,7 +100,7 @@ function SchedulePicker({ schedule, onChange, theme }) {
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={dayLabels[d]}
               >
-                <Text style={[styles.dayChipText, { color: on ? '#fff' : theme.textMuted }]}>{dayLabels[d]}</Text>
+                <Text style={[styles.dayChipText, { color: on ? '#fff' : theme.textSecondary }]}>{dayLabels[d]}</Text>
               </TouchableOpacity>
             );
           })}
@@ -179,7 +180,7 @@ function IconPicker({ selected, onSelect, customIconUri, onCustomIcon, theme }) 
         {customIconUri ? (
           <Image source={{ uri: customIconUri }} style={{ width: 28, height: 28, borderRadius: 4 }} />
         ) : (
-          <Ionicons name="add-outline" size={26} color={theme.textMuted} />
+          <Ionicons name="add-outline" size={26} color={theme.textSecondary} />
         )}
       </TouchableOpacity>
     </View>
@@ -310,7 +311,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
               {editingId ? t('habits.form.editTitle') : t('habits.form.newTitle')}
             </Text>
             <TouchableOpacity onPress={handleClose} style={styles.sheetCloseBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
-              <Ionicons name="close" size={24} color={theme.textMuted} />
+              <Ionicons name="close" size={24} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -331,7 +332,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                       <TextInput
                         style={[styles.magicInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
                         placeholder={t('habits.form.magicPlaceholder')}
-                        placeholderTextColor={theme.textMuted}
+                        placeholderTextColor={theme.textSecondary}
                         value={magicText}
                         onChangeText={setMagicText}
                         maxLength={200}
@@ -350,11 +351,11 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                         {magicBusy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.magicBtnText}>{t('habits.form.fill')}</Text>}
                       </TouchableOpacity>
                     </View>
-                    {!!magicError && <Text style={[styles.magicError, { color: theme.danger }]}>{magicError}</Text>}
+                    {!!magicError && <Text style={[styles.magicError, { color: theme.dangerText }]}>{magicError}</Text>}
                   </View>
                 )}
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.icon')}</Text>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.icon')}</Text>
                 <IconPicker
                   selected={form.icon}
                   onSelect={icon => setForm(f => ({ ...f, icon, customIconUri: null }))}
@@ -363,7 +364,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   theme={theme}
                 />
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.colour')}</Text>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.colour')}</Text>
                 <View style={styles.colorRow}>
                   {HABIT_COLORS.map(c => {
                     const active = (form.color || null) === c;
@@ -383,11 +384,11 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   })}
                 </View>
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.name')}</Text>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.name')}</Text>
                 <TextInput
                   style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
                   placeholder={t('habits.form.namePlaceholder')}
-                  placeholderTextColor={theme.textMuted}
+                  placeholderTextColor={theme.textSecondary}
                   value={form.name}
                   onChangeText={name => setForm(f => ({ ...f, name }))}
                   returnKeyType="done"
@@ -395,11 +396,11 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   accessibilityLabel={t('habits.form.name')}
                 />
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.plan')}</Text>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.plan')}</Text>
                 <TextInput
                   style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
                   placeholder={t('habits.form.planPlaceholder')}
-                  placeholderTextColor={theme.textMuted}
+                  placeholderTextColor={theme.textSecondary}
                   value={form.intention || ''}
                   onChangeText={intention => setForm(f => ({ ...f, intention }))}
                   maxLength={80}
@@ -408,7 +409,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   accessibilityLabel={t('habits.form.planA11y')}
                 />
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.type')}</Text>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.type')}</Text>
                 <View style={styles.typeRow}>
                   {habitTypes.map(ht => {
                     const active = form.type === ht.value;
@@ -432,12 +433,12 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                         accessibilityState={{ selected: active }}
                         accessibilityLabel={t('habits.form.typeA11y', { label: ht.label, hint: ht.hint })}
                       >
-                        <Text style={[styles.typeBtnText, { color: active ? theme.primary : theme.textMuted }]}>{t('habits.form.typeChip', { emoji: ht.emoji, label: ht.label })}</Text>
+                        <Text style={[styles.typeBtnText, { color: active ? theme.primary : theme.textSecondary }]}>{t('habits.form.typeChip', { emoji: ht.emoji, label: ht.label })}</Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
-                <Text style={[styles.typeHint, { color: theme.textMuted }]}>{habitTypes.find(ht => ht.value === form.type)?.hint}</Text>
+                <Text style={[styles.typeHint, { color: theme.textSecondary }]}>{habitTypes.find(ht => ht.value === form.type)?.hint}</Text>
 
                 <SchedulePicker
                   schedule={form.schedule}
@@ -445,7 +446,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   theme={theme}
                 />
 
-                <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.timeOfDay')}</Text>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.timeOfDay')}</Text>
                 <View style={styles.timeRow}>
                   {TIME_OPTIONS.map(opt => {
                     const active = (form.timeOfDay || 'anytime') === opt;
@@ -457,7 +458,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                         accessibilityRole="button"
                         accessibilityState={{ selected: active }}
                       >
-                        <Text style={[styles.timeChipText, { color: active ? theme.primary : theme.textMuted }]}>{t(`timeOfDay.${opt}`)}</Text>
+                        <Text style={[styles.timeChipText, { color: active ? theme.primary : theme.textSecondary }]}>{t(`timeOfDay.${opt}`)}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -465,28 +466,28 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
 
                 {form.type === 'timed' && (
                   <>
-                    <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.minutesPerDay', { count: form.volumeGoal })}</Text>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.minutesPerDay', { count: form.volumeGoal })}</Text>
                     <Slider value={form.volumeGoal} min={5} max={180} onValueChange={v => setForm(f => ({ ...f, volumeGoal: Math.max(5, Math.round(v / 5) * 5) }))} theme={theme} label={t('habits.form.minutesLabel')} />
                     <View style={styles.sliderLabels}>
-                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>{t('habits.form.fiveMin')}</Text>
-                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>{t('habits.form.threeHours')}</Text>
+                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{t('habits.form.fiveMin')}</Text>
+                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{t('habits.form.threeHours')}</Text>
                     </View>
                   </>
                 )}
 
                 {form.type === 'atMost' && (
                   <>
-                    <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.atMostPerDay', { count: form.volumeGoal })}</Text>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.atMostPerDay', { count: form.volumeGoal })}</Text>
                     <Slider value={form.volumeGoal} min={0} max={20} onValueChange={v => setForm(f => ({ ...f, volumeGoal: v }))} theme={theme} label={t('habits.form.dailyLimit')} />
                     <View style={styles.sliderLabels}>
-                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>0</Text>
-                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>20</Text>
+                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>0</Text>
+                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>20</Text>
                     </View>
-                    <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.unit')}</Text>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.unit')}</Text>
                     <TextInput
                       style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
                       placeholder={t('habits.form.unitPlaceholderLimit')}
-                      placeholderTextColor={theme.textMuted}
+                      placeholderTextColor={theme.textSecondary}
                       value={form.unit || ''}
                       onChangeText={unit => setForm(f => ({ ...f, unit }))}
                       maxLength={20}
@@ -499,7 +500,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
 
                 {form.type === 'volume' && (
                   <>
-                    <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.timesPerDay', { count: form.volumeGoal })}</Text>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.timesPerDay', { count: form.volumeGoal })}</Text>
                     <View style={styles.volMaxRow}>
                       {VOLUME_MAX_OPTIONS.map(opt => (
                         <TouchableOpacity
@@ -513,7 +514,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                           accessibilityRole="button"
                           accessibilityState={{ selected: volMax === opt.max }}
                         >
-                          <Text style={[styles.volMaxBtnText, { color: volMax === opt.max ? theme.primary : theme.textMuted }]}>
+                          <Text style={[styles.volMaxBtnText, { color: volMax === opt.max ? theme.primary : theme.textSecondary }]}>
                             {t('habits.form.max', { max: opt.label })}
                           </Text>
                         </TouchableOpacity>
@@ -528,14 +529,14 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                       label={t('habits.form.timesLabel')}
                     />
                     <View style={styles.sliderLabels}>
-                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>2</Text>
-                      <Text style={[styles.sliderLabelText, { color: theme.textMuted }]}>{volMax}</Text>
+                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>2</Text>
+                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{volMax}</Text>
                     </View>
-                    <Text style={[styles.label, { color: theme.textMuted }]}>{t('habits.form.unit')}</Text>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.unit')}</Text>
                     <TextInput
                       style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
                       placeholder={t('habits.form.unitPlaceholderVolume')}
-                      placeholderTextColor={theme.textMuted}
+                      placeholderTextColor={theme.textSecondary}
                       value={form.unit || ''}
                       onChangeText={unit => setForm(f => ({ ...f, unit }))}
                       maxLength={20}
@@ -612,14 +613,14 @@ function HabitRow({ habit, theme, onEdit, onDelete, onBell, onOpen, reorder, onM
             <Ionicons
               name={reminderOn ? 'notifications' : 'notifications-outline'}
               size={20}
-              color={reminderOn ? theme.primary : theme.textMuted}
+              color={reminderOn ? theme.primary : theme.textSecondary}
             />
           </TouchableOpacity>
           <TouchableOpacity style={styles.editBtn} onPress={onEdit} accessibilityRole="button" accessibilityLabel={t('habits.row.editA11y')}>
-            <Text style={[styles.editBtnText, { color: theme.textMuted }]}>{t('common.edit')}</Text>
+            <Text style={[styles.editBtnText, { color: theme.textSecondary }]}>{t('common.edit')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} accessibilityRole="button" accessibilityLabel={t('habits.row.archiveA11y')}>
-            <Ionicons name="archive-outline" size={18} color={theme.textMuted} />
+            <Ionicons name="archive-outline" size={18} color={theme.textSecondary} />
           </TouchableOpacity>
         </>
       )}
@@ -632,13 +633,13 @@ function ArchivedRow({ habit, theme, onRestore, onDelete }) {
     <View style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border, opacity: 0.75 }]}>
       <Text style={styles.rowIcon}>{habit.icon ?? '📦'}</Text>
       <View style={styles.rowInfo}>
-        <Text style={[styles.rowName, { color: theme.textMuted }]} numberOfLines={1}>{habit.name}</Text>
+        <Text style={[styles.rowName, { color: theme.textSecondary }]} numberOfLines={1}>{habit.name}</Text>
       </View>
       <TouchableOpacity style={styles.editBtn} onPress={onRestore} accessibilityRole="button" accessibilityLabel={t('habits.row.restoreA11y')}>
         <Text style={[styles.editBtnText, { color: theme.primary }]}>{t('habits.row.restore')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} accessibilityRole="button" accessibilityLabel={t('habits.row.deleteForeverA11y')}>
-        <Ionicons name="trash-outline" size={18} color={theme.danger} />
+        <Ionicons name="trash-outline" size={18} color={theme.dangerText} />
       </TouchableOpacity>
     </View>
   );
@@ -664,8 +665,9 @@ export default function HabitsScreen() {
 
   // Deep links: groov://habit/<id> opens the detail sheet, groov://habits/new the form.
   useEffect(() => {
-    if (!pendingRoute) return;
-    if (pendingRoute.tab !== 3) {
+    // A tab-less route (groov://dev/design) is not for this screen: leave it and any open sheet.
+    if (!pendingRoute || pendingRoute.tab == null) return;
+    if (routeLeavesTab(pendingRoute, 3)) {
       // Leaving this tab by link: drop any open sheet so it does not cover the target.
       setDetailHabit(null); setModalVisible(false); setReminderTarget(null);
       clearPendingRoute();
@@ -781,7 +783,7 @@ export default function HabitsScreen() {
                 accessibilityState={{ selected: reorder }}
                 accessibilityLabel={reorder ? t('habits.finishReorder') : t('habits.reorder')}
               >
-                <Ionicons name={reorder ? 'checkmark' : 'swap-vertical'} size={18} color={reorder ? theme.primary : theme.textMuted} />
+                <Ionicons name={reorder ? 'checkmark' : 'swap-vertical'} size={18} color={reorder ? theme.primary : theme.textSecondary} />
               </TouchableOpacity>
             )}
             <TouchableOpacity style={[styles.addBtn, { backgroundColor: theme.primary }]} onPress={openAdd} accessibilityRole="button" accessibilityLabel={t('habits.addA11y')}>
@@ -796,7 +798,7 @@ export default function HabitsScreen() {
             title={t('habits.empty.title')}
             body={t('habits.empty.body')}
             theme={theme}
-            titleColor={theme.textMuted}
+            titleColor={theme.textSecondary}
             style={{ backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border }}
           />
         ) : (
@@ -823,7 +825,7 @@ export default function HabitsScreen() {
 
         {archivedHabits.length > 0 && (
           <View style={{ marginTop: 20 }}>
-            <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>{t('habits.archived', { count: archivedHabits.length })}</Text>
+            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('habits.archived', { count: archivedHabits.length })}</Text>
             {archivedHabits.map(habit => (
               <ArchivedRow
                 key={habit.id}
@@ -917,7 +919,6 @@ const styles = StyleSheet.create({
   editBtn: { padding: 6, marginRight: 4 },
   editBtnText: { fontSize: 13, fontWeight: '600' },
   deleteBtn: { padding: 6 },
-  deleteBtnText: { fontSize: 14, color: '#EF4444', fontWeight: 'bold' },
   empty: {
     borderWidth: 2, borderStyle: 'dashed', borderRadius: 16,
     padding: 36, alignItems: 'center', marginTop: 24,

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { AppState, useColorScheme, Linking, Alert, Platform } from 'react-native';
 import * as ExpoLinking from 'expo-linking';
 import * as QuickActions from 'expo-quick-actions';
-import { parseDeepLink } from '../utils/links';
+import { parseDeepLink, isRouteAllowed } from '../utils/links';
 import {
   isGoalMet, justMetGoal, STARTER_HABITS, countAfterIncrement, applyMarkRest, revertMarkRest,
 } from '../utils/habits';
@@ -31,7 +31,7 @@ import { loadDevMode, saveDevMode } from '../utils/devMode';
 import { isChallengeExpired } from '../utils/challenges';
 import { mergeRecords, mergeCompletions, mergeSnapshots, mergeNotes } from '../utils/mergeSync';
 import { snapshotOf, isHabitDoneOnDay, makeDayRules, stampCreatedAt, earliestCreatedAt } from '../utils/dayStatus';
-import { buildSeed, applySeedCompletions, applySeedSnapshot, backdateCreatedAt } from '../utils/seed';
+import { buildSeed, applySeedCompletions, applySeedSnapshot, backdateCreatedAt, seededRandom, DEMO_SEED } from '../utils/seed';
 import { mergeBackup } from '../utils/backup';
 import { initAnalytics, track, Events } from '../utils/analytics';
 import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup';
@@ -399,7 +399,7 @@ export function AppProvider({ children }) {
   const routeRef = useRef(null);
   useEffect(() => {
     routeRef.current = (route) => {
-      if (!route) return;
+      if (!isRouteAllowed(route, { dev: __DEV__, mockup: mockupParams.active })) return;
       if (route.action === 'done' && route.habitId) {
         const h = allHabits.find(x => x.id === route.habitId && !x.archived);
         if (h) {
@@ -411,7 +411,7 @@ export function AppProvider({ children }) {
         setRequestedTab(0);
         return;
       }
-      setRequestedTab(route.tab);
+      if (route.tab != null) setRequestedTab(route.tab);
       setPendingRoute(route);
     };
   }, [allHabits, habits, userId]);
@@ -444,7 +444,8 @@ export function AppProvider({ children }) {
       completeOnboardingRef.current?.(STARTER_HABITS.slice(0, 4).map(({ key, ...h }) => h));
     } else if (hasOnboarded && habits.length > 0) {
       demoSeeded.current = true;
-      if (Object.keys(completions).length < 5) seedRandomHistoryRef.current?.();
+      // A fixed PRNG seed makes every demo history identical, so shot matrices compare.
+      if (Object.keys(completions).length < 5) seedRandomHistoryRef.current?.({ deterministic: true });
       // Finishing onboarding resets the pager to Today; re-apply the requested route.
       ExpoLinking.getInitialURL().then((url) => { const r = parseDeepLink(url); if (r) routeRef.current?.(r); }).catch(() => {});
     }
@@ -1293,9 +1294,11 @@ export function AppProvider({ children }) {
   // (the old seed copied a stale `today: []` over the fresh one, STA-2). State is
   // therefore applied with functional updates, and today's snapshot is never replaced
   // by an empty one. The seeded habits are backdated so their history counts.
-  const seedRandomHistory = useCallback(async () => {
+  // `deterministic` (mockup demo) uses a fixed-seed PRNG; the dev tool keeps Math.random.
+  const seedRandomHistory = useCallback(async ({ deterministic = false } = {}) => {
     const realToday = localDateKey();
-    const seed = buildSeed(habits, completions, dailySnapshot, realToday);
+    const rand = deterministic ? seededRandom(DEMO_SEED) : Math.random;
+    const seed = buildSeed(habits, completions, dailySnapshot, realToday, rand);
     const seededIds = new Set(habits.map(h => h.id));
     const backdate = (h) => (seededIds.has(h.id) ? backdateCreatedAt(h, seed.floor) : h);
     const nextAllHabits = allHabits.map(backdate);

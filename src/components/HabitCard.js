@@ -94,7 +94,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           // translucent fill, which framed every done card in a dark border (CHK-8). A skipped
           // card is translucent through `opacity`, so it drops elevation for the same reason.
           done && { backgroundColor: habit.color ? mixHex(habit.color, theme.surface, 0x1F / 255) : theme.primaryLight },
-          overLimit && { borderColor: theme.danger, backgroundColor: mixHex(theme.danger, theme.surface, 0x14 / 255) },
+          overLimit && { borderColor: theme.dangerText, backgroundColor: theme.dangerTint },
           (done || overLimit || skipped) && styles.flat,
           skipped && { opacity: 0.6, borderStyle: 'dashed' },
         ]}
@@ -111,12 +111,12 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         <HabitIcon habit={habit} size={26} imageStyle={styles.iconImage} textStyle={styles.icon} />
 
         <View style={styles.info}>
-          <Text style={[styles.name, { color: theme.text }, done && { color: theme.textMuted }]}
+          <Text style={[styles.name, { color: theme.text }, done && { color: theme.textSecondary }]}
             numberOfLines={1}>
             {habit.name}
           </Text>
           {subParts.length > 0 && (
-            <Text style={[styles.sub, { color: theme.textMuted }]}>{subParts.join(' · ')}</Text>
+            <Text style={[styles.sub, { color: theme.textSecondary }]}>{subParts.join(' · ')}</Text>
           )}
         </View>
 
@@ -125,12 +125,12 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
             {/* − is the only way to subtract for volume habits */}
             {isTimed && (
               <TouchableOpacity
-                style={[styles.counterBtn, { borderColor: timerStart ? theme.danger : accent, backgroundColor: timerStart ? theme.danger : 'transparent' }]}
+                style={[styles.counterBtn, { borderColor: timerStart ? theme.dangerFill : accent, backgroundColor: timerStart ? theme.dangerFill : 'transparent' }]}
                 onPress={toggleTimer}
                 accessibilityRole="button"
                 accessibilityLabel={timerStart ? t('habitCard.a11y.stopTimer') : t('habitCard.a11y.startTimer')}
               >
-                <Text style={[styles.counterBtnText, { color: timerStart ? '#fff' : accent, fontSize: 13 }]}>{timerStart ? '■' : '▶'}</Text>
+                <Text style={[styles.counterBtnText, { color: timerStart ? theme.onDanger : accent, fontSize: 13 }]}>{timerStart ? '■' : '▶'}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -140,10 +140,10 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.removeMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.removeOne', { unit: unitLabel(habit) })).trim()}
               accessibilityState={{ disabled: count <= 0 }}
             >
-              <Text style={[styles.counterBtnText, { color: theme.textMuted }]}>−</Text>
+              <Text style={[styles.counterBtnText, { color: theme.textSecondary }]}>−</Text>
             </TouchableOpacity>
 
-            <Text style={[styles.counterNum, { color: overLimit ? theme.danger : done && !isLimit ? accent : theme.text }]}>{count}</Text>
+            <Text style={[styles.counterNum, { color: overLimit ? theme.dangerText : done && !isLimit ? accent : theme.text }]}>{count}</Text>
 
             <TouchableOpacity
               style={[styles.counterBtn, done && !isLimit ? { borderColor: accent, backgroundColor: accent } : { borderColor: theme.border }]}
@@ -151,7 +151,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
               accessibilityRole="button"
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
             >
-              <Text style={[styles.counterBtnText, { color: done && !isLimit ? '#fff' : theme.textMuted }]}>+</Text>
+              <Text style={[styles.counterBtnText, { color: done && !isLimit ? '#fff' : theme.textSecondary }]}>+</Text>
             </TouchableOpacity>
           </View>
         ) : (

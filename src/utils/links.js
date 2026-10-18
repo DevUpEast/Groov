@@ -8,8 +8,10 @@
 //   groov://habit/<id>            Habits tab with that habit's detail sheet open
 //   groov://habit/<id>/done       Mark that habit done today (then show Today)
 //   groov://settings              Settings tab
+//   groov://dev/design            Design-token preview (dev builds and the web mockup only;
+//                                 App.js gates it, the tab does not change)
 //
-// parseDeepLink returns { tab, habitId?, action? } or null for unknown links
+// parseDeepLink returns { tab, habitId?, action? } (tab null = stay on the current tab) or null for unknown links
 // (including the auth callback, which AuthContext handles).
 
 export const TAB_INDEX = { today: 0, progress: 1, challenges: 2, challenge: 2, habits: 3, settings: 4 };
@@ -35,8 +37,23 @@ export function parseDeepLink(url) {
     return { tab: 3, habitId: parts[1], action: 'open' };
   }
   if (head === 'habits' && (parts[1] || '').toLowerCase() === 'new') return { tab: 3, action: 'new' };
+  if (head === 'dev' && (parts[1] || '').toLowerCase() === 'design') return { tab: null, action: 'designPreview' };
   if (head in TAB_INDEX) return { tab: TAB_INDEX[head] };
   return null;
+}
+
+// Dev-only routes (groov://dev/design) are dropped unless this is a dev build or the web
+// mockup, so a release build treats them like an unknown link (F-01 m1).
+export function isRouteAllowed(route, { dev = false, mockup = false } = {}) {
+  if (!route) return false;
+  if (route.action === 'designPreview') return !!(dev || mockup);
+  return true;
+}
+
+// A pending route sends the user away from `tab` only when it names a different tab;
+// a tab-less route (the design preview) never closes that screen's sheets.
+export function routeLeavesTab(route, tab) {
+  return !!route && route.tab != null && route.tab !== tab;
 }
 
 // Build a link for sharing / notifications / widgets.

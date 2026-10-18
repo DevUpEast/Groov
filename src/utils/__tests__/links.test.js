@@ -1,4 +1,4 @@
-import { parseDeepLink, habitLink } from '../links';
+import { parseDeepLink, habitLink, isRouteAllowed, routeLeavesTab } from '../links';
 
 describe('parseDeepLink', () => {
   it('maps tab routes', () => {
@@ -27,6 +27,25 @@ describe('parseDeepLink', () => {
     expect(parseDeepLink('groov://')).toBeNull();
     expect(parseDeepLink('groov://nope')).toBeNull();
     expect(parseDeepLink(null)).toBeNull();
+  });
+  it('parses the dev design-preview route without a tab change', () => {
+    expect(parseDeepLink('groov://dev/design')).toEqual({ tab: null, action: 'designPreview' });
+    expect(parseDeepLink('https://x.y/app/?route=dev%2Fdesign')).toEqual({ tab: null, action: 'designPreview' });
+    expect(parseDeepLink('groov://dev')).toBeNull();
+  });
+  it('drops the design preview outside dev builds and the mockup (F-01 m1)', () => {
+    const design = parseDeepLink('groov://dev/design');
+    expect(isRouteAllowed(design, { dev: false, mockup: false })).toBe(false);
+    expect(isRouteAllowed(design, { dev: true })).toBe(true);
+    expect(isRouteAllowed(design, { mockup: true })).toBe(true);
+    expect(isRouteAllowed(parseDeepLink('groov://habits/new'), {})).toBe(true);
+    expect(isRouteAllowed(null, { dev: true })).toBe(false);
+  });
+  it('only leaves a tab for a route that names another tab', () => {
+    expect(routeLeavesTab({ tab: null, action: 'designPreview' }, 3)).toBe(false);
+    expect(routeLeavesTab({ tab: 3, action: 'new' }, 3)).toBe(false);
+    expect(routeLeavesTab({ tab: 0 }, 3)).toBe(true);
+    expect(routeLeavesTab(null, 3)).toBe(false);
   });
   it('builds links', () => {
     expect(habitLink('7')).toBe('groov://habit/7');

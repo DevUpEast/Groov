@@ -100,7 +100,7 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
       onRequestClose={skip}
     >
       <Pressable
-        style={[StyleSheet.absoluteFill, styles.overlay]}
+        style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: theme.celebrationScrim }]}
         onPress={skip}
         accessibilityRole="button"
         accessibilityLabel={t('trophy.a11y')}
@@ -116,7 +116,7 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
             ]} />}
             <Animated.Text style={[styles.emoji, { transform: [{ scale: scaleAnim }] }]}>🏆</Animated.Text>
           </View>
-          <Text style={[styles.hint, !canSkip && styles.hintHidden]}>{t('trophy.tapToContinue')}</Text>
+          <Text style={[styles.hint, { color: theme.onCelebration }, !canSkip && styles.hintHidden]}>{t('trophy.tapToContinue')}</Text>
         </View>
         {showConfetti && <CelebrationOverlay visible={true} onDone={() => {}} />}
       </Pressable>
@@ -125,11 +125,11 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.7)' },
+  overlay: { alignItems: 'center', justifyContent: 'center' },
   column: { alignItems: 'center' },
   center: { alignItems: 'center', justifyContent: 'center', width: 160, height: 160 },
   emoji: { fontSize: 80 },
   orbitDot: { position: 'absolute', width: 14, height: 14, borderRadius: 7 },
-  hint: { marginTop: 24, color: '#FFFFFF', fontSize: 15, fontWeight: '600', opacity: 0.85 },
+  hint: { marginTop: 24, fontSize: 15, fontWeight: '600', opacity: 0.85 },
   hintHidden: { opacity: 0 },
 });

@@ -24,7 +24,6 @@ const FROZEN_COLOR = '#7DD3FC';
 const MISSED_COLOR = '#FCA5A5';
 // Today, not yet done: outlined neutral, never red (STA-4). A >= 3:1 neutral (3.47:1 on
 // white); F-01 replaces the literal with the `controlBorder` token.
-const PENDING_OUTLINE = '#7C8BA0';
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Monday first
 
 function pct(n, d) {
@@ -132,7 +131,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
     if (d.status === 'done') return theme.primary;
     if (d.count > 0) return PARTIAL_COLOR;
     if (d.status === 'pending') return 'transparent';
-    if (d.status === 'rest') return isHabitSkippedOn(habit.id, d.key) || excused(d.key) ? FROZEN_COLOR : theme.progressBarBg;
+    if (d.status === 'rest') return isHabitSkippedOn(habit.id, d.key) || excused(d.key) ? FROZEN_COLOR : theme.track;
     return MISSED_COLOR;
   };
 
@@ -170,7 +169,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
           <HabitIcon habit={habit} size={34} imageStyle={styles.iconImage} textStyle={styles.icon} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.name, { color: theme.text }]} numberOfLines={2}>{habit.name}</Text>
-            <Text style={[styles.meta, { color: theme.textMuted }]}>
+            <Text style={[styles.meta, { color: theme.textSecondary }]}>
               {t('habitDetail.meta', { schedule: describeSchedule(habit.schedule), goal: describeGoal(habit) })}
             </Text>
             {!!habit.intention && (
@@ -183,7 +182,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={close} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
-            <Text style={[styles.closeTxt, { color: theme.textMuted }]}>✕</Text>
+            <Text style={[styles.closeTxt, { color: theme.textSecondary }]}>✕</Text>
           </TouchableOpacity>
         </View>
 
@@ -197,24 +196,24 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
             <View key={s.label} style={[styles.stat, { backgroundColor: theme.bg, borderColor: theme.border }]} accessible accessibilityLabel={t('habitDetail.stats.a11y', { label: s.label, value: s.value })}>
               <Text style={styles.statEmoji}>{s.emoji}</Text>
               <Text style={[styles.statValue, { color: theme.primary }]}>{s.value}</Text>
-              <Text style={[styles.statLabel, { color: theme.textMuted }]}>{s.label}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{s.label}</Text>
             </View>
           ))}
         </View>
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('habitDetail.history')}</Text>
-        <Text style={[styles.hint, { color: theme.textMuted }]}>{t('habitDetail.hint')}</Text>
+        <Text style={[styles.hint, { color: theme.textSecondary }]}>{t('habitDetail.hint')}</Text>
 
         {/* Month labels */}
         <View style={{ flexDirection: 'row', marginLeft: DAY_LABEL_W, marginBottom: 2 }}>
           {grid.monthLabels.map((m, i) => (
-            <Text key={i} style={{ width: cell + GRID_GAP, fontSize: 9, color: theme.textMuted }} numberOfLines={1}>{m}</Text>
+            <Text key={i} style={{ width: cell + GRID_GAP, fontSize: 9, color: theme.textSecondary }} numberOfLines={1}>{m}</Text>
           ))}
         </View>
         <View style={{ flexDirection: 'row' }}>
           <View style={{ width: DAY_LABEL_W }}>
             {WEEKDAY_ORDER.map(d => (
-              <Text key={d} style={{ height: cell + GRID_GAP, fontSize: 9, color: theme.textMuted, lineHeight: cell + GRID_GAP }}>
+              <Text key={d} style={{ height: cell + GRID_GAP, fontSize: 9, color: theme.textSecondary, lineHeight: cell + GRID_GAP }}>
                 {d === 1 || d === 3 || d === 5 ? WEEKDAY_LABELS[d] : ''}
               </Text>
             ))}
@@ -231,7 +230,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
                   style={{
                     width: cell, height: cell, marginBottom: GRID_GAP, borderRadius: 3,
                     backgroundColor: colorFor(d),
-                    borderWidth: d.key === today ? 1.5 : 0, borderColor: d.status === 'pending' ? PENDING_OUTLINE : theme.text,
+                    borderWidth: d.key === today ? 1.5 : 0, borderColor: d.status === 'pending' ? theme.controlBorder : theme.text,
                   }}
                 />
               ))}
@@ -241,29 +240,29 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
         <View style={styles.legend}>
           {[
             { c: theme.primary, l: t('habitDetail.legend.done') }, { c: PARTIAL_COLOR, l: t('habitDetail.legend.partial') },
-            { c: MISSED_COLOR, l: t('habitDetail.legend.missed') }, { c: 'transparent', o: PENDING_OUTLINE, l: t('habitDetail.legend.pending') },
-            { c: FROZEN_COLOR, l: t('habitDetail.legend.skippedFrozen') }, { c: theme.progressBarBg, l: t('habitDetail.legend.rest') },
+            { c: MISSED_COLOR, l: t('habitDetail.legend.missed') }, { c: 'transparent', o: theme.controlBorder, l: t('habitDetail.legend.pending') },
+            { c: FROZEN_COLOR, l: t('habitDetail.legend.skippedFrozen') }, { c: theme.track, l: t('habitDetail.legend.rest') },
           ].map(x => (
             <View key={x.l} style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: x.c }, x.o && { borderWidth: 1.5, borderColor: x.o }]} />
-              <Text style={[styles.legendText, { color: theme.textMuted }]}>{x.l}</Text>
+              <Text style={[styles.legendText, { color: theme.textSecondary }]}>{x.l}</Text>
             </View>
           ))}
         </View>
 
         <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 20 }]}>{t('habitDetail.byWeekday')}</Text>
-        <Text style={[styles.hint, { color: theme.textMuted }]}>{t('habitDetail.since', { date: stats.since })}</Text>
+        <Text style={[styles.hint, { color: theme.textSecondary }]}>{t('habitDetail.since', { date: stats.since })}</Text>
         <View style={styles.weekdayRow}>
           {WEEKDAY_ORDER.map(d => {
             const w = stats.byWeekday[d];
             const r = pct(w.done, w.expected);
             return (
               <View key={d} style={styles.weekdayCol} accessible accessibilityLabel={t('habitDetail.weekdayA11y', { day: WEEKDAY_LABELS[d], percent: r })}>
-                <Text style={[styles.weekdayPct, { color: theme.textMuted }]}>{w.expected > 0 ? `${r}%` : '–'}</Text>
-                <View style={[styles.weekdayTrack, { backgroundColor: theme.progressBarBg }]}>
+                <Text style={[styles.weekdayPct, { color: theme.textSecondary }]}>{w.expected > 0 ? `${r}%` : '–'}</Text>
+                <View style={[styles.weekdayTrack, { backgroundColor: theme.track }]}>
                   <View style={[styles.weekdayFill, { height: `${Math.max(4, (r / maxWeekdayRate) * 100)}%`, backgroundColor: w.expected > 0 ? theme.primary : theme.border }]} />
                 </View>
-                <Text style={[styles.weekdayLabel, { color: theme.textMuted }]}>{WEEKDAY_LABELS[d]}</Text>
+                <Text style={[styles.weekdayLabel, { color: theme.textSecondary }]}>{WEEKDAY_LABELS[d]}</Text>
               </View>
             );
           })}

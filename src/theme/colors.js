@@ -1,61 +1,64 @@
+// Theme objects read by every screen as `theme.<key>` (plan §2.1).
+//
+// This is a thin adapter over src/theme/tokens.js: each theme spreads every role token from
+// `palette`, then keeps every legacy key, mapped to its nearest role, so existing consumers
+// keep working while screens migrate to role keys ticket by ticket. New code reads role keys
+// only; src/theme/__tests__/legacyTokens.test.js counts legacy reads per file and the counts
+// may only fall (Z-01a removes the legacy keys).
+import { palette } from './tokens';
+
+// Legacy key -> role (or a fixed value for keys that are unused and deleted in Z-01a).
+function legacy(p, fixed) {
+  return {
+    // Secondary text. Light moves from #6B7280 to #475569 (COL-6).
+    textMuted: p.textSecondary,
+    // Text and icon meaning: light #4F46E5, dark #818CF8. Fills move to `action` in F-02.
+    primary: p.action,
+    // Selected-chip and tip-card fills. Light is the `selection` role (#EEF2FF). Dark keeps
+    // #1E1B4B (set below) until F-02 pairs every selection fill with onSelection: the legacy
+    // `primary` text these sites draw on it would be 3.83:1 on dark `selection` #312E81
+    // (5.36:1 on #1E1B4B).
+    primaryLight: p.selection,
+    // `success` is already a role with the same value as `successText`.
+    // `warning` is retired: cautions use textSecondary plus an icon at the call site.
+    warning: p.textSecondary,
+    // Text meaning. Fills use dangerFill / onDanger.
+    danger: p.dangerText,
+    tabBar: p.surface,
+    tabBarBorder: p.border,
+    tabIconActive: p.tabActive,
+    tabIconInactive: p.tabInactive,
+    progressBarBg: p.track,
+    // The label on a `primary` fill; F-02 moves these to onAction (ink in dark).
+    onPrimary: '#FFFFFF',
+    ...fixed,
+  };
+}
+
+export const LEGACY_KEYS = [
+  'textMuted', 'primary', 'primaryLight', 'primaryDark', 'warning', 'danger',
+  'headerBg', 'headerText', 'tabBar', 'tabBarBorder', 'tabIconActive', 'tabIconInactive',
+  'progressBarBg', 'cardShadow', 'onPrimary',
+];
+
 export const themes = {
   light: {
-    bg: '#F9FAFB',
-    surface: '#FFFFFF',
-    primary: '#4F46E5',
-    primaryLight: '#EEF2FF',
-    primaryDark: '#3730A3',
-    text: '#111827',
-    textMuted: '#6B7280',
-    border: '#E5E7EB',
-    success: '#10B981',
-    warning: '#F59E0B',
-    danger: '#EF4444',
-    headerBg: '#4F46E5',
-    headerText: '#FFFFFF',
-    tabBar: '#FFFFFF',
-    tabBarBorder: '#E5E7EB',
-    tabIconActive: '#4F46E5',
-    tabIconInactive: '#9CA3AF',
-    progressBarBg: '#E5E7EB',
-    cardShadow: '#000',
-    onPrimary: '#FFFFFF',
-    scrim: 'rgba(15,23,42,0.40)',
-    // Snackbar (plan §2.2). Pulled forward from F-01 for the Undo toast.
-    toast: '#1E293B',
-    onToast: '#F8FAFC',
-    toastAction: '#A5B4FC',
-    toastEdge: '#1E293B',
-    // Secondary text on the indigo onboarding background (plan §2.5 onActionSecondary).
-    onActionSecondary: '#E0E7FF',
+    ...palette.light,
+    ...legacy(palette.light, {
+      primaryDark: '#3730A3',
+      headerBg: '#4F46E5',
+      headerText: '#FFFFFF',
+      cardShadow: '#000000',
+    }),
   },
   dark: {
-    bg: '#0F172A',
-    surface: '#1E293B',
-    primary: '#818CF8',
-    primaryLight: '#1E1B4B',
-    primaryDark: '#6366F1',
-    text: '#F8FAFC',
-    textMuted: '#CBD5E1',
-    border: '#334155',
-    success: '#34D399',
-    warning: '#FBBF24',
-    danger: '#F87171',
-    headerBg: '#1E293B',
-    headerText: '#F1F5F9',
-    tabBar: '#1E293B',
-    tabBarBorder: '#334155',
-    tabIconActive: '#818CF8',
-    tabIconInactive: '#64748B',
-    progressBarBg: '#334155',
-    cardShadow: '#000',
-    onPrimary: '#FFFFFF',
-    scrim: 'rgba(0,0,0,0.60)',
-    toast: '#394353',
-    onToast: '#F8FAFC',
-    toastAction: '#A5B4FC',
-    toastEdge: '#475569',
-    // Dark onboarding sits on #818CF8, where white fails (2.98:1); ink passes (plan §2.5 dark onAction).
-    onActionSecondary: '#0F172A',
+    ...palette.dark,
+    ...legacy(palette.dark, {
+      primaryLight: '#1E1B4B',
+      primaryDark: '#6366F1',
+      headerBg: '#1E293B',
+      headerText: '#F1F5F9',
+      cardShadow: '#000000',
+    }),
   },
 };

@@ -370,29 +370,29 @@ export default function TodayScreen() {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: theme.primary }]}>
           <View style={styles.greetingRow}>
-            <Text style={styles.greeting}>
+            <Text style={[styles.greeting, { color: theme.onAction }]}>
               {displayName ? t('today.greeting.withName', { greeting: getGreeting(dateOffset), name: displayName }) : getGreeting(dateOffset)}
             </Text>
             <SproutIcon size={26} />
           </View>
-          <Text style={styles.date}>{getDateString(dateOffset)}</Text>
+          <Text style={[styles.date, { color: theme.onActionSecondary }]}>{getDateString(dateOffset)}</Text>
 
           <View style={styles.ringRow} accessible={true} accessibilityLabel={t('today.ring.a11y', { completed, total })}>
             <ProgressRing
               progress={progress}
               size={110}
               strokeWidth={10}
-              color="#fff"
+              color={theme.onAction}
               bg="rgba(255,255,255,0.25)"
               label={`${completed}/${total}`}
               sublabel={t('today.ring.habits')}
-              sublabelColor="rgba(255,255,255,0.85)"
+              sublabelColor={theme.onActionSecondary}
             />
             <View style={styles.ringLabels}>
-              <Text style={styles.ringTitle}>
+              <Text style={[styles.ringTitle, { color: theme.onAction }]}>
                 {allDone ? t('today.ring.allDone') : t('today.ring.remaining', { count: total - completed })}
               </Text>
-              <Text style={styles.ringSubtitle}>
+              <Text style={[styles.ringSubtitle, { color: theme.onActionSecondary }]}>
                 {allDone
                   ? t('today.ring.amazing')
                   : t('today.ring.keepGoing', { percent: Math.round(progress * 100) })}
@@ -454,7 +454,7 @@ export default function TodayScreen() {
                   <Text style={styles.challengeEmptyIcon}>🏆</Text>
                   <View style={styles.challengeEmptyText}>
                     <Text style={[styles.challengeEmptyTitle, { color: theme.text }]}>{t('today.noChallenges.title')}</Text>
-                    <Text style={[styles.challengeEmptyBody, { color: theme.textMuted }]}>{t('today.noChallenges.body')}</Text>
+                    <Text style={[styles.challengeEmptyBody, { color: theme.textSecondary }]}>{t('today.noChallenges.body')}</Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -470,11 +470,11 @@ export default function TodayScreen() {
           ) : (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>{t('today.sectionHabits')}</Text>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('today.sectionHabits')}</Text>
               </View>
               {grouped ? grouped.map(section => (
                 <View key={section.key}>
-                  <Text style={[styles.timeLabel, { color: theme.textMuted }]}>{t(`today.sections.${section.key}`)}</Text>
+                  <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>{t(`today.sections.${section.key}`)}</Text>
                   {section.habits.map(habit => (
                     <HabitCard
                       key={habit.id}
@@ -507,7 +507,7 @@ export default function TodayScreen() {
                   </Text>
                   {/* Counters, timers and limits are never bulk-marked, so say why the count is lower than "N remaining". It sits inside the button, so screen readers read it with the label. */}
                   {markRestPartial && (
-                    <Text style={[styles.markRestNote, { color: theme.textMuted }]}>{t('today.markRestNote')}</Text>
+                    <Text style={[styles.markRestNote, { color: theme.textSecondary }]}>{t('today.markRestNote')}</Text>
                   )}
                 </TouchableOpacity>
               )}
@@ -521,7 +521,7 @@ export default function TodayScreen() {
           {/* Active Challenges */}
           {effectiveChallenges.filter(ch => !isChallengeExpired(ch, today)).length > 0 && (
             <View style={styles.challengesSection}>
-              <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>{t('today.activeChallenges')}</Text>
+              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('today.activeChallenges')}</Text>
               {effectiveChallenges
                 .filter(ch => !isChallengeExpired(ch, today))
                 .map(ch => {
@@ -540,16 +540,16 @@ export default function TodayScreen() {
                         <Text style={styles.challengeMiniIcon}>{ch.icon || '🏆'}</Text>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.challengeMiniName, { color: theme.text }]} numberOfLines={1}>{ch.name}</Text>
-                          <Text style={[styles.challengeMiniSub, { color: theme.textMuted }]}>
+                          <Text style={[styles.challengeMiniSub, { color: theme.textSecondary }]}>
                             {t('today.challenge.sub', { day: currentDay, days: ch.days, count: completedCount })}
                           </Text>
                         </View>
                         {todayDone
                           ? <Text style={[styles.challengeMiniStatus, { color: theme.success }]}>{t('today.challenge.done')}</Text>
-                          : <Text style={[styles.challengeMiniStatus, { color: theme.textMuted }]}>{t('today.challenge.pending')}</Text>
+                          : <Text style={[styles.challengeMiniStatus, { color: theme.textSecondary }]}>{t('today.challenge.pending')}</Text>
                         }
                       </View>
-                      <View style={[styles.challengeMiniProgressBg, { backgroundColor: theme.progressBarBg }]}>
+                      <View style={[styles.challengeMiniProgressBg, { backgroundColor: theme.track }]}>
                         <View style={[styles.challengeMiniProgressFill, { width: `${Math.round(progress * 100)}%`, backgroundColor: theme.primary }]} />
                       </View>
                     </View>
@@ -633,12 +633,12 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  greeting: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
-  date: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2, marginBottom: 20 },
+  greeting: { fontSize: 22, fontWeight: 'bold' },
+  date: { fontSize: 13, marginTop: 2, marginBottom: 20 },
   ringRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   ringLabels: { flex: 1 },
-  ringTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  ringSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4, lineHeight: 18 },
+  ringTitle: { fontSize: 18, fontWeight: 'bold' },
+  ringSubtitle: { fontSize: 13, marginTop: 4, lineHeight: 18 },
   content: { padding: 20 },
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,

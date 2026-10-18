@@ -38,7 +38,7 @@ class ErrorBoundary extends React.Component {
         <View style={[crashStyles.root, { backgroundColor: scheme.bg }]}>
           <Text style={crashStyles.emoji}>😵</Text>
           <Text style={[crashStyles.title, { color: scheme.text }]}>{t('app.crash.title')}</Text>
-          <Text style={[crashStyles.body, { color: scheme.textMuted }]}>
+          <Text style={[crashStyles.body, { color: scheme.textSecondary }]}>
             {t('app.crash.body')}
           </Text>
           <TouchableOpacity style={[crashStyles.btn, { backgroundColor: scheme.primary }]} onPress={this.retry} activeOpacity={0.8} accessibilityRole="button">
@@ -46,10 +46,10 @@ class ErrorBoundary extends React.Component {
           </TouchableOpacity>
           {__DEV__ && (
             <ScrollView style={crashStyles.devBox}>
-              <Text selectable style={[crashStyles.devText, { color: scheme.danger }]}>
+              <Text selectable style={[crashStyles.devText, { color: scheme.dangerText }]}>
                 {String(this.state.error?.message || this.state.error)}
               </Text>
-              <Text selectable style={[crashStyles.devStack, { color: scheme.textMuted }]}>
+              <Text selectable style={[crashStyles.devStack, { color: scheme.textSecondary }]}>
                 {String(this.state.error?.stack || '')}
               </Text>
             </ScrollView>
@@ -82,6 +82,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import NotificationPrimer from './src/components/NotificationPrimer';
 import PaywallSheet from './src/components/PaywallSheet';
+import DesignPreview from './src/screens/DesignPreview';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const NUM_TABS = 5;
@@ -98,7 +99,13 @@ const TABS = [
 const SCREENS = [TodayScreen, ProgressScreen, ChallengeScreen, HabitsScreen, SettingsScreen];
 
 function AppNavigator() {
-  const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen, notificationPrimer, paywall, closePaywall, refreshPro } = useApp();
+  const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen, notificationPrimer, paywall, closePaywall, refreshPro, pendingRoute, clearPendingRoute } = useApp();
+  // groov://dev/design opens the token preview, in dev builds and the web mockup only (F-01).
+  const [designOpen, setDesignOpen] = useState(false);
+  useEffect(() => {
+    // AppContext already drops this route outside dev builds and the mockup (isRouteAllowed).
+    if (pendingRoute?.action === 'designPreview') { setDesignOpen(true); clearPendingRoute(); }
+  }, [pendingRoute]);
   useLocale();
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -226,9 +233,12 @@ function AppNavigator() {
 
   // Conditional return AFTER all hooks
   // Mirror the status-bar style to the iOS mockup host (web only).
+  // Onboarding and the Today hero sit on the action colour: white icons on light #4F46E5,
+  // ink icons on dark #818CF8, where white would be 2.98:1 (F-01, matching onAction).
+  const onActionStatus = themeName === 'dark' ? 'dark' : 'light';
   const statusStyle = !hasOnboarded
-    ? 'light' // OnboardingScreen renders a light StatusBar on its indigo background
-    : (activeIndex === 0 ? 'light' : (themeName === 'dark' ? 'light' : 'dark'));
+    ? onActionStatus // OnboardingScreen renders the same style on its action background
+    : (activeIndex === 0 ? onActionStatus : (themeName === 'dark' ? 'light' : 'dark'));
   useEffect(() => {
     if (mockupParams.active) postToMockupHost({ type: 'mockup:statusbar', style: statusStyle });
   }, [statusStyle]);
@@ -255,6 +265,7 @@ function AppNavigator() {
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <StatusBar style={statusStyle} />
       {primer}
+      {designOpen && <DesignPreview visible onClose={() => setDesignOpen(false)} />}
       <PaywallSheet
         visible={!!paywall}
         reason={paywall?.reason}
@@ -287,8 +298,8 @@ function AppNavigator() {
       <View style={[
         styles.tabBar,
         {
-          backgroundColor: theme.tabBar,
-          borderTopColor: theme.tabBarBorder,
+          backgroundColor: theme.surface,
+          borderTopColor: theme.border,
           height: TAB_BAR_HEIGHT,
           paddingBottom: insets.bottom,
         },
@@ -309,11 +320,11 @@ function AppNavigator() {
               <Ionicons
                 name={tab.icon}
                 size={focused ? 24 : 22}
-                color={focused ? theme.tabIconActive : theme.tabIconInactive}
+                color={focused ? theme.tabActive : theme.tabInactive}
               />
               <Text style={[
                 styles.tabLabel,
-                { color: focused ? theme.tabIconActive : theme.tabIconInactive },
+                { color: focused ? theme.tabActive : theme.tabInactive },
                 focused && styles.tabLabelFocused,
               ]}>
                 {label}
