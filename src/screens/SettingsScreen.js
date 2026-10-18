@@ -21,6 +21,7 @@ import { WIDGET_NAME } from '../widgets/widgetData';
 import { summarizeBackup } from '../utils/backup';
 import { t, getLocale, useLocale, setLocale, SUPPORTED_LOCALES } from '../i18n';
 import AppText from '../components/ui/AppText';
+import { useDevFlag, setDevFlag } from '../utils/devFlags';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
 const DEV_CODE = 'devmode';
@@ -51,14 +52,16 @@ const TERMS_URL = `${SITE_URL}/terms`;
 const SUPPORT_URL = `${SITE_URL}/support`;
 // Public issue tracker doubles as the feedback channel until a support mailbox exists.
 const FEEDBACK_URL = 'https://github.com/DevUpEast/Groov/issues/new?labels=feedback&title=Feedback%3A%20';
-// One Feedback log line: wall time, offset from the triggering tap, event, what fired.
+// One Feedback log line: wall time, offset from the triggering tap, the planned beat and the
+// drift from it (C-06a: "@750 Δ+12" = planned at 750 ms, fired 12 ms late), event, what fired.
 // Developer tooling; the event and call names are code identifiers, never translated.
 function formatFeedbackEntry(e) {
   const d = new Date(e.t);
   const pad = (n, w = 2) => String(n).padStart(w, '0');
   const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
-  const what = e.haptic ? e.haptic : `sound:${e.sound}`;
-  return `${time}  +${e.offset}ms  ${e.event}  ${what}`;
+  const what = e.dropped ? 'dropped' : e.haptic ? e.haptic : `sound:${e.sound}`;
+  const beat = typeof e.target === 'number' ? `  @${e.target} Δ${e.drift >= 0 ? '+' : ''}${e.drift}` : '';
+  return `${time}  +${e.offset}ms${beat}  ${e.event}  ${what}`;
 }
 
 const SUPPORT_EMAIL = null; // e.g. 'support@example.com' — when set, Feedback opens mail instead
@@ -431,6 +434,7 @@ export default function SettingsScreen() {
   const devInputRef = useRef(null);
   const devTapTimer = useRef(null);
   const showDevTools = devMode;
+  const choreography = useDevFlag('choreography');
   // Throws during render so the root ErrorBoundary (and Sentry, when configured) can be exercised.
   const [crashTest, setCrashTest] = useState(false);
   // Dev: the feedback service's ring buffer (null = closed). A snapshot, re-read on each open.
@@ -831,6 +835,21 @@ export default function SettingsScreen() {
               </View>
               <Ionicons name="pulse-outline" size={20} color={theme.link} />
             </TouchableOpacity>
+
+            {/* C-06a: the check-off timeline, device-local (devFlags), the rollback for C-06b/C-07 */}
+            <Row
+              label={t('settings.dev.choreography.title')}
+              sublabel={t('settings.dev.choreography.sub')}
+              theme={theme}
+              right={
+                <Switch
+                  value={choreography}
+                  onValueChange={v => { feedback.toggled(v); setDevFlag('choreography', v); }}
+                  {...switchColors(theme, choreography)}
+                  accessibilityLabel={t('settings.dev.choreography.title')}
+                />
+              }
+            />
 
             {/* Crash test */}
             <TouchableOpacity

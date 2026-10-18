@@ -618,6 +618,7 @@
       "seed": { "title": "Generate 30-Day History", "body": "This fills the last 30 days with random completions; days you already logged are kept. It also moves your habits' start dates back 31 days so the history counts. The changes sync to the cloud and cannot be undone.", "generate": "Generate", "done": "30 days of random history added.", "sub": "Random completions for the past 30 days" },
       "crash": { "title": "Test Crash", "body": "This throws a render error so you can check the crash screen and Sentry.", "crash": "Crash", "sub": "Throws an error to exercise the crash screen" },
       "feedbackLog": { "title": "Feedback log", "sub": "The last 50 haptics and sounds, with their delay from the tap", "empty": "Nothing yet. Check off a habit, then come back.", "clear": "Clear" },
+      "choreography": { "title": "Check-off choreography", "sub": "Haptics and sounds on the beat, no toast for a single check-off. Off = the old timing" },
       "disable": { "title": "Disable Dev Tools", "body": "This will re-lock dev tools on this device. You'll need to tap the version label 7 times and enter the code to unlock again.", "disable": "Disable", "sub": "Re-locks dev tools on this device" },
       "access": { "title": "Developer Access", "body": "Enter the developer code", "a11y": "Developer code", "placeholder": "Enter code", "unlock": "Unlock" },
       "unlocked": { "title": "Developer Mode", "body": "Dev tools unlocked on this device permanently." },

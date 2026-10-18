@@ -54,6 +54,7 @@ function mockMakeCtx() {
     moods: {}, setMood: jest.fn(),
     themeName: 'light', allHabits: s.habits, getOverallStreak: () => 0,
     habitsOnDay: () => s.habits, isSnapshotHabitDone: () => false, isExcused: () => false, isDayFrozen: () => false,
+    getStreakForHabit: () => 0,
   };
 }
 
@@ -63,6 +64,12 @@ jest.mock('../../services/feedback', () => ({
   __esModule: true,
   default: { play: jest.fn(() => ({ cancel: jest.fn() })), toggled: jest.fn() },
   EVENTS: { habitDone: 'habit.done', habitUndone: 'habit.undone', counterStep: 'counter.step', challengeClaimed: 'challenge.claimed', dayComplete: 'day.complete', markRest: 'markRest', milestone: 'milestone', refused: 'refused' },
+}));
+// Device-local dev flags (C-06a choreography) read AsyncStorage: nothing stored = defaults.
+jest.mock('../../utils/storage', () => ({ loadData: jest.fn(() => Promise.resolve(null)), saveData: jest.fn(() => Promise.resolve()) }));
+jest.mock('../../utils/a11y', () => ({
+  ...jest.requireActual('../../utils/a11y'),
+  announce: jest.fn(),
 }));
 jest.mock('../../services/aiCoaching', () => ({ fetchDailyNudge: jest.fn(() => Promise.resolve(null)) }));
 jest.mock('../../services/review', () => ({ maybeRequestReview: jest.fn() }));
@@ -90,6 +97,7 @@ jest.mock('../../components/MoodCheckIn', () => mockStub('MoodCheckIn')());
 
 const TodayScreen = require('../TodayScreen').default;
 const feedback = require('../../services/feedback').default;
+const a11y = require('../../utils/a11y');
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -190,13 +198,27 @@ describe("today's cell goes through Today's handlers (M1)", () => {
     act(() => { t.sheet().onSetToday(water, 0); });
     expect(mock.counts.w).toBe(0);
     expect(mock.unmarkChallengeDay).toHaveBeenCalledWith('c1');
-    expect(feedback.play).toHaveBeenCalledWith('habit.undone');
+    expect(feedback.play).toHaveBeenCalledWith('habit.undone', expect.objectContaining({ delay: 0 }));
     // The undo window closes: the cancelled completion never runs.
     t.rerender();
     const toast = t.r.root.findAll(n => n.type === 'UndoToast')[0];
     act(() => { toast.props.onHide(); });
     act(() => { jest.runOnlyPendingTimers(); });
     expect(mock.completeChallengeImmediately).not.toHaveBeenCalled();
+  });
+
+  it('C-06a review M2: a today change from the sheet is announced (no toast any more)', () => {
+    a11y.announce.mockClear();
+    const t = setup({ habits: [read, water], counts: { w: 3 }, challenges: [] });
+    act(() => { t.sheet().onSetToday(water, 8); });
+    expect(a11y.announce).toHaveBeenLastCalledWith('Drink water, 8 of 8');
+    act(() => { t.sheet().onSetToday(read, 1); });
+    expect(a11y.announce).toHaveBeenLastCalledWith('Read done');
+    act(() => { t.sheet().onSetToday(read, 0); });
+    expect(a11y.announce).toHaveBeenLastCalledWith('Read unchecked');
+    a11y.announce.mockClear();
+    act(() => { t.sheet().onSetToday(read, 0); }); // unchanged: nothing to say
+    expect(a11y.announce).not.toHaveBeenCalled();
   });
 
   it('a daily habit toggles through the handlers too, and an unchanged count does nothing', () => {

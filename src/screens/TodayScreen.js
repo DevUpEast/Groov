@@ -39,6 +39,10 @@ import { buildWeekBeats } from '../utils/weekBeats';
 import { overallDayStatus } from '../utils/streaks';
 import { earliestCreatedAt } from '../utils/dayStatus';
 import { mockupParams } from '../utils/mockup';
+import { announce } from '../utils/a11y';
+import useCheckoffMoment from '../hooks/useCheckoffMoment';
+import { KINDS as BEAT, ladderIndex } from '../utils/beats';
+import { useDevFlag } from '../utils/devFlags';
 
 // Today list sections. Habits without a time of day go under "Anytime", which is
 // omitted (plain list) when no habit has a time set at all.
@@ -61,6 +65,17 @@ function padMockupChallenges(live, n) {
 }
 // A little air under the Android status bar; iOS (and the mockup) start right under it (D-00).
 const HEADER_TOP = Platform.OS === 'android' ? space.xs : 0;
+
+// What a screen reader hears when today's count of `habit` becomes `count` (the HabitCard
+// strings, for paths that do not go through the card: the detail sheet's today cell).
+export function todayAnnouncement(habit, count) {
+  const name = habit.name;
+  if (usesCounter(habit)) {
+    return t(habit.type === 'atMost' ? 'habitCard.announce.countMax' : 'habitCard.announce.count', { name, count, goal: habit.volumeGoal });
+  }
+  if (count <= 0) return t('habitCard.announce.unchecked', { name });
+  return habit.type === 'quit' ? t('habitCard.announce.avoided', { name }) : t('habitCard.announce.done', { name });
+}
 
 function getGreeting(offset = 0) {
   const d = new Date();
@@ -99,8 +114,13 @@ export default function TodayScreen() {
     pendingMilestone, clearPendingMilestone,
     moods, setMood,
     themeName, allHabits, getOverallStreak, habitsOnDay, isSnapshotHabitDone, isExcused, isDayFrozen,
+    getStreakForHabit,
   } = useApp();
   useLocale();
+  // C-06a: the check-off timeline (plan §4.1 / §4.2). `choreography` is the device-local dev
+  // flag (Settings → Dev tools); off restores the pre-C-06a feedback calls and the per-check
+  // toast.
+  const choreography = useDevFlag('choreography');
 
   // Big celebration only for streak milestones; a perfect day gets a light cheer.
   const [milestoneShown, setMilestoneShown] = useState(null);
@@ -153,14 +173,20 @@ export default function TodayScreen() {
   const { user } = useAuth();
 
   const [celebrating, setCelebrating] = useState(false);
+  // The perfect-day confetti starts on the resolution beat (+750), not with the tap: mounting it
+  // at 0 put its render inside the 0-300 ms window and pushed the challenge motif late. An
+  // un-check before 750 cancels the beat, so no confetti for a day that is no longer complete.
+  const onBeat = useCallback((item) => { if (item.beat === 'resolution') setCelebrating(true); }, []);
+  const moment = useCheckoffMoment({ onBeat });
   const [fullCelebration, setFullCelebration] = useState(false);
   const [trophyCelebrating, setTrophyCelebrating] = useState(false);
   const [rewardModalVisible, setRewardModalVisible] = useState(false);
   const [rewardsToShow, setRewardsToShow] = useState([]);
   const rewardModalShown = useRef(false);
   const allDoneCelebrated = useRef(false);
-  // Feedback still pending from the last check-off (day.complete at +750, challenge.claimed at
-  // +250). An un-check cancels them (§4.1): a day that is no longer complete gets no Success.
+  // Choreography off only: feedback still pending from the last check-off (day.complete at
+  // +750, challenge.claimed at +250). An un-check cancels them (§4.1). With choreography on,
+  // useCheckoffMoment keeps this bookkeeping (per habit, plus the resolution).
   const pendingFeedback = useRef([]);
   const cancelPendingFeedback = () => { pendingFeedback.current.forEach(h => h.cancel()); pendingFeedback.current = []; };
   // Only the latest few matter (they expire within ~1 s); keep the list bounded.
@@ -394,20 +420,28 @@ export default function TodayScreen() {
   }, [challenges, dueHabits, unmarkChallengeDay]);
 
   const handleIncrement = useCallback((habit, amount = 1) => {
+    const tapAt = Date.now();
     const before = getHabitCount(habit.id);
     const after = { ...getTodayCompletions(), [habit.id]: countAfterIncrement(habit, before, amount) };
     const justCompleted = incrementHabit(habit.id, amount);
     if (justCompleted === false && !usesCounter(habit) && before >= 1) return; // already checked
-    const over = habit.type === 'atMost' && before + amount > habit.volumeGoal;
-    setToast({ id: Date.now(), habit, amount, message: justCompleted ? (habit.type === 'quit' ? t('today.toast.avoided', { name: habit.name }) : t('today.toast.done', { name: habit.name })) : over ? t('today.toast.overLimit', { name: habit.name }) : t('today.toast.plus', { name: habit.name, amount }) });
-    // Same frame as the visual change, never awaited (HAP-4). The note climbs the §2.11 ladder:
-    // a counter by its step toward the goal, a daily habit by how many are done today. An
-    // atMost limit gets a flat tick, and no sound on the tap that breaks it.
+    // §4.1 r2: no snackbar for a single check; HabitCard announces it and Undo = tap again.
+    if (!choreography) {
+      const over = habit.type === 'atMost' && before + amount > habit.volumeGoal;
+      setToast({ id: tapAt, habit, amount, message: justCompleted ? (habit.type === 'quit' ? t('today.toast.avoided', { name: habit.name }) : t('today.toast.done', { name: habit.name })) : over ? t('today.toast.overLimit', { name: habit.name }) : t('today.toast.plus', { name: habit.name, amount }) });
+    }
+    // The note climbs the §2.11 ladder: a counter by its step toward the goal, a daily habit by
+    // how many habits are checked today (an untouched limit or a perWeek habit met earlier in
+    // the week does not move it). An atMost limit gets a flat tick, and no sound on the tap
+    // that breaks it.
     const tone = usesCounter(habit)
       ? { step: after[habit.id], goal: habit.volumeGoal, atMost: habit.type === 'atMost' }
-      : { n: dueHabits.filter(h => isHabitSatisfiedWith(h, after)).length };
-    feedback.play(justCompleted ? EVENTS.habitDone : EVENTS.counterStep, { tone });
+      : { n: ladderIndex(dueHabits, after) };
+    // Same frame as the visual change, never awaited (HAP-4).
+    if (!choreography) feedback.play(justCompleted ? EVENTS.habitDone : EVENTS.counterStep, { tone });
 
+    let claimed = [];
+    let dayComplete = false;
     if (justCompleted) {
       // Judge everything against the counts after this check-off.
       const willAllBeDone = dueHabits.every(h => isHabitSatisfiedWith(h, after));
@@ -415,35 +449,57 @@ export default function TodayScreen() {
       // A single check-off completes a challenge immediately, with its trophy.
       const { claimedIds, completedNowIds } = autoClaimChallenges(after);
       const anyComplete = completedNowIds.length > 0;
-      // challenge.claimed lands on its beat (+250 ms); a completed challenge gets the trophy
-      // screen, which plays its own feedback.
-      if (claimedIds.length > 0 && !anyComplete) keepPending(feedback.play(EVENTS.challengeClaimed));
+      // challenge.claimed lands on its beat (+250 ms, with the chip); a completed challenge
+      // gets the trophy screen, which plays its own feedback.
+      if (!anyComplete) claimed = claimedIds;
+      if (!choreography && claimed.length > 0) keepPending(feedback.play(EVENTS.challengeClaimed));
       if (anyComplete) setTimeout(() => setTrophyCelebrating(true), 100);
 
       if (willAllBeDone && !allDoneCelebrated.current) {
         allDoneCelebrated.current = true;
-        keepPending(feedback.play(EVENTS.dayComplete));
-        setCelebrating(true);
+        dayComplete = true;
+        if (!choreography) {
+          keepPending(feedback.play(EVENTS.dayComplete));
+          setCelebrating(true);
+        }
       }
     }
-  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, getHabitCount, getTodayCompletions]);
+    if (choreography) {
+      // data -> claim -> beats, in this tick; the beats are timed from the tap.
+      moment.run({
+        kind: justCompleted ? BEAT.check : BEAT.step,
+        habitId: habit.id,
+        tone,
+        claimedIds: claimed,
+        dayComplete,
+        // Today was not done before this tap, so the habit's streak becomes the old one + 1.
+        habitStreak: !!justCompleted && getStreakForHabit(habit.id) >= 1,
+        tapAt,
+      });
+    }
+  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, getHabitCount, getTodayCompletions, choreography, moment, getStreakForHabit]);
 
   // `undo`: the toast Undo, which always reads as an un-check.
   const handleDecrement = useCallback((habit, amount = 1, { undo = false } = {}) => {
+    const tapAt = Date.now();
     const today = todayStr();
     const countBefore = getHabitCount(habit.id);
     const habitWasDone = isGoalMet(habit, countBefore);
     const habitStillDone = isGoalMet(habit, Math.max(0, countBefore - (amount || 1)));
+    const unchecks = undo || (habitWasDone && !habitStillDone);
 
     decrementHabit(habit.id, amount || 1);
-    if (undo || (habitWasDone && !habitStillDone)) {
-      cancelPendingFeedback();
-      feedback.play(EVENTS.habitUndone);
-    } else {
-      // A −1 that leaves the habit's done state alone: the tick only, never the rising step chime.
-      feedback.play(EVENTS.counterStep, { sound: false });
+    if (!choreography) {
+      if (unchecks) {
+        cancelPendingFeedback();
+        feedback.play(EVENTS.habitUndone);
+      } else {
+        // A −1 that leaves the habit's done state alone: the tick only, never the rising step chime.
+        feedback.play(EVENTS.counterStep, { sound: false });
+      }
     }
     allDoneCelebrated.current = false;
+    const unclaimed = [];
 
     // Only unmark challenge days when this habit transitions from done → not done
     if (habitWasDone && !habitStillDone) {
@@ -456,10 +512,14 @@ export default function TodayScreen() {
         const relevant = getRelevantHabits(ch, dueHabits);
         if (relevant.some(h => h.id === habit.id)) {
           unmarkChallengeDay(ch.id);
+          unclaimed.push(ch.id);
         }
       });
     }
-  }, [decrementHabit, effectiveChallenges, challenges, dueHabits, getHabitCount, unmarkChallengeDay, todayStr, cancelQueuedFor]);
+    // An un-check takes back this habit's pending beats, any pending resolution and the motif
+    // of each challenge it un-claimed (§4.1); a −1 that keeps the habit done is a tick only.
+    if (choreography) moment.run({ kind: unchecks ? BEAT.uncheck : BEAT.stepDown, habitId: habit.id, unclaimedIds: unclaimed, tapAt });
+  }, [decrementHabit, effectiveChallenges, challenges, dueHabits, getHabitCount, unmarkChallengeDay, todayStr, cancelQueuedFor, choreography, moment]);
 
   // Today's cell in the detail sheet (code review M1): set today's count through the same
   // handlers as a card, so challenge claims / un-claims, the Mark-the-rest queue, the toast,
@@ -469,6 +529,8 @@ export default function TodayScreen() {
     const delta = target - getHabitCount(habit.id);
     if (delta > 0) handleIncrement(habit, delta);
     else if (delta < 0) handleDecrement(habit, -delta);
+    // No toast for a single check (C-06a): the screen reader hears the change instead.
+    if (delta !== 0) announce(todayAnnouncement(habit, target));
   }, [getHabitCount, handleIncrement, handleDecrement]);
 
   // Skipping (or un-skipping) a linked habit inside the window cancels the queued
@@ -495,27 +557,34 @@ export default function TodayScreen() {
     });
     // One markRest haptic (now) and one chord (at 750) for the whole batch; no separate
     // day.complete haptic. Undo cancels a chord that has not played yet.
-    keepPending(feedback.play(EVENTS.markRest));
-    if (claimedIds.length > 0) keepPending(feedback.play(EVENTS.challengeClaimed));
+    if (!choreography) {
+      keepPending(feedback.play(EVENTS.markRest));
+      if (claimedIds.length > 0) keepPending(feedback.play(EVENTS.challengeClaimed));
+    }
     // Celebrate only when the day is truly complete: counters may still be open.
     const allNow = dueHabits.length > 0 && dueHabits.every(h => isHabitSatisfiedWith(h, plan.next));
-    if (allNow && !allDoneCelebrated.current) {
+    const dayComplete = allNow && !allDoneCelebrated.current;
+    if (dayComplete) {
       allDoneCelebrated.current = true;
-      setCelebrating(true);
+      if (!choreography) setCelebrating(true);
     }
-  }, [markRestDone, autoClaimChallenges, dueHabits, isHabitSatisfiedWith, todayStr]);
+    if (choreography) moment.run({ kind: BEAT.markRest, claimedIds, dayComplete, tapAt: id });
+  }, [markRestDone, autoClaimChallenges, dueHabits, isHabitSatisfiedWith, todayStr, choreography, moment]);
 
   // Undo for Mark the rest, on the day the action ran (tst.dayKey): drop its queued
   // completions, revert the habits it marked that are still at 1, and un-mark exactly
   // the challenge days it claimed.
   const undoMarkRest = useCallback((tst) => {
     queueRef.current = queueRef.current.filter(i => i.token !== tst.id);
-    cancelPendingFeedback();
-    feedback.play(EVENTS.habitUndone);
+    if (choreography) moment.run({ kind: BEAT.undoMarkRest });
+    else {
+      cancelPendingFeedback();
+      feedback.play(EVENTS.habitUndone);
+    }
     restoreHabitCounts(tst.before, tst.changedIds, tst.dayKey);
     tst.claimedIds.forEach(id => unmarkChallengeDay(id, tst.dayKey));
     allDoneCelebrated.current = false;
-  }, [restoreHabitCounts, unmarkChallengeDay]);
+  }, [restoreHabitCounts, unmarkChallengeDay, choreography, moment]);
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>

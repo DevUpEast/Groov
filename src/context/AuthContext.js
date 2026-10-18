@@ -11,6 +11,7 @@ import { syncProfile, deleteAllUserData } from '../services/sync';
 import { clearAll, saveData } from '../utils/storage';
 import { clearDevMode } from '../utils/devMode';
 import { setSentryUser } from '../utils/sentry';
+import { flushMoment, dropMoment } from '../utils/afterMoment';
 
 // On web, lets the auth popup/redirect hand control back to the app.
 WebBrowser.maybeCompleteAuthSession();
@@ -243,6 +244,9 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
+    // Saves and upserts still waiting out a check-off moment go now, while the session is
+    // valid (C-06a review m2); afterwards RLS would reject them.
+    flushMoment();
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   };
@@ -332,6 +336,7 @@ export function AuthProvider({ children }) {
   const deleteAccount = async () => {
     const userId = session?.user?.id;
     if (!userId) throw new Error('Not signed in');
+    flushMoment(); // anything queued goes now (the delete below removes it with the rest)
     // Use the access token already in React state — it's kept fresh by onAuthStateChange
     // (TOKEN_REFRESHED events). Calling getSession() here would risk returning a stale
     // token if autoRefreshToken recently failed (e.g. stale Expo Go session).
@@ -357,6 +362,7 @@ export function AuthProvider({ children }) {
     // Wipe local storage so any re-registration starts completely clean.
     // Write the sentinel AFTER clearAll so it survives the wipe and AppContext
     // can detect it on the next login and reset in-memory state too.
+    dropMoment(); // nothing queued during the request may be written after the wipe
     await clearAll();
     await saveData('accountWasDeleted', true);
     await clearDevMode();
