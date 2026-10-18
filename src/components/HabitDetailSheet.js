@@ -29,6 +29,8 @@ const OUTLINE = 1.5;                    // §2.4 cell outline
 const TODAY_RING = 2;                   // §2.4 today marker
 const LEGEND_CELL = 14;                 // the smallest cell that still draws the ❄
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Monday first
+// cellState -> habitDetail.status.* (the spoken word for each drawn state).
+const SPOKEN = { done: 'done', partial: 'partial', missed: 'missed', pending: 'pending', rest: 'rest', frozen: 'skipped' };
 
 function pct(n, d) {
   return d > 0 ? Math.round((n / d) * 100) : 0;
@@ -78,7 +80,7 @@ function GridCell({ state, size, today = false, theme }) {
 // days, cancels queued Mark-the-rest completions, celebrates and plays feedback exactly like
 // a card check-off. Without it (the Habits tab) today's cell only says where to log it.
 // `onClose` runs once the sheet has gone; `onEdit(habit)` after the sheet has closed.
-export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday }) {
+export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday, returnFocusRef }) {
   const {
     theme, todayStr, completions, isHabitDoneOn, getStreakForHabit,
     isExcused, toggleHabitDoneOn, setHabitCountOn, accountCreatedAt, isHabitSkippedOn,
@@ -91,11 +93,15 @@ export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday })
   const shown = habit || lastHabit.current;
   const habitId = habit ? habit.id : null;
   const [open, setOpen] = useState(!!habit);
-  useEffect(() => { setOpen(!!habitId); }, [habitId]);
+  const closingRef = useRef(false);
+  useEffect(() => { closingRef.current = !habitId; setOpen(!!habitId); }, [habitId]);
   // `then` runs once the exit has finished and the sheet's Modal is gone, so the next overlay
-  // (the Edit form) never opens over this one. Ignores non-function arguments.
+  // (the Edit form) never opens over this one. Ignores non-function arguments. A second close
+  // during the exit (scrim, back) keeps the first one's `then`, so Edit is never dropped.
   const thenRef = useRef(null);
   const close = useCallback((then) => {
+    if (closingRef.current) return;
+    closingRef.current = true;
     thenRef.current = typeof then === 'function' ? then : null;
     setOpen(false);
   }, []);
@@ -175,6 +181,15 @@ export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday })
     if (d.getFullYear() !== parseDateKey(today).getFullYear()) opts.year = 'numeric';
     return d.toLocaleDateString(getLocale(), opts);
   };
+  // The spoken state follows the drawn one (review m3): partial and skipped/frozen get their own
+  // words, and a counter day says its count ("3 of 8").
+  const cellLabel = (d, state) => {
+    const status = t(`habitDetail.status.${SPOKEN[state] || d.status}`);
+    const date = dateLabel(d.key);
+    return isCounter && d.count > 0
+      ? t('habitDetail.cellA11yCount', { date, status, count: d.count, goal: shown.volumeGoal })
+      : t('habitDetail.cellA11y', { date, status });
+  };
   const isCounter = (shown.type === 'volume' || shown.type === 'timed' || shown.type === 'atMost') && shown.volumeGoal >= 1;
   const onCellPress = (d) => {
     if (d.future || d.before) return;
@@ -231,11 +246,11 @@ export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday })
     { s: 'rest', l: t('habitDetail.legend.rest') },
   ];
 
-  const header = (
+  const header = ({ titleRef }) => (
     <View style={styles.titleRow}>
       <HabitIcon habit={shown} size={34} imageStyle={styles.iconImage} textStyle={styles.icon} />
       <View style={styles.titleText}>
-        <AppText variant="headline" style={{ color: theme.text }} numberOfLines={2} accessibilityRole="header">{shown.name}</AppText>
+        <AppText ref={titleRef} variant="headline" style={{ color: theme.text }} numberOfLines={2} accessibilityRole="header">{shown.name}</AppText>
         <AppText variant="footnote" style={{ color: theme.textSecondary }}>
           {t('habitDetail.meta', { schedule: describeSchedule(shown.schedule), goal: describeGoal(shown) })}
         </AppText>
@@ -264,6 +279,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday })
       onDismiss={handleDismiss}
       header={header}
       accessibilityLabel={shown.name}
+      returnFocusRef={returnFocusRef}
       contentContainerStyle={styles.body}
       theme={theme}
       testID="habit-detail-sheet"
@@ -321,7 +337,7 @@ export default function HabitDetailSheet({ habit, onClose, onEdit, onSetToday })
                   activeOpacity={0.6}
                   accessible={!hidden}
                   accessibilityRole="button"
-                  accessibilityLabel={hidden ? undefined : t('habitDetail.cellA11y', { date: dateLabel(d.key), status: t(`habitDetail.status.${d.status}`) })}
+                  accessibilityLabel={hidden ? undefined : cellLabel(d, state)}
                   style={{ marginBottom: GRID_GAP }}
                 >
                   <GridCell state={state} size={cell} today={d.key === today} theme={theme} />

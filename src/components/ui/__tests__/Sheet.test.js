@@ -5,12 +5,18 @@ const path = require('path');
 const React = require('react');
 const TestRenderer = require('react-test-renderer');
 const { act } = TestRenderer;
-const { Modal, ScrollView, Text } = require('react-native');
+const { Modal, ScrollView, Text, Animated } = require('react-native');
 
 jest.mock('../../../context/AppContext', () => {
   const { themes } = jest.requireActual('../../../theme/colors');
   return { useApp: () => ({ theme: themes.light }) };
 });
+let mockReduced = false;
+jest.mock('../../../utils/a11y', () => ({
+  ...jest.requireActual('../../../utils/a11y'),
+  isReducedMotion: () => mockReduced,
+  useReducedMotion: () => mockReduced,
+}));
 jest.mock('@expo/vector-icons', () => ({ Ionicons: (props) => require('react').createElement('Ionicons', props) }));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -21,7 +27,7 @@ jest.mock('../../../services/feedback', () => ({
 
 const SheetModule = require('../Sheet');
 const Sheet = SheetModule.default;
-const { sheetDragTarget, mediumOffsetFor, DISMISS_DISTANCE } = SheetModule;
+const { sheetDragTarget, mediumOffsetFor, DISMISS_DISTANCE, SheetFrame } = SheetModule;
 const Dialog = require('../Dialog').default;
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -148,5 +154,179 @@ describe('adopters', () => {
     const src = read('src/components/BottomSheet.js');
     expect(src).toMatch(/SheetFrame/);
     expect(src).not.toMatch(/<Modal|OverlayModal/);
+  });
+});
+
+// Lifecycle edges (F-09a review B1, M1, m4, m5). Animated runs on jest's fake timers.
+describe('Sheet lifecycle', () => {
+  // A minimal PanResponder touch history: one touch at (0, y) at time t.
+  const history = (y, t, active = true) => ({
+    numberActiveTouches: active ? 1 : 0,
+    indexOfSingleActiveTouch: 0,
+    mostRecentTimeStamp: t,
+    touchBank: [{
+      touchActive: active, startPageX: 0, startPageY: 0, startTimeStamp: 1,
+      currentPageX: 0, currentPageY: y, currentTimeStamp: t, previousPageX: 0, previousPageY: 0, previousTimeStamp: 1,
+    }],
+  });
+  const ev = (y, t, active) => ({ touchHistory: history(y, t, active), nativeEvent: { touches: [], changedTouches: [] } });
+  const zoneOf = (r) => byTestID(r, 'sheet-drag-zone');
+  // Native-driven animations do not move the JS value under jest, so read the animation calls.
+  const lastTo = (spy) => spy.mock.calls.at(-1)?.[1]?.toValue;
+  const drag = (r, dy) => {
+    const z = zoneOf(r);
+    act(() => {
+      z.props.onResponderGrant(ev(0, 1));
+      z.props.onResponderMove(ev(dy, 1001)); // a slow drag (dy over a second), not a flick
+      z.props.onResponderRelease(ev(dy, 1002, false));
+    });
+  };
+  const tapHeader = (r) => {
+    const z = zoneOf(r);
+    act(() => {
+      z.props.onResponderGrant(ev(0, 1));
+      z.props.onResponderRelease(ev(0, 2, false));
+    });
+  };
+  const advance = (ms) => act(() => { jest.advanceTimersByTime(ms); });
+  const el = (props) => React.createElement(Sheet, { title: 'Details', ...props }, React.createElement(Text, null, 'Body'));
+  function mount(props) {
+    let r;
+    act(() => { r = TestRenderer.create(el({ visible: false, ...props })); });
+    return r;
+  }
+  const show = (r, props, { onShow = true } = {}) => {
+    act(() => r.update(el({ ...props, visible: true })));
+    if (onShow) act(() => sheetModal(r).props.onShow());
+    advance(1000);
+  };
+  const hide = (r, props) => act(() => r.update(el({ ...props, visible: false })));
+
+  beforeEach(() => { jest.useFakeTimers(); mockReduced = false; });
+  afterEach(() => { jest.useRealTimers(); jest.restoreAllMocks(); });
+
+  it('B1: a header touch during the exit cannot stop it; the Modal unmounts and onDismiss fires', () => {
+    const p = { onClose: jest.fn(), onDismiss: jest.fn() };
+    const r = mount(p);
+    show(r, p);
+    hide(r, p); // the exit is running (jest's native driver ends it on the next timer tick)
+    expect(zoneOf(r).props.onStartShouldSetResponder(ev(0, 1))).toBe(false);
+    expect(zoneOf(r).props.onMoveShouldSetResponderCapture(ev(40, 2))).toBe(false);
+    tapHeader(r); // even if a grant slipped through, the exit keeps running
+    drag(r, -200);
+    advance(3000);
+    expect(sheetModal(r).props.visible).toBe(false);
+    act(() => { jest.runOnlyPendingTimers(); });
+    expect(p.onDismiss).toHaveBeenCalledTimes(1);
+    // A back press after that does not reach the host again.
+    expect(p.onClose).not.toHaveBeenCalled();
+  });
+
+  it('a close request while the host has already closed re-runs the exit instead of calling onClose', () => {
+    const p = { onClose: jest.fn(), onDismiss: jest.fn() };
+    const r = mount(p);
+    show(r, p);
+    hide(r, p);
+    act(() => sheetModal(r).props.onRequestClose()); // back
+    act(() => byTestID(r, 'sheet-scrim').props.onPress()); // scrim: a double close
+    advance(3000);
+    act(() => { jest.runOnlyPendingTimers(); });
+    expect(p.onClose).not.toHaveBeenCalled();
+    expect(sheetModal(r).props.visible).toBe(false);
+    expect(p.onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes cleanly before onShow, and the enter fallback never re-opens it', () => {
+    const p = { onClose: jest.fn(), onDismiss: jest.fn() };
+    const r = mount(p);
+    act(() => r.update(el({ ...p, visible: true })));
+    hide(r, p); // closed before the window showed
+    advance(3000);
+    act(() => { jest.runOnlyPendingTimers(); });
+    expect(sheetModal(r).props.visible).toBe(false);
+    expect(p.onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes cleanly during the enter spring', () => {
+    const p = { onClose: jest.fn(), onDismiss: jest.fn() };
+    const r = mount(p);
+    act(() => r.update(el({ ...p, visible: true })));
+    act(() => sheetModal(r).props.onShow());
+    advance(50);
+    hide(r, p);
+    advance(3000);
+    act(() => { jest.runOnlyPendingTimers(); });
+    expect(sheetModal(r).props.visible).toBe(false);
+    expect(p.onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('enters after the 400 ms fallback when onShow never comes, and a late onShow does not spring again', () => {
+    const springs = jest.spyOn(Animated, 'spring');
+    const p = { onClose: jest.fn() };
+    const r = mount(p);
+    act(() => r.update(el({ ...p, visible: true })));
+    advance(300);
+    expect(springs).not.toHaveBeenCalled();
+    advance(2000);
+    expect(springs).toHaveBeenCalledTimes(1);
+    expect(lastTo(springs)).toBe(0);
+    act(() => sheetModal(r).props.onShow());
+    advance(1000);
+    expect(springs).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-opens mid-exit: springs back open, stays mounted, no onDismiss', () => {
+    const p = { onClose: jest.fn(), onDismiss: jest.fn() };
+    const r = mount(p);
+    show(r, p);
+    hide(r, p);
+    const springs = jest.spyOn(Animated, 'spring');
+    act(() => r.update(el({ ...p, visible: true })));
+    expect(springs).toHaveBeenCalledTimes(1); // at once: the window is still up
+    expect(lastTo(springs)).toBe(0);
+    advance(2000);
+    act(() => { jest.runOnlyPendingTimers(); });
+    expect(sheetModal(r).props.visible).toBe(true);
+    expect(p.onDismiss).not.toHaveBeenCalled();
+    // And it can still be closed afterwards.
+    expect(zoneOf(r).props.onStartShouldSetResponder(ev(0, 1))).toBe(true);
+  });
+
+  it('m4: a drag-close the host refuses settles the sheet back to its detent', () => {
+    const p = { onClose: jest.fn() };
+    const r = mount(p);
+    show(r, p);
+    const springs = jest.spyOn(Animated, 'spring');
+    drag(r, 200);
+    expect(p.onClose).toHaveBeenCalledTimes(1);
+    expect(springs).toHaveBeenCalledTimes(1);
+    expect(lastTo(springs)).toBe(0);
+    advance(2000);
+    expect(sheetModal(r).props.visible).toBe(true);
+  });
+
+  it('a short drag settles back without closing; a plain header tap does nothing', () => {
+    const p = { onClose: jest.fn() };
+    const r = mount(p);
+    show(r, p);
+    const springs = jest.spyOn(Animated, 'spring');
+    drag(r, 40);
+    expect(lastTo(springs)).toBe(0);
+    advance(2000);
+    springs.mockClear();
+    tapHeader(r);
+    expect(springs).not.toHaveBeenCalled(); // n3: no spring restarted by a tap
+    expect(p.onClose).not.toHaveBeenCalled();
+  });
+
+  it('m5: under reduced motion a medium sheet still rests at the medium height', () => {
+    mockReduced = true;
+    const p = { onClose: jest.fn(), detents: ['medium', 'large'], initialDetent: 'medium' };
+    const timings = jest.spyOn(Animated, 'timing');
+    const r = mount(p);
+    show(r, p);
+    const frame = r.root.findByType(SheetFrame);
+    expect(frame.props.rest).toBeGreaterThan(0); // the medium offset
+    expect(lastTo(timings)).toBe(0); // the 150 ms fade in, to fully opaque
   });
 });

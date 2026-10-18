@@ -30,8 +30,13 @@ jest.mock('../../context/AppContext', () => {
   };
 });
 jest.mock('../../services/feedback', () => ({ __esModule: true, default: { play: jest.fn() }, EVENTS: { habitDone: 'habit.done', habitUndone: 'habit.undone' } }));
-jest.mock('../ui/Sheet', () => ({ __esModule: true, default: (props) => require('react').createElement('Sheet', props, props.children) }));
-jest.mock('../ui/Button', () => () => null);
+// The Sheet mock renders the header function too, so the header's Edit button can be pressed.
+jest.mock('../ui/Sheet', () => ({
+  __esModule: true,
+  default: (props) => require('react').createElement('Sheet', props,
+    typeof props.header === 'function' ? props.header({ close: props.onClose, titleRef: null }) : props.header, props.children),
+}));
+jest.mock('../ui/Button', () => (props) => require('react').createElement('Button', props));
 jest.mock('../ui/IconButton', () => () => null);
 jest.mock('../ui/SectionLabel', () => () => null);
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
@@ -102,4 +107,58 @@ it('past days stay history edits in both hosts', () => {
   pressAlert(/^Set 8/);
   expect(mockSetHabitCountOn).toHaveBeenCalledWith('w', YESTERDAY, 8);
   expect(onSetToday).not.toHaveBeenCalled();
+});
+
+// F-09a review M1 / m1: the Edit hand-off runs after the sheet has gone, in order, and a
+// scrim tap or back press during the exit does not drop it.
+describe('close(then) and the Edit hand-off', () => {
+  const sheetOf = (r) => r.root.findAll(n => n.type === 'Sheet')[0];
+  const editOf = (r) => r.root.findAll(n => n.type === 'Button' && n.props.label === 'Edit')[0];
+
+  it('Edit closes the sheet, then onClose, then onEdit, once the sheet is dismissed', () => {
+    const order = [];
+    const onClose = jest.fn(() => order.push('close'));
+    const onEdit = jest.fn(() => order.push('edit'));
+    const r = render(read, { onClose, onEdit });
+    expect(sheetOf(r).props.visible).toBe(true);
+    act(() => { editOf(r).props.onPress(); });
+    expect(sheetOf(r).props.visible).toBe(false);
+    expect(order).toEqual([]); // nothing until the exit has finished
+    act(() => { sheetOf(r).props.onDismiss(); });
+    expect(order).toEqual(['close', 'edit']);
+    expect(onEdit).toHaveBeenCalledWith(read);
+  });
+
+  it('a scrim tap or back press during the exit keeps the pending Edit (m1)', () => {
+    const onClose = jest.fn();
+    const onEdit = jest.fn();
+    const r = render(read, { onClose, onEdit });
+    act(() => { editOf(r).props.onPress(); });
+    act(() => { sheetOf(r).props.onClose(); }); // scrim / back through Sheet's requestClose
+    act(() => { sheetOf(r).props.onClose(); });
+    act(() => { sheetOf(r).props.onDismiss(); });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onEdit).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes returnFocusRef through to the Sheet', () => {
+    const ref = { current: null };
+    const r = render(read, { returnFocusRef: ref });
+    expect(sheetOf(r).props.returnFocusRef).toBe(ref);
+  });
+});
+
+// m3: the spoken state follows the drawn one.
+describe('cell accessibility labels', () => {
+  const label = (r, key) => cell(r, key).props.accessibilityLabel;
+  it('a partly logged counter day says "partly done" with its count', () => {
+    const r = render(water);
+    expect(label(r, YESTERDAY)).toMatch(/partly done, 2 of 8$/);
+  });
+  it('a done counter day says done with its count; an untouched one says missed', () => {
+    mockCompletions = { [YESTERDAY]: { w: 8 } };
+    const r = render(water);
+    expect(label(r, YESTERDAY)).toMatch(/done, 8 of 8$/);
+    expect(label(r, '2026-10-16')).toMatch(/: missed$/);
+  });
 });

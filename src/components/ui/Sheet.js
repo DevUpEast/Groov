@@ -41,9 +41,11 @@ import { useUiTheme } from './PressableScale';
  * - `dirty`: guard every dismissal with the discard dialog.
  * - `footer`: pinned under the scroll body (e.g. Save), above the bottom inset.
  * - `scroll` (default true): wrap `children` in a ScrollView (`keyboardShouldPersistTaps`).
- * - `accessibilityLabel`: the sheet's name for screen readers (default: `title`).
+ * - `accessibilityLabel`: the sheet's name for screen readers (default: `title`). Focus moves to
+ *   the title when the sheet opens (a custom `header` function puts the `titleRef` it gets on
+ *   its title text); `returnFocusRef` (optional) gets it back once the sheet has gone.
  *
- * Reduced motion: the sheet does not slide. The same value becomes its opacity, so open, close
+ * Reduced motion: the sheet does not slide (a medium detent still rests at its height). The same value becomes its opacity, so open, close
  * and a drag are 150 ms fades in place (F-05), and the scrim follows it.
  * Keyboard: a `KeyboardAvoidingView` (padding on iOS, height on Android) lifts the surface; the
  * scrim stays outside it and keeps covering the window.
@@ -168,7 +170,7 @@ export function SheetGrabber({ theme: themeProp }) {
 
 export default function Sheet({
   visible, onClose, onDismiss, title, header, detents = ['large'], initialDetent, dirty = false, footer, children,
-  scroll = true, contentContainerStyle, accessibilityLabel, theme: themeProp, testID,
+  scroll = true, contentContainerStyle, accessibilityLabel, returnFocusRef, theme: themeProp, testID,
 }) {
   const theme = useUiTheme(themeProp);
   const motion = useMotion();
@@ -186,7 +188,7 @@ export default function Sheet({
 
   // Latest values for the PanResponder (created once) and the async callbacks.
   const live = useRef({});
-  live.current = { r, detent, detents, mediumOffset, dirty, onClose, onDismiss };
+  live.current = { r, detent, detents, mediumOffset, dirty, onClose, onDismiss, visible: !!visible, returnFocusRef };
   const mountedRef = useRef(mounted);
   mountedRef.current = mounted;
 
@@ -212,9 +214,20 @@ export default function Sheet({
   };
   useEffect(() => () => clearTimeout(enterTimer.current), []);
 
+  // The exit. While it runs (`closing`) the header claims no touch, so nothing can stop it and
+  // leave a sheet open over a host whose `visible` is already false (F-09a review B1).
+  const closing = useRef(false);
+  const exit = () => {
+    closing.current = true;
+    clearTimeout(enterTimer.current);
+    entered.current = true;
+    run(sheetOut(value, SHEET_OFFSCREEN, live.current.r), () => { closing.current = false; setMounted(false); });
+  };
+
   // Open and close follow `visible`. A re-open during the exit springs back from where it is.
   useEffect(() => {
     if (visible) {
+      closing.current = false;
       if (!mountedRef.current) value.setValue(r ? SHEET_FADE_RANGE : SHEET_OFFSCREEN);
       setMounted(true);
       setDetent(firstDetent);
@@ -227,9 +240,7 @@ export default function Sheet({
       }
     } else if (mountedRef.current) {
       setConfirming(false);
-      clearTimeout(enterTimer.current);
-      entered.current = true;
-      run(sheetOut(value, SHEET_OFFSCREEN, r), () => setMounted(false));
+      exit();
     }
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -237,13 +248,32 @@ export default function Sheet({
   const wasMounted = useRef(mounted);
   useEffect(() => {
     let raf;
-    if (wasMounted.current && !mounted) raf = requestAnimationFrame(() => live.current.onDismiss?.());
+    if (wasMounted.current && !mounted) {
+      raf = requestAnimationFrame(() => {
+        // Give focus back to what opened the sheet (when the host passes it), then hand off.
+        try {
+          const node = live.current.returnFocusRef?.current && findNodeHandle(live.current.returnFocusRef.current);
+          if (node) AccessibilityInfo.setAccessibilityFocus(node);
+        } catch (_) { /* web: no native focus API */ }
+        live.current.onDismiss?.();
+      });
+    }
     wasMounted.current = mounted;
     return () => { if (raf) cancelAnimationFrame(raf); };
   }, [mounted]);
 
   // Every dismissal (scrim, drag, back, escape, close button) goes through here.
+  // - Already closed by the host (`visible` false): (re)run the exit, so a stopped exit can
+  //   never leave the Modal up.
+  // - Dirty: settle back and ask first.
+  // - Otherwise ask the host. A drag release settles first (closeFromDrag): if the host closes,
+  //   the `visible` effect replaces the settle with the exit; if it refuses, the sheet is back at
+  //   its detent instead of stuck where the finger left it (m4).
   const requestClose = useCallback(() => {
+    if (!live.current.visible) {
+      if (mountedRef.current && !closing.current) exit();
+      return;
+    }
     if (live.current.dirty) {
       settle(live.current.detent);
       setConfirming(true);
@@ -251,16 +281,29 @@ export default function Sheet({
     }
     live.current.onClose?.();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const closeFromDrag = () => {
+    settle(live.current.detent);
+    requestClose();
+  };
 
+  const dragging = useRef(false);
+  const interrupted = useRef(false);
   const pan = useRef(PanResponder.create({
     // Claim a touch that starts on the header itself (buttons inside it are deeper and claim
     // their own taps first); a move that starts on a button is taken over once it drags.
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dy) > DRAG_SLOP && Math.abs(g.dy) > Math.abs(g.dx),
-    onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > DRAG_SLOP && Math.abs(g.dy) > Math.abs(g.dx),
+    // Never during the exit (B1).
+    onStartShouldSetPanResponder: () => !closing.current,
+    onMoveShouldSetPanResponderCapture: (_, g) => !closing.current && Math.abs(g.dy) > DRAG_SLOP && Math.abs(g.dy) > Math.abs(g.dx),
+    onMoveShouldSetPanResponder: (_, g) => !closing.current && Math.abs(g.dy) > DRAG_SLOP && Math.abs(g.dy) > Math.abs(g.dx),
     onPanResponderTerminationRequest: () => false,
-    onPanResponderGrant: () => { if (anim.current) { anim.current.stop(); anim.current = null; } },
+    onPanResponderGrant: () => {
+      dragging.current = !closing.current;
+      interrupted.current = false;
+      // Catch a settling or entering sheet under the finger; a running exit is never stopped.
+      if (dragging.current && anim.current) { anim.current.stop(); anim.current = null; interrupted.current = true; }
+    },
     onPanResponderMove: (_, g) => {
+      if (!dragging.current || closing.current) return;
       const L = live.current;
       if (L.r) { value.setValue(Math.max(0, g.dy)); return; }
       const top = 0;
@@ -268,17 +311,27 @@ export default function Sheet({
       value.setValue(y < top ? top + (y - top) * OVERDRAG : y);
     },
     onPanResponderRelease: (_, g) => {
+      const wasDragging = dragging.current;
+      dragging.current = false;
+      if (!wasDragging || closing.current) return;
+      // A plain tap on the header (no movement) leaves the sheet alone (n3).
+      if (g.dx === 0 && g.dy === 0) { if (interrupted.current) settle(live.current.detent); return; }
       const L = live.current;
       const target = sheetDragTarget({ detents: L.detents, detent: L.detent, dy: g.dy, vy: g.vy, mediumOffset: L.mediumOffset });
-      if (target === 'close') { requestClose(); return; }
+      if (target === 'close') { closeFromDrag(); return; }
       setDetent(target);
       live.current.detent = target;
       settle(target, g.vy);
     },
-    onPanResponderTerminate: () => settle(live.current.detent),
+    onPanResponderTerminate: () => {
+      const wasDragging = dragging.current;
+      dragging.current = false;
+      if (wasDragging && !closing.current) settle(live.current.detent);
+    },
   })).current;
 
-  // Screen readers: move focus to the header once the window is up.
+  // Screen readers: move focus to the title (the accessible header text) once the window is up.
+  // A custom `header` function gets `titleRef` to put on its title.
   const headerRef = useRef(null);
   const focusTimer = useRef(null);
   const handleShow = () => {
@@ -294,14 +347,14 @@ export default function Sheet({
   useEffect(() => () => clearTimeout(focusTimer.current), []);
 
   const discardThen = useRef(false);
-  const headerNode = typeof header === 'function' ? header({ close: requestClose }) : header;
+  const headerNode = typeof header === 'function' ? header({ close: requestClose, titleRef: headerRef }) : header;
   const fixedHeight = twoDetents ? Math.round(windowHeight * LARGE_FRACTION) : undefined;
 
   return (
     <SheetFrame
       visible={mounted}
       value={value}
-      rest={r ? 0 : restOffset(detent, detents, mediumOffset)}
+      rest={restOffset(detent, detents, mediumOffset)}
       height={fixedHeight}
       onRequestClose={requestClose}
       onScrimPress={requestClose}
@@ -313,10 +366,10 @@ export default function Sheet({
     >
       <View {...pan.panHandlers} style={styles.dragZone} testID="sheet-drag-zone">
         <SheetGrabber theme={theme} />
-        <View ref={headerRef} collapsable={false}>
+        <View>
           {headerNode ?? (title ? (
             <View style={styles.titleRow}>
-              <AppText variant="headline" style={[styles.title, { color: theme.text }]} accessibilityRole="header" numberOfLines={2}>{title}</AppText>
+              <AppText ref={headerRef} variant="headline" style={[styles.title, { color: theme.text }]} accessibilityRole="header" numberOfLines={2}>{title}</AppText>
               <IconButton icon="close" iconSize={24} theme={theme} onPress={requestClose} accessibilityLabel={t('common.close')} style={styles.closeBtn} />
             </View>
           ) : null)}
