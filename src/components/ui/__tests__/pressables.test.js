@@ -124,6 +124,54 @@ describe('PressableScale: press states', () => {
   });
 });
 
+describe('PressableScale: cancelled press', () => {
+  it('a press cancelled by a scroll or pager swipe (pressOut, no onPress) resets scale and overlay', () => {
+    Platform.OS = 'ios';
+    const onPress = jest.fn();
+    const r = render(<PressableScale accessibilityLabel="Card" onPress={onPress} pressedStyle={{ backgroundColor: 'b' }} />);
+    pressIn(r);
+    expect(scaleOf(pressableOf(r)).__getValue()).toBe(PRESS_SCALE);
+    // Pressability fires onPressOut on RESPONDER_TERMINATED without onPress.
+    pressOut(r);
+    expect(onPress).not.toHaveBeenCalled();
+    expect(scaleOf(pressableOf(r)).__getValue()).toBe(1);
+    expect(StyleSheet.flatten(overlayOf(r).props.style).opacity.__getValue()).toBe(0);
+    expect(flatStyle(pressableOf(r)).backgroundColor).toBeUndefined();
+  });
+
+  it('uses the dark pressedOverlay on a dark theme', () => {
+    Platform.OS = 'ios';
+    const r = render(<PressableScale accessibilityLabel="Card" onPress={jest.fn()} theme={dark} />);
+    expect(StyleSheet.flatten(overlayOf(r).props.style).backgroundColor).toBe(dark.pressedOverlay);
+  });
+
+  it('reads the theme from ThemeContext when no prop is passed', () => {
+    Platform.OS = 'ios';
+    const { ThemeContext } = require('../../../theme/ThemeContext');
+    const r = render(
+      <ThemeContext.Provider value={{ theme: dark, themeName: 'dark' }}>
+        <PressableScale accessibilityLabel="Card" onPress={jest.fn()} />
+      </ThemeContext.Provider>,
+    );
+    expect(StyleSheet.flatten(overlayOf(r).props.style).backgroundColor).toBe(dark.pressedOverlay);
+  });
+
+  it('clips a bounded Android ripple to a rounded outline', () => {
+    Platform.OS = 'android';
+    const r = render(<PressableScale accessibilityLabel="Go" onPress={jest.fn()} style={{ borderRadius: 8 }} />);
+    expect(flatStyle(pressableOf(r)).overflow).toBe('hidden');
+    const square = render(<PressableScale accessibilityLabel="Tab" onPress={jest.fn()} />);
+    expect(flatStyle(pressableOf(square)).overflow).toBeUndefined();
+  });
+
+  it('runs onDisabledLongPress on a long press while disabled', () => {
+    const onDisabledLongPress = jest.fn();
+    const r = render(<PressableScale accessibilityLabel="Minus" disabled onLongPress={jest.fn()} onDisabledLongPress={onDisabledLongPress} />);
+    act(() => { pressableOf(r).props.onLongPress({}); });
+    expect(onDisabledLongPress).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('PressableScale: reduced motion', () => {
   it('never scales; the overlay is the feedback (iOS)', () => {
     mockReduced = true;

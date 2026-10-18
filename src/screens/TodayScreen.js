@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase',
   },
-  markRestBtn: { alignSelf: 'center', minHeight: 48, borderRadius: radius.control, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, marginTop: 4 },
+  markRestBtn: { alignSelf: 'center', minHeight: 48, borderRadius: radius.control, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, marginTop: 4 },
   markRestText: { fontSize: 15, fontWeight: '700' },
   markRestNote: { fontSize: 13, marginTop: 2, textAlign: 'center' },
   timeLabel: { fontSize: 12, fontWeight: '700', marginTop: 6, marginBottom: 8 },

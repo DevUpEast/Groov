@@ -28,6 +28,7 @@ function toneColor(theme, tone) {
  * - Android: a borderless ripple the size of the touch target.
  * - `disabled`: the icon turns `onDisabled`; it stays focusable, announces disabled, and a tap
  *   calls `onDisabledPress` or plays `refused`.
+ * - `onLongPress` / `delayLongPress`; `onDisabledLongPress` runs a long press while disabled.
  * - `children` replaces the icon (e.g. a text glyph).
  * Silent by default (§2.10); callers that change data play their own event.
  */
@@ -38,6 +39,8 @@ export default function IconButton({
   accessibilityState,
   onPress,
   onLongPress,
+  delayLongPress,
+  onDisabledLongPress,
   size = 40,
   iconSize = 22,
   tone = 'secondary',
@@ -61,6 +64,8 @@ export default function IconButton({
       testID={testID}
       onPress={onPress}
       onLongPress={onLongPress}
+      delayLongPress={delayLongPress}
+      onDisabledLongPress={onDisabledLongPress}
       disabled={disabled}
       onDisabledPress={handleDisabled}
       hitSlop={hitSlopFor(size)}

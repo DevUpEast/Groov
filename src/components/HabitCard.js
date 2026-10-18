@@ -78,6 +78,8 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   // and ignore back. The sheet plays the long-press haptic itself.
   const [menuOpen, setMenuOpen] = useState(false);
   const handleLongPress = () => setMenuOpen(true);
+  // The counter and timer buttons are part of the card: a long hold on them opens the same menu.
+  const holdForOptions = { onLongPress: handleLongPress, delayLongPress: LONG_PRESS_MS };
   const menuOptions = [
     { label: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip'), onPress: () => { toggleSkipHabitOn(habit.id, today); onSkipToggle?.(habit); } },
     { label: yesterdayDone ? t('habitCard.longPress.undoYesterday') : t('habitCard.longPress.markYesterday'), onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
@@ -110,7 +112,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         ]}
         onPress={handleCardPress}
         onLongPress={handleLongPress}
-        delayLongPress={350}
+        delayLongPress={LONG_PRESS_MS}
         accessibilityRole={isVolume ? 'button' : 'checkbox'}
         accessibilityState={isVolume ? undefined : { checked: done }}
         accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
@@ -140,16 +142,22 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
                 color={timerStart ? theme.onDanger : accent.fill}
                 style={[styles.counterBtn, { borderColor: timerStart ? theme.dangerFill : accent.ring, backgroundColor: timerStart ? theme.dangerFill : 'transparent' }]}
                 onPress={toggleTimer}
+                {...holdForOptions}
                 accessibilityLabel={timerStart ? t('habitCard.a11y.stopTimer') : t('habitCard.a11y.startTimer')}
               />
             )}
-            {/* At 0 the − is disabled: still focusable, and a tap plays `refused`. */}
+            {/* At 0 the − is disabled: a filled disabledContainer disc with an onDisabled glyph
+                (§2.2), still focusable; a tap plays `refused`, a long hold opens the options. */}
             <IconButton
               size={COUNTER_BTN}
               icon="remove"
               iconSize={20}
-              style={[styles.counterBtn, { borderColor: theme.controlBorder }]}
+              style={[styles.counterBtn, count <= 0
+                ? { borderColor: theme.disabledContainer, backgroundColor: theme.disabledContainer }
+                : { borderColor: theme.controlBorder }]}
               onPress={() => onDecrement(step)}
+              {...holdForOptions}
+              onDisabledLongPress={handleLongPress}
               disabled={count <= 0}
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.removeMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.removeOne', { unit: unitLabel(habit) })).trim()}
             />
@@ -164,6 +172,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
               color={done && !isLimit ? accent.onFill : theme.textSecondary}
               style={[styles.counterBtn, done && !isLimit ? { borderColor: accent.fill, backgroundColor: accent.fill } : { borderColor: isLimit ? theme.controlBorder : accent.ring }]}
               onPress={() => onIncrement(step)}
+              {...holdForOptions}
               accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
             />
           </View>
@@ -192,6 +201,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
 // Counter ± and timer buttons: 36 visual, hitSlop 6 to the 48 dp target (4 to 44 pt on iOS);
 // the gap is two slops (12 dp / 8 pt), so neighbouring targets meet without overlapping.
 const COUNTER_BTN = 36;
+const LONG_PRESS_MS = 350;
 const COUNTER_GAP = 2 * hitSlopFor(COUNTER_BTN).left;
 
 const styles = StyleSheet.create({

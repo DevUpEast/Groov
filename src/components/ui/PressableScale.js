@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet } from 'react-native';
-import { useOptionalApp } from '../../context/appContextObject';
+import { useThemeContext } from '../../theme/ThemeContext';
 import { themes } from '../../theme/colors';
 import { size } from '../../theme/tokens';
 import { duration, easing, spring, useMotion } from '../../theme/motion';
@@ -23,11 +23,12 @@ export function hitSlopFor(width, height = width, touchMin = touchMinimum()) {
   return { top: y, bottom: y, left: x, right: x };
 }
 
-// The theme for a ui primitive: an explicit prop, else the app's, else light (outside the
-// provider, e.g. the crash screen or a component test).
+// The theme for a ui primitive: an explicit prop, else the provider's (the small memoized
+// ThemeContext, never the whole AppContext), else light (outside the provider, e.g. the crash
+// screen or a component test).
 export function useUiTheme(themeProp) {
-  const app = useOptionalApp();
-  return themeProp || app?.theme || themes.light;
+  const ctx = useThemeContext();
+  return themeProp || ctx?.theme || themes.light;
 }
 
 export const PRESS_SCALE = 0.97;
@@ -42,7 +43,8 @@ export const PRESS_SCALE = 0.97;
  * - reduced motion: no scale; the overlay (plus the ripple on Android) is the whole feedback;
  * - `disabled`: no press visuals and `onPress`/`onLongPress` never run, but it stays focusable
  *   and announces `accessibilityState.disabled`; a tap calls `onDisabledPress` (Button turns
- *   that into the `refused` feedback).
+ *   that into the `refused` feedback). `onDisabledLongPress` lets a disabled control inside a
+ *   larger surface still open that surface's options (HabitCard's − at 0).
  * - `pressedStyle` is merged into `style` while the finger is down (e.g. Button's
  *   `actionPressed` fill).
  *
@@ -59,6 +61,7 @@ export default function PressableScale({
   pressedStyle,
   disabled = false,
   onDisabledPress,
+  onDisabledLongPress,
   ripple = 'bounded',
   rippleRadius,
   scaleTo = PRESS_SCALE,
@@ -83,7 +86,7 @@ export default function PressableScale({
 
   const handlePressIn = useCallback((e) => {
     if (!disabled) {
-      setPressed(true);
+      if (pressedStyle) setPressed(true);
       overlay.stopAnimation();
       overlay.setValue(1);
       if (!motion.reduced) {
@@ -92,15 +95,15 @@ export default function PressableScale({
       }
     }
     onPressIn?.(e);
-  }, [disabled, motion, overlay, scale, scaleTo, onPressIn]);
+  }, [disabled, motion, overlay, scale, scaleTo, onPressIn, pressedStyle]);
 
   const handlePressOut = useCallback((e) => {
-    setPressed(false);
+    if (pressedStyle) setPressed(false);
     motion.timing(overlay, { toValue: 0, duration: duration.press, easing: easing.standard }).start();
     if (!motion.reduced) motion.springTo(scale, spring.snappy, { toValue: 1 }).start();
     else scale.setValue(1);
     onPressOut?.(e);
-  }, [motion, overlay, scale, onPressOut]);
+  }, [motion, overlay, scale, onPressOut, pressedStyle]);
 
   const handlePress = useCallback((e) => {
     if (disabled) { onDisabledPress?.(e); return; }
@@ -116,6 +119,9 @@ export default function PressableScale({
     borderBottomRightRadius: flat.borderBottomRightRadius,
   };
 
+  const hasRadius = Object.values(radiusStyle).some(v => v > 0);
+  const clipRipple = showRipple && ripple !== 'borderless' && hasRadius && flat.overflow === undefined;
+
   const androidRipple = showRipple
     ? {
         color: theme.ripple,
@@ -130,7 +136,7 @@ export default function PressableScale({
     <AnimatedPressable
       {...rest}
       onPress={handlePress}
-      onLongPress={disabled || !onLongPress ? undefined : onLongPress}
+      onLongPress={disabled ? onDisabledLongPress : onLongPress}
       delayLongPress={delayLongPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
@@ -138,7 +144,13 @@ export default function PressableScale({
       android_ripple={androidRipple}
       accessibilityRole={accessibilityRole}
       accessibilityState={disabled ? { ...accessibilityState, disabled: true } : accessibilityState}
-      style={[style, pressed && pressedStyle, motion.reduced ? null : { transform: [{ scale }] }]}
+      style={[
+        style,
+        // A bounded ripple is clipped to the view's outline only when it clips its children.
+        clipRipple && styles.clip,
+        pressed && pressedStyle,
+        motion.reduced ? null : { transform: [{ scale }] },
+      ]}
     >
       {children}
       {showOverlay && (
@@ -151,3 +163,5 @@ export default function PressableScale({
     </AnimatedPressable>
   );
 }
+
+const styles = StyleSheet.create({ clip: { overflow: 'hidden' } });
