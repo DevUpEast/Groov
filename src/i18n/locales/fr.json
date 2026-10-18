@@ -155,7 +155,7 @@
     },
     "sectionHabits": "HABITUDES DU JOUR",
     "markRest": "Cocher le reste (%{count})",
-    "markRestNote": "Les habitudes chiffrées, chronométrées et à limite ne changent pas",
+    "markRestNote": "Les habitudes chiffrées, chronométrées et avec limite ne changent pas",
     "activeChallenges": "DÉFIS EN COURS",
     "challenge": {
       "sub": "Jour %{day} sur %{days} · %{count} validés",

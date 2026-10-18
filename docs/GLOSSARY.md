@@ -22,7 +22,7 @@ Groov is a calm friend who keeps time with you. It is short, warm and concrete, 
 5. Rest and freeze copy uses "holds" or "keeps", never "saved you" (no rescue framing). In English, "holds" is reserved for rest and freeze copy.
 6. A challenge that ends below platinum has "ended". It is not "complete" (CEL-5).
 
-These rules apply in every locale through the transcreations in §5. A missed day is described neutrally: es "sin hacer", pt-BR "não feito" / "sem registro", ja "未達成" / "できなかった日". Avoid words that mean failure or loss (es "fallado", pt-BR "perdido", ja "失敗").
+These rules apply in every locale through the transcreations in §5. A missed day is described neutrally: es "sin hacer", pt-BR "não feito" / "sem registro", ja "未達成" / "できなかった日". Avoid words that mean failure or loss: es "fallado" / "si fallas", pt-BR "perdido" / "perdeu", ja "失敗". Give a lapse a neutral image instead: es "Si un día no sale, sigue adelante", pt-BR "Se um dia não rolar, continue".
 
 ## 3. Terms
 
@@ -40,7 +40,7 @@ One term per concept, used the same way everywhere: tab, title, button, accessib
 | check off / check-off (log a habit) | check off · check-off | marcar | abhaken · Abhaken | cocher · valider | marcar | チェックする | "Check-in" is reserved for the mood check-in and the evening Smart Check-in notification. |
 | log | log | registrar | erfassen | valider | registrar | 記録する | Entering a count or a past day. |
 | streak | streak | racha | Serie | série | sequência | 連続記録 · N日連続 | ja: never ストリーク. |
-| freeze (noun) | streak freeze · freeze | congelación | Freeze (pl. Freezes) · Serien-Freeze | gel (de série) | congelamento | フリーズ | Two automatic freezes a month. pt-BR: never *pausa*, which reads as a rest. |
+| freeze (noun) | streak freeze · freeze | congelación | Freeze (pl. Freezes) · Serien-Freeze | gel (de série) | congelamento | 連続記録フリーズ (introducing) · フリーズ | Two automatic freezes a month. pt-BR: never *pausa*, which reads as a rest. ja: a bare フリーズ first suggests a device hang. A string that **introduces** the concept or explains it on its own says 連続記録フリーズ (`onboarding.intro.streaks.body`, `progress.freezes`). Legends, labels and later mentions use plain フリーズ. |
 | frozen (a day) | frozen | congelado | eingefroren | gelé | congelado | フリーズ | ❄ |
 | rest day | rest day | día de descanso | Ruhetag | jour de repos | dia de descanso | 休みの日 (short: 休み) | An unscheduled day. ja: 休みの日, not お休みの日. |
 | skip (a habit today) | skip · skipped | omitir · omitido | überspringen · übersprungen | sauter · sauté(e) | pular · pulado | スキップ | fr: *sauter*, because *passer*/*passée* reads as "past". The onboarding "Skip" button (skipping a step) stays fr *Passer*, es *Omitir*. |
@@ -52,7 +52,7 @@ One term per concept, used the same way everywhere: tab, title, button, accessib
 | challenge tiers | Platinum · Gold · Silver · Copper · Ended | Platino · Oro · Plata · Cobre · Terminado | Platin · Gold · Silber · Kupfer · Beendet | Platine · Or · Argent · Cuivre · Terminé | Platina · Ouro · Prata · Cobre · Encerrado | プラチナ · ゴールド · シルバー · ブロンズ · 終了 | ja uses ブロンズ on purpose: it is the natural third medal next to ゴールド/シルバー. |
 | milestone | milestone | hito | Meilenstein | palier | marco | マイルストーン | Streaks of 7, 30, 100 and 365 days. |
 | trophy / medal | trophy · medal | trofeo · medalla | Trophäe · Medaille | trophée · médaille | troféu · medalha | トロフィー · メダル | Trophy Case = Sala de trofeos / Trophäenschrank / Salle des trophées / Sala de troféus / トロフィーケース. |
-| perfect day | perfect day | día perfecto | perfekter Tag | jour parfait | dia perfeito | パーフェクトな日 | Every scheduled habit done. |
+| perfect day | perfect day | día perfecto | perfekter Tag | jour parfait | dia perfeito | パーフェクト日 | Every scheduled habit done. ja: the compact compound, because パーフェクトな日 wraps with a lone 日 on the SE stat tile. |
 | reminder | reminder | recordatorio | Erinnerung | rappel | lembrete | リマインダー (verb: お知らせ) | |
 | default reminders | Morning reminder · Evening reminder | Recordatorio de la mañana · Recordatorio de la noche | Morgenerinnerung · Abenderinnerung | Rappel du matin · Rappel du soir | Lembrete da manhã · Lembrete da noite | 朝のリマインダー · 夜のリマインダー | These are stored as data in `DEFAULT_REMINDERS` and still English in every locale; P-05/ST-01a make them translatable and use these terms. |
 | Smart Check-in | Smart Check-in | Registro inteligente | Smarter Check-in | Bilan intelligent | Check-in inteligente | スマートチェックイン | The evening notification. |
@@ -84,7 +84,7 @@ One term per concept, used the same way everywhere: tab, title, button, accessib
 - Double quotes `"…"` for quoted UI labels.
 
 ### de
-- **du**, never Sie. Lower-case *du/dein* (current orthography). A capital *Sie* only appears as the third-person pronoun ("Sie verschwindet aus „Heute“", referring to the habit).
+- **du**, never Sie. Lower-case *du/dein* (current orthography). No formal imperatives: write "Tippe", not "Tippen Sie". Don't start a sentence with *Sie*, not even as the third-person pronoun, because it reads as formal address. Name the noun instead: "Die Gewohnheit verschwindet aus „Heute“". A sentence-initial *Ihre* meaning "its/their" is fine.
 - Keep noun capitals. Compound nouns are hyphenated with numerals: "3-Tage-Kickstart", "12-Tage-Serie".
 - Quotes are „…“ (low-high).
 - 24-hour time ("20:00", "um 23 Uhr"), decimal comma, and a space before % ("20 %") via `Intl` (P-05).
@@ -152,10 +152,10 @@ The D-00 frame tried the shortened labels **Routinen** (Habits) and **Optionen**
 | counters and timers | volume, timed and limit habits | Use the type names |
 | Challenge (singular as the screen or tab name) | Challenges | Tab matches title (P-02) |
 | task | habit | Product term |
-| es: usted, fallado | tú, sin hacer | Formality; tone |
-| de: Sie/Ihr (formal address), Routinen, Optionen (as tab labels) | du/dein, Gewohnheiten, Einstellungen | Formality; §6 |
-| fr: vous/votre, Touchez, Modifiez-les, passer/passée (for skipping a habit), pauses (for skips) | tu, Appuie, Modifie-les, sauter/sautée, jours sautés | Formality; skip is not "past" |
-| pt-BR: o senhor, pausa de sequência, dia perdido | você, congelamento, dia sem registro / não feito | Formality; a freeze is not a pause; tone |
-| ja: ストリーク, お休みの日, ！, 失敗 (for a lapse), カウンターとタイマー | 連続記録/フリーズ, 休みの日, 。, うまくいかない日, 数量目標・時間目標・上限 | One term; politeness; tone |
+| es: usted, fallado, si fallas | tú, sin hacer, si un día no sale | Formality; tone |
+| de: Sie/Ihr (formal address), "Tippen Sie" and other formal imperatives, sentence-initial *Sie*, Routinen, Optionen (as tab labels) | du/dein, Tippe, the noun ("Die Gewohnheit …"), Gewohnheiten, Einstellungen | Formality; §6 |
+| fr: vous/votre, vous imperatives (Appuyez, Touchez, Modifiez, Modifiez-les), passer/passée (for skipping a habit), pauses (for skips), "à limite" | tu, Appuie, Modifie-les, sauter/sautée, jours sautés, "avec limite" | Formality; skip is not "past"; idiom |
+| pt-BR: o senhor, pausa de sequência, dia perdido, perdeu um dia | você, congelamento, dia sem registro / não feito, se um dia não rolar | Formality; a freeze is not a pause; tone |
+| ja: ストリーク, お休みの日, パーフェクトな日, ！, 失敗 (for a lapse), カウンターとタイマー, clipped endings (…いつでも。) | 連続記録 / 連続記録フリーズ, 休みの日, パーフェクト日, 。, うまくいかない日, 数量目標・時間目標・上限, です/ます (…できます。) | One term; politeness; tone |
 
-`glossary.test.js` checks the rows that a regex can catch reliably. The exclamation mark in ja and the en "completed" are left to P-07's sweep and are not tested yet.
+`glossary.test.js` checks the rows that a regex can catch reliably. Each term has its own named rule (for example `de.formalImperative`, `ja.perfectDayLong`), tested with positive and negative examples. The exclamation mark in ja and the en "completed" are left to P-07's sweep and are not tested yet.

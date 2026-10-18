@@ -91,7 +91,7 @@
   "templates": {
     "reset7": { "name": "Reinício de 7 Dias", "short": "Reinício", "description": "Uma semana aparecendo todos os dias. Pequeno, rápido, possível." },
     "builder21": { "name": "Construtor de Hábito de 21 Dias", "short": "Construtor", "description": "Três semanas para fazer parecer natural." },
-    "challenge30": { "name": "Desafio de 30 Dias", "short": "Desafio", "description": "Um mês inteiro. Perdeu um dia? Continue." },
+    "challenge30": { "name": "Desafio de 30 Dias", "short": "Desafio", "description": "Um mês inteiro. Se um dia não rolar, continue." },
     "automatic66": { "name": "Automático em 66 Dias", "short": "Automático", "description": "O tempo médio para um comportamento se tornar automático." },
     "streak100": { "name": "Sequência de 100 Dias", "short": "Sequência", "description": "O grande desafio. Três dígitos." }
   },

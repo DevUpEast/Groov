@@ -250,7 +250,7 @@
     },
     "archive": {
       "title": "Gewohnheit archivieren",
-      "body": "„%{name}“ archivieren? Sie verschwindet aus „Heute“, behält aber ihren Verlauf, und du kannst sie jederzeit wiederherstellen.",
+      "body": "„%{name}“ archivieren? Die Gewohnheit verschwindet aus „Heute“, behält aber ihren Verlauf, und du kannst sie jederzeit wiederherstellen.",
       "deleteForever": "Endgültig löschen",
       "archive": "Archivieren"
     },
@@ -476,7 +476,7 @@
     },
     "delete": {
       "title": "Challenge löschen",
-      "body": "„%{name}“ entfernen? Sie wird zu den vergangenen Challenges verschoben."
+      "body": "„%{name}“ entfernen? Die Challenge wird zu den vergangenen Challenges verschoben."
     }
   },
   "progress": {
