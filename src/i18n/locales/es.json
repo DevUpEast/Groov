@@ -155,7 +155,7 @@
     },
     "sectionHabits": "HÁBITOS DE HOY",
     "markRest": "Marcar el resto como hecho (%{count})",
-    "markRestNote": "Los contadores y temporizadores no cambian",
+    "markRestNote": "Los hábitos de cantidad, con tiempo y con límite no cambian",
     "activeChallenges": "RETOS ACTIVOS",
     "challenge": {
       "sub": "Día %{day} de %{days} · %{count} registrados",
@@ -182,11 +182,11 @@
     "intro": {
       "stick": {
         "title": "Crea hábitos que perduren",
-        "body": "Registra hábitos diarios y metas de cantidad. Cada registro te acerca a la vida que quieres."
+        "body": "Registra hábitos diarios y metas de cantidad. Cada hábito que marcas te acerca a la vida que quieres."
       },
       "streaks": {
         "title": "Rachas que perdonan",
-        "body": "Completa tus hábitos para hacer crecer una racha. Los días de descanso, las omisiones y dos congelaciones al mes evitan que un mal día la borre."
+        "body": "Completa tus hábitos para hacer crecer una racha. Los días de descanso, los días omitidos y dos congelaciones al mes evitan que un mal día la borre."
       }
     },
     "starter": {
@@ -394,8 +394,8 @@
     "history": "Historial",
     "hint": "Toca cualquier día pasado para corregirlo",
     "cellA11y": "%{date}: %{status}",
-    "status": { "future": "futuro", "done": "hecho", "rest": "descanso", "missed": "fallado", "none": "ninguno", "pending": "pendiente" },
-    "legend": { "done": "Hecho", "partial": "Parcial", "missed": "Fallado", "pending": "Por hacer hoy", "skippedFrozen": "Omitido / congelado", "rest": "Descanso" },
+    "status": { "future": "futuro", "done": "hecho", "rest": "descanso", "missed": "sin hacer", "none": "ninguno", "pending": "pendiente" },
+    "legend": { "done": "Hecho", "partial": "Parcial", "missed": "Sin hacer", "pending": "Por hacer hoy", "skippedFrozen": "Omitido / congelado", "rest": "Descanso" },
     "byWeekday": "Por día de la semana",
     "since": "Tasa de cumplimiento desde el %{date}",
     "weekdayA11y": "%{day}: %{percent} por ciento",
@@ -485,7 +485,7 @@
     "shareA11y": "Compartir tu progreso",
     "stats": { "streak": "Racha de días", "best": "Mejor racha", "perfect": "Días perfectos", "a11y": "%{label}: %{value}" },
     "streakRule": { "title": "Cómo funcionan las rachas", "body": "Un día cuenta cuando completas todos los hábitos programados para ese día. Los días de descanso y las congelaciones mantienen tu racha.", "a11y": "Cómo se cuentan las rachas" },
-    "freezes": { "one": "❄️ Te queda %{count} congelación de racha este mes · un día fallado se cubre automáticamente", "other": "❄️ Te quedan %{count} congelaciones de racha este mes · un día fallado se cubre automáticamente" },
+    "freezes": { "one": "❄️ Te queda %{count} congelación de racha este mes · un día sin completar se cubre automáticamente", "other": "❄️ Te quedan %{count} congelaciones de racha este mes · un día sin completar se cubre automáticamente" },
     "weekly": { "title": "Hábitos completados: semanal", "hint": "Toca una barra para ver detalles" },
     "history": "Historial",
     "period": { "d7": "7d", "d30": "30d", "d90": "90d" },
@@ -809,7 +809,7 @@
     "a11y": "%{label}, %{value} de 5"
   },
   "noteModal": {
-    "sub": "%{date} · una nota para este registro",
+    "sub": "%{date} · una nota para este hábito",
     "placeholder": "¿Cómo te fue?",
     "a11y": "Nota",
     "removeNote": "Quitar nota"

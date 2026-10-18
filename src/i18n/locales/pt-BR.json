@@ -155,7 +155,7 @@
     },
     "sectionHabits": "HÁBITOS DE HOJE",
     "markRest": "Marcar o resto como concluído (%{count})",
-    "markRestNote": "Contadores e timers continuam como estão",
+    "markRestNote": "Hábitos de quantidade, com tempo e com limite continuam como estão",
     "activeChallenges": "DESAFIOS ATIVOS",
     "challenge": {
       "sub": "Dia %{day} de %{days} · %{count} registrados",
@@ -182,11 +182,11 @@
     "intro": {
       "stick": {
         "title": "Crie hábitos que pegam",
-        "body": "Acompanhe hábitos diários e metas de quantidade. Cada check-in te aproxima da vida que você quer."
+        "body": "Acompanhe hábitos diários e metas de quantidade. Cada hábito marcado te aproxima da vida que você quer."
       },
       "streaks": {
         "title": "Sequências que perdoam",
-        "body": "Complete seus hábitos para aumentar sua sequência. Dias de descanso, pulos e duas pausas por mês evitam que um dia ruim apague tudo."
+        "body": "Complete seus hábitos para aumentar sua sequência. Dias de descanso, dias pulados e dois congelamentos por mês evitam que um dia ruim apague tudo."
       }
     },
     "starter": {
@@ -394,8 +394,8 @@
     "history": "Histórico",
     "hint": "Toque em qualquer dia passado para corrigi-lo",
     "cellA11y": "%{date}: %{status}",
-    "status": { "future": "futuro", "done": "concluído", "rest": "descanso", "missed": "perdido", "none": "nenhum", "pending": "pendente" },
-    "legend": { "done": "Feito", "partial": "Parcial", "missed": "Perdido", "pending": "A fazer hoje", "skippedFrozen": "Pulado / congelado", "rest": "Descanso" },
+    "status": { "future": "futuro", "done": "concluído", "rest": "descanso", "missed": "não feito", "none": "nenhum", "pending": "pendente" },
+    "legend": { "done": "Feito", "partial": "Parcial", "missed": "Não feito", "pending": "A fazer hoje", "skippedFrozen": "Pulado / congelado", "rest": "Descanso" },
     "byWeekday": "Por dia da semana",
     "since": "Taxa de conclusão desde %{date}",
     "weekdayA11y": "%{day}: %{percent} por cento",
@@ -484,8 +484,8 @@
     "share": "Compartilhar",
     "shareA11y": "Compartilhar seu progresso",
     "stats": { "streak": "Dias Seguidos", "best": "Melhor Sequência", "perfect": "Dias Perfeitos", "a11y": "%{label}: %{value}" },
-    "streakRule": { "title": "Como as sequências funcionam", "body": "Um dia conta quando todos os hábitos programados para aquele dia são concluídos. Dias de descanso e pausas mantêm sua sequência.", "a11y": "Como as sequências são contadas" },
-    "freezes": { "one": "❄️ %{count} pausa de sequência restante neste mês · um dia perdido é coberto automaticamente", "other": "❄️ %{count} pausas de sequência restantes neste mês · um dia perdido é coberto automaticamente" },
+    "streakRule": { "title": "Como as sequências funcionam", "body": "Um dia conta quando todos os hábitos programados para aquele dia são concluídos. Dias de descanso e congelamentos mantêm sua sequência.", "a11y": "Como as sequências são contadas" },
+    "freezes": { "one": "❄️ %{count} congelamento de sequência restante neste mês · um dia sem registro é coberto automaticamente", "other": "❄️ %{count} congelamentos de sequência restantes neste mês · um dia sem registro é coberto automaticamente" },
     "weekly": { "title": "Hábitos Concluídos: Semanal", "hint": "Toque em uma barra para ver detalhes" },
     "history": "Histórico",
     "period": { "d7": "7d", "d30": "30d", "d90": "90d" },
@@ -542,7 +542,7 @@
     },
     "day": {
       "habitsCompleted": "%{completed}/%{total} hábitos concluídos",
-      "frozen": "❄️ Pausa de sequência usada: este dia não quebrou sua sequência.",
+      "frozen": "❄️ Congelamento de sequência usado: este dia não quebrou sua sequência.",
       "noData": "Sem dados de hábitos para este dia.",
       "skipped": "Pulado",
       "frozenLabel": "Congelado",
@@ -809,7 +809,7 @@
     "a11y": "%{label}, %{value} de 5"
   },
   "noteModal": {
-    "sub": "%{date} · uma nota para este check-in",
+    "sub": "%{date} · uma nota para este hábito",
     "placeholder": "Como foi?",
     "a11y": "Nota",
     "removeNote": "Remover nota"

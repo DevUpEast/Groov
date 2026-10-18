@@ -155,7 +155,7 @@
     },
     "sectionHabits": "TODAY'S HABITS",
     "markRest": "Mark the rest done (%{count})",
-    "markRestNote": "Counters and timers stay as they are",
+    "markRestNote": "Volume, timed and limit habits stay as they are",
     "activeChallenges": "ACTIVE CHALLENGES",
     "challenge": {
       "sub": "Day %{day} of %{days} · %{count} logged",
@@ -182,7 +182,7 @@
     "intro": {
       "stick": {
         "title": "Build habits that stick",
-        "body": "Track daily habits and volume goals. Every check-in brings you closer to the life you want."
+        "body": "Track daily habits and volume goals. Every check-off brings you closer to the life you want."
       },
       "streaks": {
         "title": "Streaks that forgive",
@@ -809,7 +809,7 @@
     "a11y": "%{label}, %{value} of 5"
   },
   "noteModal": {
-    "sub": "%{date} · a note for this check-in",
+    "sub": "%{date} · a note for this habit",
     "placeholder": "How did it go?",
     "a11y": "Note",
     "removeNote": "Remove note"
