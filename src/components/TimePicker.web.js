@@ -128,6 +128,7 @@ function WheelColumn({ items, selectedValue, onValueChange, loop, theme, width }
               <Text style={{
                 fontSize,
                 fontWeight: isSelected ? '700' : '400',
+                fontVariant: ['tabular-nums'],
                 color: theme.text,
                 opacity,
               }}>
@@ -241,7 +242,7 @@ const styles = StyleSheet.create({
     gap: 4, marginBottom: 24,
   },
   wheelCol: { alignItems: 'center', gap: 6 },
-  colLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  colLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   colon: { fontSize: 26, fontWeight: 'bold', marginBottom: 22 },
   fadeTop: {
     bottom: '60%',

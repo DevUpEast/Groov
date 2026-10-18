@@ -17,6 +17,8 @@ import { weekdayLabels } from '../utils/schedule';
 import { t, getLocale, useLocale } from '../i18n';
 import { data, elevation } from '../theme/tokens';
 import OverlayModal from '../components/ui/OverlayModal';
+import AppText from '../components/ui/AppText';
+import { numeric } from '../theme/typography';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CHART_H = 150;
@@ -38,23 +40,31 @@ function cellSize(cfg) {
 
 // ─── Bar chart (always 7 days) ────────────────────────────────────────────────
 
+// Wide enough for "100%" at the 12 pt floor up to 1.3x font scale (the labels cap there).
+const Y_AXIS_W = 44;
+const AXIS_MAX_SCALE = 1.3;
+
 function BarChart({ data, labels, theme, onBarPress, futureFlags, a11yLabels }) {
   return (
     <View style={{ marginTop: 8 }}>
       <View style={{ flexDirection: 'row', height: CHART_H }}>
         {/* Y-axis */}
-        <View style={{ width: 32, height: CHART_H }}>
+        <View style={{ width: Y_AXIS_W, height: CHART_H }}>
           {[100, 75, 50, 25, 0].map(y => (
             <Text
               key={y}
+              numberOfLines={1}
+              maxFontSizeMultiplier={AXIS_MAX_SCALE}
               style={{
                 position: 'absolute',
                 right: 4,
-                top: ((100 - y) / 100) * (CHART_H - 14),
-                fontSize: 9,
+                top: ((100 - y) / 100) * (CHART_H - 16),
+                fontSize: 12,
+                lineHeight: 16,
+                fontVariant: ['tabular-nums'],
                 color: theme.textSecondary,
                 textAlign: 'right',
-                width: 28,
+                width: Y_AXIS_W - 4,
               }}
             >
               {y}%
@@ -85,10 +95,10 @@ function BarChart({ data, labels, theme, onBarPress, futureFlags, a11yLabels }) 
         </View>
       </View>
       {/* X-axis */}
-      <View style={{ flexDirection: 'row', marginLeft: 32, marginTop: 4 }}>
+      <View style={{ flexDirection: 'row', marginLeft: Y_AXIS_W, marginTop: 4 }}>
         {labels.map((l, i) => (
           <View key={i} style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={{ fontSize: 10, color: theme.textSecondary }}>{l}</Text>
+            <Text style={{ fontSize: 12, color: theme.textSecondary }}>{l}</Text>
           </View>
         ))}
       </View>
@@ -248,7 +258,7 @@ function BarTooltip({ label, value, onClose, theme }) {
     >
       <View style={[styles.tooltip, elevation.dialog, { backgroundColor: theme.overlay, borderColor: theme.border, shadowColor: theme.shadow }]}>
         <Text style={[styles.tooltipLabel, { color: theme.textSecondary }]}>{label}</Text>
-        <Text style={[styles.tooltipValue, { color: theme.link }]}>{value}%</Text>
+        <AppText variant="display" style={{ color: theme.link }}>{value}%</AppText>
         <Text style={[styles.tooltipHint, { color: theme.textSecondary }]}>{t('progress.tooltip.completed')}</Text>
       </View>
     </TouchableOpacity>
@@ -385,7 +395,7 @@ export default function ProgressScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.headingRow}>
-          <Text style={[styles.heading, { color: theme.text }]}>{t('progress.title')}</Text>
+          <AppText variant="title" style={[styles.heading, { color: theme.text }]}>{t('progress.title')}</AppText>
           <TouchableOpacity
             style={[styles.shareChip, { borderColor: theme.border, backgroundColor: theme.surface }]}
             onPress={() => { lightImpact(); setShareOpen(true); }}
@@ -407,7 +417,7 @@ export default function ProgressScreen() {
             <View key={stat.label} style={styles.statSlot}>
               <View style={[styles.statCard, { backgroundColor: theme.surface, borderColor: theme.border }]} accessible accessibilityLabel={t('progress.stats.a11y', { label: stat.label, value: stat.value })}>
                 <Text style={styles.statEmoji}>{stat.emoji}</Text>
-                <Text style={[styles.statValue, { color: theme.link }]}>{stat.value}</Text>
+                <AppText variant="display" style={{ color: theme.link }}>{stat.value}</AppText>
                 <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{stat.label}</Text>
               </View>
               {stat.info && (
@@ -698,7 +708,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: 24, paddingBottom: 48 },
   headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  heading: { fontSize: 28, fontWeight: 'bold' },
+  heading: {},
   shareChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
   shareChipText: { fontSize: 13, fontWeight: '700' },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
@@ -710,34 +720,33 @@ const styles = StyleSheet.create({
     borderRadius: 14, borderWidth: 1, gap: 6,
   },
   statEmoji: { fontSize: 26 },
-  statValue: { fontSize: 26, fontWeight: 'bold' },
-  statLabel: { fontSize: 11, textAlign: 'center', lineHeight: 14 },
+  statLabel: { fontSize: 12, textAlign: 'center', lineHeight: 14 },
   card: { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 24 },
   cardTitle: { fontSize: 15, fontWeight: '700' },
-  cardHint: { fontSize: 11, marginTop: 2, marginBottom: 6 },
+  cardHint: { fontSize: 12, marginTop: 2, marginBottom: 6 },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   periodToggle: { flexDirection: 'row', gap: 5 },
   periodBtn: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 16, borderWidth: 1.5 },
-  periodBtnText: { fontSize: 11, fontWeight: '700' },
+  periodBtnText: { fontSize: 12, fontWeight: '700' },
   heatGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
   moodStrip: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   moodDay: { alignItems: 'center', flex: 1 },
   moodDayEmoji: { fontSize: 22 },
-  moodDayLabel: { fontSize: 10, marginTop: 2 },
+  moodDayLabel: { fontSize: 12, marginTop: 2 },
   moodStats: { flexDirection: 'row', gap: 8, marginTop: 12 },
   moodStat: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
-  moodStatValue: { fontSize: 18, fontWeight: '800' },
-  moodStatLabel: { fontSize: 10, marginTop: 2 },
+  moodStatValue: { fontSize: 18, fontWeight: '800', ...numeric },
+  moodStatLabel: { fontSize: 12, marginTop: 2 },
   moodHeadline: { fontSize: 13, lineHeight: 19, marginTop: 12 },
   corrRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   corrIcon: { fontSize: 16 },
   corrName: { flex: 1, fontSize: 13, fontWeight: '600' },
-  corrDelta: { fontSize: 13, fontWeight: '800' },
+  corrDelta: { fontSize: 13, fontWeight: '800', ...numeric },
   trophyRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
   trophyTile: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, gap: 2 },
   trophyEmoji: { fontSize: 24 },
-  trophyDays: { fontSize: 14, fontWeight: '800' },
-  trophyLabel: { fontSize: 10 },
+  trophyDays: { fontSize: 14, fontWeight: '800', ...numeric },
+  trophyLabel: { fontSize: 12 },
   medalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   medal: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, maxWidth: '100%' },
   medalEmoji: { fontSize: 16 },
@@ -745,7 +754,7 @@ const styles = StyleSheet.create({
   heatLegend: { flexDirection: 'row', gap: 14, marginBottom: 2 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 10, height: 10, borderRadius: 2 },
-  legendLabel: { fontSize: 11 },
+  legendLabel: { fontSize: 12 },
   // Day detail modal
   overlay: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
@@ -790,6 +799,5 @@ const styles = StyleSheet.create({
     alignItems: 'center', minWidth: 150,
   },
   tooltipLabel: { fontSize: 13, marginBottom: 4 },
-  tooltipValue: { fontSize: 36, fontWeight: 'bold' },
   tooltipHint: { fontSize: 12, marginTop: 2 },
 });

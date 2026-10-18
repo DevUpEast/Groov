@@ -21,6 +21,7 @@ import LinkAccountSheet from '../components/LinkAccountSheet';
 import { WIDGET_NAME } from '../widgets/widgetData';
 import { summarizeBackup } from '../utils/backup';
 import { t, getLocale, useLocale, setLocale, SUPPORTED_LOCALES } from '../i18n';
+import AppText from '../components/ui/AppText';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
 const DEV_CODE = 'devmode';
@@ -551,7 +552,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.heading, { color: theme.text }]}>{t('settings.title')}</Text>
+        <AppText variant="title" style={[styles.heading, { color: theme.text }]}>{t('settings.title')}</AppText>
 
         {/* Appearance */}
         <Section title={t('settings.appearance')} theme={theme}>
@@ -744,7 +745,7 @@ export default function SettingsScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={t('settings.dev.resetDate')}
                 >
-                  <Text style={[styles.devBtnText, { color: theme.textSecondary, fontSize: 10 }]}>{t('settings.dev.now')}</Text>
+                  <Text style={[styles.devBtnText, { color: theme.textSecondary, fontSize: 12 }]}>{t('settings.dev.now')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.devBtn, { borderColor: theme.border }]} onPress={() => adjustDay(1)} accessibilityRole="button" accessibilityLabel={t('settings.dev.nextDay')}>
                   <Text style={[styles.devBtnText, { color: theme.text }]}>+</Text>
@@ -1195,10 +1196,10 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: 24, paddingBottom: 48 },
-  heading: { fontSize: 28, fontWeight: 'bold', marginBottom: 20 },
+  heading: { marginBottom: 20 },
   section: { borderRadius: 16, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
   sectionTitle: {
-    fontSize: 11, fontWeight: '700', letterSpacing: 1,
+    fontSize: 12, fontWeight: '700', letterSpacing: 1,
     paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4,
   },
   row: {
@@ -1219,7 +1220,7 @@ const styles = StyleSheet.create({
   reminderLabelInner: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   habitReminderIcon: { fontSize: 16 },
   habitBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  habitBadgeText: { fontSize: 11, fontWeight: '700' },
+  habitBadgeText: { fontSize: 12, fontWeight: '700' },
   labelInput: {
     flex: 1, fontSize: 15, fontWeight: '500', borderBottomWidth: 1,
     paddingVertical: 2, marginRight: 8,
@@ -1249,7 +1250,7 @@ const styles = StyleSheet.create({
   dangerSub: { fontSize: 12, marginTop: 2 },
   version: { textAlign: 'center', fontSize: 12, marginTop: 8 },
   versionBtn: { alignItems: 'center', marginTop: 8 },
-  devHint: { fontSize: 11, marginTop: 4 },
+  devHint: { fontSize: 12, marginTop: 4 },
   dialogInput: {
     borderWidth: 1,
     borderRadius: 10,

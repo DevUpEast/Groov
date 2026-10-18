@@ -7,6 +7,7 @@ import { usesDevice24hClock } from '../utils/clock';
 import { themes } from '../theme/colors';
 import { t } from '../i18n';
 import OverlayModal from './ui/OverlayModal';
+import { numeric } from '../theme/typography';
 
 // Native time picker (S-07). Same props and the same { hour12, minute, ampm } result as before,
 // so callers did not change.
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   card: { width: '100%', maxWidth: 340, borderRadius: 20, padding: 24 },
   title: { fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
-  preview: { fontSize: 15, fontWeight: '600', textAlign: 'center', marginTop: 6, marginBottom: 8 },
+  preview: { fontSize: 15, fontWeight: '600', textAlign: 'center', marginTop: 6, marginBottom: 8, ...numeric },
   spinner: { alignSelf: 'stretch', marginBottom: 16 },
   actions: { flexDirection: 'row', gap: 12 },
   cancelBtn: { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },

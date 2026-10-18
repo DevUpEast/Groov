@@ -15,6 +15,7 @@ import { describeGoal } from '../utils/habits';
 import { isHabitDoneOnDay } from '../utils/dayStatus';
 import { t, getLocale, useLocale } from '../i18n';
 import { data } from '../theme/tokens';
+import { numeric } from '../theme/typography';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const WEEKS = 15;                       // ~3.5 months of history in the grid
@@ -206,14 +207,26 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
 
         {/* Month labels */}
         <View style={{ flexDirection: 'row', marginLeft: DAY_LABEL_W, marginBottom: 2 }}>
-          {grid.monthLabels.map((m, i) => (
-            <Text key={i} style={{ width: cell + GRID_GAP, fontSize: 9, color: theme.textSecondary }} numberOfLines={1}>{m}</Text>
-          ))}
+          {/* A month name at 12 pt is wider than one week column; it runs into the empty
+              columns after it (months are >= 4 columns apart), right-aligned near the end. */}
+          {grid.monthLabels.map((m, i) => {
+            const tail = i >= grid.monthLabels.length - 2;
+            return (
+              <View key={i} style={{ width: cell + GRID_GAP, overflow: 'visible' }}>
+                {!!m && (
+                  <Text
+                    style={[{ width: (cell + GRID_GAP) * 3, fontSize: 12, lineHeight: 16, color: theme.textSecondary }, tail && { position: 'absolute', right: 0, textAlign: 'right' }]}
+                    numberOfLines={1}
+                  >{m}</Text>
+                )}
+              </View>
+            );
+          })}
         </View>
         <View style={{ flexDirection: 'row' }}>
           <View style={{ width: DAY_LABEL_W }}>
             {WEEKDAY_ORDER.map(d => (
-              <Text key={d} style={{ height: cell + GRID_GAP, fontSize: 9, color: theme.textSecondary, lineHeight: cell + GRID_GAP }}>
+              <Text key={d} style={{ height: cell + GRID_GAP, fontSize: 12, color: theme.textSecondary, lineHeight: cell + GRID_GAP }}>
                 {d === 1 || d === 3 || d === 5 ? WEEKDAY_LABELS[d] : ''}
               </Text>
             ))}
@@ -285,18 +298,18 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   stat: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1, gap: 2 },
   statEmoji: { fontSize: 16 },
-  statValue: { fontSize: 17, fontWeight: 'bold' },
-  statLabel: { fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  statValue: { fontSize: 17, fontWeight: 'bold', ...numeric },
+  statLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   sectionTitle: { fontSize: 15, fontWeight: '700' },
-  hint: { fontSize: 11, marginTop: 2, marginBottom: 8 },
+  hint: { fontSize: 12, marginTop: 2, marginBottom: 8 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 10, height: 10, borderRadius: 2 },
-  legendText: { fontSize: 11 },
+  legendText: { fontSize: 12 },
   weekdayRow: { flexDirection: 'row', gap: 6, height: 120, alignItems: 'flex-end' },
   weekdayCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
-  weekdayPct: { fontSize: 10, marginBottom: 4 },
+  weekdayPct: { fontSize: 12, marginBottom: 4, ...numeric },
   weekdayTrack: { flex: 1, width: '70%', borderRadius: 4, overflow: 'hidden', justifyContent: 'flex-end' },
   weekdayFill: { width: '100%', borderRadius: 4 },
-  weekdayLabel: { fontSize: 11, marginTop: 4, fontWeight: '600' },
+  weekdayLabel: { fontSize: 12, marginTop: 4, fontWeight: '600' },
 });

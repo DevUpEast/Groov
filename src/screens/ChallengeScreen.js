@@ -18,6 +18,8 @@ import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
 import { getChallengeTemplates } from '../utils/habits';
 import { t, getLocale, useLocale } from '../i18n';
 import OverlayModal from '../components/ui/OverlayModal';
+import AppText from '../components/ui/AppText';
+import { numeric } from '../theme/typography';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -598,7 +600,7 @@ export default function ChallengeScreen() {
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.headingRow}>
-          <Text style={[styles.heading, { color: theme.text }]}>{t('challenges.title')}</Text>
+          <AppText variant="title" style={[styles.heading, { color: theme.text }]}>{t('challenges.title')}</AppText>
           {canAddMore && (
             <TouchableOpacity style={[styles.newBtn, { backgroundColor: theme.action }]} onPress={openNew} accessibilityRole="button" accessibilityLabel={t('challenges.newA11y')}>
               <Text style={[styles.newBtnText, { color: theme.onAction }]}>{t('challenges.new')}</Text>
@@ -712,10 +714,10 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: 24, paddingBottom: 40 },
   headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  heading: { fontSize: 28, fontWeight: 'bold' },
+  heading: {},
   newBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   newBtnText: { fontWeight: '700', fontSize: 15 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 },
   card: { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 16 },
   challengeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 10 },
   trophy: { fontSize: 32 },
@@ -731,12 +733,12 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: 'bold' },
   progressBg: { height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 6 },
   progressFill: { height: 8, borderRadius: 4 },
-  progressLabel: { fontSize: 12, marginBottom: 8 },
+  progressLabel: { fontSize: 12, marginBottom: 8, ...numeric },
   desc: { fontSize: 13, lineHeight: 18, marginBottom: 8 },
   linkedSection: { borderTopWidth: 1, paddingTop: 12, marginTop: 4 },
   linkedTitleArea: { flexDirection: 'row', alignItems: 'center' },
   linkedTitle: { fontSize: 12, fontWeight: '600' },
-  linkedChevron: { fontSize: 10, fontWeight: '700' },
+  linkedChevron: { fontSize: 12, fontWeight: '700' },
   linkedPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   linkedPill: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, gap: 4, maxWidth: 140 },
   linkedPillIcon: { fontSize: 14 },
@@ -778,7 +780,7 @@ const styles = StyleSheet.create({
   templateChip: { width: 96, borderWidth: 1.5, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center' },
   templateEmoji: { fontSize: 22 },
   templateDays: { fontSize: 15, fontWeight: '800', marginTop: 2 },
-  templateName: { fontSize: 10, marginTop: 2 },
+  templateName: { fontSize: 12, marginTop: 2 },
   // Icon picker
   iconPickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   iconPickerBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
@@ -795,14 +797,14 @@ const styles = StyleSheet.create({
   sheetTitle: { fontSize: 20, fontWeight: 'bold' },
   sheetCloseBtn: { padding: 4 },
   sheetCloseTxt: { fontSize: 20, fontWeight: 'bold' },
-  label: { fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
+  label: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
   input: { borderWidth: 1.5, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 16 },
   inputMulti: { height: 80, textAlignVertical: 'top' },
   rangeRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   rangeBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
   rangeBtnText: { fontSize: 13, fontWeight: '700' },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, marginHorizontal: 4 },
-  sliderLabelText: { fontSize: 11 },
+  sliderLabelText: { fontSize: 12 },
   saveBtn: { padding: 16, borderRadius: 14, alignItems: 'center' },
   saveBtnText: { fontSize: 16, fontWeight: '700' },
 });

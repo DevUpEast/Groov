@@ -12,6 +12,8 @@ import { weekdayInitials } from '../utils/schedule';
 import { t, getLocale, useLocale } from '../i18n';
 import { elevation, shareCard } from '../theme/tokens';
 import OverlayModal from './ui/OverlayModal';
+import AppText from './ui/AppText';
+import { numeric } from '../theme/typography';
 
 // Shareable cards (#31): streak card, weekly recap and a year-in-pixels grid.
 // Each card is rendered off-screen-sized, captured with react-native-view-shot and
@@ -32,7 +34,7 @@ function StreakCard({ streak, best, perfectDays, habits, displayName, today }) {
   return (
     <View style={[styles.card, { backgroundColor: BRAND }]}>
       <Text style={styles.cardKicker}>{displayName ? t('shareCards.namedStreak', { name: displayName }) : t('shareCards.myStreak')}</Text>
-      <Text style={styles.bigNumber}>{streak}</Text>
+      <AppText variant="display" style={styles.bigNumber}>{streak}</AppText>
       <Text style={styles.bigLabel}>{t('shareCards.daysInRow', { count: streak })}</Text>
       <View style={styles.statRow}>
         <View style={styles.stat}><Text style={styles.statValue}>{best}</Text><Text style={styles.statLabel}>{t('shareCards.best')}</Text></View>
@@ -50,7 +52,7 @@ function WeekCard({ days, displayName, today }) {
   return (
     <View style={[styles.card, { backgroundColor: BRAND_DARK }]}>
       <Text style={styles.cardKicker}>{displayName ? t('shareCards.namedWeek', { name: displayName }) : t('shareCards.myWeek')}</Text>
-      <Text style={styles.bigNumber}>{pct}%</Text>
+      <AppText variant="display" style={styles.bigNumber}>{pct}%</AppText>
       <Text style={styles.bigLabel}>{t('shareCards.weekSummary', { count: done })}</Text>
       <View style={styles.weekRow}>
         {days.map(d => {
@@ -214,21 +216,22 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 12, fontWeight: '700' },
   card: { borderRadius: 24, padding: 20, width: CARD_W },
   cardKicker: { color: shareCard.fgSecondary, fontSize: 13, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
+  // The display face at share-card scale (fixed brand art, not the in-app scale).
   bigNumber: { color: shareCard.fg, fontSize: 72, fontWeight: '900', marginTop: 6, lineHeight: 80 },
   bigLabel: { color: shareCard.fgStrong, fontSize: 16, fontWeight: '600', marginTop: -4 },
   statRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   stat: { flex: 1, backgroundColor: shareCard.well, borderRadius: 12, paddingVertical: 10, alignItems: 'center' },
-  statValue: { color: shareCard.fg, fontSize: 20, fontWeight: '800' },
-  statLabel: { color: shareCard.fgSecondary, fontSize: 11, marginTop: 2 },
+  statValue: { color: shareCard.fg, fontSize: 20, fontWeight: '800', ...numeric },
+  statLabel: { color: shareCard.fgSecondary, fontSize: 12, marginTop: 2 },
   weekRow: { flexDirection: 'row', gap: 8, height: 110, alignItems: 'flex-end', marginTop: 18 },
   weekDay: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
   weekBarTrack: { flex: 1, width: '70%', backgroundColor: shareCard.well, borderRadius: 6, overflow: 'hidden', justifyContent: 'flex-end' },
   weekBarFill: { width: '100%', backgroundColor: shareCard.fg, borderRadius: 6 },
-  weekLabel: { color: shareCard.fgSecondary, fontSize: 11, marginTop: 4, fontWeight: '700' },
+  weekLabel: { color: shareCard.fgSecondary, fontSize: 12, marginTop: 4, fontWeight: '700' },
   legendRow: { flexDirection: 'row', gap: 12 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 9, height: 9, borderRadius: 2 },
-  legendText: { color: shareCard.fgTertiary, fontSize: 11 },
+  legendText: { color: shareCard.fgTertiary, fontSize: 12 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 },
   footerBrand: { color: shareCard.fg, fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
   footerDate: { color: shareCard.fgTertiary, fontSize: 12 },

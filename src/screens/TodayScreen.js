@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
   },
   sectionLabel: {
-    fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase',
+    fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase',
   },
   markRestBtn: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, marginTop: 4 },
   markRestText: { fontSize: 15, fontWeight: '700' },
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 16,
   },
   nudgeEmoji: { fontSize: 18, marginTop: 1 },
-  nudgeLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 },
+  nudgeLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 },
   nudgeText: { fontSize: 13, lineHeight: 20 },
   empty: {
     borderWidth: 2, borderStyle: 'dashed', borderRadius: 16,

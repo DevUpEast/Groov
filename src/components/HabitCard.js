@@ -10,6 +10,7 @@ import ActionSheet from './ui/ActionSheet';
 import { usesCounter, countStep, describeProgress, unitLabel } from '../utils/habits';
 import { t, useLocale } from '../i18n';
 import { resolveAccent } from '../theme/accents';
+import { type, numeric } from '../theme/typography';
 
 export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onSkipToggle }) {
   const {
@@ -196,7 +197,8 @@ const styles = StyleSheet.create({
   iconImage: { width: 32, height: 32, borderRadius: 6, marginRight: 12 },
   info: { flex: 1 },
   name: { fontSize: 15, fontWeight: '600' },
-  sub: { fontSize: 12, marginTop: 2 },
+  // Tabular: the running timer ("0:03") and counts change in place without jitter.
+  sub: { fontSize: 12, marginTop: 2, ...numeric },
   checkbox: {
     width: 28, height: 28, borderRadius: 14,
     borderWidth: 2, alignItems: 'center', justifyContent: 'center',
@@ -208,5 +210,5 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   counterBtnText: { fontSize: 18, fontWeight: '600', lineHeight: 22 },
-  counterNum: { fontSize: 16, fontWeight: 'bold', minWidth: 20, textAlign: 'center' },
+  counterNum: { ...type.numericSmall, minWidth: 20, textAlign: 'center' },
 });

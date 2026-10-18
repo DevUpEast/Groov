@@ -1,8 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import AppText from './ui/AppText';
+import { palette } from '../theme/tokens';
+import { type } from '../theme/typography';
 
-export default function ProgressRing({ progress, size = 120, strokeWidth = 10, color = '#4F46E5', bg = '#E5E7EB', label, sublabel, sublabelColor }) {
+const DEFAULTS = palette.light;
+
+export default function ProgressRing({ progress, size = 120, strokeWidth = 10, color = DEFAULTS.action, bg = DEFAULTS.track, label, sublabel, sublabelColor }) {
   const r = (size - strokeWidth) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - Math.min(Math.max(progress, 0), 1));
@@ -25,7 +30,8 @@ export default function ProgressRing({ progress, size = 120, strokeWidth = 10, c
         />
       </Svg>
       <View style={styles.labelContainer}>
-        {label && <Text style={[styles.label, { color }]}>{label}</Text>}
+        {/* The count is a display numeral (Space Grotesk, tabular, §2.7 displayRing). */}
+        {label && <AppText variant="displayRing" style={{ color }}>{label}</AppText>}
         {sublabel && <Text style={[styles.sublabel, sublabelColor && { color: sublabelColor }]}>{sublabel}</Text>}
       </View>
     </View>
@@ -41,13 +47,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
   },
-  label: {
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
   sublabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
+    ...type.caption,
+    color: DEFAULTS.textSecondary,
     marginTop: 2,
   },
 });
