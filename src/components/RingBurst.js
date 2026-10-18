@@ -48,14 +48,17 @@ function RingBurst({ theme, targets }, ref) {
   targetsRef.current = targets;
   const layerRef = useRef(null);
   const v = useRef(null);
-  if (!v.current) v.current = { p: new Animated.Value(0), ox: new Animated.Value(0), oy: new Animated.Value(0), k: new Animated.Value(1) };
+  if (!v.current) v.current = { vis: new Animated.Value(0), p: new Animated.Value(0), ox: new Animated.Value(0), oy: new Animated.Value(0), k: new Animated.Value(1) };
   const run = useRef({ id: 0, anim: null });
   const particles = useMemo(() => burstParticles(), []);
   const colors = theme.celebration || [theme.signature];
 
   const styles = useMemo(() => {
-    const { p, ox, oy, k } = v.current;
-    const opacity = p.interpolate({ inputRange: [0, 0.06, 0.55, 1], outputRange: [0, 1, 1, 0], extrapolate: 'clamp' });
+    const { vis, p, ox, oy, k } = v.current;
+    // `vis` (never animated) hides a stopped burst: resetting `p` right after stopping its native
+    // run lost to the native end event, which wrote the mid-run value back and the particles
+    // reappeared (seen on the release build after an un-check during the burst).
+    const opacity = Animated.multiply(vis, p.interpolate({ inputRange: [0, 0.06, 0.55, 1], outputRange: [0, 1, 1, 0], extrapolate: 'clamp' }));
     const scale = p.interpolate({ inputRange: [0, 1], outputRange: [1, 0.5], extrapolate: 'clamp' });
     // Decelerating outward travel, baked into the interpolation (the timing itself is linear).
     const input = [0, 0.25, 0.5, 0.75, 1];
@@ -77,7 +80,7 @@ function RingBurst({ theme, targets }, ref) {
     run.current.id += 1;
     run.current.anim?.stop();
     run.current.anim = null;
-    v.current.p.setValue(0);
+    v.current.vis.setValue(0);
   }, []);
 
   // `endAt`: when the burst should end (ms epoch); it starts as soon as the ring is measured.
@@ -95,9 +98,10 @@ function RingBurst({ theme, targets }, ref) {
     oy.setValue(c.y);
     k.setValue(r.width / 2);
     p.setValue(0);
+    v.current.vis.setValue(1);
     const anim = Animated.timing(p, { toValue: 1, duration: Math.max(LATE_MIN_MS, endAt - Date.now()), easing: (x) => x, useNativeDriver: true });
     run.current.anim = anim;
-    anim.start(() => { if (run.current.anim === anim) { run.current.anim = null; p.setValue(0); } });
+    anim.start(() => { if (run.current.anim === anim) run.current.anim = null; });
   }, [stop]);
 
   useImperativeHandle(ref, () => ({ play, stop }), [play, stop]);
