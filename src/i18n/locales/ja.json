@@ -398,6 +398,7 @@
     "stats": { "current": "現在", "best": "最高", "done": "達成", "total": "合計", "a11y": "%{label}：%{value}" },
     "history": "履歴",
     "hint": "過去の日をタップして修正できます",
+    "todayOnToday": "今日の記録は「今日」タブで行えます。",
     "cellA11y": "%{date}：%{status}",
     "status": { "future": "未来", "done": "完了", "rest": "休み", "missed": "未達成", "none": "なし", "pending": "未完了" },
     "legend": { "done": "完了", "partial": "一部", "missed": "未達成", "pending": "今日の未完了", "skippedFrozen": "スキップ/フリーズ", "rest": "休み" },

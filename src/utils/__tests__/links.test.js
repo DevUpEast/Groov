@@ -52,3 +52,57 @@ describe('parseDeepLink', () => {
     expect(habitLink('7', 'done')).toBe('groov://habit/7/done');
   });
 });
+
+describe('dispatchRoute (deep links and AppContext.openRoute, C-02b)', () => {
+  const { dispatchRoute } = require('../links');
+  const spies = () => ({ setRequestedTab: jest.fn(), setPendingRoute: jest.fn(), onDone: jest.fn() });
+
+  it('Edit from Today: switches to Habits and leaves the route pending for that screen', () => {
+    const s = spies();
+    const route = { tab: 3, habitId: 'h1', action: 'edit' };
+    expect(dispatchRoute(route, s)).toBe(true);
+    expect(s.setRequestedTab).toHaveBeenCalledWith(3);
+    expect(s.setPendingRoute).toHaveBeenCalledWith(route);
+    expect(s.onDone).not.toHaveBeenCalled();
+  });
+
+  it('a done route runs onDone and shows Today, with no pending route', () => {
+    const s = spies();
+    dispatchRoute({ tab: 0, habitId: 'h1', action: 'done' }, s);
+    expect(s.onDone).toHaveBeenCalledWith({ tab: 0, habitId: 'h1', action: 'done' });
+    expect(s.setRequestedTab).toHaveBeenCalledWith(0);
+    expect(s.setPendingRoute).not.toHaveBeenCalled();
+  });
+
+  it('drops dev-only routes outside dev and the mockup; a tab-less route stays on the tab', () => {
+    const s = spies();
+    expect(dispatchRoute({ tab: null, action: 'designPreview' }, s)).toBe(false);
+    expect(s.setPendingRoute).not.toHaveBeenCalled();
+    expect(dispatchRoute({ tab: null, action: 'designPreview' }, { ...s, dev: true })).toBe(true);
+    expect(s.setRequestedTab).not.toHaveBeenCalled();
+    expect(s.setPendingRoute).toHaveBeenCalledTimes(1);
+  });
+
+  it('parseDeepLink never produces an edit route (external links cannot open the form for a habit)', () => {
+    expect(parseDeepLink('groov://habit/h1/edit')).toEqual({ tab: 3, habitId: 'h1', action: 'open' });
+  });
+});
+
+describe('habitsRouteAction (the Habits tab consuming a pending route)', () => {
+  const { habitsRouteAction } = require('../links');
+  const habits = [{ id: 'h1', name: 'Water' }];
+
+  it('edit and open find the habit; a missing habit does nothing', () => {
+    expect(habitsRouteAction({ tab: 3, habitId: 'h1', action: 'edit' }, habits)).toEqual({ type: 'edit', habit: habits[0] });
+    expect(habitsRouteAction({ tab: 3, habitId: 'h1', action: 'open' }, habits)).toEqual({ type: 'open', habit: habits[0] });
+    expect(habitsRouteAction({ tab: 3, habitId: 'gone', action: 'edit' }, habits)).toEqual({ type: 'none' });
+  });
+
+  it('new opens the form; another tab leaves; a tab-less or empty route is not for this tab', () => {
+    expect(habitsRouteAction({ tab: 3, action: 'new' }, habits)).toEqual({ type: 'new' });
+    expect(habitsRouteAction({ tab: 0 }, habits)).toEqual({ type: 'leave' });
+    expect(habitsRouteAction({ tab: null, action: 'designPreview' }, habits)).toBeNull();
+    expect(habitsRouteAction(null, habits)).toBeNull();
+    expect(habitsRouteAction({ tab: 3 }, habits)).toEqual({ type: 'none' });
+  });
+});

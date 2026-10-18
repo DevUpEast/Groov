@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { AppState, useColorScheme, Linking, Alert, Platform } from 'react-native';
 import * as ExpoLinking from 'expo-linking';
 import * as QuickActions from 'expo-quick-actions';
-import { parseDeepLink, isRouteAllowed } from '../utils/links';
+import { parseDeepLink, dispatchRoute } from '../utils/links';
 import {
   isGoalMet, justMetGoal, STARTER_HABITS, countAfterIncrement, applyMarkRest, revertMarkRest,
 } from '../utils/habits';
@@ -414,22 +414,20 @@ export function AppProvider({ children }) {
   // the owning screen). Today's detail sheet uses it for Edit: { tab: 3, habitId, action: 'edit' }.
   const openRoute = useCallback((route) => routeRef.current?.(route), []);
   useEffect(() => {
-    routeRef.current = (route) => {
-      if (!isRouteAllowed(route, { dev: __DEV__, mockup: mockupParams.active })) return;
-      if (route.action === 'done' && route.habitId) {
-        const h = allHabits.find(x => x.id === route.habitId && !x.archived);
-        if (h) {
-          const key = localDateKey();
-          setCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
-          setDailySnapshot(prev => withSnapshot(prev, key, habits));
-          if (userId) syncCompletion(userId, key, h.id, h.volumeGoal);
-        }
-        setRequestedTab(0);
-        return;
-      }
-      if (route.tab != null) setRequestedTab(route.tab);
-      setPendingRoute(route);
-    };
+    routeRef.current = (route) => dispatchRoute(route, {
+      dev: __DEV__,
+      mockup: mockupParams.active,
+      setRequestedTab,
+      setPendingRoute,
+      onDone: ({ habitId }) => {
+        const h = allHabits.find(x => x.id === habitId && !x.archived);
+        if (!h) return;
+        const key = localDateKey();
+        setCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
+        setDailySnapshot(prev => withSnapshot(prev, key, habits));
+        if (userId) syncCompletion(userId, key, h.id, h.volumeGoal);
+      },
+    });
   }, [allHabits, habits, userId]);
   useEffect(() => {
     if (!loaded) return;

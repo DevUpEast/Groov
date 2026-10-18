@@ -376,6 +376,13 @@ describe('C-02b counter semantics', () => {
     mockCount = 10;
     const optsT = renderWith(timed).r.root.findAll(n => n.type === 'ActionSheet')[0].props.options;
     expect(optsT.some(o => o.label === 'Remove 5')).toBe(true);
+    // m3: below one step the label (and the decrement) is what is left, not the step.
+    mockCount = 3;
+    const low = renderWith(timed);
+    const opt = low.r.root.findAll(n => n.type === 'ActionSheet')[0].props.options.find(o => /^Remove/.test(o.label));
+    expect(opt.label).toBe('Remove 3');
+    act(() => { opt.onPress(); });
+    expect(low.onDecrement).toHaveBeenCalledWith(3);
   });
 
   it('timed: ▶ takes the + slot until done, then the pill (+5); a running timer keeps ■ even at goal', () => {

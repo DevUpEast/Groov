@@ -50,6 +50,37 @@ export function isRouteAllowed(route, { dev = false, mockup = false } = {}) {
   return true;
 }
 
+// Apply a parsed route (a deep link, a quick action, or in-app navigation through
+// AppContext.openRoute): dev-only routes are dropped outside dev / the mockup; a `done`
+// route runs `onDone` and shows Today; anything else switches to its tab (if it names one)
+// and waits as the pending route for the owning screen. Returns false when dropped.
+export function dispatchRoute(route, { dev = false, mockup = false, setRequestedTab, setPendingRoute, onDone } = {}) {
+  if (!isRouteAllowed(route, { dev, mockup })) return false;
+  if (route.action === 'done' && route.habitId) {
+    onDone?.(route);
+    setRequestedTab(0);
+    return true;
+  }
+  if (route.tab != null) setRequestedTab(route.tab);
+  setPendingRoute(route);
+  return true;
+}
+
+// What the Habits tab does with a pending route: 'leave' (it names another tab: drop this
+// tab's sheets), 'new' (the form), 'open' (the habit's detail sheet), 'edit' (the form for
+// that habit; Edit from Today's detail sheet, C-02b) or null (not for this tab, or the
+// habit is gone). `habit` is set for open / edit.
+export function habitsRouteAction(route, habits, tab = 3) {
+  if (!route || route.tab == null) return null;
+  if (routeLeavesTab(route, tab)) return { type: 'leave' };
+  if (route.action === 'new') return { type: 'new' };
+  if (route.action === 'open' || route.action === 'edit') {
+    const habit = (habits || []).find(h => h.id === route.habitId);
+    return habit ? { type: route.action, habit } : { type: 'none' };
+  }
+  return { type: 'none' };
+}
+
 // A pending route sends the user away from `tab` only when it names a different tab;
 // a tab-less route (the design preview) never closes that screen's sheets.
 export function routeLeavesTab(route, tab) {

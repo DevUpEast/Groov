@@ -110,6 +110,9 @@ export default function TodayScreen() {
   const editFromDetail = useCallback((habit) => openRoute({ tab: 3, habitId: habit.id, action: 'edit' }), [openRoute]);
   // Lock the pager swipe while the sheet is up, like the Habits screen does.
   useEffect(() => { setModalOpen(!!detailHabitId); }, [detailHabitId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The habit vanished while its sheet was open (deleted elsewhere and pulled in, archived):
+  // the sheet has unmounted, so clear its id and release the swipe lock (code review m1).
+  useEffect(() => { if (detailHabitId && !detailHabit) setDetailHabitId(null); }, [detailHabitId, detailHabit]);
   // A deep link to another tab drops the sheet so it does not cover the target.
   useEffect(() => { if (routeLeavesTab(pendingRoute, 0)) setDetailHabitId(null); }, [pendingRoute]);
 
@@ -341,6 +344,16 @@ export default function TodayScreen() {
       });
     }
   }, [decrementHabit, effectiveChallenges, challenges, dueHabits, getHabitCount, unmarkChallengeDay, todayStr, cancelQueuedFor]);
+
+  // Today's cell in the detail sheet (code review M1): set today's count through the same
+  // handlers as a card, so challenge claims / un-claims, the Mark-the-rest queue, the toast,
+  // celebrations and feedback all run. "Set 20 (done)" on a timed habit is the manual way to
+  // log a session done away from the in-app timer.
+  const setTodayFromSheet = useCallback((habit, target) => {
+    const delta = target - getHabitCount(habit.id);
+    if (delta > 0) handleIncrement(habit, delta);
+    else if (delta < 0) handleDecrement(habit, -delta);
+  }, [getHabitCount, handleIncrement, handleDecrement]);
 
   // Skipping (or un-skipping) a linked habit inside the window cancels the queued
   // completion and un-marks that challenge's day.
@@ -593,7 +606,7 @@ export default function TodayScreen() {
         }}
       />
 
-      <HabitDetailSheet habit={detailHabit} onClose={closeDetail} onEdit={editFromDetail} />
+      <HabitDetailSheet habit={detailHabit} onClose={closeDetail} onEdit={editFromDetail} onSetToday={setTodayFromSheet} />
 
       <NoteModal
         target={noteTarget}

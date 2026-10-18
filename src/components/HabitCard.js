@@ -120,12 +120,15 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   const handleLongPress = () => setMenuOpen(true);
   // The counter and timer buttons are part of the card: a long hold on them opens the same menu.
   const holdForOptions = { onLongPress: handleLongPress, delayLongPress: LONG_PRESS_MS };
+  const removeAmount = Math.min(step, count);
   const menuOptions = [
     { label: skipped ? t('habitCard.longPress.unskip') : t('habitCard.longPress.skip'), onPress: () => { toggleSkipHabitOn(habit.id, today); onSkipToggle?.(habit); } },
     { label: yesterdayDone ? t('habitCard.longPress.undoYesterday') : t('habitCard.longPress.markYesterday'), onPress: () => toggleHabitDoneOn(habit.id, yesterday) },
     // The − is hidden once a counter reaches its goal (the done pill), so the decrement lives
     // here too (C-02b acceptance d; C-03 keeps this option).
-    ...(isVolume && count > 0 ? [{ label: step > 1 ? t('habitCard.longPress.minusMany', { count: step }) : t('habitCard.longPress.minusOne'), onPress: () => onDecrement(step) }] : []),
+    // The label says what is removed: a step, or what is left when that is less (count floors
+    // at 0, code review m3).
+    ...(isVolume && count > 0 ? [{ label: removeAmount > 1 ? t('habitCard.longPress.minusMany', { count: removeAmount }) : t('habitCard.longPress.minusOne'), onPress: () => onDecrement(removeAmount) }] : []),
     ...(onNote ? [{ label: note ? t('habitCard.longPress.editNote') : t('habitCard.longPress.addNote'), onPress: () => onNote(habit, today) }] : []),
   ];
 

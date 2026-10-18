@@ -398,6 +398,7 @@
     "stats": { "current": "Actuelle", "best": "Record", "done": "Faits", "total": "Total", "a11y": "%{label} : %{value}" },
     "history": "Historique",
     "hint": "Appuie sur un jour passé pour le corriger",
+    "todayOnToday": "Note les progrès du jour dans l'onglet Aujourd'hui.",
     "cellA11y": "%{date} : %{status}",
     "status": { "future": "à venir", "done": "fait", "rest": "repos", "missed": "manqué", "none": "aucun", "pending": "en attente" },
     "legend": { "done": "Fait", "partial": "Partiel", "missed": "Manqué", "pending": "À faire aujourd’hui", "skippedFrozen": "Sauté / gelé", "rest": "Repos" },
