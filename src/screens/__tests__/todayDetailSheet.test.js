@@ -54,6 +54,7 @@ function mockMakeCtx() {
     moods: {}, setMood: jest.fn(),
     themeName: 'light', allHabits: s.habits, getOverallStreak: () => 0,
     habitsOnDay: () => s.habits, isSnapshotHabitDone: () => false, isExcused: () => false, isDayFrozen: () => false,
+    getStreakForHabit: () => 0,
   };
 }
 
@@ -64,6 +65,8 @@ jest.mock('../../services/feedback', () => ({
   default: { play: jest.fn(() => ({ cancel: jest.fn() })), toggled: jest.fn() },
   EVENTS: { habitDone: 'habit.done', habitUndone: 'habit.undone', counterStep: 'counter.step', challengeClaimed: 'challenge.claimed', dayComplete: 'day.complete', markRest: 'markRest', milestone: 'milestone', refused: 'refused' },
 }));
+// Device-local dev flags (C-06a choreography) read AsyncStorage: nothing stored = defaults.
+jest.mock('../../utils/storage', () => ({ loadData: jest.fn(() => Promise.resolve(null)), saveData: jest.fn(() => Promise.resolve()) }));
 jest.mock('../../services/aiCoaching', () => ({ fetchDailyNudge: jest.fn(() => Promise.resolve(null)) }));
 jest.mock('../../services/review', () => ({ maybeRequestReview: jest.fn() }));
 jest.mock('react-native-svg', () => {
@@ -190,7 +193,7 @@ describe("today's cell goes through Today's handlers (M1)", () => {
     act(() => { t.sheet().onSetToday(water, 0); });
     expect(mock.counts.w).toBe(0);
     expect(mock.unmarkChallengeDay).toHaveBeenCalledWith('c1');
-    expect(feedback.play).toHaveBeenCalledWith('habit.undone');
+    expect(feedback.play).toHaveBeenCalledWith('habit.undone', expect.objectContaining({ delay: 0 }));
     // The undo window closes: the cancelled completion never runs.
     t.rerender();
     const toast = t.r.root.findAll(n => n.type === 'UndoToast')[0];

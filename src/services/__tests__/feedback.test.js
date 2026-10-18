@@ -341,6 +341,45 @@ describe('rate limit and log', () => {
     expect(recent()).toHaveLength(50);
     expect(recent()[49]).toMatchObject({ event: 'selection', haptic: 'android:segment-tick' });
   });
+
+  test('C-06a: `at` (the tap time) anchors the delay, and the log records the beat and the drift', () => {
+    setPlatform('android', 36);
+    const tapAt = Date.now();
+    jest.advanceTimersByTime(200); // the JS thread was busy for 200 ms before play() ran
+    play(EVENTS.dayComplete, { at: tapAt });
+    jest.advanceTimersByTime(549);
+    expect(recent().filter(e => e.haptic)).toEqual([]);
+    jest.advanceTimersByTime(1);
+    // Fired at +750 from the tap, not +950: on its beat, drift 0. The second pulse follows at +125.
+    const [first] = recent().filter(e => e.haptic);
+    expect(first).toMatchObject({ event: 'day.complete', offset: 750, target: 750, drift: 0 });
+    jest.advanceTimersByTime(125);
+    const sound = recent().find(e => e.sound === 'chord');
+    expect(sound).toMatchObject({ offset: 750, target: 750, drift: 0 });
+    expect(recent().filter(e => e.haptic)[1]).toMatchObject({ offset: 875, target: 875, drift: 0 });
+  });
+
+  test('C-06a: a play that arrives after its beat fires at once and logs the drift', () => {
+    setPlatform('android', 36);
+    const tapAt = Date.now();
+    jest.advanceTimersByTime(300);
+    play(EVENTS.challengeClaimed, { at: tapAt, delay: 250 });
+    expect(recent().find(e => e.haptic)).toMatchObject({ offset: 300, target: 250, drift: 50 });
+    // A future or missing `at` counts from now.
+    feedback.clearRecent();
+    play(EVENTS.habitDone, { at: Date.now() + 5000, tone: { n: 1 } });
+    expect(recent().find(e => e.haptic)).toMatchObject({ offset: 0, target: 0, drift: 0 });
+  });
+
+  test('C-06a: quietIn counts down the moment after the last play', () => {
+    expect(feedback.quietIn()).toBe(0);
+    play(EVENTS.habitDone, { tone: { n: 1 } });
+    expect(feedback.quietIn()).toBe(feedback.PREWARM_QUIET_MS);
+    jest.advanceTimersByTime(1000);
+    expect(feedback.quietIn()).toBe(feedback.PREWARM_QUIET_MS - 1000);
+    jest.advanceTimersByTime(1000);
+    expect(feedback.quietIn()).toBe(0);
+  });
 });
 
 describe('source checks', () => {

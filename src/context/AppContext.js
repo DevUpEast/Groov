@@ -39,6 +39,7 @@ import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocal
 import { t, useLocale } from '../i18n';
 import feedback, { EVENTS as FEEDBACK } from '../services/feedback';
 import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
+import { afterMoment, flushMoment } from '../utils/afterMoment';
 import { ThemeContext } from '../theme/ThemeContext';
 
 // The one feedback gate (src/services/feedback.js): callers never check these settings.
@@ -124,6 +125,16 @@ export function AppProvider({ children }) {
   // that the rest of the app works with.
   const [allHabits, setHabits] = useState([]);
   const [completions, setCompletions] = useState({});
+  // The latest completions, ahead of React: a check-off writes here synchronously, so rapid
+  // taps that land before the next render each count from the previous one (C-06a (c):
+  // ten quick water taps make ten). Re-synced from state whenever state changes.
+  const completionsRef = useRef({ state: completions, current: completions });
+  if (completionsRef.current.state !== completions) completionsRef.current = { state: completions, current: completions };
+  const liveCompletions = () => completionsRef.current.current;
+  const writeLive = (day, habitId, count) => {
+    const cur = completionsRef.current.current;
+    completionsRef.current.current = { ...cur, [day]: { ...(cur[day] || {}), [habitId]: count } };
+  };
   // Free-text note per completion: { 'YYYY-MM-DD': { habitId: 'text' } }.
   const [notes, setNotes] = useState({});
   // Optional daily mood 1-5: { 'YYYY-MM-DD': 4 }.
@@ -262,11 +273,15 @@ export function AppProvider({ children }) {
   }
 
   // ── AsyncStorage persistence ─────────────────────────────────────────────────
-  useEffect(() => { if (loaded) saveData('habits', allHabits); }, [allHabits, loaded]);
-  useEffect(() => { if (loaded) saveData('completions', completions); }, [completions, loaded]);
-  useEffect(() => { if (loaded) saveData('notes', notes); }, [notes, loaded]);
-  useEffect(() => { if (loaded) saveData('moods', moods); }, [moods, loaded]);
-  useEffect(() => { if (loaded) saveData('settings', settings); }, [settings, loaded]);
+  // Saves wait out a check-off moment (C-06a: nothing heavy inside the 0–1500 ms beats);
+  // the latest value per key wins, and backgrounding the app saves at once (afterMoment).
+  const persist = (key, value) => afterMoment(`save:${key}`, () => saveData(key, value));
+  useEffect(() => flushMoment, []);
+  useEffect(() => { if (loaded) persist('habits', allHabits); }, [allHabits, loaded]);
+  useEffect(() => { if (loaded) persist('completions', completions); }, [completions, loaded]);
+  useEffect(() => { if (loaded) persist('notes', notes); }, [notes, loaded]);
+  useEffect(() => { if (loaded) persist('moods', moods); }, [moods, loaded]);
+  useEffect(() => { if (loaded) persist('settings', settings); }, [settings, loaded]);
   // One feedback gate for the whole app (src/services/feedback.js); callers need no check.
   // The load paths above also set it synchronously so child mount effects never
   // see a stale value; this effect covers every other settings change.
@@ -274,13 +289,13 @@ export function AppProvider({ children }) {
   // Pre-render the sound kit at idle after launch (no-op when sound is off, on web, or when
   // already started), so the first chord or fanfare never renders inside a celebration.
   useEffect(() => { if (loaded && settings.soundEnabled) feedback.prewarmSounds(); }, [loaded, settings.soundEnabled]);
-  useEffect(() => { if (loaded) saveData('dateOffset', dateOffset); }, [dateOffset, loaded]);
-  useEffect(() => { if (loaded) saveData('challenges', challenges); }, [challenges, loaded]);
-  useEffect(() => { if (loaded) saveData('hasOnboarded', hasOnboarded); }, [hasOnboarded, loaded]);
-  useEffect(() => { if (loaded) saveData('dailySnapshot', dailySnapshot); }, [dailySnapshot, loaded]);
-  useEffect(() => { if (loaded) saveData('pastChallenges', pastChallenges); }, [pastChallenges, loaded]);
-  useEffect(() => { if (loaded && accountCreatedAt) saveData('accountCreatedAt', accountCreatedAt); }, [accountCreatedAt, loaded]);
-  useEffect(() => { if (loaded) saveData('pendingChallengeRewards', pendingChallengeRewards); }, [pendingChallengeRewards, loaded]);
+  useEffect(() => { if (loaded) persist('dateOffset', dateOffset); }, [dateOffset, loaded]);
+  useEffect(() => { if (loaded) persist('challenges', challenges); }, [challenges, loaded]);
+  useEffect(() => { if (loaded) persist('hasOnboarded', hasOnboarded); }, [hasOnboarded, loaded]);
+  useEffect(() => { if (loaded) persist('dailySnapshot', dailySnapshot); }, [dailySnapshot, loaded]);
+  useEffect(() => { if (loaded) persist('pastChallenges', pastChallenges); }, [pastChallenges, loaded]);
+  useEffect(() => { if (loaded && accountCreatedAt) persist('accountCreatedAt', accountCreatedAt); }, [accountCreatedAt, loaded]);
+  useEffect(() => { if (loaded) persist('pendingChallengeRewards', pendingChallengeRewards); }, [pendingChallengeRewards, loaded]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -348,7 +363,8 @@ export function AppProvider({ children }) {
     // Re-runs when permission is granted, so already-stored reminders get scheduled.
     // Debounced and serialized (#186): only the latest state's pass survives, so a
     // reminder turned off cannot be re-added by an older pass still in flight.
-    requestReminderSchedule(settings, habits, { prompt: false, missesByHabit, today: localDateKey() });
+    const reminderArgs = [settings, habits, { prompt: false, missesByHabit, today: localDateKey() }];
+    afterMoment('reminders', () => requestReminderSchedule(...reminderArgs));
     remindersAppliedOnce.current = true;
   }, [loaded, settings.notificationsEnabled, settings.reminders, habitReminderKey, backoffKey, clockTick, notificationPermission]); // eslint-disable-line react-hooks/exhaustive-deps
   // Sign-out / account switch unmounts this provider: a pass queued here must not run
@@ -524,7 +540,7 @@ export function AppProvider({ children }) {
   // the widget wrote while the app was closed (widgetPendingSync) into the cloud.
   useEffect(() => {
     if (!loaded) return;
-    refreshWidget({ habits: allHabits, completions, settings, today: localDateKey() });
+    afterMoment('widget', () => refreshWidget({ habits: allHabits, completions, settings, today: localDateKey() }));
   }, [loaded, allHabits, completions, settings.theme, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!loaded || !userId) return;
@@ -544,7 +560,7 @@ export function AppProvider({ children }) {
     const realToday = localDateKey();
     const left = habits.filter(h => isScheduledOn(h.schedule, realToday)
       && !isSatisfiedOn(h.schedule, realToday, (k) => isHabitDoneOnDay(h, k, completions) === true)).length;
-    setBadge(settings.notificationsEnabled ? left : 0);
+    afterMoment('badge', () => setBadge(settings.notificationsEnabled ? left : 0));
   }, [loaded, habits, completions, settings.notificationsEnabled, clockTick]);
 
   // ── Smart check-in (evening) scheduling ──────────────────────────────────────
@@ -556,15 +572,16 @@ export function AppProvider({ children }) {
     const realToday = localDateKey();
     // Serialized with the reminder passes (#186) so the latest state wins.
     if (!settings.eveningReminderEnabled || !settings.notificationsEnabled) {
-      requestEveningCheckIn(realToday, { schedule: false });
+      afterMoment('eveningCheckIn', () => requestEveningCheckIn(realToday, { schedule: false }));
       return;
     }
     const due = habits.filter(h => isScheduledOn(h.schedule, realToday));
     const allDone = due.length > 0 && due.every(h =>
       isSatisfiedOn(h.schedule, realToday, (k) => isHabitDoneOnDay(h, k, completions) === true));
-    requestEveningCheckIn(realToday, allDone
+    // After the check-off moment (C-06a): rescheduling is native work on the JS thread.
+    afterMoment('eveningCheckIn', () => requestEveningCheckIn(realToday, allDone
       ? { schedule: false }
-      : { schedule: true, hour: settings.eveningReminderHour ?? 20, minute: settings.eveningReminderMinute ?? 0 });
+      : { schedule: true, hour: settings.eveningReminderHour ?? 20, minute: settings.eveningReminderMinute ?? 0 }));
   }, [completions, habits, settings.eveningReminderEnabled, settings.notificationsEnabled, settings.eveningReminderHour, settings.eveningReminderMinute, loaded, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cloud sync ───────────────────────────────────────────────────────────────
@@ -742,12 +759,14 @@ export function AppProvider({ children }) {
 
   // ── Completion helpers ───────────────────────────────────────────────────────
 
-  const getTodayCompletions = useCallback(() => completions[todayStr()] || {}, [completions, todayStr]);
+  // Read the live map (completionsRef), so a handler running before the next render sees
+  // the tap before it.
+  const getTodayCompletions = useCallback(() => liveCompletions()[todayStr()] || {}, [completions, todayStr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getHabitCount = useCallback((habitId) => {
-    const today = completions[todayStr()] || {};
+    const today = liveCompletions()[todayStr()] || {};
     return today[habitId] || 0;
-  }, [completions, todayStr]);
+  }, [completions, todayStr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isHabitDone = useCallback((habit) => {
     return isGoalMet(habit, getHabitCount(habit.id));
@@ -803,32 +822,35 @@ export function AppProvider({ children }) {
     const habit = habits.find(h => h.id === habitId);
     if (!habit) return false;
     const today = todayStr();
-    const current = (completions[today] || {})[habitId] || 0;
+    const current = (liveCompletions()[today] || {})[habitId] || 0;
     const capped = habit.type === 'daily' || habit.type === 'quit' || !habit.type;
     if (capped && current >= 1) return false;
     const next = countAfterIncrement(habit, current, amount);
+    writeLive(today, habitId, next);
     setCompletions(prev => ({
       ...prev,
       [today]: { ...(prev[today] || {}), [habitId]: next },
     }));
     setDailySnapshot(prev => withSnapshot(prev, today, habits));
-    if (userId) syncCompletion(userId, today, habitId, next);
+    // The upsert waits out the check-off moment; rapid taps send the last count once.
+    if (userId) afterMoment(`sync:${today}:${habitId}`, () => syncCompletion(userId, today, habitId, next));
     const met = justMetGoal(habit, current, next);
-    if (met) track(Events.COMPLETION, { type: habit.type });
+    if (met) afterMoment(null, () => track(Events.COMPLETION, { type: habit.type }));
     return met;
-  }, [completions, habits, todayStr, userId]);
+  }, [completions, habits, todayStr, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const decrementHabit = useCallback((habitId, amount = 1) => {
     const today = todayStr();
-    const current = (completions[today] || {})[habitId] || 0;
+    const current = (liveCompletions()[today] || {})[habitId] || 0;
     if (current <= 0) return;
     const next = Math.max(0, current - Math.max(1, Math.round(amount)));
+    writeLive(today, habitId, next);
     setCompletions(prev => ({
       ...prev,
       [today]: { ...(prev[today] || {}), [habitId]: next },
     }));
-    if (userId) syncCompletion(userId, today, habitId, next);
-  }, [completions, todayStr, userId]);
+    if (userId) afterMoment(`sync:${today}:${habitId}`, () => syncCompletion(userId, today, habitId, next));
+  }, [completions, todayStr, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Set a habit's count on any past day (edit yesterday, habit detail calendar).
   // Future days are refused. The snapshot for that day is backfilled from the live
@@ -1114,10 +1136,11 @@ export function AppProvider({ children }) {
     const plan = planMarkRest();
     if (plan.changedIds.length === 0) return plan;
     const today = todayStr();
+    plan.changedIds.forEach(id => writeLive(today, id, 1));
     setCompletions(prev => ({ ...prev, [today]: { ...(prev[today] || {}), ...Object.fromEntries(plan.changedIds.map(id => [id, 1])) } }));
     setDailySnapshot(prev => withSnapshot(prev, today, habits));
-    if (userId) syncCompletionsForDate(userId, today, Object.fromEntries(plan.changedIds.map(id => [id, 1])));
-    plan.changedIds.forEach(id => track(Events.COMPLETION, { type: habits.find(h => h.id === id)?.type }));
+    if (userId) afterMoment(null, () => syncCompletionsForDate(userId, today, Object.fromEntries(plan.changedIds.map(id => [id, 1]))));
+    afterMoment(null, () => plan.changedIds.forEach(id => track(Events.COMPLETION, { type: habits.find(h => h.id === id)?.type })));
     return plan;
   }, [planMarkRest, habits, todayStr, userId]);
 

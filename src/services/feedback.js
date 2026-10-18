@@ -145,9 +145,17 @@ export function isEnabled() {
   return { ...enabled };
 }
 
-function record(entry) {
-  log.push(entry);
+function record(e) {
+  log.push(e);
   if (log.length > LOG_SIZE) log = log.slice(log.length - LOG_SIZE);
+}
+
+// One log entry. `offset` is ms from the triggering tap; `target` is the beat it was planned on
+// (the event's delay plus the pulse's place in its pattern); `drift` = offset - target, which is
+// how late a busy JS thread made it (C-06a).
+function entry(now, calledAt, target, event, fired) {
+  const offset = now - calledAt;
+  return { t: now, offset, target, drift: offset - target, event, haptic: null, sound: null, ...fired };
 }
 
 /** The last LOG_SIZE fired entries, oldest first (Settings → Developer → Feedback log). */
@@ -193,33 +201,33 @@ export const RATE_LIMITED = Object.freeze([EVENTS.counterStep, EVENTS.selection]
 
 // `followUp`: a later pulse of the same event (day.complete's second Confirm), part of the
 // pattern and never rate limited. Returns whether the pattern should continue.
-function firePulse(event, pulse, calledAt, followUp = false) {
+function firePulse(event, pulse, calledAt, target, followUp = false) {
   if (!enabled.haptics || Platform.OS === 'web') return false;
   const now = Date.now();
   if (!followUp && RATE_LIMITED.includes(event) && now - lastHapticAt < RATE_LIMIT_MS) {
-    record({ t: now, offset: now - calledAt, event, haptic: null, sound: null, dropped: true });
+    record(entry(now, calledAt, target, event, { dropped: true }));
     return false; // rapid repeat taps: drop, never queue
   }
   if (Platform.OS === 'android') {
     const candidates = supportedChain(pulse.chain, apiLevel());
     if (candidates.length === 0) return true; // no-op on this API level, the pattern continues
     lastHapticAt = now;
-    record({ t: now, offset: now - calledAt, event, haptic: `android:${candidates[0]}`, sound: null });
+    record(entry(now, calledAt, target, event, { haptic: `android:${candidates[0]}` }));
     performAndroid(candidates).catch(() => {});
     return true;
   }
   lastHapticAt = now;
-  record({ t: now, offset: now - calledAt, event, haptic: `ios:${performIOS(pulse)}`, sound: null });
+  record(entry(now, calledAt, target, event, { haptic: `ios:${performIOS(pulse)}` }));
   return true;
 }
 
 // Pulses are chained, each timed from the previous one actually firing, so a busy JS thread
 // that delays the first pulse keeps the pattern's spacing instead of collapsing it.
-function runPattern(handle, event, pulses, i, calledAt) {
+function runPattern(handle, event, pulses, i, calledAt, delay) {
   if (handle.cancelled) return;
-  if (!firePulse(event, pulses[i], calledAt, i > 0)) return;
+  if (!firePulse(event, pulses[i], calledAt, delay + pulses[i].at, i > 0)) return;
   const next = pulses[i + 1];
-  if (next) handle.later(() => runPattern(handle, event, pulses, i + 1, calledAt), next.at - pulses[i].at);
+  if (next) handle.later(() => runPattern(handle, event, pulses, i + 1, calledAt, delay), next.at - pulses[i].at);
 }
 
 // §2.11: at most one sound start per 60 ms. Like the haptic limit it only applies to the rapid
@@ -230,18 +238,18 @@ export const SOUND_RATE_LIMITED = Object.freeze([EVENTS.habitDone, EVENTS.counte
 
 // src/utils/sounds.js is required lazily, so importing this module (every screen does) never
 // loads expo-audio until a sound actually plays.
-function fireSound(event, tone, calledAt) {
+function fireSound(event, tone, calledAt, target) {
   const id = soundIdFor(event, tone);
   if (!enabled.sound || !id) return;
   const now = Date.now();
   if (SOUND_RATE_LIMITED.includes(event)) {
     if (now - lastTapSoundAt < SOUND_RATE_LIMIT_MS) {
-      record({ t: now, offset: now - calledAt, event, haptic: null, sound: null, dropped: true });
+      record(entry(now, calledAt, target, event, { dropped: true }));
       return;
     }
     lastTapSoundAt = now;
   }
-  record({ t: now, offset: now - calledAt, event, haptic: null, sound: id });
+  record(entry(now, calledAt, target, event, { sound: id }));
   try { require('../utils/sounds').playSound(id); } catch { /* audio failure is never fatal */ }
 }
 
@@ -271,7 +279,10 @@ const NOOP_HANDLE = Object.freeze({ cancelled: true, cancel() {} });
  * (gated by the sound setting), starting `opts.delay` ms from now (default: the event's beat
  * offset). `opts.sound: false` plays the haptic only. `opts.tone` picks the note (§2.11):
  * `{ n }` habits done today for a daily habit.done, `{ step, goal }` for a counter. Never awaits: call it in the same frame as
- * the visual change. Returns a handle whose `cancel()` drops anything not yet fired.
+ * the visual change. `opts.at` is the tap time (Date.now() when the user acted): the delay is
+ * counted from it, so a call that arrives late still lands on the planned beat when it can,
+ * and the Feedback log shows any remaining drift. Returns a handle whose `cancel()` drops
+ * anything not yet fired.
  */
 export function play(event, opts = {}) {
   const spec = FEEDBACK_MAP[event];
@@ -280,15 +291,17 @@ export function play(event, opts = {}) {
     return NOOP_HANDLE;
   }
   const handle = makeHandle();
-  const calledAt = Date.now();
-  lastPlayAt = calledAt;
+  const now = Date.now();
+  const calledAt = typeof opts.at === 'number' && opts.at <= now ? opts.at : now;
+  const late = now - calledAt; // time already gone since the tap
+  lastPlayAt = now;
   const delay = typeof opts.delay === 'number' ? opts.delay : spec.offset;
   if (enabled.haptics && Platform.OS !== 'web') {
     const pulses = Platform.OS === 'android' ? spec.android : spec.ios;
-    if (pulses.length) handle.later(() => runPattern(handle, event, pulses, 0, calledAt), delay + pulses[0].at);
+    if (pulses.length) handle.later(() => runPattern(handle, event, pulses, 0, calledAt, delay), delay + pulses[0].at - late);
   }
   if (enabled.sound && spec.sound && opts.sound !== false) {
-    handle.later(() => fireSound(event, opts.tone, calledAt), delay + spec.soundAt);
+    handle.later(() => fireSound(event, opts.tone, calledAt, delay + spec.soundAt), delay + spec.soundAt - late);
   }
   return handle;
 }
@@ -298,6 +311,11 @@ export function play(event, opts = {}) {
 export const PREWARM_QUIET_MS = 1500;
 export function isBusy(now = Date.now()) {
   return now - lastPlayAt < PREWARM_QUIET_MS;
+}
+
+/** Milliseconds until the current moment is over (0 when nothing played in the last 1.5 s). */
+export function quietIn(now = Date.now()) {
+  return Math.max(0, lastPlayAt + PREWARM_QUIET_MS - now);
 }
 
 /** Pre-render the sound kit at idle (AppContext, once loaded with sound on). Never throws. */
@@ -319,5 +337,5 @@ export function __resetForTests() {
   log = [];
 }
 
-const feedback = { play, toggled, configure, isEnabled, recent, clearRecent, prewarmSounds, isBusy, EVENTS };
+const feedback = { play, toggled, configure, isEnabled, recent, clearRecent, prewarmSounds, isBusy, quietIn, EVENTS };
 export default feedback;
