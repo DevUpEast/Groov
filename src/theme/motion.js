@@ -43,6 +43,11 @@ export const easing = {
   emphasizedDecel: Easing.bezier(0.05, 0.7, 0.1, 1), // things entering
   emphasizedAccel: Easing.bezier(0.3, 0, 0.8, 0.15), // things leaving
 };
+// The credit's flight (C-07): it leaves the card like emphasizedAccel (its start handle) and
+// lands in the ring like emphasizedDecel (its end handle), in one curve. Joining the two
+// curves end to end put a speed spike mid-flight (the 250 ms flight then crossed half the
+// screen in one or two frames).
+easing.credit = Easing.bezier(0.3, 0, 0.1, 1);
 
 export const spring = {
   snappy: { stiffness: 400, damping: 32, mass: 1 }, // ζ ≈ 0.8: press release, check pop, chip
@@ -60,6 +65,14 @@ export const amount = Object.freeze({
   flashOpacity: 0.35, // reduced-motion colour flash (signature wash) instead of a scale
   numeralOutBy: 0.4, // the ring numeral is gone by 40 % of the resolution, before the ✓ mid-draw
   checkInFrom: 0.2, // the ring ✓ starts to show at 20 % of the resolution
+  ringPulse: 1.06, // the Today ring at the resolution (88 pt ring: about 5 pt, C-07)
+  creditSize: 12, // the day-complete credit dot (C-07)
+  // The credit's curve: a quadratic Bézier whose control point sits this far along the
+  // straight line and this far toward the target's height, so it rises first, then sweeps in.
+  creditCurve: { along: 0.2, rise: 0.85 },
+  burstParticles: 24, // RingBurst (C-07)
+  burstFrom: 1.25, // particles start just outside the ring (x ring radius), clear of the stroke
+  burstTo: 2.1, // ... and travel out to about this (x ring radius), with jitter
 });
 
 // The celebration layer's own timings (CompletionCelebration, TrophyCelebration, the
@@ -71,8 +84,9 @@ export const celebration = {
   confettiFadeOutAt: 1500,
   confettiFadeOut: 500,
   confettiSpread: 600, // particle start delays fall in 0..600 ms
-  overlayDone: 3000, // perfect-day confetti unmounts after this
-  overlayDoneReduced: 300,
+  overlayDone: 3000, // the trophy's confetti unmounts after this
+  burst: 750, // RingBurst: 750 -> 1500 ms of the check-off moment (§4.1 7c)
+  milestoneSkipAfter: 1000, // the milestone screen is skippable after 1 s (§4.1 row 9)
   fullConfettiFall: 2000, // plus up to fullConfettiFallJitter
   fullConfettiFallJitter: 1500,
   circleExpand: 650,

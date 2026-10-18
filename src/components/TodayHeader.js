@@ -1,7 +1,7 @@
 // The Today header (C-04, D-00 r6): the date, the greeting, and the brand strip with the
 // 88 pt progress ring, the day's line, the 7-day beat row and the streak chip; plus the 48 pt
 // sticky bar that takes over once the strip scrolls away.
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ProgressRing from './ProgressRing';
@@ -15,6 +15,8 @@ import { type, numeric } from '../theme/typography';
 import { t, useLocale } from '../i18n';
 import { summarizeBeats } from '../utils/weekBeats';
 import PressableScale, { hitSlopFor } from './ui/PressableScale';
+import { subscribeBeats } from '../utils/beatBus';
+import { anchorRef, setAnchor } from '../utils/creditAnchors';
 
 const GREETING_LINE = 32; // title 28 on a 32 pt line (D-00), one line of the header budget
 
@@ -480,6 +482,30 @@ export function useHeaderMoment({ state, completed, total, streak, beats, challe
   };
 }
 
+// The ring's pulse at the resolution (C-07, §4.1 beat 7b): 1 -> 1.06 (about 5 pt on the 88 pt
+// ring) over duration.press, then back on spring.snappy, as the credit lands and the gold
+// sweeps. Only when the day is (live) complete; none under reduced motion (the ring turns gold
+// with a ✓). The wrapper is also the credit's target anchor (`anchorKey`), measured by
+// CreditFlight, RingBurst and the milestone screen.
+export function RingPulse({ live, anchorKey, children }) {
+  const m = useMotion();
+  const scale = useRef(new Animated.Value(1)).current;
+  const liveRef = useRef(live);
+  liveRef.current = live;
+  useEffect(() => subscribeBeats(({ type, item }) => {
+    if (type !== 'fire' || item.beat !== 'resolution' || m.reduced || !liveRef.current) return;
+    Animated.sequence([
+      m.timing(scale, { toValue: amount.ringPulse, duration: m.duration.press, easing: m.easing.emphasizedDecel }),
+      m.springTo(scale, m.spring.snappy, { toValue: 1 }),
+    ]).start();
+  }), [m, scale]);
+  return (
+    <Animated.View ref={anchorRef(anchorKey)} collapsable={false} style={{ transform: [{ scale }] }}>
+      {children}
+    </Animated.View>
+  );
+}
+
 // ── Header ──────────────────────────────────────────────────────────────────────────────
 /**
  * `state`: 'progress' | 'complete' | 'rest', or null for no strip (no habits yet).
@@ -500,20 +526,27 @@ export default function TodayHeader({
   const liveLine = state ? dayLine({ state, completed, total, streak }) : null;
   const ringLabel = state === 'progress' ? t('today.ring.a11y', { completed, total }) : liveLine;
   const shownState = state ? (shown.state || state) : null;
+  // The strip is TodayScreen's (layout, header budget) and the credit's departure edge (C-07).
+  const setStrip = useCallback((node) => {
+    if (stripRef) stripRef.current = node;
+    setAnchor('strip', node);
+  }, [stripRef]);
   return (
     <View>
       <AppText variant="footnote" style={[styles.date, { color: theme.textSecondary }]}>{date}</AppText>
       <Greeting greeting={greeting} name={name} theme={theme} />
       {state ? (
         <View
-          ref={stripRef}
+          ref={setStrip}
           onLayout={onStripLayout}
           style={[styles.strip, { backgroundColor: theme.brandSurface }, !isDark && elevation.brandStrip]}
         >
           <View accessible accessibilityRole="progressbar" accessibilityLabel={ringLabel}
             accessibilityValue={state === 'progress' || state === 'complete' ? { min: 0, max: total, now: completed } : undefined}
           >
-            <TodayRing state={shownState} completed={shown.completed} total={shown.total} theme={theme} ringSize={ringSize} stroke={stroke} caption={!compact} roll={shown.countBeat} liveComplete={state === 'complete'} />
+            <RingPulse live={state === 'complete'} anchorKey="ring">
+              <TodayRing state={shownState} completed={shown.completed} total={shown.total} theme={theme} ringSize={ringSize} stroke={stroke} caption={!compact} roll={shown.countBeat} liveComplete={state === 'complete'} />
+            </RingPulse>
           </View>
           <View style={styles.right}>
             {/* Short windows (SE) keep the line to one line (shrinking a little on native, then
@@ -552,13 +585,16 @@ export function TodayStickyBar({ theme, state, completed, total, greeting, strea
   const shownState = shown.state || state;
   return (
     <Pressable
+      ref={anchorRef('sticky')}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={a11yLabel}
       accessibilityHint={t('today.sticky.hint')}
       style={[styles.sticky, { backgroundColor: theme.bg, borderBottomColor: theme.border }]}
     >
-      <TodayRing state={shownState} completed={shown.completed} total={shown.total} theme={theme} ringSize={size.ringCollapsed} stroke={4} bare liveComplete={state === 'complete'} />
+      <RingPulse live={state === 'complete'} anchorKey="ringSticky">
+        <TodayRing state={shownState} completed={shown.completed} total={shown.total} theme={theme} ringSize={size.ringCollapsed} stroke={4} bare liveComplete={state === 'complete'} />
+      </RingPulse>
       {shownState !== 'rest' ? (
         <RollingNumber value={`${shown.completed}/${shown.total}`} roll={!!shown.countBeat} style={[styles.stickyCount, { color: theme.text }]} maxFontSizeMultiplier={1.3} />
       ) : null}

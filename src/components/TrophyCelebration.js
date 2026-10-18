@@ -1,11 +1,81 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Animated, StyleSheet, Text, Modal, Pressable } from 'react-native';
-import CelebrationOverlay from './CelebrationOverlay';
+import { View, Animated, StyleSheet, Text, Pressable, Dimensions } from 'react-native';
 import feedback, { EVENTS } from '../services/feedback';
 import { announce } from '../utils/a11y';
 import { useMotion, celebration, spring } from '../theme/motion';
 import { t } from '../i18n';
 import OverlayModal from './ui/OverlayModal';
+import { celebrationArt } from '../theme/tokens';
+
+// The trophy's confetti (moved here from CelebrationOverlay in C-07, when the perfect-day
+// confetti gave way to the credit flight and RingBurst). Full motion only: the trophy shows
+// it after the orbit, which reduced motion skips.
+const { width, height } = Dimensions.get('window');
+const CONFETTI_COLORS = celebrationArt.confettiPerfectDay;
+const CONFETTI_COUNT = 30;
+
+function ConfettiPiece({ delay, color }) {
+  const x = useRef(new Animated.Value(Math.random() * width)).current;
+  const y = useRef(new Animated.Value(-20)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const rotate = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(Math.random() * 0.6 + 0.4)).current;
+
+  useEffect(() => {
+    const targetX = (Math.random() - 0.5) * 300 + parseFloat(JSON.stringify(x));
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 1, duration: celebration.confettiFadeIn, useNativeDriver: true }),
+        Animated.timing(y, {
+          toValue: height * 0.7,
+          duration: celebration.confettiFall + Math.random() * celebration.confettiFallJitter,
+          useNativeDriver: true,
+        }),
+        Animated.timing(x, {
+          toValue: targetX,
+          duration: celebration.confettiFall + Math.random() * celebration.confettiFallJitter,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rotate, {
+          toValue: Math.random() * 4 - 2,
+          duration: celebration.confettiFall,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.delay(celebration.confettiFadeOutAt),
+          Animated.timing(opacity, { toValue: 0, duration: celebration.confettiFadeOut, useNativeDriver: true }),
+        ]),
+      ]),
+    ]).start();
+  }, []);
+
+  const spin = rotate.interpolate({ inputRange: [-2, 2], outputRange: ['-360deg', '360deg'] });
+
+  return (
+    <Animated.View
+      style={[
+        styles.particle,
+        {
+          backgroundColor: color,
+          transform: [{ translateX: x }, { translateY: y }, { rotate: spin }, { scale }],
+          opacity,
+        },
+      ]}
+    />
+  );
+}
+
+function TrophyConfetti() {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {Array.from({ length: CONFETTI_COUNT }).map((_, i) => (
+        <ConfettiPiece key={i} delay={Math.random() * celebration.confettiSpread} color={CONFETTI_COLORS[i % CONFETTI_COLORS.length]} />
+      ))}
+    </View>
+  );
+}
+
 
 // A tap (or the Android back key) dismisses the trophy once it has been up this long (CEL-2).
 export const TROPHY_SKIP_AFTER_MS = 1000;
@@ -120,7 +190,7 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
           </View>
           <Text style={[styles.hint, { color: theme.onCelebration }, !canSkip && styles.hintHidden]}>{t('trophy.tapToContinue')}</Text>
         </View>
-        {showConfetti && <CelebrationOverlay visible={true} onDone={() => {}} />}
+        {showConfetti && <TrophyConfetti />}
       </Pressable>
     </OverlayModal>
   );
@@ -134,4 +204,5 @@ const styles = StyleSheet.create({
   orbitDot: { position: 'absolute', width: 14, height: 14, borderRadius: 7 },
   hint: { marginTop: 24, fontSize: 15, fontWeight: '600', opacity: 0.85 },
   hintHidden: { opacity: 0 },
+  particle: { position: 'absolute', width: 10, height: 10, borderRadius: 2, top: 0, left: 0 },
 });

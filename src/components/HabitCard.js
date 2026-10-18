@@ -21,6 +21,7 @@ import RollingNumber from './ui/RollingNumber';
 import useTween from '../hooks/useTween';
 import { findBeat, matchesBeat, subscribeBeats } from '../utils/beatBus';
 import { amount, duration as durations, easing as easings, useMotion } from '../theme/motion';
+import { anchorRef, checkKey } from '../utils/creditAnchors';
 
 // C-06b (plan §4.1): the card's part of the check-off moment, on the beats useCheckoffMoment
 // emits (src/utils/beatBus.js). Outside a moment (a sync pull, the widget, the choreography
@@ -243,6 +244,9 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
         onPress={handleCardPress}
         onLongPress={handleLongPress}
         delayLongPress={LONG_PRESS_MS}
+        // A daily / quit body tap checks the card off (or back): the ✓ and the tint are the
+        // feedback, so no ripple greys the fresh tint (C-06b carry S2).
+        stateChange={bodyAction === 'toggle'}
         accessibilityRole={isVolume ? 'button' : 'checkbox'}
         accessibilityState={isVolume ? undefined : { checked: done }}
         accessibilityLabel={`${habit.name}${isVolume ? `${unitLabel(habit) ? t('habitCard.a11y.countUnit', { count, goal: habit.volumeGoal, unit: unitLabel(habit) }) : t('habitCard.a11y.count', { count, goal: habit.volumeGoal })}${isLimit ? t('habitCard.a11y.maximum') : ''}` : ''}${overLimit ? t('habitCard.a11y.overLimit') : done ? (isQuit ? t('habitCard.a11y.avoided') : t('habitCard.a11y.done')) : skipped ? t('habitCard.a11y.skipped') : t('habitCard.a11y.notDone')}${streak >= 2 ? t('habitCard.a11y.streak', { count: streak }) : ''}`}
@@ -293,7 +297,10 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
             accessibilityHint={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
           >
             <RollingNumber value={count} {...countRoll} style={[styles.pillNum, { color: accent.onFill }]} numberOfLines={1} />
-            <CheckMark color={accent.onFill} size={16} progress={draw} />
+            {/* The credit leaves from this ✓ when the goal step completes the day (C-07). */}
+            <View ref={anchorRef(checkKey(habit.id))} collapsable={false}>
+              <CheckMark color={accent.onFill} size={16} progress={draw} />
+            </View>
           </PressableScale>
         ) : isVolume ? (
           <View style={styles.counter}>
@@ -348,6 +355,9 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           <View style={styles.slot}>
             <View
               testID="habit-check"
+              // The day-complete credit leaves from here (C-07, CreditFlight).
+              ref={anchorRef(checkKey(habit.id))}
+              collapsable={false}
               style={[
                 styles.checkbox,
                 { borderColor: done ? accent.fill : skipped ? theme.controlBorder : accent.ring },

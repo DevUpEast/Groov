@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity,
+  View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, BackHandler,
 } from 'react-native';
+import { measureNode, measureAnchor, relativeTo, centreOf } from '../utils/creditAnchors';
 import { announce } from '../utils/a11y';
 import { useMotion, celebration, spring } from '../theme/motion';
 import { celebrationArt } from '../theme/tokens';
@@ -11,7 +12,8 @@ const { width: W, height: H } = Dimensions.get('window');
 
 // Large enough circle to cover every corner from the ring's approximate center
 const CIRCLE_D = Math.ceil(Math.sqrt(W * W + H * H) * 2.2);
-// Ring sits in the header: ~79px from left, ~190px from top of screen
+// Where the circle grows from when the ring cannot be measured (C-07: it is measured, from
+// `originKey`, the ring that is showing).
 const RING_CX = 79;
 const RING_CY = 190;
 
@@ -61,11 +63,35 @@ function ConfettiPiece({ index, color }) {
   );
 }
 
-export default function CompletionCelebration({ visible, onDone, primaryColor, emoji = '🎉', title = t('today.congrats'), subtitle = t('today.allTasks') }) {
+/**
+ * The streak-milestone screen (§4.1 row 9). It sits inside the Today screen (not a Modal), so
+ * it takes the Android back key itself while it is up (S-03 carry): back, like a tap, closes it
+ * once it has been up `celebration.milestoneSkipAfter` (1 s) and is swallowed before that. The
+ * circle grows from the measured centre of `originKey` (C-07: the strip ring, or the sticky
+ * ring when scrolled), not a fixed point.
+ */
+export default function CompletionCelebration({ visible, onDone, primaryColor, emoji = '🎉', title = t('today.congrats'), subtitle = t('today.allTasks'), originKey = 'ring' }) {
   const circleScale = useRef(new Animated.Value(0.06)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
   const textScale = useRef(new Animated.Value(0.8)).current;
+  const originX = useRef(new Animated.Value(RING_CX)).current;
+  const originY = useRef(new Animated.Value(RING_CY)).current;
+  const rootRef = useRef(null);
   const { reduced: reducedMotion } = useMotion();
+  const [canSkip, setCanSkip] = useState(false);
+  const canSkipRef = useRef(false);
+  canSkipRef.current = canSkip;
+  const skipRef = useRef(null);
+
+  useEffect(() => {
+    if (!visible) { setCanSkip(false); return undefined; }
+    const skipTimer = setTimeout(() => setCanSkip(true), celebration.milestoneSkipAfter);
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (canSkipRef.current) skipRef.current?.();
+      return true;
+    });
+    return () => { clearTimeout(skipTimer); sub.remove(); };
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -76,12 +102,18 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
       return () => clearTimeout(t);
     }
 
-    // Expand the circle
-    Animated.timing(circleScale, {
-      toValue: 1,
-      duration: celebration.circleExpand,
-      useNativeDriver: true,
-    }).start();
+    // Expand the circle from the ring, once it is measured (one frame).
+    let live = true;
+    Promise.all([measureNode(rootRef.current), measureAnchor(originKey)]).then(([root, ring]) => {
+      if (!live) return;
+      const c = centreOf(relativeTo(ring, root));
+      if (c) { originX.setValue(c.x); originY.setValue(c.y); }
+      Animated.timing(circleScale, {
+        toValue: 1,
+        duration: celebration.circleExpand,
+        useNativeDriver: true,
+      }).start();
+    });
 
     // Text springs in after circle covers screen
     setTimeout(() => {
@@ -104,14 +136,15 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
       });
     }, celebration.autoDismissAt);
 
-    return () => clearTimeout(t);
+    return () => { live = false; clearTimeout(t); };
   }, [visible]);
 
   if (!visible) return null;
 
   if (reducedMotion) {
+    skipRef.current = onDone;
     return (
-      <TouchableOpacity style={[StyleSheet.absoluteFill, styles.staticWrap]} onPress={onDone} activeOpacity={1} accessibilityRole="button" accessibilityLabel={t('celebration.a11y', { title, subtitle })}>
+      <TouchableOpacity style={[StyleSheet.absoluteFill, styles.staticWrap]} onPress={() => { if (canSkip) onDone(); }} activeOpacity={1} accessibilityRole="button" accessibilityLabel={t('celebration.a11y', { title, subtitle })}>
         <View style={[styles.staticCard, { backgroundColor: primaryColor }]}>
           <Text style={styles.emoji}>{emoji}</Text>
           <Text style={styles.congrats}>{title}</Text>
@@ -121,18 +154,31 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
     );
   }
 
+  const dismiss = () => {
+    Animated.parallel([
+      Animated.timing(textOpacity, { toValue: 0, duration: celebration.tapTextOut, useNativeDriver: true }),
+      Animated.timing(circleScale, { toValue: 0.06, duration: celebration.tapCircleCollapse, useNativeDriver: true }),
+    ]).start(() => {
+      circleScale.setValue(0.06);
+      textOpacity.setValue(0);
+      textScale.setValue(0.8);
+      onDone();
+    });
+  };
+  skipRef.current = dismiss;
+
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      {/* Expanding circle */}
+    <View ref={rootRef} collapsable={false} style={StyleSheet.absoluteFill} pointerEvents="box-none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      {/* Expanding circle, centred on the measured ring */}
       <Animated.View
         pointerEvents="none"
         style={[
           styles.expandCircle,
           {
             backgroundColor: primaryColor,
-            left: RING_CX - CIRCLE_D / 2,
-            top: RING_CY - CIRCLE_D / 2,
-            transform: [{ scale: circleScale }],
+            left: -CIRCLE_D / 2,
+            top: -CIRCLE_D / 2,
+            transform: [{ translateX: originX }, { translateY: originY }, { scale: circleScale }],
           },
         ]}
       />
@@ -159,17 +205,7 @@ export default function CompletionCelebration({ visible, onDone, primaryColor, e
       {/* Tap to dismiss */}
       <TouchableOpacity
         style={StyleSheet.absoluteFill}
-        onPress={() => {
-          Animated.parallel([
-            Animated.timing(textOpacity, { toValue: 0, duration: celebration.tapTextOut, useNativeDriver: true }),
-            Animated.timing(circleScale, { toValue: 0.06, duration: celebration.tapCircleCollapse, useNativeDriver: true }),
-          ]).start(() => {
-            circleScale.setValue(0.06);
-            textOpacity.setValue(0);
-            textScale.setValue(0.8);
-            onDone();
-          });
-        }}
+        onPress={() => { if (canSkip) dismiss(); }}
         activeOpacity={1}
       />
     </View>

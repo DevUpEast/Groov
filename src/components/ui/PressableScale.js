@@ -47,6 +47,9 @@ export const PRESS_SCALE = 0.97;
  *   larger surface still open that surface's options (HabitCard's − at 0).
  * - `pressedStyle` is merged into `style` while the finger is down (e.g. Button's
  *   `actionPressed` fill).
+ * - `stateChange` (C-07, C-06b carry S2): the tap changes what the control shows (a Today
+ *   card's check-off), and that change is the feedback. No ripple and, in full motion, no
+ *   overlay: only the scale. Under reduced motion (no scale) the overlay stays.
  *
  * It plays no haptic itself: `press` is silent in the §2.10 map (ripple only on Android).
  */
@@ -64,6 +67,7 @@ export default function PressableScale({
   onDisabledLongPress,
   ripple = 'bounded',
   rippleRadius,
+  stateChange = false,
   scaleTo = PRESS_SCALE,
   theme: themeProp,
   accessibilityRole = 'button',
@@ -79,8 +83,10 @@ export default function PressableScale({
 
   // Android shows the ripple; the overlay covers iOS, web, and reduced motion everywhere (and
   // an Android control that opts out of the ripple).
-  const showRipple = Platform.OS === 'android' && ripple !== false && !disabled;
-  const showOverlay = !disabled && (Platform.OS !== 'android' || motion.reduced || ripple === false);
+  const showRipple = Platform.OS === 'android' && ripple !== false && !stateChange && !disabled;
+  const showOverlay = !disabled && (stateChange
+    ? motion.reduced
+    : (Platform.OS !== 'android' || motion.reduced || ripple === false));
 
   useEffect(() => () => { scale.stopAnimation(); overlay.stopAnimation(); }, [scale, overlay]);
 

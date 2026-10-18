@@ -11,7 +11,6 @@ import Slider from '../components/Slider';
 import BottomSheet from '../components/BottomSheet';
 import EmptyCard from '../components/EmptyCard';
 import { SheetDragHandle, SheetHeader } from '../components/SheetHeader';
-import CelebrationOverlay from '../components/CelebrationOverlay';
 import feedback, { EVENTS } from '../services/feedback';
 import { addDays } from '../utils/dates';
 import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
@@ -549,7 +548,6 @@ export default function ChallengeScreen() {
   useLocale();
   const today = todayStr();
 
-  const [celebrating, setCelebrating] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState(null);
   const [selectedPast, setSelectedPast] = useState(null);
@@ -687,7 +685,6 @@ export default function ChallengeScreen() {
         </View>
       </ScrollView>
 
-      <CelebrationOverlay visible={celebrating} onDone={() => setCelebrating(false)} />
 
       <ChallengeFormModal
         visible={formVisible}

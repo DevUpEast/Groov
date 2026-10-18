@@ -184,6 +184,18 @@ export function logFrames({ name, tapAt, target, length, startedAt, first, last,
   console.log(`[frames] ${name} started ${e.frames.started} frames ${e.frames.first}-${e.frames.last}ms (${count}), planned ${target}-${e.frames.planEnd}`);
 }
 
+/**
+ * A timing mark of one tap (C-07 perf): `name` happened `now - tapAt` ms after the tap, e.g.
+ * `perf.commit` when React has committed the tap's render (TodayScreen, with the frameLog dev
+ * flag or in __DEV__). Also printed for `adb logcat -s ReactNativeJS`.
+ */
+export function logMark(name, tapAt, now = Date.now()) {
+  const offset = now - tapAt;
+  record({ t: now, offset, target: 0, drift: offset, event: `perf.${name}`, haptic: null, sound: null });
+  // eslint-disable-next-line no-console
+  console.log(`[perf] ${name} ${offset}ms`);
+}
+
 function apiLevel() {
   const v = Number(Platform.Version);
   return Number.isFinite(v) ? v : 0;

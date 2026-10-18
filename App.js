@@ -76,7 +76,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { mockupParams, postToMockupHost } from './src/utils/mockup';
 import { useAnyHeavyOverlayOpen, setOverlayChangesStatusBar, statusBarStyle } from './src/utils/overlayStatus';
 import { supabaseConfigError } from './src/utils/supabase';
-import { AppProvider, useApp } from './src/context/AppContext';
+import { AppProvider, useApp, TabScope } from './src/context/AppContext';
 import { themes } from './src/theme/colors';
 import { loadAppFonts } from './src/theme/fonts';
 import { type } from './src/theme/typography';
@@ -106,7 +106,9 @@ const TABS = [
   { key: 'settings',  icon: 'settings-outline' },
 ];
 
-const SCREENS = [TodayScreen, ProgressScreen, ChallengeScreen, HabitsScreen, SettingsScreen];
+// Memoised, so a tab re-renders only through its TabScope's context value (C-07 perf: an
+// inactive tab no longer re-renders on every check-off).
+const SCREENS = [TodayScreen, ProgressScreen, ChallengeScreen, HabitsScreen, SettingsScreen].map(S => React.memo(S));
 
 function AppNavigator() {
   const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen, notificationPrimer, paywall, closePaywall, refreshPro, pendingRoute, clearPendingRoute } = useApp();
@@ -299,7 +301,7 @@ function AppNavigator() {
             accessibilityElementsHidden={activeIndex !== i}
             aria-hidden={activeIndex !== i}
           >
-            <Screen />
+            <TabScope active={activeIndex === i} Screen={Screen} />
           </View>
         ))}
       </Animated.View>

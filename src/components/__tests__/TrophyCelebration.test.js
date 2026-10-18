@@ -8,7 +8,6 @@ const { Modal, Animated } = require('react-native');
 jest.mock('../../services/feedback', () => ({ __esModule: true, default: { play: jest.fn() }, EVENTS: { trophy: 'trophy' } }));
 let mockReduced = false;
 jest.mock('../../utils/a11y', () => ({ useReducedMotion: () => mockReduced, announce: jest.fn() }));
-jest.mock('../CelebrationOverlay', () => () => null);
 
 const TrophyCelebration = require('../TrophyCelebration').default;
 const { TROPHY_SKIP_AFTER_MS, TROPHY_FALLBACK_MS } = require('../TrophyCelebration');
