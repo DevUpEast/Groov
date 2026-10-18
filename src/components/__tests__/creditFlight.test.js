@@ -57,6 +57,9 @@ beforeEach(() => {
   jest.restoreAllMocks();
   // The idle pre-warm run is checked on its own below.
   jest.spyOn(InteractionManager, 'runAfterInteractions').mockReturnValue({ cancel() {} });
+  // Freeze the wall clock so planned durations are exact under a busy full run.
+  const frozenNow = Date.now();
+  jest.spyOn(Date, 'now').mockReturnValue(frozenNow);
 });
 
 describe('anchors and the departure point (pure)', () => {
