@@ -32,7 +32,7 @@ with gone as (
 update ai_usage u
 set nudges = greatest(u.nudges - 1, 0)
 from gone
-where u.user_id = gone.user_id and u.date = gone.date;
+where u.user_id = gone.user_id and u.date = gone.date::date;
 
 delete from ai_reflections where message is null or btrim(message) = '';
 
