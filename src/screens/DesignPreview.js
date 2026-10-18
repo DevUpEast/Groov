@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import SafeAreaView from '../components/SafeAreaView';
 import { useApp } from '../context/AppContext';
@@ -138,7 +138,7 @@ export default function DesignPreview({ visible, onClose }) {
   const failing = themePairs.filter(p => p.min && contrastRatio(resolve(shown, p.fg), resolve(shown, p.bg), p.on ? resolve(shown, p.on) : undefined) < p.min);
 
   return (
-    <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <StatusBar style={shown === 'dark' ? 'light' : 'dark'} />
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]} edges={['top', 'bottom']}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>

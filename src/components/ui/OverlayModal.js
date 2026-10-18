@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Platform } from 'react-native';
 import { overlayOpened, overlayChangesStatusBar } from '../../utils/overlayStatus';
-import { useMotion } from '../../theme/motion';
 
 /**
  * React Native's `Modal`, plus the status-bar rule for scrimmed overlays (F-02).
@@ -22,13 +21,15 @@ import { useMotion } from '../../theme/motion';
  * reaches App's BackHandler instead of the Modal's onRequestClose (on a non-Today tab it goes to
  * Today; on Today it leaves the app). The window opens right after a tap, so this is accepted.
  *
- * Reduced motion (F-05): `animationType="slide"` becomes a fade, so no sheet slides.
+ * Every caller sets `statusBarTranslucent` and `navigationBarTranslucent` (F-10, a source check
+ * in ui/__tests__/Sheet.test.js), so the scrim covers the whole window under both system bars.
+ * Bottom sheets are `ui/Sheet`, which animates itself (`animationType="none"`); every other
+ * overlay fades.
  */
 const ANDROID = Platform.OS === 'android';
-export default function OverlayModal({ visible, animationType, heavyScrim = false, ...props }) {
+export default function OverlayModal({ visible, heavyScrim = false, ...props }) {
   const want = !!visible;
   const mustDefer = () => ANDROID && overlayChangesStatusBar(heavyScrim);
-  const { reduced } = useMotion();
   const [shown, setShown] = useState(() => want && !mustDefer());
 
   useEffect(() => (want ? overlayOpened({ heavy: heavyScrim }) : undefined), [want, heavyScrim]);
@@ -41,6 +42,5 @@ export default function OverlayModal({ visible, animationType, heavyScrim = fals
     return () => { cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2); };
   }, [want]);
 
-  const animation = reduced && animationType === 'slide' ? 'fade' : animationType;
-  return <Modal visible={want && shown} animationType={animation} {...props} />;
+  return <Modal visible={want && shown} {...props} />;
 }

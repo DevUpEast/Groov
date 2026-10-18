@@ -286,6 +286,9 @@ export default function SettingsScreen() {
   };
   const { user, signOut, displayName, updateDisplayName, deleteAccount, sendPasswordReset, verifyPasswordReset, authProvider, isAnonymous } = useAuth();
   const [linkSheet, setLinkSheet] = useState(false);
+  // "Account linked" shows once the link sheet has gone (iOS cannot present an Alert over a
+  // Modal that is still dismissing).
+  const linkedAlert = useRef(false);
   // Apple/Google accounts have no Groov password to reset.
   const canResetPassword = authProvider === 'email';
 
@@ -1107,7 +1110,12 @@ export default function SettingsScreen() {
         visible={linkSheet}
         theme={theme}
         onClose={() => setLinkSheet(false)}
-        onLinked={() => { setLinkSheet(false); Alert.alert(t('settings.account.linked.title'), t('settings.account.linked.body')); }}
+        onLinked={() => { linkedAlert.current = true; setLinkSheet(false); }}
+        onDismiss={() => {
+          if (!linkedAlert.current) return;
+          linkedAlert.current = false;
+          Alert.alert(t('settings.account.linked.title'), t('settings.account.linked.body'));
+        }}
       />
 
       {/* Dev: feedback log */}

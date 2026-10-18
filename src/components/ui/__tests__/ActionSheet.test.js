@@ -59,7 +59,7 @@ describe('ActionSheet (Android)', () => {
     const onCancel = jest.fn();
     const r = render({ visible: true, title: 'T', options: makeOptions(), onCancel });
     act(() => { modalOf(r).props.onRequestClose(); });
-    act(() => { r.root.findByProps({ testID: 'actionsheet-scrim' }).props.onPress(); });
+    act(() => { r.root.findByProps({ testID: 'sheet-scrim' }).props.onPress(); });
     act(() => { buttons(r).find(b => b.props.accessibilityLabel === 'Cancel').props.onPress(); });
     const panel = r.root.findAll(n => n.type === View && n.props.accessibilityViewIsModal)[0];
     act(() => { panel.props.onAccessibilityEscape(); });
@@ -206,8 +206,9 @@ describe('Android back wiring (source checks)', () => {
         if (!/onRequestClose=/.test(tag)) missing.push(path.relative(root, f));
       });
     });
-    // 13 Modals today; a broken regex or path must not pass by matching nothing.
-    expect(tagCount).toBeGreaterThanOrEqual(13);
+    // 8 Modal tags since F-10 moved the sheets onto ui/Sheet; a broken regex or path must not
+    // pass by matching nothing.
+    expect(tagCount).toBeGreaterThanOrEqual(8);
     expect(missing).toEqual([]);
     expect(picker).toMatch(/<(?:Overlay)?Modal[^>]*onRequestClose=\{onClose\}/);
   });

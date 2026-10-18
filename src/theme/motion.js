@@ -106,7 +106,7 @@ export const celebration = {
 };
 
 // Hand-offs between surfaces that do not expose a completion callback. Sheet-to-sheet and
-// sheet-to-tab hand-offs use the close callback instead (sheetOut(...).start(cb)).
+// sheet-to-tab hand-offs use ui/Sheet's `onDismiss` or `ref.requestClose(then)` instead.
 export const handoff = {
   // A screen opening its own sheet after a tab change (deep link, Challenge -> Add habit):
   // the pager slide (duration.state) plus room for the screen to settle.
@@ -155,33 +155,11 @@ export function springTo(value, token, config = {}, reducedMotion) {
   return Animated.spring(value, { useNativeDriver: true, ...rest, ...token, ...(velocity !== undefined ? { velocity } : null) });
 }
 
-// Bottom sheets (interim until F-09a's Sheet primitive). One Animated value drives the sheet:
-// translateY in full motion, opacity under reduced motion (see sheetMotionStyle).
-// Opens from closed (callers set the value to SHEET_OFFSCREEN first).
-export function sheetIn(value, reducedMotion) {
-  const r = flag(reducedMotion);
-  if (r) value.setValue(SHEET_FADE_RANGE);
-  return springTo(value, spring.gentle, { toValue: 0 }, r);
-}
-
+// The sheet exit (ui/Sheet). One Animated value drives a sheet: translateY in full motion, its
+// opacity under reduced motion, where the sheet fades in place over SHEET_FADE_RANGE.
 export function sheetOut(value, offscreen = SHEET_OFFSCREEN, reducedMotion) {
   const r = flag(reducedMotion);
   return timing(value, { toValue: r ? SHEET_FADE_RANGE : offscreen, duration: duration.exit(duration.enter), easing: easing.emphasizedAccel }, r);
-}
-
-// A drag that did not pass the dismiss threshold settles back.
-export function sheetSettle(value, reducedMotion) {
-  return springTo(value, spring.gentle, { toValue: 0 }, reducedMotion);
-}
-
-// Style for the sheet body: slides in full motion; under reduced motion it stays put and the
-// same value (0 = open, SHEET_FADE_RANGE or more = closed) becomes its opacity, so open,
-// close and drag-to-dismiss are fades.
-export function sheetMotionStyle(value, reducedMotion) {
-  if (reducedMotion) {
-    return { opacity: value.interpolate({ inputRange: [0, SHEET_FADE_RANGE], outputRange: [1, 0], extrapolate: 'clamp' }) };
-  }
-  return { transform: [{ translateY: value }] };
 }
 
 // Tokens and helpers bound to the live reduced-motion setting. Under reduced motion every
@@ -209,10 +187,6 @@ export function useMotion() {
       spring,
       timing: (value, config) => timing(value, config, r),
       springTo: (value, token, config) => springTo(value, token, config, r),
-      sheetIn: (value) => sheetIn(value, r),
-      sheetOut: (value, offscreen) => sheetOut(value, offscreen, r),
-      sheetSettle: (value) => sheetSettle(value, r),
-      sheetStyle: (value) => sheetMotionStyle(value, r),
     };
   }, [r]);
 }

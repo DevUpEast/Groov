@@ -4,7 +4,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Animated, Easing,
 } from 'react-native';
 import feedback, { EVENTS } from '../services/feedback';
@@ -167,7 +167,7 @@ export default function TimePicker({ visible, hour12, minute, ampm, onClose, onS
   };
 
   return (
-    <OverlayModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <OverlayModal visible={visible} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.scrim }]}>
         <View style={[styles.card, { backgroundColor: theme.overlay }]}>
           <Text style={[styles.title, { color: theme.text }]}>{t('timePicker.title')}</Text>

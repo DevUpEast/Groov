@@ -1,21 +1,20 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActionSheetIOS, Modal, View, Text, Pressable, TouchableOpacity, Platform, StyleSheet,
+  ActionSheetIOS, View, Text, TouchableOpacity, Platform, StyleSheet,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useApp } from '../../context/AppContext';
 import feedback, { EVENTS } from '../../services/feedback';
 import { t, useLocale } from '../../i18n';
-import { elevation, space, radius } from '../../theme/tokens';
-import OverlayModal from './OverlayModal';
+import { space } from '../../theme/tokens';
+import Sheet from './Sheet';
+import { useUiTheme } from './PressableScale';
 
 /**
  * Shared action sheet (plan §3). Replaces multi-button `Alert.alert` menus, which on Android show
  * at most 3 buttons (so a 4th, usually Cancel, is dropped) and ignore the back button.
  *
  * - iOS: the native `ActionSheetIOS` sheet, with Cancel as `cancelButtonIndex`.
- * - Android and web: a bottom list in a transparent `Modal`, with a Cancel row. Back
- *   (`onRequestClose`), a scrim tap and Cancel all close it.
+ * - Android and web: a bottom list on the shared `Sheet` (F-10: grabber, drag to close, scrim,
+ *   translucent bars), with a Cancel row. Back, a scrim tap, a drag and Cancel all close it.
  * - The longPress feedback (iOS medium impact, Android Long_Press) plays when it opens.
  *
  * Props:
@@ -27,9 +26,15 @@ import OverlayModal from './OverlayModal';
  */
 export default function ActionSheet({ visible, title, message, options = [], onCancel }) {
   useLocale();
-  const { theme } = useApp();
-  const insets = useSafeAreaInsets();
+  const theme = useUiTheme();
   const native = Platform.OS === 'ios';
+  // What the sheet shows while it plays its exit: the host may clear its menu as it closes.
+  const last = useRef({ title, message, options });
+  if (visible) last.current = { title, message, options };
+  // Every habit card holds one; the Sheet (and its keyboard listeners) exists only from an open
+  // until its exit has finished.
+  const [inUse, setInUse] = useState(!!visible);
+  if (visible && !inUse) setInUse(true);
 
   // Keep the latest props for the iOS callback, which fires after the sheet has gone.
   const latest = useRef({ options, onCancel });
@@ -66,7 +71,7 @@ export default function ActionSheet({ visible, title, message, options = [], onC
     );
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (native) return null;
+  if (native || !inUse) return null;
 
   const choose = (option) => {
     if (fired.current) return;
@@ -75,86 +80,60 @@ export default function ActionSheet({ visible, title, message, options = [], onC
     option.onPress?.();
   };
 
+  const shown = visible ? { title, message, options } : last.current;
+  const header = (shown.title || shown.message) ? ({ titleRef }) => (
+    <View style={[styles.header, { borderBottomColor: theme.border }]}>
+      {!!shown.title && (
+        <Text ref={titleRef} style={[styles.title, { color: theme.text }]} accessibilityRole="header" numberOfLines={2}>
+          {shown.title}
+        </Text>
+      )}
+      {!!shown.message && <Text style={[styles.message, { color: theme.textSecondary }]}>{shown.message}</Text>}
+    </View>
+  ) : undefined;
+
   return (
-    <OverlayModal
+    <Sheet
       visible={!!visible}
-      transparent
-      animationType="fade"
-      statusBarTranslucent
-      navigationBarTranslucent
-      onRequestClose={() => onCancel?.()}
+      onClose={() => onCancel?.()}
+      onDismiss={() => setInUse(false)}
+      header={header}
+      accessibilityLabel={shown.title}
+      theme={theme}
+      testID="actionsheet"
     >
-      <Pressable
-        style={[StyleSheet.absoluteFill, { backgroundColor: theme.scrim }]}
-        onPress={() => onCancel?.()}
-        testID="actionsheet-scrim"
-        accessible={false}
-        importantForAccessibility="no"
-      />
-      <View style={styles.anchor} pointerEvents="box-none">
-        <View
-          style={[
-            styles.panel,
-            elevation.sheet,
-            { backgroundColor: theme.raised, borderColor: theme.border, shadowColor: theme.shadow, paddingBottom: space.xs + insets.bottom },
-          ]}
-          accessibilityViewIsModal
-          onAccessibilityEscape={() => onCancel?.()}
+      {shown.options.map((o, i) => (
+        <TouchableOpacity
+          key={o.key ?? i}
+          style={styles.row}
+          onPress={() => choose(o)}
+          accessibilityRole="button"
+          accessibilityLabel={o.label}
         >
-          {(!!title || !!message) && (
-            <View style={[styles.header, { borderBottomColor: theme.border }]}>
-              {!!title && (
-                <Text style={[styles.title, { color: theme.text }]} accessibilityRole="header" numberOfLines={2}>
-                  {title}
-                </Text>
-              )}
-              {!!message && <Text style={[styles.message, { color: theme.textSecondary }]}>{message}</Text>}
-            </View>
-          )}
-          {options.map((o, i) => (
-            <TouchableOpacity
-              key={o.key ?? i}
-              style={styles.row}
-              onPress={() => choose(o)}
-              accessibilityRole="button"
-              accessibilityLabel={o.label}
-            >
-              <Text style={[styles.rowText, { color: o.destructive ? theme.dangerText : theme.text }]}>{o.label}</Text>
-            </TouchableOpacity>
-          ))}
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => onCancel?.()}
-            accessibilityRole="button"
-            accessibilityLabel={t('common.cancel')}
-            testID="actionsheet-cancel"
-          >
-            <Text style={[styles.rowText, styles.cancelText, { color: theme.textSecondary }]}>{t('common.cancel')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </OverlayModal>
+          <Text style={[styles.rowText, { color: o.destructive ? theme.dangerText : theme.text }]}>{o.label}</Text>
+        </TouchableOpacity>
+      ))}
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
+      <TouchableOpacity
+        style={styles.row}
+        onPress={() => onCancel?.()}
+        accessibilityRole="button"
+        accessibilityLabel={t('common.cancel')}
+        testID="actionsheet-cancel"
+      >
+        <Text style={[styles.rowText, styles.cancelText, { color: theme.textSecondary }]}>{t('common.cancel')}</Text>
+      </TouchableOpacity>
+    </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
-  anchor: { flex: 1, justifyContent: 'flex-end' },
-  panel: {
-    borderTopLeftRadius: radius.sheet,
-    borderTopRightRadius: radius.sheet,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    paddingTop: space.xs,
-    width: '100%',
-    maxWidth: 560,
-    alignSelf: 'center',
-  },
-  header: { paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.sm, borderBottomWidth: StyleSheet.hairlineWidth },
+  // Rows and the header run edge to edge: the sheet pads its content by space.lg.
+  header: { marginHorizontal: -space.lg, paddingHorizontal: space.lg, paddingBottom: space.sm, borderBottomWidth: StyleSheet.hairlineWidth },
   title: { fontSize: 17, fontWeight: '700' },
   message: { fontSize: 13, marginTop: space.xxs },
-  row: { minHeight: 56, paddingHorizontal: space.lg, justifyContent: 'center' },
+  row: { minHeight: 56, marginHorizontal: -space.lg, paddingHorizontal: space.lg, justifyContent: 'center' },
   rowText: { fontSize: 16 },
   cancelText: { fontWeight: '600' },
-  divider: { height: StyleSheet.hairlineWidth, marginHorizontal: space.lg },
+  divider: { height: StyleSheet.hairlineWidth },
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import feedback, { EVENTS } from '../services/feedback';
 import { timeToDate, from24h, formatTimeForClock } from '../utils/time';
@@ -66,7 +66,7 @@ function IOSTimePicker({ visible, hour12, minute, ampm, onClose, onSave, theme }
   };
 
   return (
-    <OverlayModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <OverlayModal visible={visible} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <View style={[styles.overlay, { backgroundColor: theme.scrim }]}>
         <View style={[styles.card, { backgroundColor: theme.overlay }]}>
           <Text style={[styles.title, { color: theme.text }]} accessibilityRole="header">

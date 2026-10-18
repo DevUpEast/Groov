@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getChallengeTier, TIER_STYLES } from '../context/AppContext';
 import { t, useLocale } from '../i18n';
 import OverlayModal from './ui/OverlayModal';
@@ -45,6 +46,9 @@ function ChallengeResultCard({ challenge, theme }) {
 export default function ChallengeRewardModal({ challenges, onDismiss, theme }) {
   const [page, setPage] = useState(0);
   useLocale();
+  // The Modal draws under the translucent status and navigation bars (F-10): keep the content
+  // clear of them.
+  const insets = useSafeAreaInsets();
 
   if (!challenges || challenges.length === 0) return null;
 
@@ -61,10 +65,10 @@ export default function ChallengeRewardModal({ challenges, onDismiss, theme }) {
   };
 
   return (
-    <OverlayModal visible transparent heavyScrim animationType="fade" onRequestClose={onDismiss}>
+    <OverlayModal visible transparent heavyScrim animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onDismiss}>
       <View style={[styles.overlay, { backgroundColor: theme.celebrationScrim }]}>
         <ScrollView
-          contentContainerStyle={styles.container}
+          contentContainerStyle={[styles.container, { paddingTop: space.lg + insets.top, paddingBottom: space.xl + insets.bottom }]}
           showsVerticalScrollIndicator={false}
         >
           <Text style={[styles.title, { color: theme.onCelebration }]}>{t('rewardModal.title')}</Text>
@@ -96,7 +100,6 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: space.lg,
-    paddingBottom: 40,
     justifyContent: 'center',
     flexGrow: 1,
   },

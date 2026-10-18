@@ -39,7 +39,12 @@ import { useUiTheme } from './PressableScale';
  *   ['medium', 'large'] (a fixed 92 % sheet that rests 55 % tall at `medium`; drag up for
  *   `large`, down for `medium`, then closed). `initialDetent` picks the first rest.
  * - `dirty`: guard every dismissal with the discard dialog.
- * - `footer`: pinned under the scroll body (e.g. Save), above the bottom inset.
+ * - `footer`: pinned under the scroll body (e.g. Save), above the bottom inset. With two detents
+ *   it stays pinned to the bottom of the window at `medium` too (it moves up with the visible
+ *   edge), and the body gets the hidden height as bottom padding, so all of it can still be
+ *   scrolled into view at `medium` (F-10).
+ * - `backgroundColor` / `grabberColor`: a tinted sheet (a past challenge's tier colour); the
+ *   default is the `raised` surface and the `controlBorder` grabber.
  * - `scroll` (default true): wrap `children` in a ScrollView (`keyboardShouldPersistTaps`).
  * - `accessibilityLabel`: the sheet's name for screen readers (default: `title`). Focus moves to
  *   the title when the sheet opens (a custom `header` function puts the `titleRef` it gets on
@@ -213,11 +218,11 @@ export function SheetFrame({
 }
 
 /** The grabber: a decorative pill (the close button, back and escape are the accessible ways out). */
-export function SheetGrabber({ theme: themeProp }) {
+export function SheetGrabber({ theme: themeProp, color }) {
   const theme = useUiTheme(themeProp);
   return (
     <View style={styles.grabberArea} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
-      <View style={[styles.grabber, { backgroundColor: theme.controlBorder }]} />
+      <View style={[styles.grabber, { backgroundColor: color ?? theme.controlBorder }]} />
     </View>
   );
 }
@@ -225,6 +230,7 @@ export function SheetGrabber({ theme: themeProp }) {
 export default function Sheet({
   visible, onClose, onDismiss, title, header, detents = ['large'], initialDetent, dirty = false, footer, children,
   scroll = true, contentContainerStyle, accessibilityLabel, returnFocusRef, theme: themeProp, testID, ref,
+  backgroundColor, grabberColor,
 }) {
   const theme = useUiTheme(themeProp);
   const motion = useMotion();
@@ -438,13 +444,22 @@ export default function Sheet({
   const discardThen = useRef(false);
   const headerNode = typeof header === 'function' ? header({ close: requestClose, titleRef: headerRef }) : header;
   const fixedHeight = twoDetents ? Math.round(windowHeight * LARGE_FRACTION) : undefined;
+  // At `medium` the bottom `hidden` dp of the fixed-height sheet are below the window: the body
+  // gets that much extra bottom padding, and the footer is lifted by however far the sheet is
+  // down (clamped to the medium offset), so it stays on screen (F-10).
+  const rest = restOffset(detent, detents, mediumOffset);
+  const bodyPad = rest > 0 ? { paddingBottom: (StyleSheet.flatten(contentContainerStyle)?.paddingBottom ?? 0) + rest } : null;
+  const footerLift = !twoDetents ? null : r
+    ? { transform: [{ translateY: -rest }] }
+    : { transform: [{ translateY: value.interpolate({ inputRange: [0, mediumOffset], outputRange: [0, -mediumOffset], extrapolate: 'clamp' }) }] };
 
   return (
     <SheetFrame
       visible={mounted}
       value={value}
-      rest={restOffset(detent, detents, mediumOffset)}
+      rest={rest}
       height={fixedHeight}
+      backgroundColor={backgroundColor}
       onRequestClose={requestClose}
       onScrimPress={requestClose}
       onAccessibilityEscape={requestClose}
@@ -454,7 +469,7 @@ export default function Sheet({
       testID={testID}
     >
       <View {...pan.panHandlers} style={styles.dragZone} testID="sheet-drag-zone">
-        <SheetGrabber theme={theme} />
+        <SheetGrabber theme={theme} color={grabberColor} />
         <View>
           {headerNode ?? (title ? (
             <View style={styles.titleRow}>
@@ -471,16 +486,16 @@ export default function Sheet({
           scrollEventThrottle={16}
           onLayout={onBodyLayout}
           style={fixedHeight ? styles.bodyFill : styles.bodyFit}
-          contentContainerStyle={contentContainerStyle}
+          contentContainerStyle={[contentContainerStyle, bodyPad]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           {children}
         </ScrollView>
       ) : (
-        <View style={fixedHeight ? styles.bodyFill : styles.bodyFit}>{children}</View>
+        <View style={[fixedHeight ? styles.bodyFill : styles.bodyFit, bodyPad]}>{children}</View>
       )}
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
+      {footer ? <Animated.View style={[styles.footer, footerLift && { backgroundColor: backgroundColor ?? theme.raised }, footerLift]}>{footer}</Animated.View> : null}
       <Dialog
         visible={confirming}
         onClose={() => { pendingThen.current = null; setConfirming(false); }}

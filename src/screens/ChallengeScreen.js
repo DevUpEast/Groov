@@ -1,29 +1,26 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, Alert, Platform,
-  PanResponder, Keyboard, Animated,
+  Alert, Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SafeAreaView from '../components/SafeAreaView';
 import { useApp, getChallengeTier, TIER_STYLES } from '../context/AppContext';
 import Slider from '../components/Slider';
 import EmptyCard from '../components/EmptyCard';
-import { SheetDragHandle } from '../components/SheetHeader';
 import feedback, { EVENTS } from '../services/feedback';
 import { addDays } from '../utils/dates';
 import { challengeFormDirty, currentChallengeDay, isChallengeExpired } from '../utils/challenges';
 import { getChallengeTemplates } from '../utils/habits';
 import { t, getLocale, useLocale } from '../i18n';
-import OverlayModal from '../components/ui/OverlayModal';
 import AppText from '../components/ui/AppText';
 import SectionLabel from '../components/ui/SectionLabel';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import TextField from '../components/ui/TextField';
 import Sheet from '../components/ui/Sheet';
 import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
 import { numeric } from '../theme/typography';
-import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, useMotion } from '../theme/motion';
 import { space, radius } from '../theme/tokens';
 
 const RANGE_OPTIONS = [
@@ -33,43 +30,6 @@ const RANGE_OPTIONS = [
 ];
 
 const tierLabel = (tier) => t(`tier.${tier}`);
-
-// ── Shared bottom-sheet animation ─────────────────────────────────────────────
-
-function useSheetAnim() {
-  const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
-  const [internalVisible, setInternalVisible] = useState(false);
-
-  const open = useCallback(() => {
-    setInternalVisible(true);
-    translateY.setValue(SHEET_OFFSCREEN);
-    sheetIn(translateY).start();
-  }, [translateY]);
-
-  const close = useCallback((cb) => {
-    sheetOut(translateY).start(() => {
-      setInternalVisible(false);
-      if (typeof cb === 'function') cb();
-    });
-  }, [translateY]);
-
-  return { translateY, internalVisible, open, close };
-}
-
-function makeDragPanResponder(translateY, onClose) {
-  return PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5,
-    onPanResponderMove: (_, gs) => { if (gs.dy > 0) translateY.setValue(gs.dy); },
-    onPanResponderRelease: (_, gs) => {
-      if (gs.dy > 80) {
-        onClose();
-      } else {
-        sheetSettle(translateY).start();
-      }
-    },
-  });
-}
 
 // ── Day badge ─────────────────────────────────────────────────────────────────
 
@@ -344,83 +304,81 @@ export function ChallengeFormModal({ visible, initial, habits, onClose, onSave, 
 
 // ── Past challenge detail modal ───────────────────────────────────────────────
 
-function PastChallengeDetailModal({ challenge, onClose, theme }) {
-  const sheet = useSheetAnim();
-  const motion = useMotion();
-
-  useEffect(() => { if (challenge) sheet.open(); }, [challenge]);
-
-  const doClose = () => sheet.close(onClose);
-  const pan = useRef(makeDragPanResponder(sheet.translateY, doClose)).current;
-
+function PastChallengeDetailModal({ challenge: challengeProp, onClose, theme }) {
+  // The host clears the challenge as it closes; keep the last one on screen for the exit.
+  const last = useRef(challengeProp);
+  if (challengeProp) last.current = challengeProp;
+  const challenge = challengeProp || last.current;
   if (!challenge) return null;
 
   const tier = challenge.tier || getChallengeTier(challenge.completedDays?.length ?? 0, challenge.days);
   const ts = TIER_STYLES[tier];
   const completedCount = challenge.completedDays?.length ?? 0;
   const progress = challenge.days > 0 ? completedCount / challenge.days : 0;
-  const cardBg = ts.bg || theme.surface;
+  const cardBg = ts.bg || theme.raised;
   const cardBorder = ts.border || theme.border;
   const textColor = ts.text || theme.text;
   const subColor = ts.text || theme.textSecondary;
+  const title = `${ts.trophy} ${challenge.name}`;
+
+  const header = ({ close, titleRef }) => (
+    <View style={styles.sheetHeader}>
+      <AppText ref={titleRef} variant="headline" style={[styles.sheetTitle, { color: textColor }]} accessibilityRole="header" numberOfLines={2}>
+        {title}
+      </AppText>
+      <IconButton icon="close" iconSize={24} theme={theme} color={subColor} onPress={close} accessibilityLabel={t('common.close')} style={styles.sheetCloseBtn} />
+    </View>
+  );
 
   return (
-    <OverlayModal visible={sheet.internalVisible} animationType="none" transparent onRequestClose={doClose}>
-      <View style={styles.overlay}>
-        <View style={[styles.overlayBg, { backgroundColor: theme.scrim }]} />
-        <Animated.View style={[styles.sheet, { backgroundColor: cardBg }, motion.sheetStyle(sheet.translateY)]}>
-          <SheetDragHandle panHandlers={pan.panHandlers} theme={theme} color={cardBorder} />
+    <Sheet
+      visible={!!challengeProp}
+      onClose={onClose}
+      header={header}
+      accessibilityLabel={challenge.name}
+      backgroundColor={cardBg}
+      grabberColor={ts.border || undefined}
+      contentContainerStyle={styles.pastBody}
+      theme={theme}
+      testID="past-challenge-sheet"
+    >
+      {tier !== 'none' && (
+        <View style={[styles.completeBanner, { backgroundColor: cardBorder }]}>
+          <Text style={[styles.completeBannerText, { color: theme.onTier }]}>{t('challenges.detail.completion', { badge: ts.badge, tier: tierLabel(tier) })}</Text>
+        </View>
+      )}
 
-          <View style={styles.sheetHeader}>
-            <Text style={[styles.sheetTitle, { color: textColor }]}>
-              {ts.trophy} {challenge.name}
-            </Text>
-            <TouchableOpacity onPress={doClose} style={styles.sheetCloseBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
-              <Text style={[styles.sheetCloseTxt, { color: subColor }]}>✕</Text>
-            </TouchableOpacity>
-          </View>
+      <Text style={[styles.pastDesc, { color: subColor }]}>{challenge.description || t('challenges.detail.noDescription')}</Text>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-            {tier !== 'none' && (
-              <View style={[styles.completeBanner, { backgroundColor: cardBorder }]}>
-                <Text style={[styles.completeBannerText, { color: theme.onTier }]}>{t('challenges.detail.completion', { badge: ts.badge, tier: tierLabel(tier) })}</Text>
-              </View>
-            )}
+      <Text style={[styles.detailLabel, { color: subColor }]}>{t('challenges.detail.progress', { done: completedCount, days: challenge.days })}</Text>
 
-            <Text style={[styles.pastDesc, { color: subColor }]}>{challenge.description || t('challenges.detail.noDescription')}</Text>
-
-            <Text style={[styles.detailLabel, { color: subColor }]}>{t('challenges.detail.progress', { done: completedCount, days: challenge.days })}</Text>
-
-            <View style={[styles.progressBg, { backgroundColor: tier !== 'none' ? cardBorder + '40' : theme.track }]}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: cardBorder || theme.meter }]} />
-            </View>
-            <Text style={[styles.progressLabel, { color: subColor }]}>{t('challenges.card.percentComplete', { percent: Math.round(progress * 100) })}</Text>
-
-            <View style={styles.badgeRow}>
-              {Array.from({ length: challenge.days }).map((_, i) => {
-                const completed = i < completedCount;
-                return (
-                  <View key={i} style={[styles.badge, {
-                    backgroundColor: completed ? (cardBorder || theme.meter) : theme.track,
-                    borderColor: completed ? (cardBorder || theme.meter) : theme.border,
-                  }]}>
-                    <Text style={[styles.badgeText, { color: completed ? (ts.border ? theme.onTier : theme.onMeter) : theme.textSecondary }]}>
-                      {completed ? '✓' : String(i + 1)}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            {challenge.startDate && (
-              <Text style={[styles.pastMeta, { color: subColor }]}>
-                {t('challenges.detail.started', { date: new Date(challenge.startDate + 'T00:00:00').toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', year: 'numeric' }) })}
-              </Text>
-            )}
-          </ScrollView>
-        </Animated.View>
+      <View style={[styles.progressBg, { backgroundColor: tier !== 'none' ? cardBorder + '40' : theme.track }]}>
+        <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: cardBorder || theme.meter }]} />
       </View>
-    </OverlayModal>
+      <Text style={[styles.progressLabel, { color: subColor }]}>{t('challenges.card.percentComplete', { percent: Math.round(progress * 100) })}</Text>
+
+      <View style={styles.badgeRow}>
+        {Array.from({ length: challenge.days }).map((_, i) => {
+          const completed = i < completedCount;
+          return (
+            <View key={i} style={[styles.badge, {
+              backgroundColor: completed ? (cardBorder || theme.meter) : theme.track,
+              borderColor: completed ? (cardBorder || theme.meter) : theme.border,
+            }]}>
+              <Text style={[styles.badgeText, { color: completed ? (ts.border ? theme.onTier : theme.onMeter) : theme.textSecondary }]}>
+                {completed ? '✓' : String(i + 1)}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {challenge.startDate && (
+        <Text style={[styles.pastMeta, { color: subColor }]}>
+          {t('challenges.detail.started', { date: new Date(challenge.startDate + 'T00:00:00').toLocaleDateString(getLocale(), { month: 'short', day: 'numeric', year: 'numeric' }) })}
+        </Text>
+      )}
+    </Sheet>
   );
 }
 
@@ -779,18 +737,13 @@ const styles = StyleSheet.create({
   iconPickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: 20 },
   iconPickerBtn: { width: 44, height: 44, borderRadius: radius.control, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   iconPickerEmoji: { fontSize: 22 },
-  // Sheet / modal styles
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  overlayBg: { ...StyleSheet.absoluteFillObject },
-  sheet: {
-    borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
-    paddingHorizontal: space.lg, paddingBottom: Platform.OS === 'ios' ? 40 : space.lg,
-    maxHeight: '92%',
-  },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  sheetTitle: { fontSize: 20, fontWeight: 'bold' },
-  sheetCloseBtn: { padding: space.xxs },
-  sheetCloseTxt: { fontSize: 20, fontWeight: 'bold' },
+  // Past challenge sheet
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
+  sheetTitle: { flexShrink: 1 },
+  // The 40 pt button's icon lines up with the sheet's content edge.
+  sheetCloseBtn: { marginRight: -space.xs },
+  // 8 dp under the header (Sheet dragZone) + 12 = the old 20 dp header gap.
+  pastBody: { paddingTop: space.sm, paddingBottom: space.sm },
   formLabel: { marginBottom: space.xs },
   // 8 dp under the sheet's title row (Sheet dragZone) + 12 = the old 20 dp header gap.
   formBody: { paddingTop: space.sm, paddingBottom: space.xs },

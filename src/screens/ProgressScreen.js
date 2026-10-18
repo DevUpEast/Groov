@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Dimensions,
-  TouchableOpacity, Modal, Animated, PanResponder, ActivityIndicator,
+  TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import SafeAreaView from '../components/SafeAreaView';
 import { useApp, STREAK_MILESTONES, TIER_STYLES } from '../context/AppContext';
@@ -16,11 +16,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { weekdayLabels } from '../utils/schedule';
 import { t, getLocale, useLocale } from '../i18n';
 import { data, elevation, space, radius } from '../theme/tokens';
-import OverlayModal from '../components/ui/OverlayModal';
+import Sheet from '../components/ui/Sheet';
+import IconButton from '../components/ui/IconButton';
 import AppText from '../components/ui/AppText';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { numeric } from '../theme/typography';
-import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, useMotion } from '../theme/motion';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_H = 150;
@@ -146,38 +146,11 @@ function HeatmapCell({ day, size, gap, theme, onPress }) {
 
 // ─── Day detail sheet ─────────────────────────────────────────────────────────
 
-function DayDetailModal({ visible, day, onClose, theme }) {
-  const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
-  const [internalVisible, setInternalVisible] = useState(false);
-  const motion = useMotion();
-
-  React.useEffect(() => {
-    if (visible && day) {
-      setInternalVisible(true);
-      translateY.setValue(SHEET_OFFSCREEN);
-      sheetIn(translateY).start();
-    }
-  }, [visible, day]);
-
-  const doClose = useCallback(() => {
-    sheetOut(translateY).start(() => {
-      setInternalVisible(false);
-      onClose();
-    });
-  }, [translateY, onClose]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5,
-      onPanResponderMove: (_, gs) => { if (gs.dy > 0) translateY.setValue(gs.dy); },
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dy > 80) doClose();
-        else sheetSettle(translateY).start();
-      },
-    })
-  ).current;
-
+function DayDetailModal({ visible, day: dayProp, onClose, theme }) {
+  // The host clears the day as it closes; keep the last one on screen for the exit.
+  const lastDay = useRef(dayProp);
+  if (dayProp) lastDay.current = dayProp;
+  const day = dayProp || lastDay.current;
   if (!day) return null;
 
   const date = new Date(day.date + 'T00:00:00');
@@ -185,67 +158,66 @@ function DayDetailModal({ visible, day, onClose, theme }) {
   const dayHabits = day.habits || [];
   const dayCompletions = day.rawCompletions || {};
 
-  return (
-    <OverlayModal visible={internalVisible} animationType="none" transparent onRequestClose={doClose}>
-      <View style={[styles.overlay, { backgroundColor: theme.scrim }]}>
-        <Animated.View style={[styles.sheet, elevation.sheet, { backgroundColor: theme.raised, shadowColor: theme.shadow }, motion.sheetStyle(translateY)]}>
-          <View {...panResponder.panHandlers} style={styles.dragHandleArea}>
-            <View style={[styles.handleBar, { backgroundColor: theme.border }]} />
-          </View>
-          <View style={styles.sheetHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.sheetTitle, { color: theme.text }]}>{dateLabel}</Text>
-              <Text style={[styles.sheetSub, { color: theme.textSecondary }]}>
-                {t('progress.day.habitsCompleted', { completed: day.completed, total: day.total })}
-              </Text>
-            </View>
-            <TouchableOpacity onPress={doClose} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
-              <Text style={[styles.closeBtnTxt, { color: theme.textSecondary }]}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          {day.frozen && (
-            <View style={styles.frozenRow}>
-              <Ionicons name="snow-outline" size={16} color={theme.textSecondary} accessible={false} importantForAccessibility="no" aria-hidden />
-              <Text style={[styles.sheetSub, styles.frozenText, { color: theme.textSecondary }]}>{t('progress.day.frozen')}</Text>
-            </View>
-          )}
-
-          <View style={[styles.ratioBarBg, { backgroundColor: theme.track }]}>
-            <View style={[styles.ratioBarFill, {
-              width: day.total > 0 ? `${(day.completed / day.total) * 100}%` : '0%',
-              backgroundColor: theme.meter,
-            }]} />
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: space.md }}>
-            {dayHabits.length === 0 ? (
-              <Text style={[styles.noData, { color: theme.textSecondary }]}>{t('progress.day.noData')}</Text>
-            ) : (
-              dayHabits.map(h => {
-                const count = dayCompletions[h.id] || 0;
-                const done = h.status === 'done'; // shared rule (utils/dayStatus.js summarizeDay)
-                const rest = !done && h.status === 'rest';
-                return (
-                  <View key={h.id} style={[styles.habitRow, { borderBottomColor: theme.border, opacity: rest ? 0.55 : 1 }]}>
-                    <Text style={styles.habitIcon}>{h.icon || '📋'}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.habitName, { color: theme.text }]}>{h.name}</Text>
-                      {rest ? (
-                        <Text style={[styles.habitSub, { color: theme.textSecondary }]}>{h.skipped ? t('progress.day.skipped') : day.frozen ? t('progress.day.frozenLabel') : t('progress.day.notScheduled')}</Text>
-                      ) : h.volumeGoal > 1 ? (
-                        <Text style={[styles.habitSub, { color: theme.textSecondary }]}>{count}/{h.volumeGoal}</Text>
-                      ) : null}
-                    </View>
-                    <Text style={{ fontSize: 18 }}>{done ? '✅' : rest ? '💤' : '⬜'}</Text>
-                  </View>
-                );
-              })
-            )}
-            <View style={{ height: 32 }} />
-          </ScrollView>
-        </Animated.View>
+  const header = ({ close, titleRef }) => (
+    <View style={styles.sheetHeader}>
+      <View style={{ flex: 1 }}>
+        <AppText ref={titleRef} variant="headline" style={{ color: theme.text }} accessibilityRole="header">{dateLabel}</AppText>
+        <Text style={[styles.sheetSub, { color: theme.textSecondary }]}>
+          {t('progress.day.habitsCompleted', { completed: day.completed, total: day.total })}
+        </Text>
       </View>
-    </OverlayModal>
+      <IconButton icon="close" iconSize={24} theme={theme} onPress={close} accessibilityLabel={t('common.close')} style={styles.closeBtn} />
+    </View>
+  );
+
+  return (
+    <Sheet
+      visible={!!visible && !!dayProp}
+      onClose={onClose}
+      header={header}
+      accessibilityLabel={dateLabel}
+      detents={['medium', 'large']}
+      theme={theme}
+      testID="day-detail-sheet"
+    >
+      {day.frozen && (
+        <View style={styles.frozenRow}>
+          <Ionicons name="snow-outline" size={16} color={theme.textSecondary} accessible={false} importantForAccessibility="no" aria-hidden />
+          <Text style={[styles.sheetSub, styles.frozenText, { color: theme.textSecondary }]}>{t('progress.day.frozen')}</Text>
+        </View>
+      )}
+
+      <View style={[styles.ratioBarBg, { backgroundColor: theme.track }]}>
+        <View style={[styles.ratioBarFill, {
+          width: day.total > 0 ? `${(day.completed / day.total) * 100}%` : '0%',
+          backgroundColor: theme.meter,
+        }]} />
+      </View>
+
+      {dayHabits.length === 0 ? (
+        <Text style={[styles.noData, { color: theme.textSecondary }]}>{t('progress.day.noData')}</Text>
+      ) : (
+        dayHabits.map(h => {
+          const count = dayCompletions[h.id] || 0;
+          const done = h.status === 'done'; // shared rule (utils/dayStatus.js summarizeDay)
+          const rest = !done && h.status === 'rest';
+          return (
+            <View key={h.id} style={[styles.habitRow, { borderBottomColor: theme.border, opacity: rest ? 0.55 : 1 }]}>
+              <Text style={styles.habitIcon}>{h.icon || '📋'}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.habitName, { color: theme.text }]}>{h.name}</Text>
+                {rest ? (
+                  <Text style={[styles.habitSub, { color: theme.textSecondary }]}>{h.skipped ? t('progress.day.skipped') : day.frozen ? t('progress.day.frozenLabel') : t('progress.day.notScheduled')}</Text>
+                ) : h.volumeGoal > 1 ? (
+                  <Text style={[styles.habitSub, { color: theme.textSecondary }]}>{count}/{h.volumeGoal}</Text>
+                ) : null}
+              </View>
+              <Text style={{ fontSize: 18 }}>{done ? '✅' : rest ? '💤' : '⬜'}</Text>
+            </View>
+          );
+        })
+      )}
+    </Sheet>
   );
 }
 
@@ -754,22 +726,14 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendDot: { width: 10, height: 10, borderRadius: radius.cell / 2 },
   legendLabel: { fontSize: 12 },
-  // Day detail modal
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: {
-    borderTopLeftRadius: radius.sheet, borderTopRightRadius: radius.sheet,
-    paddingHorizontal: space.lg, paddingBottom: space.xs, maxHeight: '85%',
-  },
-  dragHandleArea: { alignItems: 'center', paddingVertical: space.sm },
-  handleBar: { width: 40, height: 4, borderRadius: radius.pill },
-  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: space.sm },
-  sheetTitle: { fontSize: 18, fontWeight: 'bold' },
+  // Day detail sheet
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, marginBottom: space.sm },
   sheetSub: { fontSize: 13, marginTop: 2 },
   frozenRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: space.xs },
   frozenText: { flex: 1, marginTop: 0 },
-  closeBtn: { padding: space.xxs, marginLeft: space.xs },
-  closeBtnTxt: { fontSize: 18, fontWeight: 'bold' },
-  ratioBarBg: { height: 8, borderRadius: radius.cell, overflow: 'hidden' },
+  // The 40 pt button's icon lines up with the sheet's content edge.
+  closeBtn: { marginRight: -space.xs },
+  ratioBarBg: { height: 8, borderRadius: radius.cell, overflow: 'hidden', marginBottom: space.md },
   ratioBarFill: { height: 8, borderRadius: radius.cell },
   noData: { fontSize: 14, textAlign: 'center', paddingVertical: space.lg },
   habitRow: {
