@@ -155,7 +155,7 @@
     },
     "sectionHabits": "HEUTIGE GEWOHNHEITEN",
     "markRest": "Den Rest abhaken (%{count})",
-    "markRestNote": "Zähler und Timer bleiben unverändert",
+    "markRestNote": "Mengen-, Zeit- und Limit-Gewohnheiten bleiben unverändert",
     "activeChallenges": "AKTIVE CHALLENGES",
     "challenge": {
       "sub": "Tag %{day} von %{days} · %{count} erfasst",
@@ -182,11 +182,11 @@
     "intro": {
       "stick": {
         "title": "Gewohnheiten, die bleiben",
-        "body": "Verfolge tägliche Gewohnheiten und Mengenziele. Jeder Check-in bringt dich dem Leben näher, das du dir wünschst."
+        "body": "Verfolge tägliche Gewohnheiten und Mengenziele. Jedes Abhaken bringt dich dem Leben näher, das du dir wünschst."
       },
       "streaks": {
         "title": "Serien mit Nachsicht",
-        "body": "Erfülle deine Gewohnheiten, um eine Serie aufzubauen. Ruhetage, Auslassen und zwei Freezes pro Monat sorgen dafür, dass ein schlechter Tag sie nicht ruiniert."
+        "body": "Erfülle deine Gewohnheiten, um eine Serie aufzubauen. Ruhetage, übersprungene Tage und zwei Freezes pro Monat sorgen dafür, dass ein schlechter Tag sie nicht ruiniert."
       }
     },
     "starter": {
@@ -250,7 +250,7 @@
     },
     "archive": {
       "title": "Gewohnheit archivieren",
-      "body": "„%{name}“ archivieren? Sie verschwindet aus „Heute“, behält aber ihren Verlauf, und du kannst sie jederzeit wiederherstellen.",
+      "body": "„%{name}“ archivieren? Die Gewohnheit verschwindet aus „Heute“, behält aber ihren Verlauf, und du kannst sie jederzeit wiederherstellen.",
       "deleteForever": "Endgültig löschen",
       "archive": "Archivieren"
     },
@@ -476,7 +476,7 @@
     },
     "delete": {
       "title": "Challenge löschen",
-      "body": "„%{name}“ entfernen? Sie wird zu den vergangenen Challenges verschoben."
+      "body": "„%{name}“ entfernen? Die Challenge wird zu den vergangenen Challenges verschoben."
     }
   },
   "progress": {
@@ -809,7 +809,7 @@
     "a11y": "%{label}, %{value} von 5"
   },
   "noteModal": {
-    "sub": "%{date} · eine Notiz zu diesem Check-in",
+    "sub": "%{date} · eine Notiz zu dieser Gewohnheit",
     "placeholder": "Wie lief es?",
     "a11y": "Notiz",
     "removeNote": "Notiz entfernen"
