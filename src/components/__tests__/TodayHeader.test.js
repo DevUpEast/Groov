@@ -45,6 +45,8 @@ describe('dayLine', () => {
     expect(dayLine({ state: 'complete', completed: 4, total: 4, streak: 0 })).toBe('Day complete');
     expect(dayLine({ state: 'rest', completed: 0, total: 0, streak: 12 })).toBe('Rest day · 12-day streak holds');
     expect(dayLine({ state: 'rest', completed: 0, total: 0, streak: 0 })).toBe('Rest day');
+    // Nothing done yet: the first-run nudge (plan §1.2 8b).
+    expect(dayLine({ state: 'progress', completed: 0, total: 4, streak: 0 })).toBe('Tap a habit to start your day');
   });
 });
 
@@ -118,6 +120,8 @@ describe('TodayHeader strip', () => {
     const r = render();
     const row = r.root.findAll(n => n.props && typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel.startsWith('Last '))[0];
     expect(row.props.accessibilityLabel).toBe('Last 4 days: 1 complete, 1 rest, 1 missed');
+    const one = render({ beats: [{ key: '2026-10-15', status: 'open', today: true }] });
+    expect(one.root.findAll(n => n.props && typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityLabel.startsWith('Last '))[0].props.accessibilityLabel).toBe('Last 1 day: 0 complete, 0 rest, 0 missed');
     const outlined = r.root.findAll(n => n.type === 'View' && [].concat(n.props.style).some(s => s && s.borderColor === theme.beatOutline));
     expect(outlined.length).toBe(3); // rest, missed, open today
   });

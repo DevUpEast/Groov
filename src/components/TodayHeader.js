@@ -84,7 +84,7 @@ function BeatRow({ beats, theme }) {
   if (!beats || beats.length === 0) return null;
   const s = summarizeBeats(beats);
   return (
-    <View style={styles.beats} accessible accessibilityLabel={t('today.beats.a11y', s)}>
+    <View style={styles.beats} accessible accessibilityLabel={t('today.beats.a11y', { ...s, count: s.days })}>
       {beats.map(b => <Beat key={b.key} status={b.status} today={b.today} theme={theme} />)}
     </View>
   );
@@ -128,6 +128,8 @@ export function TodayRing({ state, completed, total, theme, ringSize, stroke, ca
 export function dayLine({ state, completed, total, streak }) {
   if (state === 'complete') return streak > 0 ? t('today.ring.complete', { count: streak }) : t('today.ring.completeNoStreak');
   if (state === 'rest') return streak > 0 ? t('today.ring.rest', { count: streak }) : t('today.restDay.title');
+  // Nothing done yet: the first-run nudge (plan §1.2 8b) instead of "0 of 4 done".
+  if (completed === 0) return t('today.ring.empty');
   return t('today.ring.progress', { completed, total, remaining: Math.max(0, total - completed) });
 }
 

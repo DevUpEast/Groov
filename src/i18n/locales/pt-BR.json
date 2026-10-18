@@ -140,10 +140,11 @@
       "completeNoStreak": "Dia completo",
       "rest": "Dia de descanso · sua sequência de %{count} dias continua",
       "restCaption": "descanso",
-      "ofTotal": "%{completed} de %{total}"
+      "ofTotal": "%{completed} de %{total}",
+      "empty": "Toque em um hábito para começar seu dia"
     },
     "coach": "Coach de IA",
-    "beats": { "a11y": "Últimos %{days} dias: %{done} completos, %{rest} de descanso, %{missed} não feitos" },
+    "beats": { "a11y": { "one": "Último %{count} dia: %{done} completos, %{rest} de descanso, %{missed} não feitos", "other": "Últimos %{count} dias: %{done} completos, %{rest} de descanso, %{missed} não feitos" } },
     "sticky": { "hint": "Volta ao topo" },
     "empty": {
       "title": "Entre no Ritmo",

@@ -45,6 +45,9 @@ const TIME_SECTIONS = ['morning', 'afternoon', 'evening', 'anytime'];
 // Ionicons for the time-of-day group labels (no emoji in section headers).
 const SECTION_ICONS = { morning: 'sunny-outline', afternoon: 'partly-sunny-outline', evening: 'moon-outline', anytime: 'time-outline' };
 const STICKY_H = 48;
+// Sample coach text for the web mockup's `?nudge=1` (review shots only; real nudges come from
+// the generate-nudge edge function).
+const MOCKUP_NUDGE = 'You hit your water goal on 5 of the last 7 days. Try stacking Meditate right after Move this morning: one cue, two habits.';
 // A little air under the Android status bar; iOS (and the mockup) start right under it (D-00).
 const HEADER_TOP = Platform.OS === 'android' ? space.xs : 0;
 
@@ -60,7 +63,12 @@ function getGreeting(offset = 0) {
 function getDateString(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
-  return d.toLocaleDateString(getLocale(), { weekday: 'long', month: 'long', day: 'numeric' });
+  const locale = getLocale();
+  // Japanese runs the date and weekday together ("10月18日日曜日"); D-00 sets them apart.
+  if (/^ja(-|$)/i.test(locale)) {
+    return `${d.toLocaleDateString(locale, { month: 'long', day: 'numeric' })} ${d.toLocaleDateString(locale, { weekday: 'long' })}`;
+  }
+  return d.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
 // How long the "Mark the rest done" toast (and its Undo) stays up. A challenge that
@@ -197,17 +205,25 @@ export default function TodayScreen() {
   // The smart evening check-in is scheduled from AppContext (real date, not the dev offset).
   const allDone = isAllDone();
 
-  const completed = getCompletedCount();
-  const total = dueHabits.length;
-
   // ── Header (C-04) ──
-  // The strip's state: no strip before the first habit; a rest day when nothing is scheduled.
-  const headerState = habits.length === 0 ? null : total === 0 ? 'rest' : allDone ? 'complete' : 'progress';
+  // The strip counts like the streak (S-08): a habit skipped today is excused, so it leaves the
+  // total unless it was done anyway. Every due habit skipped reads as a rest day. (Freezes only
+  // ever cover past days, so today has none to count.)
+  const skippedToday = settings.skips?.[today] || [];
+  const headerDue = dueHabits.filter(h => !skippedToday.includes(h.id) || isHabitSatisfied(h));
+  const completed = headerDue.filter(h => isHabitSatisfied(h)).length;
+  const total = headerDue.length;
+  // The strip's state: no strip before the first habit; a rest day when nothing is asked today.
+  const headerState = habits.length === 0 ? null : total === 0 ? 'rest' : completed >= total ? 'complete' : 'progress';
   const streak = habits.length > 0 ? getOverallStreak() : 0;
   // The 7-day beat row, judged by the same day rules as the streak. Days before the first
   // habit (or the account) are left out.
   const beats = React.useMemo(() => {
     if (!headerState) return [];
+    // The later of the account start and the first habit, unlike the streak walk's floor
+    // (earliest habit, else the account): starter habits can carry a createdAt far before the
+    // account existed (DEFAULT_HABITS), and those days would draw as a row of misses. A backup
+    // restore with older habits shows the same short row; the heat map still draws those days.
     const floor = [accountCreatedAt, earliestCreatedAt(allHabits)].filter(Boolean).sort().pop() || null;
     return buildWeekBeats({
       today,
@@ -252,6 +268,23 @@ export default function TodayScreen() {
       });
     }
   }, [windowHeight, compactRing]);
+  // AI Coach nudge: hidden on day 1, the coach needs prior-day data.
+  // The web mockup's `?nudge=1` shows a fixed sample so review shots can include the card.
+  const shownNudge = mockupParams.nudge ? MOCKUP_NUDGE : nudgeMessage;
+  const nudgeCard = (canShowNudge || mockupParams.nudge) && (nudgeLoading || shownNudge) ? (
+    <View style={[styles.nudgeCard, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
+      <Ionicons name="sparkles-outline" size={18} color={theme.link} style={styles.nudgeIcon} />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.nudgeLabel, { color: theme.link }]}>{t('today.coach')}</Text>
+        {nudgeLoading && !shownNudge ? (
+          <ActivityIndicator size="small" color={theme.link} style={{ marginTop: 4 }} />
+        ) : (
+          <Text style={[styles.nudgeText, { color: theme.text }]}>{shownNudge}</Text>
+        )}
+      </View>
+    </View>
+  ) : null;
+
   const scrollToTop = useCallback(() => scrollRef.current?.scrollTo?.({ y: 0, animated: true }), []);
 
   // Completions queued by "Mark the rest done": { challengeId, claimedAt, token }.
@@ -486,20 +519,7 @@ export default function TodayScreen() {
 
         {/* Habits */}
         <View style={styles.content}>
-          {/* AI Coach Nudge — hidden on day 1; coach needs prior-day data */}
-          {canShowNudge && (nudgeLoading || nudgeMessage) && (
-            <View style={[styles.nudgeCard, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
-              <Ionicons name="sparkles-outline" size={18} color={theme.link} style={styles.nudgeIcon} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.nudgeLabel, { color: theme.link }]}>{t('today.coach')}</Text>
-                {nudgeLoading ? (
-                  <ActivityIndicator size="small" color={theme.link} style={{ marginTop: 4 }} />
-                ) : (
-                  <Text style={[styles.nudgeText, { color: theme.text }]}>{nudgeMessage}</Text>
-                )}
-              </View>
-            </View>
-          )}
+          {!compactRing && nudgeCard}
 
           {habits.length === 0 ? (
             <>
@@ -588,6 +608,9 @@ export default function TodayScreen() {
             </>
           )}
 
+          {/* Short windows (SE): the nudge goes under the list so the first cards stay above the tab bar. */}
+          {compactRing && nudgeCard}
+
           {habits.length > 0 && (
             <MoodCheckIn value={moods[today] ?? null} onChange={(v) => setMood(today, v)} theme={theme} />
           )}
@@ -636,8 +659,8 @@ export default function TodayScreen() {
 
       {/* Collapsed header (DEP-5): fades in once the strip has scrolled under it. */}
       <Animated.View
-        style={[styles.stickyLayer, { opacity: stickyOpacity }]}
-        pointerEvents={stuck ? 'box-none' : 'none'}
+        style={[styles.stickyLayer, { opacity: stickyOpacity, pointerEvents: stuck ? 'box-none' : 'none' }]}
+        aria-hidden={!stuck}
         accessibilityElementsHidden={!stuck}
         importantForAccessibility={stuck ? 'auto' : 'no-hide-descendants'}
       >
@@ -722,7 +745,7 @@ const styles = StyleSheet.create({
   plainList: { marginTop: space.md },
   // Short windows (SE): 16 between groups instead of 24, so a third time-of-day group still
   // leaves the fourth card above the tab bar.
-  sectionCompact: { marginTop: space.md },
+  sectionCompact: { marginTop: space.sectionCompact },
   sectionLabel: {
     fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase',
   },

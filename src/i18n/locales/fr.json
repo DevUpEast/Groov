@@ -140,10 +140,11 @@
       "completeNoStreak": "Journée bouclée",
       "rest": "Jour de repos · ta série de %{count} jours tient",
       "restCaption": "repos",
-      "ofTotal": "%{completed} sur %{total}"
+      "ofTotal": "%{completed} sur %{total}",
+      "empty": "Touche une habitude pour lancer ta journée"
     },
     "coach": "Coach IA",
-    "beats": { "a11y": "%{days} derniers jours : %{done} réussis, %{rest} de repos, %{missed} manqués" },
+    "beats": { "a11y": { "one": "%{count} dernier jour : %{done} réussis, %{rest} de repos, %{missed} manqués", "other": "%{count} derniers jours : %{done} réussis, %{rest} de repos, %{missed} manqués" } },
     "sticky": { "hint": "Revient en haut" },
     "empty": {
       "title": "Trouve ton rythme",

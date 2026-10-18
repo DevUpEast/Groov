@@ -232,7 +232,9 @@ export const celebrationArt = {
 };
 
 // §2.6
-export const space = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 24, xl: 32, xxl: 48, gutter: 20 };
+// sectionCompact: the gap above a list section label on short windows (height below
+// size.ringTodayCompactBelow, the same breakpoint as the compact Today ring); lg (24) otherwise.
+export const space = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 24, xl: 32, xxl: 48, gutter: 20, sectionCompact: 16 };
 
 export const radius = { control: 8, cell: 4, card: 16, sheet: 24, pill: 999 };
 

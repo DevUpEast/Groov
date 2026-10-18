@@ -140,10 +140,11 @@
       "completeNoStreak": "今日は全部完了",
       "rest": "休みの日 · %{count}日連続をキープ",
       "restCaption": "休み",
-      "ofTotal": "%{completed}/%{total}"
+      "ofTotal": "%{completed}/%{total}",
+      "empty": "習慣をタップして始めよう"
     },
     "coach": "AIコーチ",
-    "beats": { "a11y": "過去%{days}日間: 達成%{done}日、休み%{rest}日、未達成%{missed}日" },
+    "beats": { "a11y": { "one": "過去%{count}日間: 達成%{done}日、休み%{rest}日、未達成%{missed}日", "other": "過去%{count}日間: 達成%{done}日、休み%{rest}日、未達成%{missed}日" } },
     "sticky": { "hint": "先頭に戻ります" },
     "empty": {
       "title": "リズムをつかもう",

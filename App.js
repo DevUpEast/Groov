@@ -74,7 +74,7 @@ function ThemedErrorBoundary({ children }) {
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { mockupParams, postToMockupHost } from './src/utils/mockup';
-import { setOverlayChangesStatusBar } from './src/utils/overlayStatus';
+import { useAnyHeavyOverlayOpen, setOverlayChangesStatusBar, statusBarStyle } from './src/utils/overlayStatus';
 import { supabaseConfigError } from './src/utils/supabase';
 import { AppProvider, useApp } from './src/context/AppContext';
 import { themes } from './src/theme/colors';
@@ -235,14 +235,17 @@ function AppNavigator() {
   // Mirror the status-bar style to the iOS mockup host (web only).
   // Every tab, Today included, starts on the theme background (C-04 replaced the indigo Today
   // hero with the inset brand strip), so the icons follow the theme: ink in light, light in
-  // dark. Scrims only darken the screen, so the style never needs to change under an overlay.
-  const baseStatus = !hasOnboarded
-    ? 'light' // OnboardingScreen renders the same style on its brand ground (indigo / deep indigo)
-    : (themeName === 'dark' ? 'light' : 'dark');
-  const statusStyle = baseStatus;
-  // Tells OverlayModal whether an overlay opened now would flip the style (and so must wait for
-  // it on Android). With the theme-following style above it never does.
-  setOverlayChangesStatusBar(false);
+  // dark. A normal scrim (0.40 slate) keeps ink icons readable; a heavy celebration scrim (the
+  // trophy, challenge rewards: 70 % black) does not, so light mode switches to light icons
+  // while one is open.
+  const heavyOverlayOpen = useAnyHeavyOverlayOpen();
+  // OnboardingScreen renders 'light' on its brand ground (indigo / deep indigo).
+  const baseStatus = statusBarStyle({ hasOnboarded, themeName, heavyOverlayOpen: false });
+  const statusStyle = statusBarStyle({ hasOnboarded, themeName, heavyOverlayOpen });
+  // Tells OverlayModal whether a heavy-scrim overlay opened now would flip the style (and so must
+  // wait for it on Android, where the Modal window copies the status bar once at creation). Set
+  // during render so it is current before any tap can open one.
+  setOverlayChangesStatusBar(baseStatus !== 'light');
   useEffect(() => {
     if (mockupParams.active) postToMockupHost({ type: 'mockup:statusbar', style: statusStyle });
   }, [statusStyle]);

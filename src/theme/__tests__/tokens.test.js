@@ -99,7 +99,7 @@ describe('tokens (plan §2)', () => {
   });
 
   it('declares the §2.6 spacing, radius and size scales', () => {
-    expect(space).toEqual({ xxs: 4, xs: 8, sm: 12, md: 16, lg: 24, xl: 32, xxl: 48, gutter: 20 });
+    expect(space).toEqual({ xxs: 4, xs: 8, sm: 12, md: 16, lg: 24, xl: 32, xxl: 48, gutter: 20, sectionCompact: 16 });
     expect(radius).toMatchObject({ control: 8, card: 16, sheet: 24, pill: 999 });
     expect(size).toMatchObject({ ringToday: 88, ringTodayStroke: 8, ringTodayCompact: 76, ringTodayCompactStroke: 7, ringTodayCompactBelow: 700 });
     expect(elevation.brandStrip.elevation).toBe(2);

@@ -140,10 +140,11 @@
       "completeNoStreak": "Tag geschafft",
       "rest": "Ruhetag · %{count}-Tage-Serie hält",
       "restCaption": "Pause",
-      "ofTotal": "%{completed} von %{total}"
+      "ofTotal": "%{completed} von %{total}",
+      "empty": "Tippe auf eine Gewohnheit, um deinen Tag zu starten"
     },
     "coach": "KI-Coach",
-    "beats": { "a11y": "Letzte %{days} Tage: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst" },
+    "beats": { "a11y": { "one": "Letzter %{count} Tag: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst", "other": "Letzte %{count} Tage: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst" } },
     "sticky": { "hint": "Scrollt zurück nach oben" },
     "empty": {
       "title": "Finde deinen Rhythmus",
