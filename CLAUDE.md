@@ -112,7 +112,17 @@ Not possible here: Xcode / iOS Simulator. iOS testing = EAS development build or
 - **Completions:** keyed by `YYYY-MM-DD`, each date maps `habitId → count`. `notes` has the same shape with text values and rides on the `completions.note` column. `dailySnapshot` records which habits existed each day so history stays accurate.
 - **Challenge:** `{ id, name, description, days, icon, completedDays[], completed, startDate, linkedHabitIds[] }`. Tier (platinum/gold/silver/copper) is computed at archive time from completedDays/days via `getChallengeTier`.
 - **Moods:** `{ 'YYYY-MM-DD': 1-5 }` (`setMood`), synced to the `moods` table; insights in `src/utils/mood.js` (pure, tested) feed the Progress "Mood & habits" card.
-- **Settings:** `{ theme, soundEnabled, hapticsEnabled, notificationsEnabled, reminders[], eveningReminder* }`. `dateOffset` is stored separately (dev tool).
+- **Settings:** `{ theme, soundEnabled, hapticsEnabled, notificationsEnabled, reminders[], eveningReminder*, skips, streakFreezes, milestones, extras }`. Persistence (S-10):
+
+  | Where | Keys | Rules |
+  |---|---|---|
+  | settings row, one column each | `theme`, `notificationsEnabled`, `soundEnabled`, `hapticsEnabled`, `reminders`, `eveningReminderEnabled/Hour/Minute`, `skips`, `streakFreezes`, `milestones` | cloud wins on a pull |
+  | settings row, `extras` jsonb | `hints.{longPress, challengeTip, linkPrompt}` (`setHint(id)`), `milestonesBackfilled` (OR-merged across devices), `streakNewsEnabled` and any other key (`updateExtras(patch)`, cloud wins) | every new synced setting goes here, never a new top-level key (a jest round-trip check enforces it); unknown keys survive |
+  | device-local `deviceSettings` object (`src/utils/deviceSettings.js`: `get/setDeviceSetting(s)`, `useDeviceSettings()`) | `badgeEnabled` (set once in the load: existing install true, new install false), `lastSeen` (account-scoped: dropped on switch/delete/reset) | never synced or backed up |
+  | device-local AsyncStorage keys (`DEVICE_LOCAL_KEYS` in `src/utils/storage.js`) | `deviceSettings`, `devFlags`, `dateOffset`, `locale`, `reviewPrompts` | survive `clearAll` (account switch, delete, Reset); dev mode itself is in SecureStore |
+  | per-account local bookkeeping (wiped by `clearAll`) | `hasOnboarded`, `accountCreatedAt`, `pendingChallengeRewards`, `lastBackupAt`, `widgetPendingSync`, `pendingUpserts`, `lastUserId`/`accountWasDeleted` (sentinels) | not synced |
+
+  `migrateSettings(cloud, local)` merges a pull (both cloud call sites use `setSettings(prev => migrateSettings(cloud, prev))`) and a backup import: columns are cloud/backup-wins, `extras` goes through `mergeExtras`, unknown top-level keys are dropped. The column comes from `supabase/migrations/20261018120000_settings_extras.sql`; until it is applied, `upsertSettingsRow` (sync.js) sees PGRST204, warns once in dev and sends the row without `extras` for the session, so extras then live only on the device (kept through pulls by the merge). Backups carry `settings.extras` and none of the device keys.
 
 ## Key Behaviors
 

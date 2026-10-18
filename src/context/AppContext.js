@@ -39,7 +39,8 @@ import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup
 import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocalUri, localIconExists } from '../services/icons';
 import { t, useLocale } from '../i18n';
 import feedback, { EVENTS as FEEDBACK } from '../services/feedback';
-import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
+import { DEFAULT_SETTINGS, migrateSettings, withHint, normalizeExtras } from '../utils/settings';
+import { loadDeviceSettings, setDeviceSettings, migrateBadgeFlag, clearUserScopedDeviceSettings } from '../utils/deviceSettings';
 import { afterMoment, flushMoment, dropMoment } from '../utils/afterMoment';
 import { announce } from '../utils/a11y';
 import { queueUpsert, queueUpserts, withoutPendingRows, configurePendingUpserts, resendPendingUpserts, retryPendingUpserts, overlayPendingUpserts, dropPendingUpserts } from '../utils/completionUpserts';
@@ -242,7 +243,7 @@ export function AppProvider({ children }) {
     // NOTE: userId is always null here (auth resolves asynchronously after mount).
     // Do NOT check lastUserId vs userId here — it will always look like a different user.
     // The user-switch check runs in the cloud sync effect below, where userId is known.
-    const [h, c, s, ch, ob, ds, pc, aca, savedOffset, pcr, dev, n, lba, md] = await Promise.all([
+    const [h, c, s, ch, ob, ds, pc, aca, savedOffset, pcr, dev, n, lba, md, device] = await Promise.all([
       loadData('habits'),
       loadData('completions'),
       loadData('settings'),
@@ -257,6 +258,7 @@ export function AppProvider({ children }) {
       loadData('notes'),
       loadData('lastBackupAt'),
       loadData('moods'),
+      loadDeviceSettings(),
     ]);
 
     if (h) setHabits(migrateHabits(h, c || {}));
@@ -291,6 +293,10 @@ export function AppProvider({ children }) {
     setDevModeState(dev);
     // The simulated date only makes sense while dev mode is unlocked.
     if (dev && savedOffset !== null) setDateOffset(savedOffset);
+    // S-10 badge upgrade migration (Q12): before `loaded`, so the badge effect never sees
+    // an undefined flag. An existing install (stored settings) keeps the badge on.
+    const badgePatch = migrateBadgeFlag(device, s !== null);
+    if (badgePatch) await setDeviceSettings(badgePatch);
     setLoaded(true);
   }
 
@@ -639,6 +645,7 @@ export function AppProvider({ children }) {
           // Account was explicitly deleted — the previous user's storage was already wiped in
           // AuthContext.deleteAccount(). Just clear the sentinel and reset in-memory state.
           await saveData('accountWasDeleted', null);
+          clearUserScopedDeviceSettings();
           stateRef.current = emptyState;
           storedAca = null;
           // Today until the pull below lowers it, so a failed (offline) pull never
@@ -660,6 +667,7 @@ export function AppProvider({ children }) {
           dropMoment();
           dropPendingUpserts();
           await storeClearAll();
+          clearUserScopedDeviceSettings();
           stateRef.current = emptyState;
           storedAca = null;
           // Today until the pull below lowers it, so a failed (offline) pull never
@@ -716,9 +724,10 @@ export function AppProvider({ children }) {
           if (cloudData.notes) setNotes(cloudData.notes);
           if (cloudData.moods) setMoods(cloudData.moods);
           if (cloudData.settings) {
-            const cloudSettings = migrateSettings(cloudData.settings);
-            applyFeedbackSettings(cloudSettings);
-            setSettings(cloudSettings);
+            // S-10: merge, not replace. The cloud wins per column and `extras` is merged,
+            // so local extras the cloud lacks survive (an old server, another version).
+            applyFeedbackSettings(migrateSettings(cloudData.settings));
+            setSettings(prev => migrateSettings(cloudData.settings, prev));
           }
           if (cloudData.challenges) setChallenges(migrateChallenges(cloudData.challenges));
           if (cloudData.pastChallenges) setPastChallenges(cloudData.pastChallenges);
@@ -783,9 +792,8 @@ export function AppProvider({ children }) {
         if (delta.dailySnapshots.length) setDailySnapshot(prev => mergeSnapshots(prev, delta.dailySnapshots, todayStr()));
         if (delta.moods?.length) setMoods(prev => { const next = { ...prev }; for (const r of delta.moods) next[r.date] = r.mood; return next; });
         if (delta.settings) {
-          const pulledSettings = migrateSettings(delta.settings);
-          applyFeedbackSettings(pulledSettings);
-          setSettings(pulledSettings);
+          applyFeedbackSettings(migrateSettings(delta.settings));
+          setSettings(prev => migrateSettings(delta.settings, prev));
         }
         lastPulledAtRef.current = startedAt;
       })
@@ -1039,6 +1047,17 @@ export function AppProvider({ children }) {
     setSettings(next);
     if (userId) syncSettings(userId, next);
   }, [settings, userId]);
+
+  // S-10: synced keys without a column live in settings.extras. setHint marks a one-time
+  // tip as seen (OR-merged across devices, so it never comes back); updateExtras sets
+  // other extras keys (the cloud copy wins on a pull).
+  const setHint = useCallback((hintId) => {
+    if (settings.extras?.hints?.[hintId] === true) return;
+    updateSettings({ extras: withHint(settings, hintId) });
+  }, [settings, updateSettings]);
+  const updateExtras = useCallback((patch) => {
+    updateSettings({ extras: { ...normalizeExtras(settings.extras), ...patch } });
+  }, [settings, updateSettings]);
 
   // ── Streak forgiveness ───────────────────────────────────────────────────────
 
@@ -1306,6 +1325,7 @@ export function AppProvider({ children }) {
     dropMoment();
     dropPendingUpserts();
     await storeClearAll();
+    clearUserScopedDeviceSettings();
     if (userId) await deleteAllUserData(userId).catch(e => console.warn('deleteAllUserData:', e));
     saveData('lastUserId', userId);
     setHabits([]);
@@ -1334,7 +1354,7 @@ export function AppProvider({ children }) {
   const importBackup = useCallback(async (data, mode = 'merge') => {
     const current = { habits: allHabits, completions, notes, moods, settings, challenges, pastChallenges, dailySnapshot, accountCreatedAt };
     const next = mode === 'replace'
-      ? { ...data, settings: data.settings ? migrateSettings(data.settings) : settings }
+      ? { ...data, settings: data.settings ? migrateSettings(data.settings, settings) : settings }
       : mergeBackup(current, data);
     const nextHabits = migrateHabits(next.habits, next.completions || {});
     const nextSettings = migrateSettings(next.settings);
@@ -1553,7 +1573,7 @@ export function AppProvider({ children }) {
       pendingMilestone, clearPendingMilestone,
       addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit,
       getNote, setNote,
-      updateSettings,
+      updateSettings, setHint, updateExtras,
       markChallengeDay, unmarkChallengeDay, editChallenge, createChallenge, deleteChallenge,
       archiveExpiredChallenge, completeChallengeImmediately,
       markRestDone, planMarkRest, restoreHabitCounts, isHabitSatisfiedWith,

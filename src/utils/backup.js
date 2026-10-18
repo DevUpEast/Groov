@@ -4,6 +4,7 @@
 import { t } from '../i18n';
 import { localDateKey } from './dates';
 import { stampCreatedAt } from './dayStatus';
+import { mergeExtras } from './settings';
 
 export const BACKUP_FORMAT = 'groov-backup';
 export const BACKUP_VERSION = 1;
@@ -19,6 +20,8 @@ export function buildBackup(state, exportedAt = new Date().toISOString()) {
       habits: state.habits ?? [],
       completions: state.completions ?? {},
       notes: state.notes ?? {},
+      // The synced settings object, `extras` included. Device-local state
+      // (src/utils/deviceSettings.js, devFlags, dateOffset, locale) is never in a backup.
       settings: state.settings ?? {},
       challenges: state.challenges ?? [],
       pastChallenges: state.pastChallenges ?? [],
@@ -75,7 +78,12 @@ export function validateBackup(input) {
   }
   const moods = {};
   if (isObj(d.moods)) for (const [date, v] of Object.entries(d.moods)) if (DATE_RE.test(date) && v >= 1 && v <= 5) moods[date] = v;
-  const settings = isObj(d.settings) ? d.settings : null;
+  let settings = isObj(d.settings) ? d.settings : null;
+  // `extras` (S-10) is accepted only as a plain object.
+  if (settings && 'extras' in settings && !isObj(settings.extras)) {
+    const { extras, ...rest } = settings; // eslint-disable-line no-unused-vars
+    settings = rest;
+  }
   const accountCreatedAt = typeof d.accountCreatedAt === 'string' && DATE_RE.test(d.accountCreatedAt) ? d.accountCreatedAt : null;
 
   if (habits.length === 0 && Object.keys(completions).length === 0 && challenges.length === 0 && pastChallenges.length === 0) {
@@ -112,7 +120,14 @@ export function mergeBackup(current, incoming) {
     habits: mergeList(current.habits || [], incoming.habits),
     completions: mergeDayMaps(current.completions || {}, incoming.completions),
     notes: mergeDayMaps(current.notes || {}, incoming.notes),
-    settings: incoming.settings ? { ...(current.settings || {}), ...incoming.settings } : current.settings,
+    settings: incoming.settings
+      ? {
+        ...(current.settings || {}),
+        ...incoming.settings,
+        // Deep merge (S-10): the backup wins per extras key; hints stay OR-merged.
+        extras: mergeExtras(incoming.settings.extras, current.settings?.extras),
+      }
+      : current.settings,
     challenges: mergeList(current.challenges || [], incoming.challenges),
     pastChallenges: mergeList(current.pastChallenges || [], incoming.pastChallenges),
     dailySnapshot: { ...(current.dailySnapshot || {}), ...incoming.dailySnapshot },

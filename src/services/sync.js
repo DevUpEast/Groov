@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { normalizeExtras } from '../utils/settings';
 
 // Only emit sync diagnostics in development builds
 const syncWarn = __DEV__ ? (msg, detail) => console.warn(msg, detail) : () => {};
@@ -125,9 +126,12 @@ const rowToPastChallenge = (row) => ({
   tier: row.tier,
 });
 
-const settingsToRow = (settings, userId) => ({
+// S-10: `extras` (jsonb) carries every synced setting without a column of its own
+// (see EXTRAS_* in src/utils/settings.js). Old app versions omit it from their upsert,
+// and a Postgres upsert only updates the columns it sends, so they never clear it.
+export const settingsToRow = (settings, userId) => ({
   user_id: userId,
-  theme: settings.theme ?? 'light',
+  theme: settings.theme ?? 'system',
   notifications_enabled: settings.notificationsEnabled ?? true,
   sound_enabled: settings.soundEnabled ?? true,
   haptics_enabled: settings.hapticsEnabled ?? true,
@@ -138,9 +142,10 @@ const settingsToRow = (settings, userId) => ({
   skips: settings.skips ?? {},
   streak_freezes: settings.streakFreezes ?? [],
   milestones: settings.milestones ?? [],
+  extras: normalizeExtras(settings.extras),
 });
 
-const rowToSettings = (row) => ({
+export const rowToSettings = (row) => ({
   theme: row.theme,
   notificationsEnabled: row.notifications_enabled,
   soundEnabled: row.sound_enabled,
@@ -152,7 +157,33 @@ const rowToSettings = (row) => ({
   skips: row.skips ?? {},
   streakFreezes: row.streak_freezes ?? [],
   milestones: row.milestones ?? [],
+  // Absent until the 20261018120000 migration is applied: {} then, and the pull merge keeps
+  // the local extras (migrateSettings(cloud, local)).
+  extras: normalizeExtras(row.extras),
 });
+
+// Until Isaac applies supabase/migrations/20261018120000_settings_extras.sql, an upsert that
+// names `extras` fails as a whole (PostgREST PGRST204, "Could not find the 'extras'
+// column"). Detect that once, then send the row without it for the rest of the session,
+// so settings keep syncing on both schemas. The next launch tries the column again.
+let extrasColumnMissing = false;
+export const isMissingExtrasColumn = (error) => !!error
+  && (error.code === 'PGRST204' || error.code === '42703')
+  && /extras/.test(error.message || '');
+
+export async function upsertSettingsRow(row) {
+  if (extrasColumnMissing) {
+    const { extras, ...legacy } = row; // eslint-disable-line no-unused-vars
+    return supabase.from('settings').upsert(legacy);
+  }
+  const res = await supabase.from('settings').upsert(row);
+  if (!isMissingExtrasColumn(res.error)) return res;
+  extrasColumnMissing = true;
+  syncWarn('settings: no extras column on the server, syncing without it:', res.error.message);
+  return upsertSettingsRow(row);
+}
+
+export function __resetExtrasColumnForTests() { extrasColumnMissing = false; }
 
 // ── Bulk operations ───────────────────────────────────────────────────────────
 
@@ -172,7 +203,7 @@ export async function pushAllLocalData(userId, { habits, completions, notes, set
   if (pastChallenges.length > 0)
     ops.push(supabase.from('past_challenges').upsert(pastChallenges.map(c => pastChallengeToRow(c, userId))));
 
-  ops.push(supabase.from('settings').upsert(settingsToRow(settings, userId)));
+  ops.push(upsertSettingsRow(settingsToRow(settings, userId)));
 
   const moodRows = Object.entries(moods).filter(([, m]) => m >= 1 && m <= 5).map(([date, mood]) => ({ user_id: userId, date, mood }));
   if (moodRows.length > 0)
@@ -327,6 +358,6 @@ export async function syncPastChallenge(userId, challenge) {
 }
 
 export async function syncSettings(userId, settings) {
-  const { error } = await supabase.from('settings').upsert(settingsToRow(settings, userId));
+  const { error } = await upsertSettingsRow(settingsToRow(settings, userId));
   if (error) syncWarn('syncSettings:', error.message);
 }
