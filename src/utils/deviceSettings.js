@@ -61,13 +61,15 @@ export function setDeviceSetting(key, value) {
 }
 
 /** Drop the account-scoped keys (on an account switch, deletion or reset). */
-export function clearUserScopedDeviceSettings() {
-  if (!USER_SCOPED_DEVICE_KEYS.some((k) => k in values)) return Promise.resolve();
+export async function clearUserScopedDeviceSettings() {
+  // After the load, so a stored lastSeen cannot come back through the load's merge.
+  await loadDeviceSettings();
+  if (!USER_SCOPED_DEVICE_KEYS.some((k) => k in values)) return;
   const next = { ...values };
   USER_SCOPED_DEVICE_KEYS.forEach((k) => { delete next[k]; });
   values = next;
   emit();
-  return saveData(DEVICE_SETTINGS_KEY, values);
+  await saveData(DEVICE_SETTINGS_KEY, values);
 }
 
 function subscribe(fn) {

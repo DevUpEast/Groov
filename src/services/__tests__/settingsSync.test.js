@@ -7,14 +7,15 @@ jest.mock('../../utils/supabase', () => ({
 }));
 jest.mock('../../i18n', () => ({ t: (k) => k }));
 
-const { settingsToRow, rowToSettings, upsertSettingsRow, syncSettings, isMissingExtrasColumn, __resetExtrasColumnForTests } = require('../sync');
-const { DEFAULT_SETTINGS, migrateSettings, mergeExtras, withHint } = require('../../utils/settings');
+const { settingsToRow, rowToSettings, upsertSettingsRow, syncSettings, writeBackSettings, isMissingExtrasColumn, EXTRAS_DIRTY_KEY, __resetExtrasColumnForTests } = require('../sync');
+const { DEFAULT_SETTINGS, migrateSettings, mergeExtras, withHint, sameExtras, withCloudExtras } = require('../../utils/settings');
+const AsyncStorage = require('@react-native-async-storage/async-storage');
 const { buildBackup, validateBackup, mergeBackup } = require('../../utils/backup');
 const { DEVICE_LOCAL_KEYS } = require('../../utils/storage');
 
 const MISSING = { code: 'PGRST204', message: "Could not find the 'extras' column of 'settings' in the schema cache" };
 
-beforeEach(() => { mockUpsert.mockReset(); __resetExtrasColumnForTests(); });
+beforeEach(async () => { mockUpsert.mockReset(); __resetExtrasColumnForTests(); await AsyncStorage.clear(); });
 
 describe('classification', () => {
   test('every DEFAULT_SETTINGS key round-trips through the settings row (no unsynced top-level key)', () => {
@@ -159,5 +160,77 @@ describe('backup', () => {
     const current = { ...state, settings: { ...DEFAULT_SETTINGS, extras: { hints: { challengeTip: true }, k: 'local', onlyLocal: 1 } } };
     const merged = mergeBackup(current, validateBackup(buildBackup(state)).data);
     expect(merged.settings.extras).toEqual({ hints: { longPress: true, challengeTip: true }, k: 'backup', onlyLocal: 1 });
+  });
+
+  test('a merge import drops unknown top-level keys, as a pull does (importBackup normalises with the two-argument form)', () => {
+    const incoming = validateBackup(buildBackup({ ...state, settings: { ...state.settings, stray: 1 } })).data;
+    const merged = mergeBackup(state, incoming);
+    const next = migrateSettings(merged.settings, state.settings);
+    expect('stray' in next).toBe(false);
+    expect(next.extras).toEqual(state.settings.extras);
+  });
+});
+
+describe('write-back of the merged extras (review M1)', () => {
+  const local = { ...DEFAULT_SETTINGS, extras: { hints: { longPress: true } } };
+
+  test('a pull whose cloud lacks a local hint pushes the merged settings once', async () => {
+    mockUpsert.mockResolvedValue({ error: null });
+    const cloud = { ...DEFAULT_SETTINGS, theme: 'dark', extras: { hints: { challengeTip: true } } };
+    const merged = migrateSettings(cloud, local);
+    expect(await writeBackSettings('u1', cloud, merged, { hasExtrasColumn: true })).toBe(true);
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
+    const row = mockUpsert.mock.calls[0][0];
+    expect(row.extras).toEqual({ hints: { challengeTip: true, longPress: true } });
+    expect(row.theme).toBe('dark'); // columns are the cloud's: the write-back never reverts them
+  });
+
+  test('no push when the cloud already has everything, or when the row has no extras column', async () => {
+    mockUpsert.mockResolvedValue({ error: null });
+    const cloud = { ...DEFAULT_SETTINGS, extras: { hints: { longPress: true } } };
+    expect(await writeBackSettings('u1', cloud, migrateSettings(cloud, local), { hasExtrasColumn: true })).toBe(false);
+    expect(await writeBackSettings('u1', { ...DEFAULT_SETTINGS }, migrateSettings({ ...DEFAULT_SETTINGS }, local), { hasExtrasColumn: false })).toBe(false);
+    expect(await writeBackSettings(null, cloud, local, { hasExtrasColumn: true })).toBe(false);
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  test('sameExtras ignores key order (jsonb reorders keys)', () => {
+    expect(sameExtras({ a: 1, b: { x: [1, { y: 2 }], z: 1 } }, { b: { z: 1, x: [1, { y: 2 }] }, a: 1 })).toBe(true);
+    expect(sameExtras({ a: [1, 2] }, { a: [2, 1] })).toBe(false);
+    expect(sameExtras(undefined, {})).toBe(true);
+  });
+
+  test('extrasDirty: extras dropped by the fallback are pushed once the column exists (next launch)', async () => {
+    mockUpsert.mockResolvedValueOnce({ error: MISSING }).mockResolvedValue({ error: null });
+    await syncSettings('u1', local); // fallback: extras dropped, dirty set
+    expect(JSON.parse(await AsyncStorage.getItem(EXTRAS_DIRTY_KEY))).toBe(true);
+    __resetExtrasColumnForTests(); // next launch: the column flag re-probes, dirty is re-read
+    mockUpsert.mockClear();
+    // The cloud already equals the local copy (say another device pushed it), yet the
+    // dirty flag still forces one push carrying extras.
+    const cloud = { ...DEFAULT_SETTINGS, extras: { hints: { longPress: true } } };
+    expect(await writeBackSettings('u1', cloud, migrateSettings(cloud, local), { hasExtrasColumn: true })).toBe(true);
+    expect(mockUpsert).toHaveBeenCalledTimes(1);
+    expect(mockUpsert.mock.calls[0][0].extras).toEqual({ hints: { longPress: true } });
+    expect(JSON.parse(await AsyncStorage.getItem(EXTRAS_DIRTY_KEY))).toBe(false);
+    expect(await writeBackSettings('u1', cloud, migrateSettings(cloud, local), { hasExtrasColumn: true })).toBe(false);
+  });
+
+  test('a fallback upsert with empty extras does not mark dirty', async () => {
+    mockUpsert.mockResolvedValueOnce({ error: MISSING }).mockResolvedValue({ error: null });
+    await syncSettings('u1', DEFAULT_SETTINGS);
+    expect(await AsyncStorage.getItem(EXTRAS_DIRTY_KEY)).toBeNull();
+  });
+
+  test('login with no cloud habits: the local push keeps the cloud hints (withCloudExtras)', () => {
+    const fresh = { ...DEFAULT_SETTINGS, theme: 'dark', extras: {} };
+    const cloud = { ...DEFAULT_SETTINGS, extras: { hints: { challengeTip: true }, streakNewsEnabled: true } };
+    const out = withCloudExtras(fresh, cloud);
+    expect(out.theme).toBe('dark');
+    expect(out.extras).toEqual({ hints: { challengeTip: true }, streakNewsEnabled: true });
+    // Local wins for plain keys, OR keys union.
+    expect(withCloudExtras({ ...fresh, extras: { streakNewsEnabled: false, hints: { a: true } } }, cloud).extras)
+      .toEqual({ streakNewsEnabled: false, hints: { a: true, challengeTip: true } });
+    expect(withCloudExtras(fresh, null)).toBe(fresh);
   });
 });

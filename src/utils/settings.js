@@ -72,6 +72,29 @@ export function mergeExtras(incoming, local) {
   return out;
 }
 
+// Order-insensitive deep equality for two extras objects (jsonb does not keep key order).
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => deepEqual(v, b[i]));
+  }
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+  const ka = Object.keys(a);
+  return ka.length === Object.keys(b).length && ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && deepEqual(a[k], b[k]));
+}
+export function sameExtras(a, b) {
+  return deepEqual(normalizeExtras(a), normalizeExtras(b));
+}
+
+// Local settings about to be pushed over a cloud row (login with no cloud habits): local
+// wins per key, but the cloud's extras are merged in first, so the push never overwrites
+// the cloud's hints (or keys only the cloud has) with this device's empty extras.
+export function withCloudExtras(local, cloud) {
+  const base = local || DEFAULT_SETTINGS;
+  if (!cloud) return base;
+  return { ...base, extras: mergeExtras(base.extras, cloud.extras) };
+}
+
 // `extras` with one hint marked seen (C-03, X-01, O-01b call this via AppContext.setHint).
 export function withHint(settings, hintId) {
   const extras = normalizeExtras(settings?.extras);

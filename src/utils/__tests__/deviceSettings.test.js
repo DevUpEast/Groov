@@ -38,6 +38,12 @@ test('clearUserScopedDeviceSettings drops lastSeen only', async () => {
   expect(storage.saveData).not.toHaveBeenCalled();
 });
 
+test('clearing before the load finishes still drops a stored lastSeen', async () => {
+  mockStored = { badgeEnabled: true, lastSeen: { date: '2026-10-01' } };
+  await ds.clearUserScopedDeviceSettings();
+  expect(ds.getDeviceSettings()).toEqual({ badgeEnabled: true });
+});
+
 test('badge upgrade migration: an existing install keeps the badge on, a new install starts off', () => {
   expect(ds.migrateBadgeFlag({}, true)).toEqual({ badgeEnabled: true });
   expect(ds.migrateBadgeFlag(null, false)).toEqual({ badgeEnabled: false });

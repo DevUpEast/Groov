@@ -16,7 +16,7 @@ import {
   syncHabit, deleteHabitSync,
   syncCompletion, syncNote, syncMood,
   syncChallenge, deleteChallengeSync, syncPastChallenge,
-  syncSettings,
+  syncSettings, writeBackSettings,
 } from '../services/sync';
 import {
   requestReminderSchedule, clearRemindersOnSignOut, requestEveningCheckIn,
@@ -39,7 +39,7 @@ import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup
 import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocalUri, localIconExists } from '../services/icons';
 import { t, useLocale } from '../i18n';
 import feedback, { EVENTS as FEEDBACK } from '../services/feedback';
-import { DEFAULT_SETTINGS, migrateSettings, withHint, normalizeExtras } from '../utils/settings';
+import { DEFAULT_SETTINGS, migrateSettings, withHint, normalizeExtras, withCloudExtras } from '../utils/settings';
 import { loadDeviceSettings, setDeviceSettings, migrateBadgeFlag, clearUserScopedDeviceSettings } from '../utils/deviceSettings';
 import { afterMoment, flushMoment, dropMoment } from '../utils/afterMoment';
 import { announce } from '../utils/a11y';
@@ -184,6 +184,10 @@ export function AppProvider({ children }) {
   const userId = user?.id ?? null;
   // Holds latest state snapshot for first-login cloud migration without re-triggering sync effect
   const stateRef = useRef({});
+  // The latest settings, updated synchronously by every local settings write and by the
+  // account-reset paths (S-10), so two writes in one tick, and the pull write-back, never
+  // read a stale render's value. An effect re-syncs it with state after each render.
+  const settingsRef = useRef(DEFAULT_SETTINGS);
   // Server-time cursor (ms since epoch, client clock) of the last successful cloud pull.
   // null until the login-time full pull has completed.
   const lastPulledAtRef = useRef(null);
@@ -338,6 +342,7 @@ export function AppProvider({ children }) {
 
   // Keep stateRef fresh so the cloud sync effect can access current state without
   // adding all these values to its dependency array (which would re-trigger on every mutation)
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
   useEffect(() => {
     stateRef.current = { habits: allHabits, completions, notes, moods, settings, challenges, pastChallenges, dailySnapshot };
   }, [allHabits, completions, notes, moods, settings, challenges, pastChallenges, dailySnapshot]);
@@ -660,6 +665,7 @@ export function AppProvider({ children }) {
           setPastChallenges([]);
           setDailySnapshot({});
           setSettings(DEFAULT_SETTINGS);
+          settingsRef.current = DEFAULT_SETTINGS;
           applyFeedbackSettings(DEFAULT_SETTINGS);
         } else if (lastUserId !== null && lastUserId !== userId) {
           // Different user logged in on this device — wipe the previous user's local data.
@@ -686,6 +692,7 @@ export function AppProvider({ children }) {
           // The previous user's settings must not carry over either: their reminders
           // would show as on for an account that never granted anything (S-05).
           setSettings(DEFAULT_SETTINGS);
+          settingsRef.current = DEFAULT_SETTINGS;
           applyFeedbackSettings(DEFAULT_SETTINGS);
         }
         await saveData('lastUserId', userId);
@@ -725,9 +732,13 @@ export function AppProvider({ children }) {
           if (cloudData.moods) setMoods(cloudData.moods);
           if (cloudData.settings) {
             // S-10: merge, not replace. The cloud wins per column and `extras` is merged,
-            // so local extras the cloud lacks survive (an old server, another version).
+            // so local extras the cloud lacks survive (an old server, another version);
+            // the merged copy goes back up once when the cloud lacks part of it.
             applyFeedbackSettings(migrateSettings(cloudData.settings));
             setSettings(prev => migrateSettings(cloudData.settings, prev));
+            const merged = migrateSettings(cloudData.settings, settingsRef.current);
+            settingsRef.current = merged;
+            writeBackSettings(userId, cloudData.settings, merged, { hasExtrasColumn: !!cloudData.settingsHasExtras }).catch(() => {});
           }
           if (cloudData.challenges) setChallenges(migrateChallenges(cloudData.challenges));
           if (cloudData.pastChallenges) setPastChallenges(cloudData.pastChallenges);
@@ -735,6 +746,14 @@ export function AppProvider({ children }) {
           setHasOnboarded(true);
           settleAccountCreatedAt(cloudData.completions, cloudData.habits);
         } else {
+          if (cloudData.settings) {
+            // The local push below must not overwrite the cloud's hints (or keys only the
+            // cloud has) with this device's extras: merge them in first (S-10).
+            const local = withCloudExtras(stateRef.current.settings, cloudData.settings);
+            stateRef.current = { ...stateRef.current, settings: local };
+            settingsRef.current = local;
+            setSettings(prev => withCloudExtras(prev, cloudData.settings));
+          }
           await pushAllLocalData(userId, stateRef.current);
           settleAccountCreatedAt(stateRef.current.completions, stateRef.current.habits);
         }
@@ -794,6 +813,9 @@ export function AppProvider({ children }) {
         if (delta.settings) {
           applyFeedbackSettings(migrateSettings(delta.settings));
           setSettings(prev => migrateSettings(delta.settings, prev));
+          const merged = migrateSettings(delta.settings, settingsRef.current);
+          settingsRef.current = merged;
+          writeBackSettings(userId, delta.settings, merged, { hasExtrasColumn: !!delta.settingsHasExtras }).catch(() => {});
         }
         lastPulledAtRef.current = startedAt;
       })
@@ -1041,23 +1063,33 @@ export function AppProvider({ children }) {
   }, [challenges, userId, allHabits]);
 
   const updateSettings = useCallback((updates) => {
-    const next = { ...settings, ...updates };
+    // From settingsRef and functional, so two writes in one tick both land (S-10).
+    const next = { ...settingsRef.current, ...updates };
+    settingsRef.current = next;
     // Synchronous, so a toggle that just turned haptics on can be felt in the same tap.
     if ('hapticsEnabled' in updates || 'soundEnabled' in updates) applyFeedbackSettings(next);
-    setSettings(next);
+    setSettings(prev => ({ ...prev, ...updates }));
     if (userId) syncSettings(userId, next);
-  }, [settings, userId]);
+  }, [userId]);
 
   // S-10: synced keys without a column live in settings.extras. setHint marks a one-time
   // tip as seen (OR-merged across devices, so it never comes back); updateExtras sets
   // other extras keys (the cloud copy wins on a pull).
+  const updateExtrasWith = useCallback((fn) => {
+    const cur = settingsRef.current;
+    const extras = fn(cur);
+    if (extras === cur.extras) return;
+    const next = { ...cur, extras };
+    settingsRef.current = next;
+    setSettings(prev => ({ ...prev, extras: fn(prev) }));
+    if (userId) syncSettings(userId, next);
+  }, [userId]);
   const setHint = useCallback((hintId) => {
-    if (settings.extras?.hints?.[hintId] === true) return;
-    updateSettings({ extras: withHint(settings, hintId) });
-  }, [settings, updateSettings]);
+    updateExtrasWith((s) => (s.extras?.hints?.[hintId] === true ? s.extras : withHint(s, hintId)));
+  }, [updateExtrasWith]);
   const updateExtras = useCallback((patch) => {
-    updateSettings({ extras: { ...normalizeExtras(settings.extras), ...patch } });
-  }, [settings, updateSettings]);
+    updateExtrasWith((s) => ({ ...normalizeExtras(s.extras), ...patch }));
+  }, [updateExtrasWith]);
 
   // ── Streak forgiveness ───────────────────────────────────────────────────────
 
@@ -1333,11 +1365,15 @@ export function AppProvider({ children }) {
     setNotes({});
     setMoods({});
     setSettings(DEFAULT_SETTINGS);
+    settingsRef.current = DEFAULT_SETTINGS;
     setChallenges([]);
     setPastChallenges([]);
     setDailySnapshot({});
     setHasOnboarded(false);
+    // dateOffset is device-local and survives an account switch, but Reset clears it:
+    // a simulated date left over after a reset only confuses (devFlags stay).
     setDateOffset(0);
+    saveData('dateOffset', 0);
     setAccountCreatedAt(today);
   }, [userId]);
 
@@ -1357,7 +1393,8 @@ export function AppProvider({ children }) {
       ? { ...data, settings: data.settings ? migrateSettings(data.settings, settings) : settings }
       : mergeBackup(current, data);
     const nextHabits = migrateHabits(next.habits, next.completions || {});
-    const nextSettings = migrateSettings(next.settings);
+    // Two-argument form: unknown top-level keys from the file are dropped, as on a pull.
+    const nextSettings = migrateSettings(next.settings, settings);
     const nextChallenges = migrateChallenges(next.challenges);
     setHabits(nextHabits);
     updateCompletions(next.completions);

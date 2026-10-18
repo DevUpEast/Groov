@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
-import { normalizeExtras } from '../utils/settings';
+import { normalizeExtras, sameExtras } from '../utils/settings';
+import { loadData, saveData } from '../utils/storage';
 
 // Only emit sync diagnostics in development builds
 const syncWarn = __DEV__ ? (msg, detail) => console.warn(msg, detail) : () => {};
@@ -171,19 +172,52 @@ export const isMissingExtrasColumn = (error) => !!error
   && (error.code === 'PGRST204' || error.code === '42703')
   && /extras/.test(error.message || '');
 
+// `settingsExtrasDirty` (per-account local bookkeeping, wiped by clearAll): set when an
+// upsert had to drop non-empty extras (fallback), cleared by the next upsert that carried
+// them. While it is set, writeBackSettings pushes the local extras once the column exists.
+export const EXTRAS_DIRTY_KEY = 'settingsExtrasDirty';
+let extrasDirty = null; // null = not read yet
+async function isExtrasDirty() {
+  if (extrasDirty === null) extrasDirty = (await loadData(EXTRAS_DIRTY_KEY)) === true;
+  return extrasDirty;
+}
+async function setExtrasDirty(v) {
+  if (extrasDirty === v) return;
+  extrasDirty = v;
+  await saveData(EXTRAS_DIRTY_KEY, v);
+}
+
 export async function upsertSettingsRow(row) {
   if (extrasColumnMissing) {
-    const { extras, ...legacy } = row; // eslint-disable-line no-unused-vars
+    const { extras, ...legacy } = row;
+    if (Object.keys(normalizeExtras(extras)).length) await setExtrasDirty(true);
     return supabase.from('settings').upsert(legacy);
   }
   const res = await supabase.from('settings').upsert(row);
+  if (!res.error) {
+    if (await isExtrasDirty()) await setExtrasDirty(false);
+    return res;
+  }
   if (!isMissingExtrasColumn(res.error)) return res;
   extrasColumnMissing = true;
   syncWarn('settings: no extras column on the server, syncing without it:', res.error.message);
   return upsertSettingsRow(row);
 }
 
-export function __resetExtrasColumnForTests() { extrasColumnMissing = false; }
+// After a pull merge (migrateSettings(cloud, local)), push the merged settings once when
+// the cloud's extras lack something the merge kept (an OR-merged hint, a local-only key),
+// or when extras were dropped by the fallback earlier. Only when the pulled row has the
+// column: without it a push could not carry extras and would only bump updated_at.
+// Resolves to true when it pushed.
+export async function writeBackSettings(userId, cloudSettings, mergedSettings, { hasExtrasColumn }) {
+  if (!userId || !hasExtrasColumn || !mergedSettings) return false;
+  const differs = !sameExtras(cloudSettings?.extras, mergedSettings.extras);
+  if (!differs && !(await isExtrasDirty())) return false;
+  await syncSettings(userId, mergedSettings);
+  return true;
+}
+
+export function __resetExtrasColumnForTests() { extrasColumnMissing = false; extrasDirty = null; }
 
 // ── Bulk operations ───────────────────────────────────────────────────────────
 
@@ -241,6 +275,8 @@ export async function pullAllData(userId) {
     challenges: challengesRes.data ? challengesRes.data.map(rowToChallenge) : null,
     pastChallenges: pastRes.data ? pastRes.data.map(rowToPastChallenge) : null,
     settings: settingsRes.data ? rowToSettings(settingsRes.data) : null,
+    // Whether the server has the extras column (S-10); gates writeBackSettings.
+    settingsHasExtras: !!settingsRes.data && 'extras' in settingsRes.data,
     dailySnapshot: snapshotsRes.data
       ? Object.fromEntries(snapshotsRes.data.map(r => [r.date, r.snapshot]))
       : null,
@@ -270,6 +306,7 @@ export async function pullChangesSince(userId, sinceIso) {
     challenges: challengesRes.data.map(rowToChallenge),
     pastChallenges: pastRes.data.map(rowToPastChallenge),
     settings: settingsRes.data[0] ? rowToSettings(settingsRes.data[0]) : null,
+    settingsHasExtras: !!settingsRes.data[0] && 'extras' in settingsRes.data[0],
     dailySnapshots: snapshotsRes.data,
     moods: moodsRes.data, // raw rows { date, mood }
     habitIds: habitIdsRes.data.map(r => r.id),

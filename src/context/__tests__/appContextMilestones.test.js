@@ -20,7 +20,7 @@ jest.mock('../../services/sync', () => {
     pullChangesSince: jest.fn(() => new Promise(() => {})),
     pushAllLocalData: ok(), deleteAllUserData: ok(), syncHabit: ok(), deleteHabitSync: ok(),
     syncCompletion: ok(), syncCompletionsForDate: ok(), syncNote: ok(), syncMood: ok(),
-    syncChallenge: ok(), deleteChallengeSync: ok(), syncPastChallenge: ok(), syncSettings: ok(),
+    syncChallenge: ok(), deleteChallengeSync: ok(), syncPastChallenge: ok(), syncSettings: ok(), writeBackSettings: jest.fn(() => Promise.resolve(false)),
   };
 });
 jest.mock('../../utils/notifications', () => ({
