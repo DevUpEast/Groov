@@ -14,7 +14,7 @@ import { useAuth } from './AuthContext';
 import {
   pullAllData, pullChangesSince, pushAllLocalData, deleteAllUserData,
   syncHabit, deleteHabitSync,
-  syncCompletion, syncCompletionsForDate, syncNote, syncMood,
+  syncCompletion, syncNote, syncMood,
   syncChallenge, deleteChallengeSync, syncPastChallenge,
   syncSettings,
 } from '../services/sync';
@@ -39,7 +39,10 @@ import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocal
 import { t, useLocale } from '../i18n';
 import feedback, { EVENTS as FEEDBACK } from '../services/feedback';
 import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
-import { afterMoment, flushMoment } from '../utils/afterMoment';
+import { afterMoment, flushMoment, dropMoment } from '../utils/afterMoment';
+import { announce } from '../utils/a11y';
+import { queueUpsert, queueUpserts, withoutPendingRows } from '../utils/completionUpserts';
+import { createLiveCompletions } from '../utils/liveCompletions';
 import { ThemeContext } from '../theme/ThemeContext';
 
 // The one feedback gate (src/services/feedback.js): callers never check these settings.
@@ -125,16 +128,21 @@ export function AppProvider({ children }) {
   // that the rest of the app works with.
   const [allHabits, setHabits] = useState([]);
   const [completions, setCompletions] = useState({});
-  // The latest completions, ahead of React: a check-off writes here synchronously, so rapid
-  // taps that land before the next render each count from the previous one (C-06a (c):
-  // ten quick water taps make ten). Re-synced from state whenever state changes.
-  const completionsRef = useRef({ state: completions, current: completions });
-  if (completionsRef.current.state !== completions) completionsRef.current = { state: completions, current: completions };
-  const liveCompletions = () => completionsRef.current.current;
-  const writeLive = (day, habitId, count) => {
-    const cur = completionsRef.current.current;
-    completionsRef.current.current = { ...cur, [day]: { ...(cur[day] || {}), [habitId]: count } };
+  // The latest completions, ahead of React (src/utils/liveCompletions.js): every write goes
+  // through updateCompletions, which applies it to the live map at once and hands React the
+  // same updater, so rapid taps that land before the next render each count from the
+  // previous one (C-06a (c): ten quick water taps make ten). Re-synced from state in render.
+  const liveRef = useRef(null);
+  if (!liveRef.current) liveRef.current = createLiveCompletions(completions);
+  liveRef.current.sync(completions);
+  const liveCompletions = () => liveRef.current.get();
+  const updateCompletions = (fnOrValue) => {
+    liveRef.current.update(fnOrValue);
+    setCompletions(fnOrValue);
   };
+  // Cloud upserts of completions: one queue key per habit and day, sent after the check-off
+  // moment, latest value wins (C-06a review B1).
+  const upsertCount = (day, habitId, count) => queueUpsert(syncCompletion, userId, day, habitId, count);
   // Free-text note per completion: { 'YYYY-MM-DD': { habitId: 'text' } }.
   const [notes, setNotes] = useState({});
   // Optional daily mood 1-5: { 'YYYY-MM-DD': 4 }.
@@ -238,7 +246,7 @@ export function AppProvider({ children }) {
     ]);
 
     if (h) setHabits(migrateHabits(h, c || {}));
-    if (c) setCompletions(c);
+    if (c) updateCompletions(c);
     if (n) setNotes(n);
     if (lba) setLastBackupAt(lba);
     if (md) setMoods(md);
@@ -407,9 +415,9 @@ export function AppProvider({ children }) {
         const h = allHabits.find(x => x.id === data.habitId && !x.archived);
         if (!h) return;
         const key = localDateKey();
-        setCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
+        updateCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
         setDailySnapshot(prev => withSnapshot(prev, key, habits));
-        if (userId) syncCompletion(userId, key, h.id, h.volumeGoal);
+        upsertCount(key, h.id, h.volumeGoal);
         return;
       }
       if (action === 'open') {
@@ -439,9 +447,10 @@ export function AppProvider({ children }) {
         const h = allHabits.find(x => x.id === habitId && !x.archived);
         if (!h) return;
         const key = localDateKey();
-        setCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
+        updateCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
         setDailySnapshot(prev => withSnapshot(prev, key, habits));
-        if (userId) syncCompletion(userId, key, h.id, h.volumeGoal);
+        upsertCount(key, h.id, h.volumeGoal);
+        announce(h.type === 'quit' ? t('habitCard.announce.avoided', { name: h.name }) : t('habitCard.announce.done', { name: h.name }));
       },
     });
   }, [allHabits, habits, userId]);
@@ -550,7 +559,7 @@ export function AppProvider({ children }) {
       await saveData('widgetPendingSync', []);
       // Completions were already written to AsyncStorage by the widget; our state was
       // loaded from that same storage, so only the cloud needs the rows.
-      for (const p of pending) syncCompletion(userId, p.date, p.habitId, p.count);
+      for (const p of pending) upsertCount(p.date, p.habitId, p.count);
     })();
   }, [loaded, userId, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -620,7 +629,7 @@ export function AppProvider({ children }) {
           // leaves the previous user's date in memory.
           settleAccountCreatedAt(null, null);
           setHabits([]);
-          setCompletions({});
+          updateCompletions({});
           setNotes({});
           setMoods({});
           setHasOnboarded(false);
@@ -631,6 +640,8 @@ export function AppProvider({ children }) {
           applyFeedbackSettings(DEFAULT_SETTINGS);
         } else if (lastUserId !== null && lastUserId !== userId) {
           // Different user logged in on this device — wipe the previous user's local data.
+          // Nothing queued for the previous user may be written after the wipe (m2).
+          dropMoment();
           await storeClearAll();
           stateRef.current = emptyState;
           storedAca = null;
@@ -638,7 +649,7 @@ export function AppProvider({ children }) {
           // leaves the previous user's date in memory.
           settleAccountCreatedAt(null, null);
           setHabits([]);
-          setCompletions({});
+          updateCompletions({});
           setNotes({});
           setMoods({});
           // A brand-new user (e.g. a guest) on this device gets the onboarding flow;
@@ -668,7 +679,7 @@ export function AppProvider({ children }) {
           await deleteAllUserData(userId).catch(() => {});
           stateRef.current = emptyState;
           setHabits([]);
-          setCompletions({});
+          updateCompletions({});
           setChallenges([]);
           setPastChallenges([]);
           setDailySnapshot({});
@@ -680,7 +691,7 @@ export function AppProvider({ children }) {
         const hasCloudData = cloudData.habits !== null && cloudData.habits.length > 0;
         if (hasCloudData) {
           setHabits(migrateHabits(cloudData.habits, cloudData.completions || {}));
-          if (cloudData.completions) setCompletions(cloudData.completions);
+          if (cloudData.completions) updateCompletions(cloudData.completions);
           if (cloudData.notes) setNotes(cloudData.notes);
           if (cloudData.moods) setMoods(cloudData.moods);
           if (cloudData.settings) {
@@ -732,8 +743,10 @@ export function AppProvider({ children }) {
         if (delta.pastChallenges.length) {
           setPastChallenges(prev => mergeRecords(prev, delta.pastChallenges, null, sinceMs));
         }
-        if (delta.completions.length) {
-          setCompletions(prev => mergeCompletions(prev, delta.completions));
+        // A row whose local value is still queued for upload is older than local (m3).
+        const freshRows = withoutPendingRows(delta.completions);
+        if (freshRows.length) {
+          updateCompletions(prev => mergeCompletions(prev, freshRows));
           setNotes(prev => mergeNotes(prev, delta.completions));
         }
         if (delta.completions.length || delta.habits.length) {
@@ -826,14 +839,13 @@ export function AppProvider({ children }) {
     const capped = habit.type === 'daily' || habit.type === 'quit' || !habit.type;
     if (capped && current >= 1) return false;
     const next = countAfterIncrement(habit, current, amount);
-    writeLive(today, habitId, next);
-    setCompletions(prev => ({
+    updateCompletions(prev => ({
       ...prev,
       [today]: { ...(prev[today] || {}), [habitId]: next },
     }));
     setDailySnapshot(prev => withSnapshot(prev, today, habits));
     // The upsert waits out the check-off moment; rapid taps send the last count once.
-    if (userId) afterMoment(`sync:${today}:${habitId}`, () => syncCompletion(userId, today, habitId, next));
+    upsertCount(today, habitId, next);
     const met = justMetGoal(habit, current, next);
     if (met) afterMoment(null, () => track(Events.COMPLETION, { type: habit.type }));
     return met;
@@ -844,12 +856,11 @@ export function AppProvider({ children }) {
     const current = (liveCompletions()[today] || {})[habitId] || 0;
     if (current <= 0) return;
     const next = Math.max(0, current - Math.max(1, Math.round(amount)));
-    writeLive(today, habitId, next);
-    setCompletions(prev => ({
+    updateCompletions(prev => ({
       ...prev,
       [today]: { ...(prev[today] || {}), [habitId]: next },
     }));
-    if (userId) afterMoment(`sync:${today}:${habitId}`, () => syncCompletion(userId, today, habitId, next));
+    upsertCount(today, habitId, next);
   }, [completions, todayStr, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Set a habit's count on any past day (edit yesterday, habit detail calendar).
@@ -859,7 +870,7 @@ export function AppProvider({ children }) {
     const habit = habits.find(h => h.id === habitId);
     if (!habit || key > todayStr()) return;
     const next = Math.max(0, Math.round(count));
-    setCompletions(prev => {
+    updateCompletions(prev => {
       const day = { ...(prev[key] || {}) };
       if (next > 0) day[habitId] = next; else delete day[habitId];
       const out = { ...prev };
@@ -867,8 +878,8 @@ export function AppProvider({ children }) {
       return out;
     });
     setDailySnapshot(prev => withSnapshot(prev, key, habits));
-    if (userId) syncCompletion(userId, key, habitId, next);
-  }, [habits, todayStr, userId]);
+    upsertCount(key, habitId, next);
+  }, [habits, todayStr, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleHabitDoneOn = useCallback((habitId, key) => {
     const habit = habits.find(h => h.id === habitId);
@@ -1136,10 +1147,9 @@ export function AppProvider({ children }) {
     const plan = planMarkRest();
     if (plan.changedIds.length === 0) return plan;
     const today = todayStr();
-    plan.changedIds.forEach(id => writeLive(today, id, 1));
-    setCompletions(prev => ({ ...prev, [today]: { ...(prev[today] || {}), ...Object.fromEntries(plan.changedIds.map(id => [id, 1])) } }));
+    updateCompletions(prev => ({ ...prev, [today]: { ...(prev[today] || {}), ...Object.fromEntries(plan.changedIds.map(id => [id, 1])) } }));
     setDailySnapshot(prev => withSnapshot(prev, today, habits));
-    if (userId) afterMoment(null, () => syncCompletionsForDate(userId, today, Object.fromEntries(plan.changedIds.map(id => [id, 1]))));
+    queueUpserts(syncCompletion, userId, today, Object.fromEntries(plan.changedIds.map(id => [id, 1])));
     afterMoment(null, () => plan.changedIds.forEach(id => track(Events.COMPLETION, { type: habits.find(h => h.id === id)?.type })));
     return plan;
   }, [planMarkRest, habits, todayStr, userId]);
@@ -1148,10 +1158,12 @@ export function AppProvider({ children }) {
   // to `before` (revertMarkRest); anything edited inside the window is kept.
   const restoreHabitCounts = useCallback((before, changedIds, key) => {
     const day = key || todayStr();
-    const { syncMap } = revertMarkRest(completions, day, before, changedIds);
-    setCompletions(prev => revertMarkRest(prev, day, before, changedIds).completions);
-    if (userId && Object.keys(syncMap).length > 0) syncCompletionsForDate(userId, day, syncMap);
-  }, [completions, todayStr, userId]);
+    const { syncMap } = revertMarkRest(liveCompletions(), day, before, changedIds);
+    updateCompletions(prev => revertMarkRest(prev, day, before, changedIds).completions);
+    // Same per-habit keys as Mark the rest's own upserts: the restored value replaces a
+    // still-queued 1 instead of racing it (B1).
+    queueUpserts(syncCompletion, userId, day, syncMap);
+  }, [completions, todayStr, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const archiveExpiredChallenge = useCallback((challengeId) => {
     const ch = challenges.find(c => c.id === challengeId);
@@ -1265,11 +1277,12 @@ export function AppProvider({ children }) {
 
   const resetAll = useCallback(async () => {
     const today = localDateKey();
+    dropMoment();
     await storeClearAll();
     if (userId) await deleteAllUserData(userId).catch(e => console.warn('deleteAllUserData:', e));
     saveData('lastUserId', userId);
     setHabits([]);
-    setCompletions({});
+    updateCompletions({});
     setNotes({});
     setMoods({});
     setSettings(DEFAULT_SETTINGS);
@@ -1300,7 +1313,7 @@ export function AppProvider({ children }) {
     const nextSettings = migrateSettings(next.settings);
     const nextChallenges = migrateChallenges(next.challenges);
     setHabits(nextHabits);
-    setCompletions(next.completions);
+    updateCompletions(next.completions);
     setNotes(next.notes);
     setMoods(next.moods || {});
     applyFeedbackSettings(nextSettings);
@@ -1348,7 +1361,7 @@ export function AppProvider({ children }) {
     // Ensure accountCreatedAt is at least 31 days back so history is visible
     const newAca = !accountCreatedAt || accountCreatedAt > seed.floor ? seed.floor : accountCreatedAt;
 
-    setCompletions(prev => applySeedCompletions(prev, seed.pastCompletions));
+    updateCompletions(prev => applySeedCompletions(prev, seed.pastCompletions));
     setDailySnapshot(prev => applySeedSnapshot(prev, seed.pastSnapshot, realToday, habits));
     setHabits(prev => prev.map(backdate));
     // Save immediately to AsyncStorage so data persists even if the app is killed before

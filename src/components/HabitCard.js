@@ -81,12 +81,15 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
   // Start/stop plays toggle.on / toggle.off: Android only. On iOS the timer button is silent by
   // design (F-06, F-04a n5): §2.10 gives toggles no iOS haptic ("native": only a real Switch has
   // one) and a plain press is silent; a stop that logs minutes still gets counter.step/habit.done.
+  // A counter change read out for screen readers (every path, not only the body tap: the
+  // per-check toast is gone since C-06a, so this is the only confirmation).
+  const sayCount = (n) => announce(t(isLimit ? 'habitCard.announce.countMax' : 'habitCard.announce.count', { name: habit.name, count: Math.max(0, n), goal: habit.volumeGoal }));
   const toggleTimer = () => {
     if (!timerStart) { feedback.toggled(true); setTimerStart(Date.now()); return; }
     const mins = Math.round(elapsedSec / 60);
     setTimerStart(null);
     // A stop that logs minutes gets the increment's feedback (counter.step or habit.done).
-    if (mins >= 1) onIncrement(mins);
+    if (mins >= 1) { onIncrement(mins); sayCount(count + mins); }
     else feedback.toggled(false);
   };
   // perWeek habits show weekly progress instead of a per-day count.
@@ -128,7 +131,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
     // here too (C-02b acceptance d; C-03 keeps this option).
     // The label says what is removed: a step, or what is left when that is less (count floors
     // at 0, code review m3).
-    ...(isVolume && count > 0 ? [{ label: removeAmount > 1 ? t('habitCard.longPress.minusMany', { count: removeAmount }) : t('habitCard.longPress.minusOne'), onPress: () => onDecrement(removeAmount) }] : []),
+    ...(isVolume && count > 0 ? [{ label: removeAmount > 1 ? t('habitCard.longPress.minusMany', { count: removeAmount }) : t('habitCard.longPress.minusOne'), onPress: () => { onDecrement(removeAmount); sayCount(count - removeAmount); } }] : []),
     ...(onNote ? [{ label: note ? t('habitCard.longPress.editNote') : t('habitCard.longPress.addNote'), onPress: () => onNote(habit, today) }] : []),
   ];
 
@@ -216,7 +219,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
               icon="remove"
               iconSize={20}
               style={[styles.counterBtn, { borderColor: theme.controlBorder }]}
-              onPress={() => onDecrement(step)}
+              onPress={() => { onDecrement(step); sayCount(count - step); }}
               {...holdForOptions}
               onDisabledLongPress={handleLongPress}
               disabled={count <= 0}
@@ -246,7 +249,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
                 iconSize={20}
                 color={isLimit ? theme.textSecondary : accent.fill}
                 style={[styles.counterBtn, { borderColor: isLimit ? theme.controlBorder : accent.ring, backgroundColor: 'transparent' }]}
-                onPress={() => onIncrement(step)}
+                onPress={() => { onIncrement(step); sayCount(count + step); }}
                 {...holdForOptions}
                 accessibilityLabel={(step > 1 ? t('habitCard.a11y.addMany', { count: step, unit: unitLabel(habit) }) : t('habitCard.a11y.addOne', { unit: unitLabel(habit) })).trim()}
               />

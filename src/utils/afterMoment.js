@@ -10,29 +10,40 @@ import { quietIn } from '../services/feedback';
 // - `key` coalesces: queuing the same key again replaces the queued work (the latest state
 //   wins: ten rapid taps save the completions once and upsert the row once). `null` = always
 //   run (analytics events).
+// - Bounded: once the oldest queued job has waited MAX_DEFER_MS the queue runs even if taps
+//   keep the moment open, so a crash while tapping loses at most that much.
 // - Backgrounding the app runs everything queued straight away (`flushMoment`), so a save is
-//   never lost to the app being suspended.
+//   never lost to the app being suspended. Sign-out flushes first; a storage wipe drops the
+//   queue (`dropMoment`) so nothing of the previous user is written back.
+
+export const MAX_DEFER_MS = 3000;
 
 const queue = new Map(); // key -> fn, in insertion order
 let timer = null;
 let seq = 0;
+let firstQueuedAt = 0;
 let appStateSub = null;
 
 function runAll() {
-  timer = null;
+  if (timer) { clearTimeout(timer); timer = null; }
   const jobs = [...queue.values()];
   queue.clear();
   jobs.forEach((fn) => { try { fn(); } catch (e) { if (__DEV__) console.warn('[afterMoment]', e?.message ?? e); } });
+}
+
+// Time to wait: the rest of the moment, but never past the cap.
+function waitFor(busyFor) {
+  const capLeft = firstQueuedAt + MAX_DEFER_MS - Date.now();
+  return Math.min(busyFor(), capLeft);
 }
 
 function arm(busyFor) {
   if (timer) return;
   timer = setTimeout(() => {
     timer = null;
-    const wait = busyFor();
-    if (wait > 0) arm(busyFor); // another tap extended the moment
+    if (waitFor(busyFor) > 0) arm(busyFor); // another tap extended the moment
     else runAll();
-  }, Math.max(1, busyFor()));
+  }, Math.max(1, waitFor(busyFor)));
 }
 
 function watchAppState() {
@@ -49,17 +60,28 @@ function watchAppState() {
 export function afterMoment(key, fn, { busyFor = quietIn } = {}) {
   if (busyFor() <= 0 && queue.size === 0) { fn(); return; }
   watchAppState();
+  if (queue.size === 0) firstQueuedAt = Date.now();
   const k = key == null ? `#${++seq}` : key;
   queue.delete(k); // re-insert so the order follows the latest call
   queue.set(k, fn);
-  if (busyFor() <= 0) { if (timer) { clearTimeout(timer); timer = null; } runAll(); return; }
+  if (waitFor(busyFor) <= 0) { runAll(); return; }
   arm(busyFor);
 }
 
-/** Run everything queued now (app backgrounded, provider unmounting). */
+/** Run everything queued now (app backgrounded, sign-out, provider unmounting). */
 export function flushMoment() {
-  if (timer) { clearTimeout(timer); timer = null; }
   runAll();
+}
+
+/** Forget everything queued (local data is about to be wiped: account switch, reset). */
+export function dropMoment() {
+  if (timer) { clearTimeout(timer); timer = null; }
+  queue.clear();
+}
+
+/** Whether work under `key` is still queued (a foreground pull skips those rows). */
+export function isPendingAfterMoment(key) {
+  return queue.has(key);
 }
 
 /** Number of queued jobs (tests and the dev log). */
@@ -68,8 +90,7 @@ export function pendingAfterMoment() {
 }
 
 export function __resetAfterMomentForTests() {
-  if (timer) clearTimeout(timer);
-  timer = null;
-  queue.clear();
+  dropMoment();
   seq = 0;
+  firstQueuedAt = 0;
 }

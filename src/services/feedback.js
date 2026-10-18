@@ -221,13 +221,18 @@ function firePulse(event, pulse, calledAt, target, followUp = false) {
   return true;
 }
 
-// Pulses are chained, each timed from the previous one actually firing, so a busy JS thread
-// that delays the first pulse keeps the pattern's spacing instead of collapsing it.
+// Each pulse is timed from the tap (C-06a review M1), so lateness never adds up along the
+// pattern. If the thread was so busy that the next beat has already passed, the pulse still
+// keeps PULSE_MIN_GAP_MS from the one before, so the two never fuse into one buzz.
+export const PULSE_MIN_GAP_MS = RATE_LIMIT_MS;
 function runPattern(handle, event, pulses, i, calledAt, delay) {
   if (handle.cancelled) return;
   if (!firePulse(event, pulses[i], calledAt, delay + pulses[i].at, i > 0)) return;
   const next = pulses[i + 1];
-  if (next) handle.later(() => runPattern(handle, event, pulses, i + 1, calledAt, delay), next.at - pulses[i].at);
+  if (next) {
+    const wait = Math.max(PULSE_MIN_GAP_MS, calledAt + delay + next.at - Date.now());
+    handle.later(() => runPattern(handle, event, pulses, i + 1, calledAt, delay), wait);
+  }
 }
 
 // §2.11: at most one sound start per 60 ms. Like the haptic limit it only applies to the rapid
@@ -294,7 +299,8 @@ export function play(event, opts = {}) {
   const now = Date.now();
   const calledAt = typeof opts.at === 'number' && opts.at <= now ? opts.at : now;
   const late = now - calledAt; // time already gone since the tap
-  lastPlayAt = now;
+  // A user with haptics and sound both off has no moment to protect (review n1).
+  if (enabled.haptics || enabled.sound) lastPlayAt = now;
   const delay = typeof opts.delay === 'number' ? opts.delay : spec.offset;
   if (enabled.haptics && Platform.OS !== 'web') {
     const pulses = Platform.OS === 'android' ? spec.android : spec.ios;

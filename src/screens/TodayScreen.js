@@ -39,6 +39,7 @@ import { buildWeekBeats } from '../utils/weekBeats';
 import { overallDayStatus } from '../utils/streaks';
 import { earliestCreatedAt } from '../utils/dayStatus';
 import { mockupParams } from '../utils/mockup';
+import { announce } from '../utils/a11y';
 import useCheckoffMoment from '../hooks/useCheckoffMoment';
 import { KINDS as BEAT, ladderIndex } from '../utils/beats';
 import { useDevFlag } from '../utils/devFlags';
@@ -64,6 +65,17 @@ function padMockupChallenges(live, n) {
 }
 // A little air under the Android status bar; iOS (and the mockup) start right under it (D-00).
 const HEADER_TOP = Platform.OS === 'android' ? space.xs : 0;
+
+// What a screen reader hears when today's count of `habit` becomes `count` (the HabitCard
+// strings, for paths that do not go through the card: the detail sheet's today cell).
+export function todayAnnouncement(habit, count) {
+  const name = habit.name;
+  if (usesCounter(habit)) {
+    return t(habit.type === 'atMost' ? 'habitCard.announce.countMax' : 'habitCard.announce.count', { name, count, goal: habit.volumeGoal });
+  }
+  if (count <= 0) return t('habitCard.announce.unchecked', { name });
+  return habit.type === 'quit' ? t('habitCard.announce.avoided', { name }) : t('habitCard.announce.done', { name });
+}
 
 function getGreeting(offset = 0) {
   const d = new Date();
@@ -517,6 +529,8 @@ export default function TodayScreen() {
     const delta = target - getHabitCount(habit.id);
     if (delta > 0) handleIncrement(habit, delta);
     else if (delta < 0) handleDecrement(habit, -delta);
+    // No toast for a single check (C-06a): the screen reader hears the change instead.
+    if (delta !== 0) announce(todayAnnouncement(habit, target));
   }, [getHabitCount, handleIncrement, handleDecrement]);
 
   // Skipping (or un-skipping) a linked habit inside the window cancels the queued

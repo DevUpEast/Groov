@@ -67,6 +67,10 @@ jest.mock('../../services/feedback', () => ({
 }));
 // Device-local dev flags (C-06a choreography) read AsyncStorage: nothing stored = defaults.
 jest.mock('../../utils/storage', () => ({ loadData: jest.fn(() => Promise.resolve(null)), saveData: jest.fn(() => Promise.resolve()) }));
+jest.mock('../../utils/a11y', () => ({
+  ...jest.requireActual('../../utils/a11y'),
+  announce: jest.fn(),
+}));
 jest.mock('../../services/aiCoaching', () => ({ fetchDailyNudge: jest.fn(() => Promise.resolve(null)) }));
 jest.mock('../../services/review', () => ({ maybeRequestReview: jest.fn() }));
 jest.mock('react-native-svg', () => {
@@ -93,6 +97,7 @@ jest.mock('../../components/MoodCheckIn', () => mockStub('MoodCheckIn')());
 
 const TodayScreen = require('../TodayScreen').default;
 const feedback = require('../../services/feedback').default;
+const a11y = require('../../utils/a11y');
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -200,6 +205,20 @@ describe("today's cell goes through Today's handlers (M1)", () => {
     act(() => { toast.props.onHide(); });
     act(() => { jest.runOnlyPendingTimers(); });
     expect(mock.completeChallengeImmediately).not.toHaveBeenCalled();
+  });
+
+  it('C-06a review M2: a today change from the sheet is announced (no toast any more)', () => {
+    a11y.announce.mockClear();
+    const t = setup({ habits: [read, water], counts: { w: 3 }, challenges: [] });
+    act(() => { t.sheet().onSetToday(water, 8); });
+    expect(a11y.announce).toHaveBeenLastCalledWith('Drink water, 8 of 8');
+    act(() => { t.sheet().onSetToday(read, 1); });
+    expect(a11y.announce).toHaveBeenLastCalledWith('Read done');
+    act(() => { t.sheet().onSetToday(read, 0); });
+    expect(a11y.announce).toHaveBeenLastCalledWith('Read unchecked');
+    a11y.announce.mockClear();
+    act(() => { t.sheet().onSetToday(read, 0); }); // unchanged: nothing to say
+    expect(a11y.announce).not.toHaveBeenCalled();
   });
 
   it('a daily habit toggles through the handlers too, and an unchanged count does nothing', () => {

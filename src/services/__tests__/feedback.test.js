@@ -371,6 +371,36 @@ describe('rate limit and log', () => {
     expect(recent().find(e => e.haptic)).toMatchObject({ offset: 0, target: 0, drift: 0 });
   });
 
+  test('C-06a review M1: a follow-up pulse is timed from the tap, so lateness does not add up', () => {
+    setPlatform('android', 36);
+    const tapAt = Date.now();
+    jest.advanceTimersByTime(50); // play() runs 50 ms after the tap
+    play(EVENTS.dayComplete, { at: tapAt, delay: 0 });
+    const pulses = () => recent().filter(e => e.haptic);
+    expect(pulses()[0]).toMatchObject({ offset: 50, target: 0, drift: 50 });
+    jest.advanceTimersByTime(74);
+    expect(pulses()).toHaveLength(1);
+    jest.advanceTimersByTime(1);
+    expect(pulses()[1]).toMatchObject({ offset: 125, target: 125, drift: 0 });
+  });
+
+  test('C-06a review M1: a pattern already past its next beat keeps the minimum gap', () => {
+    setPlatform('android', 36);
+    const tapAt = Date.now();
+    jest.advanceTimersByTime(400);
+    play(EVENTS.dayComplete, { at: tapAt, delay: 0 });
+    jest.advanceTimersByTime(feedback.PULSE_MIN_GAP_MS - 1);
+    expect(recent().filter(e => e.haptic)).toHaveLength(1);
+    jest.advanceTimersByTime(1);
+    expect(recent().filter(e => e.haptic)[1]).toMatchObject({ offset: 400 + feedback.PULSE_MIN_GAP_MS });
+  });
+
+  test('C-06a review n1: with haptics and sound off there is no moment to wait out', () => {
+    configure({ haptics: false, sound: false });
+    play(EVENTS.habitDone, { tone: { n: 1 } });
+    expect(feedback.quietIn()).toBe(0);
+  });
+
   test('C-06a: quietIn counts down the moment after the last play', () => {
     expect(feedback.quietIn()).toBe(0);
     play(EVENTS.habitDone, { tone: { n: 1 } });

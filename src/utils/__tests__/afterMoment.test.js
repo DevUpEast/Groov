@@ -65,3 +65,29 @@ test('flushMoment runs the queue, and a throwing job does not stop the rest', ()
   expect(ok).toHaveBeenCalledTimes(1);
   warn.mockRestore();
 });
+
+test('m1: the wait is capped at MAX_DEFER_MS from the first queued job, however long taps go on', () => {
+  const { MAX_DEFER_MS } = require('../afterMoment');
+  const fn = jest.fn();
+  busyUntil = Date.now() + 1500;
+  afterMoment('save:completions', fn, { busyFor });
+  for (let t = 500; t < MAX_DEFER_MS; t += 500) {
+    jest.advanceTimersByTime(500);
+    busyUntil = Date.now() + 1500; // a tap every 500 ms keeps the moment open
+  }
+  expect(fn).not.toHaveBeenCalled();
+  jest.advanceTimersByTime(600);
+  expect(fn).toHaveBeenCalledTimes(1);
+});
+
+test('m2: dropMoment forgets the queue (a wipe is coming), isPendingAfterMoment reads it', () => {
+  const { dropMoment, isPendingAfterMoment } = require('../afterMoment');
+  busyUntil = Date.now() + 1500;
+  const fn = jest.fn();
+  afterMoment('save:notes', fn, { busyFor });
+  expect(isPendingAfterMoment('save:notes')).toBe(true);
+  dropMoment();
+  expect(isPendingAfterMoment('save:notes')).toBe(false);
+  jest.advanceTimersByTime(5000);
+  expect(fn).not.toHaveBeenCalled();
+});
