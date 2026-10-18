@@ -208,7 +208,8 @@ export async function applyReminderSchedule(settings, habits, { prompt = true, m
 //  - each pass carries a generation number and stops before its next OS call as
 //    soon as a newer request exists.
 // A pass that throws is logged and the chain carries on, so one bad pass never
-// wedges the queue.
+// wedges the queue. The evening check-in (requestEveningCheckIn) and the sign-out
+// sweep (clearRemindersOnSignOut) run on the same chain.
 export const REMINDER_SCHEDULE_DEBOUNCE_MS = 250;
 
 let scheduleGeneration = 0;
@@ -217,17 +218,27 @@ let pendingTimer = null;
 let pendingArgs = null;
 let pendingWaiters = [];
 
-function runPass(args, gen) {
-  const isStale = () => gen !== scheduleGeneration;
+let eveningGeneration = 0;
+
+// Append a task to the single scheduling chain. A task that throws is logged and the
+// chain carries on.
+function enqueue(task) {
   scheduleChain = scheduleChain.then(async () => {
-    if (isStale()) return;
     try {
-      await applyReminderSchedule(args.settings, args.habits, { ...args.options, isStale });
+      await task();
     } catch (e) {
       console.warn('reminder scheduling pass failed', e);
     }
   });
   return scheduleChain;
+}
+
+function runPass(args, gen) {
+  const isStale = () => gen !== scheduleGeneration;
+  return enqueue(async () => {
+    if (isStale()) return;
+    await applyReminderSchedule(args.settings, args.habits, { ...args.options, isStale });
+  });
 }
 
 // Debounced, serialized applyReminderSchedule. Resolves once the pass that covers
@@ -259,6 +270,33 @@ export function cancelPendingReminderSchedule() {
   const waiters = pendingWaiters;
   pendingWaiters = [];
   waiters.forEach(w => w());
+}
+
+// Serialized evening check-in: schedule (`schedule: true`) or cancel today's smart
+// check-in. Runs on the scheduling chain with its own generation, so when two
+// completions land close together the latest state wins and a "habits left" check-in
+// cannot be scheduled after the last habit was done.
+export function requestEveningCheckIn(today, { schedule, hour = 20, minute = 0 } = {}) {
+  const gen = ++eveningGeneration;
+  const isStale = () => gen !== eveningGeneration;
+  return enqueue(async () => {
+    if (isStale()) return;
+    if (schedule) await scheduleEveningHabitReminder(today, hour, minute, { isStale });
+    else await cancelEveningHabitReminder(today);
+  });
+}
+
+// Sign-out: drop anything queued for the old user, then (on the chain, after any
+// in-flight pass) cancel every daily reminder we own and today's evening check-in,
+// so the signed-out device stops firing the previous user's reminders. A later
+// user's first pass is queued behind this sweep and still runs.
+export function clearRemindersOnSignOut(today) {
+  cancelPendingReminderSchedule();
+  eveningGeneration++;
+  return enqueue(async () => {
+    await applyReminderSchedule({ notificationsEnabled: false }, [], { prompt: false });
+    if (today) await cancelEveningHabitReminder(today);
+  });
 }
 
 // Re-deliver a notification's content in `minutes` (Snooze action).
@@ -307,7 +345,8 @@ export async function setBadge(count) {
 
 // Smart check-in: a one-off notification for `today` at hour:minute, cancelled once
 // every habit is done. Date-keyed identifier so each day is independent.
-export async function scheduleEveningHabitReminder(today, hour = 20, minute = 0) {
+// `isStale()` (set by requestEveningCheckIn) is checked right before the OS call.
+export async function scheduleEveningHabitReminder(today, hour = 20, minute = 0, { isStale = () => false } = {}) {
   if (Platform.OS === 'web') return;
   const identifier = `${EVENING_PREFIX}${today}`;
   await cancel(identifier);
@@ -316,7 +355,7 @@ export async function scheduleEveningHabitReminder(today, hour = 20, minute = 0)
   if (fireDate <= new Date()) return; // time already passed today
 
   const granted = await requestPermissions();
-  if (!granted) return;
+  if (!granted || isStale()) return;
 
   try {
     await Notifications.scheduleNotificationAsync({
