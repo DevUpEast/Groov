@@ -45,6 +45,7 @@ import { announce } from '../utils/a11y';
 import { queueUpsert, queueUpserts, withoutPendingRows, configurePendingUpserts, resendPendingUpserts, retryPendingUpserts, overlayPendingUpserts, dropPendingUpserts } from '../utils/completionUpserts';
 
 import { createLiveCompletions } from '../utils/liveCompletions';
+import { planMilestones } from '../utils/milestones';
 import { ThemeContext } from '../theme/ThemeContext';
 
 // Pending cloud upserts survive a kill (C-06b round 2): see completionUpserts.js.
@@ -141,6 +142,14 @@ export function AppProvider({ children }) {
   if (!liveRef.current) liveRef.current = createLiveCompletions(completions);
   liveRef.current.sync(completions);
   const liveCompletions = () => liveRef.current.get();
+  // Streak milestones celebrate only a rise caused by a check-off on today (planMilestones).
+  // A today action arms the check with the completions it started from; the milestone
+  // effect consumes the arm on its first run that sees newer completions, so a run still
+  // on the old state cannot use it up, and a later pull never finds it armed.
+  const completionsStateRef = useRef(completions);
+  completionsStateRef.current = completions;
+  const milestoneArmRef = useRef(null);
+  const armMilestone = () => { milestoneArmRef.current = { before: completionsStateRef.current }; };
   const updateCompletions = (fnOrValue) => {
     liveRef.current.update(fnOrValue);
     setCompletions(fnOrValue);
@@ -853,6 +862,7 @@ export function AppProvider({ children }) {
     const capped = habit.type === 'daily' || habit.type === 'quit' || !habit.type;
     if (capped && current >= 1) return false;
     const next = countAfterIncrement(habit, current, amount);
+    armMilestone();
     updateCompletions(prev => ({
       ...prev,
       [today]: { ...(prev[today] || {}), [habitId]: next },
@@ -870,6 +880,7 @@ export function AppProvider({ children }) {
     const current = (liveCompletions()[today] || {})[habitId] || 0;
     if (current <= 0) return;
     const next = Math.max(0, current - Math.max(1, Math.round(amount)));
+    armMilestone();
     updateCompletions(prev => ({
       ...prev,
       [today]: { ...(prev[today] || {}), [habitId]: next },
@@ -1161,6 +1172,7 @@ export function AppProvider({ children }) {
     const plan = planMarkRest();
     if (plan.changedIds.length === 0) return plan;
     const today = todayStr();
+    armMilestone();
     updateCompletions(prev => ({ ...prev, [today]: { ...(prev[today] || {}), ...Object.fromEntries(plan.changedIds.map(id => [id, 1])) } }));
     setDailySnapshot(prev => withSnapshot(prev, today, habits));
     queueUpserts(syncCompletion, userId, today, Object.fromEntries(plan.changedIds.map(id => [id, 1])));
@@ -1428,20 +1440,30 @@ export function AppProvider({ children }) {
     return Math.max(bestOverallStreak(from, today, today, habitsOnDay, isSnapshotHabitDone, isExcused), getOverallStreak());
   }, [habitsOnDay, isSnapshotHabitDone, isExcused, dateOffset, accountCreatedAt, getOverallStreak]);
 
-  // Record newly crossed streak milestones (7/30/100/365). Runs after any change to
-  // the data; the first new one found is queued for a celebration.
+  // Record streak milestones (7/30/100/365) after any change to the data. No retroactive
+  // awards (M2 design gate M3-1): milestones the streak already passed when it is first
+  // computed after load, or that a pull, a past-day edit or a date change carries it over,
+  // are recorded silently; only a check-off on today that takes the streak across one
+  // queues the celebration (src/utils/milestones.js).
+  const prevStreakRef = useRef(null);
   useEffect(() => {
     if (!loaded) return;
     const streak = getOverallStreak();
-    const have = new Set((settings.milestones || []).map(m => m.id));
-    const earned = STREAK_MILESTONES.filter(m => streak >= m.days && !have.has(`streak-${m.days}`));
-    if (earned.length === 0) return;
-    const today = todayStr();
-    const added = earned.map(m => ({ id: `streak-${m.days}`, days: m.days, date: today }));
+    const arm = milestoneArmRef.current;
+    const armed = !!arm && arm.before !== completions;
+    if (armed) milestoneArmRef.current = null;
+    const { added, celebrate } = planMilestones({
+      streak, prevStreak: prevStreakRef.current, recorded: settings.milestones, armed,
+      milestones: STREAK_MILESTONES, today: todayStr(),
+    });
+    prevStreakRef.current = streak;
+    if (added.length === 0) return;
     updateSettings({ milestones: [...(settings.milestones || []), ...added] });
-    setPendingMilestone(earned[earned.length - 1]);
-    track(Events.MILESTONE, { days: earned[earned.length - 1].days });
-  }, [loaded, getOverallStreak, settings.milestones]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (celebrate) {
+      setPendingMilestone(celebrate);
+      track(Events.MILESTONE, { days: celebrate.days });
+    }
+  }, [loaded, getOverallStreak, settings.milestones, completions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto streak freezes: once the data is loaded and whenever the date or history
   // changes, cover up to two missed days per month in the last week. A frozen day
