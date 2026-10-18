@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
-import { lightImpact } from '../../utils/haptics';
+import feedback, { EVENTS } from '../../services/feedback';
 import { t, useLocale } from '../../i18n';
 import { elevation } from '../../theme/tokens';
 import OverlayModal from './OverlayModal';
@@ -16,7 +16,7 @@ import OverlayModal from './OverlayModal';
  * - iOS: the native `ActionSheetIOS` sheet, with Cancel as `cancelButtonIndex`.
  * - Android and web: a bottom list in a transparent `Modal`, with a Cancel row. Back
  *   (`onRequestClose`), a scrim tap and Cancel all close it.
- * - A light haptic plays when it opens.
+ * - The longPress feedback (iOS medium impact, Android Long_Press) plays when it opens.
  *
  * Props:
  * - `visible`, `title`, `message` (optional secondary line)
@@ -42,7 +42,7 @@ export default function ActionSheet({ visible, title, message, options = [], onC
   useEffect(() => {
     if (!visible) return;
     fired.current = false;
-    lightImpact();
+    feedback.play(EVENTS.longPress);
     if (!native) return;
     const opts = latest.current.options;
     const destructiveButtonIndex = opts

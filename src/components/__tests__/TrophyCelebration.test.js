@@ -5,7 +5,7 @@ const TestRenderer = require('react-test-renderer');
 const { act } = TestRenderer;
 const { Modal, Animated } = require('react-native');
 
-jest.mock('../../utils/haptics', () => ({ heavyImpact: jest.fn(), mediumImpact: jest.fn() }));
+jest.mock('../../services/feedback', () => ({ __esModule: true, default: { play: jest.fn() }, EVENTS: { trophy: 'trophy' } }));
 let mockReduced = false;
 jest.mock('../../utils/a11y', () => ({ useReducedMotion: () => mockReduced, announce: jest.fn() }));
 jest.mock('../CelebrationOverlay', () => () => null);

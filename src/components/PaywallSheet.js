@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Platform, Linking } from 'react-native';
 import { PLANS, PRO_FEATURES, purchasePlan, restorePurchases, purchasesConfigured } from '../services/entitlements';
-import { lightImpact, mediumImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import { track, Events } from '../utils/analytics';
 import { t, useLocale } from '../i18n';
 import { elevation } from '../theme/tokens';
@@ -25,11 +25,11 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
     if (busy) return;
     setBusy('buy'); setError('');
     try {
-      if (mediumImpact) mediumImpact();
       const res = await purchasePlan(plan);
       if (res.ok) { onUnlocked?.(); onClose(); }
-      else if (!res.cancelled) setError(t('paywall.errors.incomplete'));
+      else if (!res.cancelled) { feedback.play(EVENTS.error); setError(t('paywall.errors.incomplete')); }
     } catch (e) {
+      if (e?.code !== 'not_configured') feedback.play(EVENTS.error);
       setError(e?.code === 'not_configured'
         ? t('paywall.errors.comingSoon')
         : (e?.message || t('paywall.errors.failed')));
@@ -42,7 +42,7 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
     try {
       const ok = await restorePurchases();
       if (ok) { onUnlocked?.(); onClose(); } else setError(t('paywall.errors.noPurchase'));
-    } catch (e) { setError(e?.message || t('paywall.errors.restoreFailed')); }
+    } catch (e) { feedback.play(EVENTS.error); setError(e?.message || t('paywall.errors.restoreFailed')); }
     finally { setBusy(null); }
   };
 
@@ -75,7 +75,7 @@ export default function PaywallSheet({ visible, reason, onClose, onUnlocked, the
                   <TouchableOpacity
                     key={p.id}
                     style={[styles.plan, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : theme.bg }]}
-                    onPress={() => { lightImpact(); setPlan(p.id); }}
+                    onPress={() => { feedback.play(EVENTS.selection); setPlan(p.id); }}
                     accessibilityRole="radio"
                     accessibilityState={{ selected: on, checked: on }}
                     accessibilityLabel={t('paywall.planA11y', { title: p.title, price: p.price })}

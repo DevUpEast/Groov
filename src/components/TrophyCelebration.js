@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Animated, StyleSheet, Text, Modal, Pressable } from 'react-native';
 import CelebrationOverlay from './CelebrationOverlay';
-import { heavyImpact, mediumImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import { useReducedMotion, announce } from '../utils/a11y';
 import { t } from '../i18n';
 import OverlayModal from './ui/OverlayModal';
@@ -48,6 +48,8 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
     }
     finished.current = false;
     announce(t('trophy.announce'));
+    // The trophy beat (haptic + fanfare) lands as the screen starts, in both motion modes.
+    feedback.play(EVENTS.trophy);
     later(() => setCanSkip(true), TROPHY_SKIP_AFTER_MS);
     // Fallback: the normal auto-dismiss is scheduled when the orbit animation finishes, so an
     // interrupted animation would leave the trophy up. This closes it a little after that path.
@@ -55,7 +57,6 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
 
     if (reducedMotion) {
       scaleAnim.setValue(1);
-      heavyImpact();
       later(finish, 2000);
       return clearTimers;
     }
@@ -70,8 +71,6 @@ export default function TrophyCelebration({ visible, onDone, theme }) {
       }).start(({ finished: done }) => {
         if (done && !finished.current) {
           setShowConfetti(true);
-          heavyImpact();
-          later(() => mediumImpact(), 200);
           later(finish, 3500);
         }
       });

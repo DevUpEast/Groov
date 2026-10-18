@@ -18,8 +18,7 @@ import UndoToast from '../components/UndoToast';
 import NoteModal from '../components/NoteModal';
 import MoodCheckIn from '../components/MoodCheckIn';
 import { isGoalMet, usesCounter, countAfterIncrement, markRestLeavesOutCounters } from '../utils/habits';
-import { successNotification, mediumImpact } from '../utils/haptics';
-import { playChime, playSuccessChime, playChallengeChime, playHornFanfare } from '../utils/sounds';
+import feedback, { EVENTS } from '../services/feedback';
 import { fetchDailyNudge } from '../services/aiCoaching';
 import { localDateKey, parseDateKey } from '../utils/dates';
 import { maybeRequestReview } from '../services/review';
@@ -61,10 +60,6 @@ function getDateString(offset = 0) {
   return d.toLocaleDateString(getLocale(), { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
-function hapticFillSequence() {
-  successNotification();
-}
-
 // How long the "Mark the rest done" toast (and its Undo) stays up. A challenge that
 // Mark the rest would complete waits for this window before it is archived.
 const MARK_REST_UNDO_MS = 8000;
@@ -91,8 +86,7 @@ export default function TodayScreen() {
     const t = setTimeout(() => {
       setMilestoneShown(pendingMilestone);
       setFullCelebration(true);
-      if (settings.soundEnabled) playHornFanfare();
-      if (settings.hapticsEnabled) successNotification();
+      feedback.play(EVENTS.milestone);
       clearPendingMilestone();
     }, 900);
     return () => clearTimeout(t);
@@ -125,6 +119,12 @@ export default function TodayScreen() {
   const [rewardsToShow, setRewardsToShow] = useState([]);
   const rewardModalShown = useRef(false);
   const allDoneCelebrated = useRef(false);
+  // Feedback still pending from the last check-off (day.complete at +750, challenge.claimed at
+  // +250). An un-check cancels them (§4.1): a day that is no longer complete gets no Success.
+  const pendingFeedback = useRef([]);
+  const cancelPendingFeedback = () => { pendingFeedback.current.forEach(h => h.cancel()); pendingFeedback.current = []; };
+  // Only the latest few matter (they expire within ~1 s); keep the list bounded.
+  const keepPending = (h) => { pendingFeedback.current = [...pendingFeedback.current.slice(-3), h]; };
 
   const [nudgeMessage, setNudgeMessage] = useState(null);
   const [nudgeLoading, setNudgeLoading] = useState(false);
@@ -187,7 +187,7 @@ export default function TodayScreen() {
   // Latest state for the deferred flush, which may run from a stale closure
   // (AppState listener, unmount cleanup).
   const latest = useRef({});
-  latest.current = { challenges, effectiveChallenges, completeChallengeImmediately, settings };
+  latest.current = { challenges, effectiveChallenges, completeChallengeImmediately };
 
   // Claim (and complete) challenges after an action. `countsOverride` is today's
   // map *after* the action, so the decision never waits for React to apply it.
@@ -219,13 +219,11 @@ export default function TodayScreen() {
     const due = token === undefined ? queueRef.current : queueRef.current.filter(i => i.token === token);
     if (due.length === 0) return;
     queueRef.current = queueRef.current.filter(i => !due.includes(i));
-    const { challenges: active, effectiveChallenges: eff, completeChallengeImmediately: complete, settings: s } = latest.current;
+    const { challenges: active, effectiveChallenges: eff, completeChallengeImmediately: complete } = latest.current;
     const ids = planFlush(due, eff.filter(ch => active.some(c => c.id === ch.id)));
     ids.forEach(id => complete(id, due.find(i => i.challengeId === id)?.dayKey));
-    if (ids.length > 0) {
-      if (s.soundEnabled) playHornFanfare();
-      setTrophyCelebrating(true);
-    }
+    // The trophy screen plays its own feedback (haptic + fanfare) when it appears.
+    if (ids.length > 0) setTrophyCelebrating(true);
   }, []);
 
   useEffect(() => {
@@ -258,15 +256,15 @@ export default function TodayScreen() {
     if (unmark) cancelledIds.forEach(id => { if (challenges.some(c => c.id === id)) unmarkChallengeDay(id); });
   }, [challenges, dueHabits, unmarkChallengeDay]);
 
-  const handleIncrement = useCallback(async (habit, amount = 1) => {
+  const handleIncrement = useCallback((habit, amount = 1) => {
     const before = getHabitCount(habit.id);
     const after = { ...getTodayCompletions(), [habit.id]: countAfterIncrement(habit, before, amount) };
     const justCompleted = incrementHabit(habit.id, amount);
     if (justCompleted === false && !usesCounter(habit) && before >= 1) return; // already checked
     const over = habit.type === 'atMost' && before + amount > habit.volumeGoal;
     setToast({ id: Date.now(), habit, amount, message: justCompleted ? (habit.type === 'quit' ? t('today.toast.avoided', { name: habit.name }) : t('today.toast.done', { name: habit.name })) : over ? t('today.toast.overLimit', { name: habit.name }) : t('today.toast.plus', { name: habit.name, amount }) });
-    if (settings.hapticsEnabled) await mediumImpact();
-    if (settings.soundEnabled) (justCompleted ? playSuccessChime : playChime)();
+    // Same frame as the visual change, never awaited (HAP-4).
+    feedback.play(justCompleted ? EVENTS.habitDone : EVENTS.counterStep);
 
     if (justCompleted) {
       // Judge everything against the counts after this check-off.
@@ -275,27 +273,34 @@ export default function TodayScreen() {
       // A single check-off completes a challenge immediately, with its trophy.
       const { claimedIds, completedNowIds } = autoClaimChallenges(after);
       const anyComplete = completedNowIds.length > 0;
-      if (settings.soundEnabled && claimedIds.length > 0) {
-        // Let the habit chime finish before the challenge sound starts.
-        setTimeout(anyComplete ? playHornFanfare : playChallengeChime, 320);
-      }
+      // challenge.claimed lands on its beat (+250 ms); a completed challenge gets the trophy
+      // screen, which plays its own feedback.
+      if (claimedIds.length > 0 && !anyComplete) keepPending(feedback.play(EVENTS.challengeClaimed));
       if (anyComplete) setTimeout(() => setTrophyCelebrating(true), 100);
 
       if (willAllBeDone && !allDoneCelebrated.current) {
         allDoneCelebrated.current = true;
-        hapticFillSequence();
+        keepPending(feedback.play(EVENTS.dayComplete));
         setCelebrating(true);
       }
     }
-  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, settings, getHabitCount, getTodayCompletions]);
+  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, getHabitCount, getTodayCompletions]);
 
-  const handleDecrement = useCallback(async (habit, amount = 1) => {
+  // `undo`: the toast Undo, which always reads as an un-check.
+  const handleDecrement = useCallback((habit, amount = 1, { undo = false } = {}) => {
     const today = todayStr();
     const countBefore = getHabitCount(habit.id);
     const habitWasDone = isGoalMet(habit, countBefore);
     const habitStillDone = isGoalMet(habit, Math.max(0, countBefore - (amount || 1)));
 
     decrementHabit(habit.id, amount || 1);
+    if (undo || (habitWasDone && !habitStillDone)) {
+      cancelPendingFeedback();
+      feedback.play(EVENTS.habitUndone);
+    } else {
+      // A −1 that leaves the habit's done state alone: the tick only, never the rising step chime.
+      feedback.play(EVENTS.counterStep, { sound: false });
+    }
     allDoneCelebrated.current = false;
 
     // Only unmark challenge days when this habit transitions from done → not done
@@ -325,7 +330,7 @@ export default function TodayScreen() {
   const markRestPartial = markRestCount > 0
     && markRestLeavesOutCounters(dueHabits, settings.skips?.[today] || [], isHabitSatisfied);
 
-  const handleMarkRest = useCallback(async () => {
+  const handleMarkRest = useCallback(() => {
     const id = Date.now();
     const dayKey = todayStr();
     const plan = markRestDone();
@@ -336,25 +341,24 @@ export default function TodayScreen() {
       id, kind: 'markRest', dayKey, before: plan.before, changedIds: plan.changedIds, claimedIds, duration: MARK_REST_UNDO_MS,
       message: t('today.toast.markedRest', { count: plan.changedIds.length }),
     });
-    if (settings.hapticsEnabled) await mediumImpact();
-    if (settings.soundEnabled) {
-      playSuccessChime();
-      if (claimedIds.length > 0) setTimeout(playChallengeChime, 320);
-    }
+    // One markRest haptic and chord for the whole batch; no separate day.complete haptic.
+    feedback.play(EVENTS.markRest);
+    if (claimedIds.length > 0) keepPending(feedback.play(EVENTS.challengeClaimed));
     // Celebrate only when the day is truly complete: counters may still be open.
     const allNow = dueHabits.length > 0 && dueHabits.every(h => isHabitSatisfiedWith(h, plan.next));
     if (allNow && !allDoneCelebrated.current) {
       allDoneCelebrated.current = true;
-      hapticFillSequence();
       setCelebrating(true);
     }
-  }, [markRestDone, autoClaimChallenges, settings, dueHabits, isHabitSatisfiedWith, todayStr]);
+  }, [markRestDone, autoClaimChallenges, dueHabits, isHabitSatisfiedWith, todayStr]);
 
   // Undo for Mark the rest, on the day the action ran (tst.dayKey): drop its queued
   // completions, revert the habits it marked that are still at 1, and un-mark exactly
   // the challenge days it claimed.
   const undoMarkRest = useCallback((tst) => {
     queueRef.current = queueRef.current.filter(i => i.token !== tst.id);
+    cancelPendingFeedback();
+    feedback.play(EVENTS.habitUndone);
     restoreHabitCounts(tst.before, tst.changedIds, tst.dayKey);
     tst.claimedIds.forEach(id => unmarkChallengeDay(id, tst.dayKey));
     allDoneCelebrated.current = false;
@@ -429,10 +433,7 @@ export default function TodayScreen() {
               >
                 <TouchableOpacity
                   style={[styles.addHabitBtn, { backgroundColor: theme.action, shadowColor: theme.shadow }]}
-                  onPress={async () => {
-                    if (settings.hapticsEnabled) await mediumImpact();
-                    setRequestedTab(3);
-                  }}
+                  onPress={() => setRequestedTab(3)}
                   activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityLabel={t('today.empty.addA11y')}
@@ -443,10 +444,7 @@ export default function TodayScreen() {
               {effectiveChallenges.length === 0 && (
                 <TouchableOpacity
                   style={[styles.challengeEmptyRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                  onPress={async () => {
-                    if (settings.hapticsEnabled) await mediumImpact();
-                    setRequestedTab(2);
-                  }}
+                  onPress={() => setRequestedTab(2)}
                   activeOpacity={0.75}
                   accessibilityRole="button"
                   accessibilityLabel={t('today.noChallenges.a11y')}
@@ -515,7 +513,7 @@ export default function TodayScreen() {
           )}
 
           {habits.length > 0 && (
-            <MoodCheckIn value={moods[today] ?? null} onChange={(v) => setMood(today, v)} theme={theme} haptics={settings.hapticsEnabled} />
+            <MoodCheckIn value={moods[today] ?? null} onChange={(v) => setMood(today, v)} theme={theme} />
           )}
 
           {/* Active Challenges */}
@@ -567,7 +565,7 @@ export default function TodayScreen() {
         onUndo={() => {
           const tst = toast;
           if (tst?.kind === 'markRest') { undoMarkRest(tst); setToast(null); return; }
-          const h = tst?.habit; const a = tst?.amount || 1; setToast(null); if (h) handleDecrement(h, a);
+          const h = tst?.habit; const a = tst?.amount || 1; setToast(null); if (h) handleDecrement(h, a, { undo: true });
         }}
       />
 

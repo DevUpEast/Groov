@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { lightImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import { timeToDate, from24h, formatTimeForClock } from '../utils/time';
 import { usesDevice24hClock } from '../utils/clock';
 import { themes } from '../theme/colors';
@@ -36,7 +36,7 @@ function AndroidTimePicker({ visible, hour12, minute, ampm, onClose, onSave }) {
         // it cannot close a picker that was reopened in the meantime.
         if (cancelled) return;
         if (event?.type === 'set' && date) {
-          lightImpact();
+          feedback.play(EVENTS.selection);
           handlers.current.onSave(from24h(date));
         }
         handlers.current.onClose();
@@ -59,7 +59,7 @@ function IOSTimePicker({ visible, hour12, minute, ampm, onClose, onSave, theme }
   const uses24h = usesDevice24hClock();
 
   const handleSave = () => {
-    lightImpact();
+    feedback.play(EVENTS.selection);
     onSave(from24h(value));
     onClose();
   };

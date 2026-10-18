@@ -15,7 +15,7 @@ import { SheetDragHandle } from '../components/SheetHeader';
 import TimePicker from '../components/TimePicker';
 import HabitDetailSheet from '../components/HabitDetailSheet';
 import HabitIcon from '../components/HabitIcon';
-import { lightImpact, mediumImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import { routeLeavesTab } from '../utils/links';
 import { describeSchedule, weekdayLabels, DEFAULT_SCHEDULE } from '../utils/schedule';
 import { getHabitTypes, describeGoal } from '../utils/habits';
@@ -673,7 +673,7 @@ export default function HabitsScreen() {
     habits, archivedHabits, addHabit, updateHabit, deleteHabit, archiveHabit, unarchiveHabit, moveHabit, theme, themeName,
     pendingHabitLinkChallenge, setPendingHabitLinkChallenge, linkHabitToChallenge, ensureNotificationPermission,
     pendingRoute, clearPendingRoute, canAddHabit,
-    setModalOpen, settings,
+    setModalOpen,
   } = useApp();
   useLocale();
   const [modalVisible, setModalVisible] = useState(false);
@@ -720,7 +720,6 @@ export default function HabitsScreen() {
   }, [pendingHabitLinkChallenge]);
 
   const openAdd = () => {
-    if (settings.hapticsEnabled) lightImpact();
     if (!canAddHabit()) return;
     setEditingId(null);
     setForm(BLANK);
@@ -735,8 +734,7 @@ export default function HabitsScreen() {
   };
 
   const handleSave = () => {
-    if (!form.name.trim()) return;
-    if (settings.hapticsEnabled) mediumImpact();
+    if (!form.name.trim()) { feedback.play(EVENTS.refused); return; }
     const habit = habitFromForm(form);
     if (editingId) {
       updateHabit(editingId, habit);
@@ -753,7 +751,7 @@ export default function HabitsScreen() {
 
   // Archive is the default; permanent deletion is one more step away.
   const handleDelete = (id, name) => {
-    if (settings.hapticsEnabled) lightImpact();
+    feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(t('habits.archive.title'), t('habits.archive.body', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('habits.archive.deleteForever'), style: 'destructive', onPress: () => handleDeleteForever(id, name) },
@@ -762,6 +760,7 @@ export default function HabitsScreen() {
   };
 
   const handleDeleteForever = (id, name) => {
+    feedback.play(EVENTS.destructiveConfirm);
     Alert.alert(t('habits.deleteHabit.title'), t('habits.deleteHabit.body', { name }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: () => deleteHabit(id) },
@@ -790,7 +789,7 @@ export default function HabitsScreen() {
             {habits.length > 1 && (
               <TouchableOpacity
                 style={[styles.reorderBtn, { borderColor: reorder ? theme.selectionBorder : theme.controlBorder, backgroundColor: reorder ? theme.selection : 'transparent' }]}
-                onPress={() => { if (settings.hapticsEnabled) lightImpact(); setReorder(r => !r); }}
+                onPress={() => { feedback.play(EVENTS.selection); setReorder(r => !r); }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: reorder }}
                 accessibilityLabel={reorder ? t('habits.finishReorder') : t('habits.reorder')}
@@ -823,13 +822,12 @@ export default function HabitsScreen() {
               reorder={reorder}
               isFirst={i === 0}
               isLast={i === habits.length - 1}
-              onMove={(d) => { if (settings.hapticsEnabled) lightImpact(); moveHabit(habit.id, d); }}
+              onMove={(d) => { feedback.play(EVENTS.selection); moveHabit(habit.id, d); }}
               onEdit={() => openEdit(habit)}
-              onOpen={() => { if (settings.hapticsEnabled) lightImpact(); setDetailHabit(habit); }}
+              onOpen={() => setDetailHabit(habit)}
               onDelete={() => handleDelete(habit.id, habit.name)}
               onBell={async () => {
-                lightImpact();
-                if (habit.reminder?.enabled) { handleReminderToggleOff(habit); return; }
+                if (habit.reminder?.enabled) { feedback.toggled(false); handleReminderToggleOff(habit); return; }
                 if (await ensureNotificationPermission()) setReminderTarget(habit.id);
               }}
             />
@@ -844,7 +842,7 @@ export default function HabitsScreen() {
                 key={habit.id}
                 habit={habit}
                 theme={theme}
-                onRestore={() => { if (settings.hapticsEnabled) lightImpact(); unarchiveHabit(habit.id); }}
+                onRestore={() => unarchiveHabit(habit.id)}
                 onDelete={() => handleDeleteForever(habit.id, habit.name)}
               />
             ))}

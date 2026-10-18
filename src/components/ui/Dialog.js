@@ -5,6 +5,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { elevation } from '../../theme/tokens';
 import OverlayModal from './OverlayModal';
+import feedback, { EVENTS } from '../../services/feedback';
 
 /**
  * Shared centred dialog (plan §3). A real `Modal`, so it sits above the tab bar, the scrim covers
@@ -28,7 +29,8 @@ import OverlayModal from './OverlayModal';
  *   saving.
  * - `destructive`: legacy shorthand, draws every `primary` action as `destructive`. Prefer the
  *   per-action variant. A destructive action is never the default: do not wire it to
- *   `onSubmitEditing`.
+ *   `onSubmitEditing`. A dialog with a destructive action (either form) plays the
+ *   `destructiveConfirm` haptic as it opens (plan §2.10).
  * - `initialFocusRef`: a ref to focus once the dialog is shown. Use it instead of `autoFocus`, which
  *   fires before an Android Modal window has focus and leaves the keyboard closed. On Android the
  *   focus lands 150 ms after `onShow`, with one retry at 300 ms if the field is still not focused.
@@ -82,6 +84,13 @@ export default function Dialog({
     if (wasVisible.current && !visible && Platform.OS === 'android') onDismissRef.current?.();
     wasVisible.current = !!visible;
   }, [visible]);
+  // destructiveConfirm on each closed → open transition (including mounting already open).
+  const isDestructive = destructive || actions.some(a => a.variant === 'destructive');
+  const announcedOpen = useRef(false);
+  useEffect(() => {
+    if (visible && !announcedOpen.current && isDestructive) feedback.play(EVENTS.destructiveConfirm);
+    announcedOpen.current = !!visible;
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
   const handleModalDismiss = Platform.OS === 'android' ? undefined : () => onDismissRef.current?.();
   const stacked = shouldStack(actions, layout);
 

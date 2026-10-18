@@ -37,8 +37,11 @@ import { initAnalytics, track, Events } from '../utils/analytics';
 import { mockupParams, onMockupMessage, postToMockupHost } from '../utils/mockup';
 import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocalUri, localIconExists } from '../services/icons';
 import { t, useLocale } from '../i18n';
-import { setHapticsEnabled } from '../utils/haptics';
+import feedback, { EVENTS as FEEDBACK } from '../services/feedback';
 import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
+
+// The one feedback gate (src/services/feedback.js): callers never check these settings.
+const applyFeedbackSettings = (s) => feedback.configure({ haptics: s?.hapticsEnabled !== false, sound: s?.soundEnabled !== false });
 
 const AppContext = createContext(null);
 
@@ -228,7 +231,7 @@ export function AppProvider({ children }) {
     if (lba) setLastBackupAt(lba);
     if (md) setMoods(md);
     const loadedSettings = migrateSettings(s);
-    setHapticsEnabled(loadedSettings.hapticsEnabled !== false); // before children mount
+    applyFeedbackSettings(loadedSettings); // before children mount
     setSettings(loadedSettings);
     if (ch) {
       setChallenges(migrateChallenges(Array.isArray(ch) ? ch : [ch]));
@@ -263,10 +266,10 @@ export function AppProvider({ children }) {
   useEffect(() => { if (loaded) saveData('notes', notes); }, [notes, loaded]);
   useEffect(() => { if (loaded) saveData('moods', moods); }, [moods, loaded]);
   useEffect(() => { if (loaded) saveData('settings', settings); }, [settings, loaded]);
-  // One haptics gate for the whole app (src/utils/haptics.js); callers need no check.
+  // One feedback gate for the whole app (src/services/feedback.js); callers need no check.
   // The load paths above also set it synchronously so child mount effects never
   // see a stale value; this effect covers every other settings change.
-  useEffect(() => setHapticsEnabled(settings.hapticsEnabled !== false), [settings.hapticsEnabled]);
+  useEffect(() => applyFeedbackSettings(settings), [settings.hapticsEnabled, settings.soundEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (loaded) saveData('dateOffset', dateOffset); }, [dateOffset, loaded]);
   useEffect(() => { if (loaded) saveData('challenges', challenges); }, [challenges, loaded]);
   useEffect(() => { if (loaded) saveData('hasOnboarded', hasOnboarded); }, [hasOnboarded, loaded]);
@@ -494,11 +497,13 @@ export function AppProvider({ children }) {
   // the paywall with the matching reason.
   const canAddHabit = useCallback(() => {
     if (isPro || habits.length < FREE_LIMITS.habits) return true;
+    feedback.play(FEEDBACK.refused);
     openPaywall('habits');
     return false;
   }, [isPro, habits.length, openPaywall]);
   const canAddReminder = useCallback(() => {
     if (isPro || (settings.reminders || []).length < FREE_LIMITS.reminders) return true;
+    feedback.play(FEEDBACK.refused);
     openPaywall('reminders');
     return false;
   }, [isPro, settings.reminders, openPaywall]);
@@ -596,7 +601,7 @@ export function AppProvider({ children }) {
           setPastChallenges([]);
           setDailySnapshot({});
           setSettings(DEFAULT_SETTINGS);
-          setHapticsEnabled(true);
+          applyFeedbackSettings(DEFAULT_SETTINGS);
         } else if (lastUserId !== null && lastUserId !== userId) {
           // Different user logged in on this device — wipe the previous user's local data.
           await storeClearAll();
@@ -618,7 +623,7 @@ export function AppProvider({ children }) {
           // The previous user's settings must not carry over either: their reminders
           // would show as on for an account that never granted anything (S-05).
           setSettings(DEFAULT_SETTINGS);
-          setHapticsEnabled(true);
+          applyFeedbackSettings(DEFAULT_SETTINGS);
         }
         await saveData('lastUserId', userId);
 
@@ -653,7 +658,7 @@ export function AppProvider({ children }) {
           if (cloudData.moods) setMoods(cloudData.moods);
           if (cloudData.settings) {
             const cloudSettings = migrateSettings(cloudData.settings);
-            setHapticsEnabled(cloudSettings.hapticsEnabled !== false);
+            applyFeedbackSettings(cloudSettings);
             setSettings(cloudSettings);
           }
           if (cloudData.challenges) setChallenges(migrateChallenges(cloudData.challenges));
@@ -716,7 +721,7 @@ export function AppProvider({ children }) {
         if (delta.moods?.length) setMoods(prev => { const next = { ...prev }; for (const r of delta.moods) next[r.date] = r.mood; return next; });
         if (delta.settings) {
           const pulledSettings = migrateSettings(delta.settings);
-          setHapticsEnabled(pulledSettings.hapticsEnabled !== false);
+          applyFeedbackSettings(pulledSettings);
           setSettings(pulledSettings);
         }
         lastPulledAtRef.current = startedAt;
@@ -961,6 +966,8 @@ export function AppProvider({ children }) {
 
   const updateSettings = useCallback((updates) => {
     const next = { ...settings, ...updates };
+    // Synchronous, so a toggle that just turned haptics on can be felt in the same tap.
+    if ('hapticsEnabled' in updates || 'soundEnabled' in updates) applyFeedbackSettings(next);
     setSettings(next);
     if (userId) syncSettings(userId, next);
   }, [settings, userId]);
@@ -1263,7 +1270,7 @@ export function AppProvider({ children }) {
     setCompletions(next.completions);
     setNotes(next.notes);
     setMoods(next.moods || {});
-    setHapticsEnabled(nextSettings.hapticsEnabled !== false);
+    applyFeedbackSettings(nextSettings);
     setSettings(nextSettings);
     setChallenges(nextChallenges);
     setPastChallenges(next.pastChallenges);

@@ -9,7 +9,7 @@ import { addDays, parseDateKey } from '../utils/dates';
 import {
   dayStatus, gridDayStatus, bestHabitStreak, describeSchedule, weekStart, weekdayLabels,
 } from '../utils/schedule';
-import { lightImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import HabitIcon from './HabitIcon';
 import { describeGoal } from '../utils/habits';
 import { isHabitDoneOnDay } from '../utils/dayStatus';
@@ -35,7 +35,7 @@ function pct(n, d) {
 // completion rate, current/best streak and a weekday breakdown.
 export default function HabitDetailSheet({ habit, onClose, onEdit }) {
   const {
-    theme, settings, todayStr, completions, isHabitDoneOn, getStreakForHabit,
+    theme, todayStr, completions, isHabitDoneOn, getStreakForHabit,
     isExcused, toggleHabitDoneOn, setHabitCountOn, accountCreatedAt, isHabitSkippedOn,
   } = useApp();
   useLocale();
@@ -138,7 +138,6 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
 
   const onCellPress = (d) => {
     if (d.future || d.before) return;
-    if (settings.hapticsEnabled) lightImpact();
     if ((habit.type === 'volume' || habit.type === 'timed' || habit.type === 'atMost') && habit.volumeGoal >= 1) {
       // Counter habits: offer the meaningful values rather than a blind toggle.
       const isLimit = habit.type === 'atMost';
@@ -157,6 +156,8 @@ export default function HabitDetailSheet({ habit, onClose, onEdit }) {
       );
       return;
     }
+    // History editing is not the check-off moment: haptic only, no chime.
+    feedback.play(isHabitDoneOn(habit, d.key) ? EVENTS.habitUndone : EVENTS.habitDone, { sound: false });
     toggleHabitDoneOn(habit.id, d.key);
   };
 

@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MOODS } from '../utils/mood';
-import { lightImpact } from '../utils/haptics';
+import feedback, { EVENTS } from '../services/feedback';
 import { t, useLocale } from '../i18n';
 
 // One-tap daily mood row for the Today screen. Tapping the selected mood clears it.
-export default function MoodCheckIn({ value, onChange, theme, haptics = true }) {
+export default function MoodCheckIn({ value, onChange, theme }) {
   useLocale();
   return (
     <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -24,7 +24,7 @@ export default function MoodCheckIn({ value, onChange, theme, haptics = true }) 
             <TouchableOpacity
               key={m.value}
               style={[styles.btn, { borderColor: on ? theme.selectionBorder : theme.border, backgroundColor: on ? theme.selection : theme.bg }]}
-              onPress={() => { if (haptics) lightImpact(); onChange(on ? null : m.value); }}
+              onPress={() => { feedback.play(EVENTS.selection); onChange(on ? null : m.value); }}
               accessibilityRole="radio"
               accessibilityState={{ selected: on, checked: on }}
               accessibilityLabel={t('moodCheckIn.a11y', { label: m.label, value: m.value })}
