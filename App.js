@@ -76,7 +76,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { mockupParams, postToMockupHost } from './src/utils/mockup';
 import { useAnyHeavyOverlayOpen, setOverlayChangesStatusBar, statusBarStyle } from './src/utils/overlayStatus';
 import { supabaseConfigError } from './src/utils/supabase';
-import { AppProvider, useApp } from './src/context/AppContext';
+import { AppProvider, useApp, TabScope } from './src/context/AppContext';
 import { themes } from './src/theme/colors';
 import { loadAppFonts } from './src/theme/fonts';
 import { type } from './src/theme/typography';
@@ -106,7 +106,9 @@ const TABS = [
   { key: 'settings',  icon: 'settings-outline' },
 ];
 
-const SCREENS = [TodayScreen, ProgressScreen, ChallengeScreen, HabitsScreen, SettingsScreen];
+// Memoised, so a tab re-renders only through its TabScope's context value (C-07 perf: an
+// inactive tab no longer re-renders on every check-off).
+const SCREENS = [TodayScreen, ProgressScreen, ChallengeScreen, HabitsScreen, SettingsScreen].map(S => React.memo(S));
 
 function AppNavigator() {
   const { hasOnboarded, theme, themeName, requestedTab, setRequestedTab, modalOpen, notificationPrimer, paywall, closePaywall, refreshPro, pendingRoute, clearPendingRoute } = useApp();
@@ -127,10 +129,24 @@ function AppNavigator() {
   // Each slide gets an id; only the latest one may clear isAnimating, so an interrupted slide's
   // late completion callback cannot unlock the pager while the next slide is still running.
   const animId = useRef(0);
+  // A tab requested while a slide runs (a deep link, a screen's requestedTab) waits for it to
+  // end instead of being dropped (C-07 review m1: a dropped request left the target tab hidden
+  // with its pendingRoute).
+  const queuedTab = useRef(null);
+  const goToTabRef = useRef(null);
   const onSlideEnd = () => {
     const id = ++animId.current;
-    return () => { if (animId.current === id) isAnimating.current = false; };
+    return () => {
+      if (animId.current !== id) return;
+      isAnimating.current = false;
+      const next = queuedTab.current;
+      queuedTab.current = null;
+      if (next != null) goToTabRef.current?.(next);
+    };
   };
+  // The tab the current pager drag started on (null when not dragging): its two neighbours
+  // get the live context value while the finger can pull them into view (TabScope `peek`).
+  const [dragFrom, setDragFrom] = useState(null);
   const activeIndexRef = useRef(0);
   const modalOpenRef = useRef(false);
 
@@ -145,6 +161,7 @@ function AppNavigator() {
       pagerOpacity.setValue(1);
       isAnimating.current = false;
     }
+    if (isAnimating.current && newIndex !== activeIndexRef.current) { queuedTab.current = newIndex; return; }
     if (newIndex === activeIndexRef.current || isAnimating.current) return;
     if (newIndex < 0 || newIndex >= NUM_TABS) return;
     isAnimating.current = true;
@@ -158,6 +175,7 @@ function AppNavigator() {
     }
     timing(translateX, { toValue: -newIndex * SCREEN_WIDTH, duration: duration.state }, false).start(onSlideEnd());
   }, [translateX, pagerOpacity]);
+  goToTabRef.current = goToTab;
 
   // Fresh onboarding always lands on Today, whatever tab was active before a reset.
   // The row is always fully opaque after onboarding, even if a reduced-motion fade was cut off.
@@ -201,6 +219,7 @@ function AppNavigator() {
         !modalOpenRef.current &&
         Math.abs(gs.dx) > 12 &&
         Math.abs(gs.dx) > Math.abs(gs.dy) * 1.8,
+      onPanResponderGrant: () => setDragFrom(activeIndexRef.current),
       onPanResponderMove: (_, gs) => {
         const base = -activeIndexRef.current * SCREEN_WIDTH;
         const next = base + gs.dx;
@@ -208,6 +227,7 @@ function AppNavigator() {
         translateX.setValue(Math.max(min, Math.min(0, next)));
       },
       onPanResponderRelease: (_, gs) => {
+        setDragFrom(null);
         const cur = activeIndexRef.current;
         const threshold = SCREEN_WIDTH * 0.25;
         if (gs.dx < -threshold && cur < NUM_TABS - 1) {
@@ -225,6 +245,7 @@ function AppNavigator() {
         }
       },
       onPanResponderTerminate: () => {
+        setDragFrom(null);
         const cur = activeIndexRef.current;
         springTo(translateX, spring.snappy, { toValue: -cur * SCREEN_WIDTH }).start(onSlideEnd());
       },
@@ -299,7 +320,7 @@ function AppNavigator() {
             accessibilityElementsHidden={activeIndex !== i}
             aria-hidden={activeIndex !== i}
           >
-            <Screen />
+            <TabScope active={activeIndex === i} peek={dragFrom != null && Math.abs(i - dragFrom) === 1} Screen={Screen} />
           </View>
         ))}
       </Animated.View>

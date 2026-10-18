@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, AppState, Animated,
   Platform, StatusBar, useWindowDimensions,
@@ -11,7 +11,8 @@ import HabitCard from '../components/HabitCard';
 import EmptyCard from '../components/EmptyCard';
 import TodayHeader, { TodayStickyBar, dayLine } from '../components/TodayHeader';
 import SectionLabel from '../components/ui/SectionLabel';
-import CelebrationOverlay from '../components/CelebrationOverlay';
+import CreditFlight from '../components/CreditFlight';
+import RingBurst from '../components/RingBurst';
 import CompletionCelebration from '../components/CompletionCelebration';
 import TrophyCelebration from '../components/TrophyCelebration';
 import ChallengeRewardModal from '../components/ChallengeRewardModal';
@@ -20,13 +21,14 @@ import Button from '../components/ui/Button';
 import PressableScale from '../components/ui/PressableScale';
 import Dialog from '../components/ui/Dialog';
 import { radius, size, space } from '../theme/tokens';
-import { timing, duration } from '../theme/motion';
+import { timing, duration, beat as beats } from '../theme/motion';
 import NoteModal from '../components/NoteModal';
 import HabitDetailSheet from '../components/HabitDetailSheet';
 import { routeLeavesTab } from '../utils/links';
 import MoodCheckIn from '../components/MoodCheckIn';
 import { isGoalMet, usesCounter, countAfterIncrement, markRestLeavesOutCounters } from '../utils/habits';
-import feedback, { EVENTS } from '../services/feedback';
+import feedback, { EVENTS, logMark } from '../services/feedback';
+import { frameLogOn } from '../hooks/useTween';
 import { fetchDailyNudge } from '../services/aiCoaching';
 import { localDateKey, parseDateKey, addDays } from '../utils/dates';
 import { maybeRequestReview } from '../services/review';
@@ -41,7 +43,9 @@ import { earliestCreatedAt } from '../utils/dayStatus';
 import { mockupParams } from '../utils/mockup';
 import { announce } from '../utils/a11y';
 import useCheckoffMoment from '../hooks/useCheckoffMoment';
-import { KINDS as BEAT, ladderIndex } from '../utils/beats';
+import { KINDS as BEAT, ladderIndex, MOMENT_MS } from '../utils/beats';
+import { useTabActive } from '../utils/tabScope';
+import useCelebrationQueue from '../hooks/useCelebrationQueue';
 import { useDevFlag } from '../utils/devFlags';
 
 // Today list sections. Habits without a time of day go under "Anytime", which is
@@ -122,18 +126,9 @@ export default function TodayScreen() {
   // toast.
   const choreography = useDevFlag('choreography');
 
-  // Big celebration only for streak milestones; a perfect day gets a light cheer.
+  // The full-screen celebration is only for streak milestones; a perfect day resolves at the
+  // ring (credit flight + RingBurst, C-07).
   const [milestoneShown, setMilestoneShown] = useState(null);
-  useEffect(() => {
-    if (!pendingMilestone) return;
-    const t = setTimeout(() => {
-      setMilestoneShown(pendingMilestone);
-      setFullCelebration(true);
-      feedback.play(EVENTS.milestone);
-      clearPendingMilestone();
-    }, 900);
-    return () => clearTimeout(t);
-  }, [pendingMilestone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [toast, setToast] = useState(null);
   const [noteTarget, setNoteTarget] = useState(null);
@@ -172,22 +167,36 @@ export default function TodayScreen() {
   }, [dueHabits]);
   const { user } = useAuth();
 
-  const [celebrating, setCelebrating] = useState(false);
-  // The perfect-day confetti starts on the resolution beat (+750), not with the tap: mounting it
-  // at 0 put its render inside the 0-300 ms window and pushed the challenge motif late. An
-  // un-check before 750 cancels the beat, so no confetti for a day that is no longer complete.
-  // C-06b round 2: it mounts once the gold sweep has ended (resolution + its length), so its
-  // render does not land inside the JS-driven sweep.
-  const confettiTimer = useRef(null);
-  const onBeat = useCallback((item) => {
-    if (item.beat !== 'resolution') return;
-    clearTimeout(confettiTimer.current);
-    confettiTimer.current = setTimeout(() => setCelebrating(true), item.duration);
-  }, []);
-  useEffect(() => () => clearTimeout(confettiTimer.current), []);
-  const moment = useCheckoffMoment({ onBeat });
+  // C-07: the day-complete moment needs no Today render. CreditFlight (the credit, +500 ->
+  // +750) and RingBurst (+750 -> +1500) run on the beat bus; the burst is played directly only
+  // with the choreography flag off (at the tap, where the old confetti was).
+  const burstRef = useRef(null);
+  const moment = useCheckoffMoment();
+  // C-07 perf probe (frameLog dev flag, or __DEV__): how long a tap's render takes, from the
+  // handler to the commit of the whole tree (every tab renders in the same commit).
+  const perfTap = useRef(null);
+  useLayoutEffect(() => {
+    if (perfTap.current == null) return;
+    const at = perfTap.current;
+    perfTap.current = null;
+    if (frameLogOn()) logMark('commit', at);
+  });
   const [fullCelebration, setFullCelebration] = useState(false);
-  const [trophyCelebrating, setTrophyCelebrating] = useState(false);
+  // The trophy and the streak milestone, in order on the beat grid (C-07; useCelebrationQueue):
+  // the trophy at +500 (+1500 when the check also completed the day, +125 with the flag off),
+  // the milestone at the end of the moment, after the trophy, and only while Today is shown.
+  const milestoneRing = useRef('ring');
+  const tabActive = useTabActive();
+  const showMilestone = useCallback((milestone) => {
+    // The milestone circle grows from the ring that is showing (the sticky one when scrolled).
+    milestoneRing.current = stuckRef.current ? 'ringSticky' : 'ring';
+    setMilestoneShown(milestone);
+    setFullCelebration(true);
+    feedback.play(EVENTS.milestone);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const { trophyCelebrating, setTrophyCelebrating, openTrophyAt, trophyDone } = useCelebrationQueue({
+    pendingMilestone, clearPendingMilestone, active: tabActive, onMilestone: showMilestone,
+  });
   const [rewardModalVisible, setRewardModalVisible] = useState(false);
   const [rewardsToShow, setRewardsToShow] = useState([]);
   const rewardModalShown = useRef(false);
@@ -308,6 +317,11 @@ export default function TodayScreen() {
   const [stuck, setStuck] = useState(false);
   const stuckRef = useRef(false);
   const stickyOpacity = useRef(new Animated.Value(0)).current;
+  // Where the credit flies (C-07): the strip ring, or the sticky-bar ring once the strip has
+  // scrolled under the bar (then the bar also hides any card beneath it).
+  const creditTargets = useCallback(() => (stuckRef.current
+    ? { ring: 'ringSticky', edge: 'sticky', cover: 'sticky' }
+    : { ring: 'ring', edge: 'strip' }), []);
   const onScroll = useCallback((e) => {
     const y = e.nativeEvent.contentOffset.y;
     const next = stripBottom > 0 && y > stripBottom - STICKY_H;
@@ -429,6 +443,7 @@ export default function TodayScreen() {
 
   const handleIncrement = useCallback((habit, amount = 1) => {
     const tapAt = Date.now();
+    perfTap.current = tapAt;
     const before = getHabitCount(habit.id);
     const after = { ...getTodayCompletions(), [habit.id]: countAfterIncrement(habit, before, amount) };
     const justCompleted = incrementHabit(habit.id, amount);
@@ -456,7 +471,7 @@ export default function TodayScreen() {
     // resolution (gold ring, chord) is taken back and the day can be celebrated again
     // (C-06b round 1 B1).
     const breaksDay = !justCompleted && !willAllBeDone;
-    if (breaksDay) allDoneCelebrated.current = false;
+    if (breaksDay) { allDoneCelebrated.current = false; burstRef.current?.stop(); }
     if (justCompleted) {
 
       // A single check-off completes a challenge immediately, with its trophy.
@@ -466,14 +481,17 @@ export default function TodayScreen() {
       // gets the trophy screen, which plays its own feedback.
       if (!anyComplete) claimed = claimedIds;
       if (!choreography && claimed.length > 0) keepPending(feedback.play(EVENTS.challengeClaimed));
-      if (anyComplete) setTimeout(() => setTrophyCelebrating(true), 100);
+      if (anyComplete) {
+        const completesDay = willAllBeDone && !allDoneCelebrated.current;
+        openTrophyAt(tapAt, !choreography ? beats.b16 : completesDay ? MOMENT_MS : beats.b4);
+      }
 
       if (willAllBeDone && !allDoneCelebrated.current) {
         allDoneCelebrated.current = true;
         dayComplete = true;
         if (!choreography) {
           keepPending(feedback.play(EVENTS.dayComplete));
-          setCelebrating(true);
+          burstRef.current?.play();
         }
       }
     }
@@ -491,11 +509,12 @@ export default function TodayScreen() {
         tapAt,
       });
     }
-  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, getHabitCount, getTodayCompletions, choreography, moment, getStreakForHabit]);
+  }, [dueHabits, isHabitSatisfiedWith, autoClaimChallenges, incrementHabit, getHabitCount, getTodayCompletions, choreography, moment, getStreakForHabit, openTrophyAt]);
 
   // `undo`: the toast Undo, which always reads as an un-check.
   const handleDecrement = useCallback((habit, amount = 1, { undo = false } = {}) => {
     const tapAt = Date.now();
+    perfTap.current = tapAt;
     const today = todayStr();
     const countBefore = getHabitCount(habit.id);
     const habitWasDone = isGoalMet(habit, countBefore);
@@ -533,6 +552,9 @@ export default function TodayScreen() {
     // An un-check takes back this habit's pending beats, any pending resolution and the motif
     // of each challenge it un-claimed (§4.1); a −1 that keeps the habit done is a tick only.
     if (choreography) moment.run({ kind: unchecks ? BEAT.uncheck : BEAT.stepDown, habitId: habit.id, unclaimedIds: unclaimed, tapAt });
+    // A tap during the burst still lands (the layer takes no touches); an un-check ends the
+    // burst with the day it celebrated.
+    if (unchecks) burstRef.current?.stop();
   }, [decrementHabit, effectiveChallenges, challenges, dueHabits, getHabitCount, unmarkChallengeDay, todayStr, cancelQueuedFor, choreography, moment]);
 
   // Today's cell in the detail sheet (code review M1): set today's count through the same
@@ -560,6 +582,7 @@ export default function TodayScreen() {
 
   const handleMarkRest = useCallback(() => {
     const id = Date.now();
+    perfTap.current = id;
     const dayKey = todayStr();
     const plan = markRestDone();
     if (plan.changedIds.length === 0) return;
@@ -580,10 +603,15 @@ export default function TodayScreen() {
     const dayComplete = allNow && !allDoneCelebrated.current;
     if (dayComplete) {
       allDoneCelebrated.current = true;
-      if (!choreography) setCelebrating(true);
+      if (!choreography) burstRef.current?.play();
     }
-    if (choreography) moment.run({ kind: BEAT.markRest, claimedIds, dayComplete, tapAt: id });
-  }, [markRestDone, autoClaimChallenges, dueHabits, isHabitSatisfiedWith, todayStr, choreography, moment]);
+    // One credit for the batch (C-07, §4.1): it leaves the bottom-most card Mark the rest
+    // changed that is on screen (the button sits under the last card, where the thumb is), else
+    // the strip edge. The ids go in list order; CreditFlight picks at +500.
+    const order = grouped ? grouped.flatMap(sec => sec.habits) : dueHabits;
+    const creditFrom = order.filter(h => plan.changedIds.includes(h.id)).map(h => h.id);
+    if (choreography) moment.run({ kind: BEAT.markRest, claimedIds, dayComplete, creditFrom, tapAt: id });
+  }, [markRestDone, autoClaimChallenges, dueHabits, grouped, isHabitSatisfiedWith, todayStr, choreography, moment]);
 
   // Undo for Mark the rest, on the day the action ran (tst.dayKey): drop its queued
   // completions, revert the habits it marked that are still at 1, and un-mark exactly
@@ -595,6 +623,7 @@ export default function TodayScreen() {
       cancelPendingFeedback();
       feedback.play(EVENTS.habitUndone);
     }
+    burstRef.current?.stop();
     restoreHabitCounts(tst.before, tst.changedIds, tst.dayKey);
     tst.claimedIds.forEach(id => unmarkChallengeDay(id, tst.dayKey));
     allDoneCelebrated.current = false;
@@ -754,6 +783,11 @@ export default function TodayScreen() {
           a11yLabel={headerState ? (headerState === 'progress' ? t('today.ring.a11y', { completed, total }) : dayLine({ state: headerState, completed, total, streak })) : undefined}
         />
       </Animated.View>
+
+      {/* The day-complete moment (C-07): the credit flies card -> ring, then the burst. Both
+          clip to the Today body (inside the safe area) and never take a touch. */}
+      <CreditFlight theme={theme} targets={creditTargets} />
+      <RingBurst ref={burstRef} theme={theme} targets={creditTargets} />
       </View>
 
       <UndoToast
@@ -785,13 +819,9 @@ export default function TodayScreen() {
         onSave={(text) => { setNote(noteTarget.habitId, noteTarget.key, text); setNoteTarget(null); }}
       />
 
-      <CelebrationOverlay
-        visible={celebrating}
-        onDone={() => setCelebrating(false)}
-      />
-
       <CompletionCelebration
         visible={fullCelebration}
+        originKey={milestoneRing.current}
         onDone={() => {
           setFullCelebration(false);
           // A milestone is a signature moment: the one time we may ask for a rating.
@@ -806,7 +836,7 @@ export default function TodayScreen() {
 
       <TrophyCelebration
         visible={trophyCelebrating}
-        onDone={() => { setTrophyCelebrating(false); setTimeout(() => maybeRequestReview('challenge-complete'), 800); }}
+        onDone={() => { trophyDone(); setTimeout(() => maybeRequestReview('challenge-complete'), 800); }}
         theme={theme}
       />
 

@@ -64,6 +64,8 @@ jest.mock('../../services/feedback', () => ({
   __esModule: true,
   default: { play: jest.fn(() => ({ cancel: jest.fn() })), toggled: jest.fn() },
   EVENTS: { habitDone: 'habit.done', habitUndone: 'habit.undone', counterStep: 'counter.step', challengeClaimed: 'challenge.claimed', dayComplete: 'day.complete', markRest: 'markRest', milestone: 'milestone', refused: 'refused' },
+  logMark: jest.fn(),
+  logFrames: jest.fn(),
 }));
 // Device-local dev flags (C-06a choreography) read AsyncStorage: nothing stored = defaults.
 jest.mock('../../utils/storage', () => ({ loadData: jest.fn(() => Promise.resolve(null)), saveData: jest.fn(() => Promise.resolve()) }));
@@ -83,7 +85,6 @@ jest.mock('../../components/SafeAreaView', () => mockStub('SafeAreaView')());
 jest.mock('../../components/HabitCard', () => mockStub('HabitCard')());
 jest.mock('../../components/EmptyCard', () => mockStub('EmptyCard')());
 jest.mock('../../components/ProgressRing', () => mockStub('ProgressRing')());
-jest.mock('../../components/CelebrationOverlay', () => mockStub('CelebrationOverlay')());
 jest.mock('../../components/CompletionCelebration', () => mockStub('CompletionCelebration')());
 jest.mock('../../components/TrophyCelebration', () => mockStub('TrophyCelebration')());
 jest.mock('../../components/ChallengeRewardModal', () => mockStub('ChallengeRewardModal')());

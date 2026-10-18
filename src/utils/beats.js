@@ -60,6 +60,8 @@ function fb(event, at, group, extra = {}) {
  * - `claimedIds`: challenges whose day this action claimed (motif at b8, paired with the chip);
  * - `unclaimedIds`: challenges whose day an un-check took back (their pending motif is cancelled);
  * - `dayComplete`: this action completed the day (credit at b4, chord + Success at b4 + b8);
+ * - `creditFrom`: the habit whose card the credit leaves from (default `habitId`; Mark the
+ *   rest names its bottom-most changed card that is on screen, C-07);
  * - `habitStreak`: the habit's own streak grew to 2 or more (its sub-line pulses at bDot8);
  * - `breaksDay` (step / stepDown): the day is no longer complete after this action (an "at
  *   most" limit broken, C-06b round 1 B1): any pending resolution is taken back;
@@ -73,7 +75,7 @@ function fb(event, at, group, extra = {}) {
 export function planBeats(action = {}) {
   const {
     kind, habitId = null, tone, claimedIds = [], unclaimedIds = [],
-    dayComplete = false, habitStreak = false, reduced = false, breaksDay = false,
+    dayComplete = false, habitStreak = false, reduced = false, breaksDay = false, creditFrom = null,
   } = action;
   const len = (ms) => (reduced ? duration.reduced : ms);
   const items = [];
@@ -87,7 +89,8 @@ export function planBeats(action = {}) {
   };
   const resolution = (withHaptic) => {
     if (!dayComplete) return;
-    if (!reduced) items.push(visual('creditDeparts', beat.b4, beat.b8, GROUPS.resolution));
+    // The credit leaves the checked card (Mark the rest: the card it names, C-07).
+    if (!reduced) items.push(visual('creditDeparts', beat.b4, beat.b8, GROUPS.resolution, { creditFrom: creditFrom ?? habitId }));
     if (withHaptic) items.push(fb('day.complete', beat.b4b8, GROUPS.resolution));
     items.push(visual('resolution', beat.b4b8, len(duration.state), GROUPS.resolution));
     items.push(visual('streakTick', beat.b4b8b16, len(duration.state), GROUPS.resolution));

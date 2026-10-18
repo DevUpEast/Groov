@@ -24,6 +24,7 @@ import {
   ACTION_DONE, ACTION_SNOOZE, BACKOFF_AFTER_MISSES,
 } from '../utils/notifications';
 import { localDateKey, todayKey, addDays } from '../utils/dates';
+import { createTabScope } from '../utils/tabScope';
 import { deriveAccountCreatedAt } from '../utils/accountCreatedAt';
 import { overallStreak, bestOverallStreak, overallDayStatus, reconcileFreezes, freezesLeftInMonth } from '../utils/streaks';
 import { normalizeSchedule, isScheduledOn, isSatisfiedOn, habitStreak } from '../utils/schedule';
@@ -1555,3 +1556,7 @@ export function useApp() {
   if (!ctx) throw new Error('useApp must be used within AppProvider');
   return ctx;
 }
+
+// One pager tab: an inactive tab holds its context value until it catches up (C-07 perf,
+// src/utils/tabScope.js). App.js renders each screen through it.
+export const TabScope = createTabScope(AppContext);

@@ -17,6 +17,7 @@ import HabitDetailSheet from '../components/HabitDetailSheet';
 import HabitIcon from '../components/HabitIcon';
 import feedback, { EVENTS } from '../services/feedback';
 import { habitsRouteAction } from '../utils/links';
+import { useTabActive } from '../utils/tabScope';
 import { describeSchedule, weekdayLabels, DEFAULT_SCHEDULE } from '../utils/schedule';
 import { getHabitTypes, describeGoal } from '../utils/habits';
 import { suggestHabit } from '../services/aiCoaching';
@@ -678,6 +679,7 @@ export default function HabitsScreen() {
     pendingRoute, clearPendingRoute, canAddHabit,
     setModalOpen,
   } = useApp();
+  const tabActive = useTabActive();
   useLocale();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -705,6 +707,9 @@ export default function HabitsScreen() {
       clearPendingRoute();
       return;
     }
+    // A sheet opens only on screen: while this tab is hidden (a slide still running, a
+    // catch-up of the held context, C-07) the route waits for the tab to become active.
+    if (!tabActive) return;
     const t = setTimeout(() => {
       if (action.type === 'new') { setEditingId(null); setForm(BLANK); setModalVisible(true); }
       else if (action.type === 'open') setDetailHabit(action.habit);
@@ -713,7 +718,7 @@ export default function HabitsScreen() {
       clearPendingRoute();
     }, handoff.afterTabChange);
     return () => clearTimeout(t);
-  }, [pendingRoute]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pendingRoute, tabActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Open Add Habit modal when navigated here from Challenge with a pending link
   useEffect(() => {
