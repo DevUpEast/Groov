@@ -353,7 +353,7 @@ export default function TodayScreen() {
     <View style={[styles.nudgeCard, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
       <Ionicons name="sparkles-outline" size={18} color={theme.link} style={styles.nudgeIcon} />
       <View style={{ flex: 1 }}>
-        <Text style={[styles.nudgeLabel, { color: theme.link }]}>{t('today.coach')}</Text>
+        <SectionLabel label={t('today.coach')} theme={theme} color={theme.link} first style={styles.nudgeLabel} />
         {nudgeLoading && !shownNudge ? (
           <ActivityIndicator size="small" color={theme.link} style={{ marginTop: 4 }} />
         ) : (
@@ -880,7 +880,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 14, padding: 14, marginTop: space.md,
   },
   nudgeIcon: { marginTop: 1 },
-  nudgeLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 },
+  nudgeLabel: { marginBottom: 4 },
   nudgeText: { fontSize: 13, lineHeight: 20 },
   empty: {
     borderWidth: 2, borderStyle: 'dashed', borderRadius: 16,

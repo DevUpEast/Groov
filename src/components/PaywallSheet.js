@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   plans: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   plan: { flex: 1, borderWidth: 2, borderRadius: 14, padding: 14, alignItems: 'center' },
   badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 6 },
-  badgeText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
+  badgeText: { fontSize: 12, fontWeight: '800' },
   planTitle: { fontSize: 15, fontWeight: '700' },
   planPrice: { fontSize: 16, fontWeight: '800', marginTop: 4 },
   planNote: { fontSize: 12, marginTop: 4, textAlign: 'center' },

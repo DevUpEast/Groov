@@ -6,7 +6,7 @@ import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { useApp } from '../context/AppContext';
 import { addDays, parseDateKey } from '../utils/dates';
-import feedback, { EVENTS } from '../services/feedback';
+import SegmentedControl from './ui/SegmentedControl';
 import { track, Events } from '../utils/analytics';
 import { weekdayInitials } from '../utils/schedule';
 import { t, getLocale, useLocale } from '../i18n';
@@ -177,16 +177,16 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
               <Text style={[styles.closeTxt, { color: theme.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.tabs}>
-            {CARD_KINDS.map(k => {
-              const on = kind === k.key;
-              return (
-                <TouchableOpacity key={k.key} style={[styles.tab, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : 'transparent' }]} onPress={() => { feedback.play(EVENTS.selection); setKind(k.key); }} accessibilityRole="button" accessibilityState={{ selected: on }}>
-                  <Text style={[styles.tabText, { color: on ? theme.onSelection : theme.textSecondary }]}>{t('shareCards.kindTab', { emoji: k.emoji, label: k.label })}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <SegmentedControl
+            theme={theme}
+            role="tab"
+            fill
+            compact
+            style={styles.tabs}
+            value={kind}
+            onChange={setKind}
+            options={CARD_KINDS.map(k => ({ value: k.key, label: t('shareCards.kindTab', { emoji: k.emoji, label: k.label }), accessibilityLabel: k.label }))}
+          />
           <ScrollView contentContainerStyle={{ alignItems: 'center', paddingVertical: 8 }} showsVerticalScrollIndicator={false}>
             <View ref={ref} collapsable={false} style={{ width: CARD_W }}>
               {kind === 'streak' && <StreakCard streak={getOverallStreak()} best={getBestStreak()} perfectDays={perfectDays} habits={habits.length} displayName={displayName} today={today} />}
@@ -210,11 +210,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: 'bold' },
   closeBtn: { padding: 4 },
   closeTxt: { fontSize: 20, fontWeight: 'bold' },
-  tabs: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  tab: { flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
-  tabText: { fontSize: 12, fontWeight: '700' },
+  tabs: { marginBottom: 8 },
   card: { borderRadius: 24, padding: 20, width: CARD_W },
-  cardKicker: { color: shareCard.fgSecondary, fontSize: 13, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
+  cardKicker: { color: shareCard.fgSecondary, fontSize: 13, fontWeight: '700' },
   // The display face at share-card scale (fixed brand art, not the in-app scale). No weight:
   // AppText supplies the face (Bold) or, after a font timeout, the system display weight.
   bigNumber: { color: shareCard.fg, fontSize: 72, marginTop: 6, lineHeight: 80 },

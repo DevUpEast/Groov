@@ -15,7 +15,8 @@
     "notNow": "Pas maintenant",
     "undo": "Annuler",
     "slider": "Curseur",
-    "shortDays": "%{count}j"
+    "shortDays": "%{count}j",
+    "charCount": { "one": "%{count} caractère sur %{max}", "other": "%{count} caractères sur %{max}" }
   },
   "app": {
     "tabs": {
@@ -246,7 +247,7 @@
     "reorder": "Réorganiser les habitudes",
     "finishReorder": "Terminer la réorganisation",
     "empty": { "title": "Aucune habitude pour l'instant", "body": "Lance-toi" },
-    "archived": "ARCHIVÉES (%{count})",
+    "archived": "Archivées (%{count})",
     "row": {
       "detailsA11y": "%{name}, afficher les détails",
       "schedulePill": "📅 %{schedule}",
@@ -439,7 +440,7 @@
       "title": "💡 Astuce",
       "body": "Tu peux mener jusqu'à 3 défis en même temps. Associe des habitudes précises à chaque défi."
     },
-    "past": "DÉFIS PASSÉS",
+    "past": "Défis passés",
     "pastEmpty": "Les défis terminés ou supprimés apparaîtront ici.",
     "pastSubTier": "%{done}/%{days} jours · %{tier} ✓",
     "pastSubEnded": "%{done}/%{days} jours · Terminé",
@@ -548,6 +549,7 @@
       "weeklyA11y": "Bilan hebdomadaire",
       "monthlyA11y": "Bilan mensuel",
       "lockedSuffix": ", verrouillé",
+      "lockedHint": "Indique quand il se débloque",
       "unlocks": { "one": "Se débloque dans %{count} jour", "other": "Se débloque dans %{count} jours" },
       "unlockWeekly": "Suis tes habitudes pendant une semaine complète pour débloquer ton résumé hebdomadaire.",
       "unlockMonthly": "Suis tes habitudes pendant un mois complet pour débloquer ton résumé mensuel.",
@@ -570,7 +572,7 @@
   },
   "settings": {
     "title": "Réglages",
-    "appearance": "APPARENCE",
+    "appearance": "Apparence",
     "theme": "Thème",
     "themeFollows": "Suit le réglage de ton appareil",
     "themeAlwaysLight": "Toujours clair",
@@ -582,7 +584,7 @@
     "languageSystemSub": "Par défaut du système (%{label})",
     "languageTitle": "Langue",
     "languageBody": "Choisis la langue utilisée par Groov.",
-    "notifications": "NOTIFICATIONS",
+    "notifications": "Notifications",
     "enableNotifications": "Activer les notifications",
     "enableSubWeb": "Notifications push sur l'appareil uniquement",
     "enableSub": "Interrupteur général de tous les rappels",
@@ -600,18 +602,18 @@
     "addReminder": "Ajouter un rappel",
     "newReminderLabel": "Rappel",
     "removeReminder": { "title": "Supprimer le rappel", "body": "Supprimer ce rappel ?", "habitBody": "Désactiver le rappel pour « %{name} » ?" },
-    "feedback": "RETOURS",
+    "feedback": "Retours",
     "sounds": "Sons",
     "soundsSub": "Carillons quand tu accomplis des habitudes et des défis",
     "haptics": "Retour haptique",
     "hapticsSub": "Vibration à la validation (appareil uniquement)",
     "dev": {
-      "title": "OUTILS DÉVELOPPEUR",
+      "title": "Outils développeur",
       "simulatedDate": "Date simulée",
       "offset": { "one": "Décalage : %{offset} jour", "other": "Décalage : %{offset} jours" },
       "prevDay": "Jour précédent",
       "resetDate": "Remettre la date simulée à maintenant",
-      "now": "MAINTENANT",
+      "now": "Maintenant",
       "nextDay": "Jour suivant",
       "sendTest": "Envoyer une notification de test",
       "sendTestSub": "Déclenche un rappel pour ta première habitude, avec Fait / Reporter",
@@ -628,14 +630,14 @@
       "moreTaps": { "one": "Encore %{count} appui pour déverrouiller les outils développeur", "other": "Encore %{count} appuis pour déverrouiller les outils développeur" }
     },
     "pro": {
-      "title": "GROOV PRO",
+      "title": "Groov Pro",
       "have": "Tu as Groov Pro",
       "upgrade": "Passer à Groov Pro",
       "haveSub": "Merci de soutenir une app développée par une seule personne",
       "upgradeSub": "Habitudes illimitées, plus de rappels et coaching IA"
     },
     "account": {
-      "title": "COMPTE",
+      "title": "Compte",
       "displayName": "Nom affiché",
       "displayNameSub": "Ajoute un nom pour les salutations et le coaching",
       "guest": "Compte invité",
@@ -669,7 +671,7 @@
       }
     },
     "backup": {
-      "title": "SAUVEGARDE",
+      "title": "Sauvegarde",
       "export": "Exporter une sauvegarde",
       "exportSub": "%{last} · fichier JSON avec chaque habitude, validation et réglage",
       "lastBackup": "Dernière sauvegarde le %{date} à %{time}",
@@ -690,7 +692,7 @@
       "importFailed": { "title": "Échec de l'import", "body": "Un problème est survenu pendant la restauration." }
     },
     "data": {
-      "title": "DONNÉES",
+      "title": "Données",
       "resetPassword": "Réinitialiser le mot de passe",
       "resetPasswordSub": "Envoyer un code de réinitialisation à ton e-mail",
       "resetPasswordA11y": "Réinitialiser le mot de passe, envoyer un code de réinitialisation à ton e-mail",
@@ -725,7 +727,7 @@
       }
     },
     "about": {
-      "title": "À PROPOS",
+      "title": "À propos",
       "widget": "Ajouter le widget à l'écran d'accueil",
       "widgetSub": "Les habitudes du jour, à cocher d'un seul appui",
       "widgetUnsupported": { "title": "Non pris en charge", "body": "Ton lanceur ne permet pas d'ajouter des widgets depuis les apps. Fais plutôt un appui long sur ton écran d'accueil et choisis Groov dans la liste des widgets." },

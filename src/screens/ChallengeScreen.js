@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, Alert, Platform,
+  Modal, Alert, Platform,
   PanResponder, Keyboard, Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,9 @@ import { getChallengeTemplates } from '../utils/habits';
 import { t, getLocale, useLocale } from '../i18n';
 import OverlayModal from '../components/ui/OverlayModal';
 import AppText from '../components/ui/AppText';
+import SectionLabel from '../components/ui/SectionLabel';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import TextField from '../components/ui/TextField';
 import { numeric } from '../theme/typography';
 import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, useMotion } from '../theme/motion';
 
@@ -153,7 +156,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
       >
         {!initial && (
           <>
-            <Text style={[styles.label, { color: theme.textSecondary }]}>{t('challenges.form.template')}</Text>
+            <SectionLabel label={t('challenges.form.template')} theme={theme} header={false} first style={styles.formLabel} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
               {templates.map(tpl => {
                 const active = days === tpl.days && name === tpl.name;
@@ -181,7 +184,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
           </>
         )}
 
-        <Text style={[styles.label, { color: theme.textSecondary }]}>{t('challenges.form.icon')}</Text>
+        <SectionLabel label={t('challenges.form.icon')} theme={theme} header={false} first style={styles.formLabel} />
         <View style={styles.iconPickerRow}>
           {CHALLENGE_ICONS.map(ic => (
             <TouchableOpacity
@@ -201,54 +204,43 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
           ))}
         </View>
 
-        <Text style={[styles.label, { color: theme.textSecondary }]}>{t('challenges.form.name')}</Text>
-        <TextInput
-          style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+        <TextField
+          theme={theme}
+          label={t('challenges.form.name')}
           value={name}
           onChangeText={setName}
           accessibilityLabel={t('challenges.form.nameA11y')}
           placeholder={t('challenges.form.namePlaceholder')}
-          placeholderTextColor={theme.textSecondary}
           returnKeyType="done"
           onSubmitEditing={Keyboard.dismiss}
         />
 
-        <Text style={[styles.label, { color: theme.textSecondary }]}>{t('challenges.form.description')}</Text>
-        <TextInput
-          style={[styles.input, styles.inputMulti, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+        <TextField
+          theme={theme}
+          label={t('challenges.form.description')}
           value={description}
           onChangeText={setDescription}
           accessibilityLabel={t('challenges.form.descriptionA11y')}
           placeholder={t('challenges.form.descriptionPlaceholder')}
-          placeholderTextColor={theme.textSecondary}
           multiline
           numberOfLines={3}
         />
 
-        <Text style={[styles.label, { color: theme.textSecondary }]}>
-          {t('challenges.form.duration', { count: days })}
-        </Text>
+        <SectionLabel label={t('challenges.form.duration', { count: days })} theme={theme} header={false} first style={styles.formLabel} />
 
-        <View style={styles.rangeRow}>
-          {RANGE_OPTIONS.map(opt => (
-            <TouchableOpacity
-              key={opt.key}
-              style={[
-                styles.rangeBtn,
-                { borderColor: rangeMax === opt.max ? theme.selectionBorder : theme.controlBorder },
-                rangeMax === opt.max && { backgroundColor: theme.selection },
-              ]}
-              onPress={() => handleRangeChange(opt.max)}
-              accessibilityRole="button"
-              accessibilityLabel={t('challenges.form.rangeA11y', { label: t(`challenges.form.range.${opt.key}`), max: opt.max })}
-              accessibilityState={{ selected: rangeMax === opt.max }}
-            >
-              <Text style={[styles.rangeBtnText, { color: rangeMax === opt.max ? theme.onSelection : theme.textSecondary }]}>
-                {t(`challenges.form.range.${opt.key}`)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <SegmentedControl
+          theme={theme}
+          fill
+          style={styles.rangeRow}
+          accessibilityLabel={t('challenges.form.durationA11y')}
+          value={rangeMax}
+          onChange={handleRangeChange}
+          options={RANGE_OPTIONS.map(opt => ({
+            value: opt.max,
+            label: t(`challenges.form.range.${opt.key}`),
+            accessibilityLabel: t('challenges.form.rangeA11y', { label: t(`challenges.form.range.${opt.key}`), max: opt.max }),
+          }))}
+        />
 
         <Slider value={days} min={1} max={rangeMax} onValueChange={setDays} theme={theme} label={t('challenges.form.durationA11y')} />
 
@@ -258,7 +250,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
         </View>
 
         {/* ── Linked habits ── */}
-        <Text style={[styles.label, { color: theme.textSecondary }]}>{t('challenges.form.linked')}</Text>
+        <SectionLabel label={t('challenges.form.linked')} theme={theme} header={false} first style={styles.formLabel} />
 
         {habits.length === 0 ? (
           <Text style={[styles.noHabitsInForm, { color: theme.textSecondary }]}>
@@ -390,7 +382,7 @@ function PastChallengeDetailModal({ challenge, onClose, theme }) {
 
             <Text style={[styles.pastDesc, { color: subColor }]}>{challenge.description || t('challenges.detail.noDescription')}</Text>
 
-            <Text style={[styles.label, { color: subColor }]}>{t('challenges.detail.progress', { done: completedCount, days: challenge.days })}</Text>
+            <Text style={[styles.detailLabel, { color: subColor }]}>{t('challenges.detail.progress', { done: completedCount, days: challenge.days })}</Text>
 
             <View style={[styles.progressBg, { backgroundColor: tier !== 'none' ? cardBorder + '40' : theme.track }]}>
               <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: cardBorder || theme.meter }]} />
@@ -642,7 +634,7 @@ export default function ChallengeScreen() {
 
         {/* Past Challenges */}
         <View style={{ marginTop: 8 }}>
-          <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('challenges.past')}</Text>
+          <SectionLabel label={t('challenges.past')} theme={theme} first style={styles.sectionLabel} />
           {effectivePastChallenges.length === 0 ? (
             <View style={[styles.pastEmptyCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Text style={[styles.pastEmptyText, { color: theme.textSecondary }]}>
@@ -712,7 +704,7 @@ const styles = StyleSheet.create({
   heading: {},
   newBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   newBtnText: { fontWeight: '700', fontSize: 15 },
-  sectionLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 },
+  sectionLabel: { marginBottom: 10 },
   card: { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 16 },
   challengeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 10 },
   trophy: { fontSize: 32 },
@@ -792,12 +784,9 @@ const styles = StyleSheet.create({
   sheetTitle: { fontSize: 20, fontWeight: 'bold' },
   sheetCloseBtn: { padding: 4 },
   sheetCloseTxt: { fontSize: 20, fontWeight: 'bold' },
-  label: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
-  input: { borderWidth: 1.5, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 16 },
-  inputMulti: { height: 80, textAlignVertical: 'top' },
-  rangeRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  rangeBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
-  rangeBtnText: { fontSize: 13, fontWeight: '700' },
+  formLabel: { marginBottom: 8 },
+  detailLabel: { fontSize: 13, fontWeight: '600', marginBottom: 8 },
+  rangeRow: { marginBottom: 16 },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, marginHorizontal: 4 },
   sliderLabelText: { fontSize: 12 },
   saveBtn: { padding: 16, borderRadius: 14, alignItems: 'center' },

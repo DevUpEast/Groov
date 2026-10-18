@@ -425,7 +425,8 @@ describe('source checks', () => {
     expect(today).toMatch(/<Button\b[\s\S]{0,120}icon="add"/);
     expect(today).toMatch(/<PressableScale\b\s+onPress=\{handleMarkRest\}/);
     const progress = read('src/screens/ProgressScreen.js');
-    expect((progress.match(/hitSlop=\{PERIOD_SLOP\}/g) || []).length).toBe(2);
+    // F-07: the period pills became SegmentedControls (40 dp, slop to the touch minimum).
+    expect((progress.match(/<SegmentedControl\b/g) || []).length).toBe(2);
   });
 
   it('no ui pressable imports expo-haptics (feedback.play only)', () => {
