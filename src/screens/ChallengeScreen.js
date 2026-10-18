@@ -8,12 +8,11 @@ import { Ionicons } from '@expo/vector-icons';
 import SafeAreaView from '../components/SafeAreaView';
 import { useApp, getChallengeTier, TIER_STYLES } from '../context/AppContext';
 import Slider from '../components/Slider';
-import BottomSheet from '../components/BottomSheet';
 import EmptyCard from '../components/EmptyCard';
-import { SheetDragHandle, SheetHeader } from '../components/SheetHeader';
+import { SheetDragHandle } from '../components/SheetHeader';
 import feedback, { EVENTS } from '../services/feedback';
 import { addDays } from '../utils/dates';
-import { currentChallengeDay, isChallengeExpired } from '../utils/challenges';
+import { challengeFormDirty, currentChallengeDay, isChallengeExpired } from '../utils/challenges';
 import { getChallengeTemplates } from '../utils/habits';
 import { t, getLocale, useLocale } from '../i18n';
 import OverlayModal from '../components/ui/OverlayModal';
@@ -21,6 +20,8 @@ import AppText from '../components/ui/AppText';
 import SectionLabel from '../components/ui/SectionLabel';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import TextField from '../components/ui/TextField';
+import Sheet from '../components/ui/Sheet';
+import Button from '../components/ui/Button';
 import { numeric } from '../theme/typography';
 import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, useMotion } from '../theme/motion';
 import { space, radius } from '../theme/tokens';
@@ -93,33 +94,40 @@ const CHALLENGE_ICONS = ['🏆', '🎯', '💪', '🔥', '⚡', '🌟', '🏃', 
 
 // ── Challenge form modal (includes inline habit linking) ──────────────────────
 
-function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHabit, theme }) {
+export function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHabit, theme }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [days, setDays] = useState(7);
   const [rangeMax, setRangeMax] = useState(7);
   const [icon, setIcon] = useState('🏆');
   const [selectedHabitIds, setSelectedHabitIds] = useState([]);
-  const sheet = useSheetAnim();
   const templates = getChallengeTemplates();
+  // The values the form opened with, for the dirty guard (F-09b).
+  const [opened, setOpened] = useState(null);
+  // The Sheet's guarded close, for "Add a new habit" (F-09b review M1).
+  const sheetRef = useRef(null);
 
   useEffect(() => {
     if (visible) {
-      setName(initial?.name ?? '');
-      setDescription(initial?.description ?? '');
-      setIcon(initial?.icon ?? '🏆');
-      const d = initial?.days ?? 7;
-      setDays(d);
-      setRangeMax(d <= 7 ? 7 : d <= 30 ? 30 : 365);
-      setSelectedHabitIds(initial?.linkedHabitIds || []);
-      sheet.open();
-    } else {
-      sheet.close(null);
+      const start = {
+        name: initial?.name ?? '',
+        description: initial?.description ?? '',
+        icon: initial?.icon ?? '🏆',
+        days: initial?.days ?? 7,
+        linkedHabitIds: initial?.linkedHabitIds || [],
+      };
+      setOpened(start);
+      setName(start.name);
+      setDescription(start.description);
+      setIcon(start.icon);
+      setDays(start.days);
+      setRangeMax(start.days <= 7 ? 7 : start.days <= 30 ? 30 : 365);
+      setSelectedHabitIds(start.linkedHabitIds);
     }
   }, [visible]);
 
-  const doClose = () => sheet.close(onClose);
-  const pan = useRef(makeDragPanResponder(sheet.translateY, doClose)).current;
+  const dirty = visible && !!opened
+    && challengeFormDirty(opened, { name, description, icon, days, linkedHabitIds: selectedHabitIds });
 
   // Can only save if name is filled AND (no habits exist yet OR at least one is linked)
   const canSave = name.trim().length > 0 && (habits.length === 0 || selectedHabitIds.length > 0);
@@ -127,7 +135,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
   const handleSave = () => {
     if (!canSave) { feedback.play(EVENTS.refused); return; }
     onSave({ name: name.trim(), description: description.trim(), days, icon, linkedHabitIds: selectedHabitIds });
-    sheet.close(onClose);
+    onClose();
   };
 
   const handleRangeChange = (max) => {
@@ -141,20 +149,29 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
     );
   };
 
+  // ui/Sheet (F-09b): scrim, drag, back and close ask "Discard changes?" while the form is
+  // dirty; Save is pinned in the footer above the keyboard.
   return (
-    <BottomSheet visible={sheet.internalVisible} onClose={doClose} translateY={sheet.translateY}>
-      <SheetHeader
-        title={initial ? t('challenges.form.editTitle') : t('challenges.form.newTitle')}
-        onClose={doClose}
-        panHandlers={pan.panHandlers}
-        theme={theme}
-      />
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 20 }}
-      >
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      ref={sheetRef}
+      title={initial ? t('challenges.form.editTitle') : t('challenges.form.newTitle')}
+      dirty={dirty}
+      contentContainerStyle={styles.formBody}
+      theme={theme}
+      testID="challenge-form-sheet"
+      footer={(
+        <Button
+          block
+          label={initial ? t('challenges.form.saveChanges') : t('challenges.form.create')}
+          accessibilityLabel={initial ? t('challenges.form.saveA11y') : t('challenges.form.createA11y')}
+          onPress={handleSave}
+          disabled={!canSave}
+          testID="challenge-form-save"
+        />
+      )}
+    >
         {!initial && (
           <>
             <SectionLabel label={t('challenges.form.template')} theme={theme} header={false} first style={styles.formLabel} />
@@ -313,26 +330,15 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
 
         <TouchableOpacity
           style={[styles.addHabitInModalBtn, { borderColor: theme.border }]}
-          // The tab change starts once the sheet has closed, not underneath it.
-          onPress={() => sheet.close(() => { onClose(); onAddHabit?.(); })}
+          // Leaving for Habits goes through the discard guard like any other close; the tab
+          // change runs only once the sheet has really gone (never after "Keep editing").
+          onPress={() => sheetRef.current?.requestClose(() => onAddHabit?.())}
           accessibilityRole="button"
           accessibilityLabel={t('challenges.form.addNewA11y')}
         >
           <Text style={[styles.addHabitInModalText, { color: theme.link }]}>{t('challenges.form.addNew')}</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.saveBtn, { backgroundColor: canSave ? theme.action : theme.disabledContainer, marginTop: space.xs }]}
-          onPress={handleSave}
-          disabled={!canSave}
-          accessibilityRole="button"
-          accessibilityLabel={initial ? t('challenges.form.saveA11y') : t('challenges.form.createA11y')}
-          accessibilityState={{ disabled: !canSave }}
-        >
-          <Text style={[styles.saveBtnText, { color: canSave ? theme.onAction : theme.onDisabled }]}>{initial ? t('challenges.form.saveChanges') : t('challenges.form.create')}</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </BottomSheet>
+    </Sheet>
   );
 }
 
@@ -786,10 +792,10 @@ const styles = StyleSheet.create({
   sheetCloseBtn: { padding: space.xxs },
   sheetCloseTxt: { fontSize: 20, fontWeight: 'bold' },
   formLabel: { marginBottom: space.xs },
+  // 8 dp under the sheet's title row (Sheet dragZone) + 12 = the old 20 dp header gap.
+  formBody: { paddingTop: space.sm, paddingBottom: space.xs },
   detailLabel: { fontSize: 13, fontWeight: '600', marginBottom: space.xs },
   rangeRow: { marginBottom: space.md },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: space.md, marginHorizontal: space.xxs },
   sliderLabelText: { fontSize: 12 },
-  saveBtn: { padding: space.md, borderRadius: radius.card, alignItems: 'center' },
-  saveBtnText: { fontSize: 16, fontWeight: '700' },
 });

@@ -1,17 +1,15 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Modal, TextInput, Alert, Animated, ActivityIndicator,
-  PanResponder, Keyboard, Image, useWindowDimensions,
+  TextInput, Alert, ActivityIndicator,
+  Keyboard, Image, useWindowDimensions,
 } from 'react-native';
 import SafeAreaView from '../components/SafeAreaView';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useApp } from '../context/AppContext';
 import Slider from '../components/Slider';
-import BottomSheet from '../components/BottomSheet';
 import EmptyCard from '../components/EmptyCard';
-import { SheetDragHandle } from '../components/SheetHeader';
 import TimePicker from '../components/TimePicker';
 import HabitDetailSheet from '../components/HabitDetailSheet';
 import HabitIcon from '../components/HabitIcon';
@@ -24,8 +22,8 @@ import { suggestHabit } from '../services/aiCoaching';
 import { useAuth } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
 import { ACCENT_IDS, resolveAccent, storedHexFor } from '../theme/accents';
-import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, handoff } from '../theme/motion';
-import { BLANK_FORM, formFromHabit, habitFromForm, pickAccent, selectedAccentId, suggestedColor } from '../utils/habitForm';
+import { handoff } from '../theme/motion';
+import { BLANK_FORM, formFromHabit, habitFromForm, isFormDirty, pickAccent, selectedAccentId, suggestedColor } from '../utils/habitForm';
 import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
@@ -34,6 +32,7 @@ import Chip from '../components/ui/Chip';
 import SectionLabel from '../components/ui/SectionLabel';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import TextField from '../components/ui/TextField';
+import Sheet from '../components/ui/Sheet';
 import { space, radius } from '../theme/tokens';
 
 // Preset icons. The stored value is the emoji; `key` names it for screen readers (habits.icons.<key>).
@@ -76,7 +75,7 @@ function SchedulePicker({ schedule, onChange, theme }) {
   };
 
   const toggleDay = (d) => {
-    const next = days.includes(d) ? days.filter(x => x !== d) : [...days, d];
+    const next = (days.includes(d) ? days.filter(x => x !== d) : [...days, d]).sort((x, y) => x - y);
     if (next.length === 0) return; // keep at least one day; "none" is not a schedule
     onChange({ type: 'weekdays', days: next });
   };
@@ -216,9 +215,7 @@ const VOLUME_MAX_OPTIONS = [
   { label: '100', max: 100 },
 ];
 
-function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme }) {
-  const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
-  const [internalVisible, setInternalVisible] = useState(false);
+export function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme }) {
   const [volMax, setVolMax] = useState(10);
   const { user } = useAuth();
   const { todayStr, themeName } = useApp();
@@ -254,46 +251,22 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
     }
   };
 
-  const animateClose = useCallback((cb) => {
-    sheetOut(translateY).start(() => {
-      setInternalVisible(false);
-      cb?.();
-    });
-  }, [translateY]);
-
+  // The dirty guard (F-09b): the form as it was when the sheet opened (the host sets `form`
+  // in the same batch as `visible`). Any edit, or text typed into Magic Fill, makes it dirty.
+  // State, not a ref, so the snapshot re-renders the guard with it.
+  const [initialForm, setInitialForm] = useState(form);
   useEffect(() => {
     if (visible) {
-      setInternalVisible(true);
-      translateY.setValue(SHEET_OFFSCREEN);
-      sheetIn(translateY).start();
-    } else {
-      animateClose(null);
+      setInitialForm(form);
+      setMagicText(''); setMagicError('');
     }
-  }, [visible, animateClose]);
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dirty = visible && (isFormDirty(initialForm, form) || magicText.trim().length > 0);
 
   const handleVolMaxChange = (newMax) => {
     setVolMax(newMax);
     if (form.volumeGoal > newMax) setForm(f => ({ ...f, volumeGoal: newMax }));
   };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gs) => {
-        if (gs.dy > 0) translateY.setValue(gs.dy);
-      },
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dy > 80) {
-          sheetOut(translateY).start(() => {
-            setInternalVisible(false);
-            onClose();
-          });
-        } else {
-          sheetSettle(translateY).start();
-        }
-      },
-    })
-  ).current;
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -324,250 +297,242 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
     ]);
   };
 
-  const handleClose = () => animateClose(onClose);
   const habitTypes = getHabitTypes();
 
+  // ui/Sheet (F-09b): its title row has the close button (labelled t('common.close')); a scrim
+  // tap, a drag, back and close all ask "Discard changes?" while the form is dirty. Save is
+  // pinned in the footer, so it stays above the keyboard.
   return (
-    <BottomSheet visible={internalVisible} onClose={handleClose} translateY={translateY} maxHeight="90%">
-          <SheetDragHandle panHandlers={panResponder.panHandlers} theme={theme} />
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title={editingId ? t('habits.form.editTitle') : t('habits.form.newTitle')}
+      dirty={dirty}
+      contentContainerStyle={styles.formBody}
+      theme={theme}
+      testID="habit-form-sheet"
+      footer={(
+        // Disabled until the habit has a name: disabledContainer / onDisabled (6.15:1),
+        // still focusable, and a tap plays `refused` (Button's default onDisabledPress).
+        <Button
+          block
+          label={editingId ? t('habits.form.saveChanges') : t('habits.form.addHabit')}
+          onPress={onSave}
+          disabled={!form.name.trim()}
+          testID="habit-form-save"
+        />
+      )}
+    >
+      {/* Tapping blank space dismisses the keyboard. A responder (not a Touchable) keeps the
+          wrapper out of the accessibility tree: a clickable wrapper made TalkBack merge every
+          label in the form into one focus stop. */}
+      <View onStartShouldSetResponder={dismissKeyboardOnBlankTap}>
+        <View>
+          {!editingId && !!user && (
+            <View style={[styles.magicBox, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
+              <Text style={[styles.magicTitle, { color: theme.link }]}>{t('habits.form.magicTitle')}</Text>
+              <View style={styles.magicRow}>
+                <TextInput
+                  style={[styles.magicInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
+                  placeholder={t('habits.form.magicPlaceholder')}
+                  placeholderTextColor={theme.textSecondary}
+                  value={magicText}
+                  onChangeText={setMagicText}
+                  maxLength={200}
+                  returnKeyType="go"
+                  onSubmitEditing={runMagic}
+                  accessibilityLabel={t('habits.form.magicA11y')}
+                />
+                {/* Too short to fill: the disabled pair (F-02 S2); busy keeps the action fill with a spinner. */}
+                <TouchableOpacity
+                  style={[styles.magicBtn, { backgroundColor: magicTooShort ? theme.disabledContainer : theme.action }]}
+                  onPress={runMagic}
+                  disabled={magicBusy || magicTooShort}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('habits.form.magicFillA11y')}
+                  accessibilityState={{ disabled: magicBusy || magicTooShort, busy: magicBusy }}
+                >
+                  {magicBusy ? <ActivityIndicator color={theme.onAction} size="small" /> : <Text style={[styles.magicBtnText, { color: magicTooShort ? theme.onDisabled : theme.onAction }]}>{t('habits.form.fill')}</Text>}
+                </TouchableOpacity>
+              </View>
+              {!!magicError && <Text style={[styles.magicError, { color: theme.dangerText }]}>{magicError}</Text>}
+            </View>
+          )}
 
-          <View style={styles.sheetHeader}>
-            <Text style={[styles.sheetTitle, { color: theme.text }]}>
-              {editingId ? t('habits.form.editTitle') : t('habits.form.newTitle')}
-            </Text>
-            <TouchableOpacity onPress={handleClose} style={styles.sheetCloseBtn} accessibilityRole="button" accessibilityLabel={t('common.close')}>
-              <Ionicons name="close" size={24} color={theme.textSecondary} />
-            </TouchableOpacity>
+          <FormLabel label={t('habits.form.icon')} theme={theme} />
+          <IconPicker
+            selected={form.icon}
+            onSelect={icon => setForm(f => ({ ...f, icon, customIconUri: null }))}
+            customIconUri={form.customIconUri}
+            onCustomIcon={handlePickImage}
+            theme={theme}
+          />
+
+          <FormLabel label={t('habits.form.colour')} theme={theme} />
+          {/* The 7 curated accents in one row (VIS-15). The stored colour is shown as the
+              accent it resolves to; only a tap writes (the accent's light-fill hex). */}
+          <View style={styles.colorRow}>
+            {ACCENT_IDS.map(accentId => {
+              const active = selectedId === accentId;
+              const swatch = resolveAccent(storedHexFor(accentId), themeName);
+              return (
+                <TouchableOpacity
+                  key={accentId}
+                  style={[styles.colorDot, { backgroundColor: swatch.fill, borderColor: active ? theme.text : 'transparent' }]}
+                  onPress={() => setForm(f => pickAccent(f, accentId))}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(`habits.colors.${accentId}`)}
+                  accessibilityState={{ selected: active }}
+                  aria-selected={active}
+                >
+                  {active && <Text style={[styles.colorCheck, { color: swatch.onFill }]}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: space.xs }}
-          >
-            {/* Tapping blank space dismisses the keyboard. A responder (not a Touchable) keeps the
-                wrapper out of the accessibility tree: a clickable wrapper made TalkBack merge every
-                label in the form into one focus stop. */}
-            <View onStartShouldSetResponder={dismissKeyboardOnBlankTap}>
-              <View>
-                {!editingId && !!user && (
-                  <View style={[styles.magicBox, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}>
-                    <Text style={[styles.magicTitle, { color: theme.link }]}>{t('habits.form.magicTitle')}</Text>
-                    <View style={styles.magicRow}>
-                      <TextInput
-                        style={[styles.magicInput, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
-                        placeholder={t('habits.form.magicPlaceholder')}
-                        placeholderTextColor={theme.textSecondary}
-                        value={magicText}
-                        onChangeText={setMagicText}
-                        maxLength={200}
-                        returnKeyType="go"
-                        onSubmitEditing={runMagic}
-                        accessibilityLabel={t('habits.form.magicA11y')}
-                      />
-                      {/* Too short to fill: the disabled pair (F-02 S2); busy keeps the action fill with a spinner. */}
-                      <TouchableOpacity
-                        style={[styles.magicBtn, { backgroundColor: magicTooShort ? theme.disabledContainer : theme.action }]}
-                        onPress={runMagic}
-                        disabled={magicBusy || magicTooShort}
-                        accessibilityRole="button"
-                        accessibilityLabel={t('habits.form.magicFillA11y')}
-                        accessibilityState={{ disabled: magicBusy || magicTooShort, busy: magicBusy }}
-                      >
-                        {magicBusy ? <ActivityIndicator color={theme.onAction} size="small" /> : <Text style={[styles.magicBtnText, { color: magicTooShort ? theme.onDisabled : theme.onAction }]}>{t('habits.form.fill')}</Text>}
-                      </TouchableOpacity>
-                    </View>
-                    {!!magicError && <Text style={[styles.magicError, { color: theme.dangerText }]}>{magicError}</Text>}
-                  </View>
-                )}
+          <TextField
+            theme={theme}
+            style={styles.field}
+            label={t('habits.form.name')}
+            placeholder={t('habits.form.namePlaceholder')}
+            value={form.name}
+            onChangeText={name => setForm(f => ({ ...f, name }))}
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+            accessibilityLabel={t('habits.form.name')}
+          />
 
-                <FormLabel label={t('habits.form.icon')} theme={theme} />
-                <IconPicker
-                  selected={form.icon}
-                  onSelect={icon => setForm(f => ({ ...f, icon, customIconUri: null }))}
-                  customIconUri={form.customIconUri}
-                  onCustomIcon={handlePickImage}
-                  theme={theme}
-                />
+          <TextField
+            theme={theme}
+            style={styles.field}
+            label={t('habits.form.plan')}
+            placeholder={t('habits.form.planPlaceholder')}
+            value={form.intention || ''}
+            onChangeText={intention => setForm(f => ({ ...f, intention }))}
+            maxLength={80}
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+            accessibilityLabel={t('habits.form.planA11y')}
+          />
 
-                <FormLabel label={t('habits.form.colour')} theme={theme} />
-                {/* The 7 curated accents in one row (VIS-15). The stored colour is shown as the
-                    accent it resolves to; only a tap writes (the accent's light-fill hex). */}
-                <View style={styles.colorRow}>
-                  {ACCENT_IDS.map(accentId => {
-                    const active = selectedId === accentId;
-                    const swatch = resolveAccent(storedHexFor(accentId), themeName);
-                    return (
-                      <TouchableOpacity
-                        key={accentId}
-                        style={[styles.colorDot, { backgroundColor: swatch.fill, borderColor: active ? theme.text : 'transparent' }]}
-                        onPress={() => setForm(f => pickAccent(f, accentId))}
-                        hitSlop={4}
-                        accessibilityRole="button"
-                        accessibilityLabel={t(`habits.colors.${accentId}`)}
-                        accessibilityState={{ selected: active }}
-                        aria-selected={active}
-                      >
-                        {active && <Text style={[styles.colorCheck, { color: swatch.onFill }]}>✓</Text>}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+          <FormLabel label={t('habits.form.type')} theme={theme} />
+          <View style={styles.typeRow}>
+            {habitTypes.map(ht => (
+              <Chip
+                key={ht.value}
+                theme={theme}
+                label={t('habits.form.typeChip', { emoji: ht.emoji, label: ht.label })}
+                selected={form.type === ht.value}
+                onPress={() => setForm(f => ({
+                  ...f,
+                  type: ht.value,
+                  volumeGoal: ht.value === 'volume' ? (f.volumeGoal >= 2 ? f.volumeGoal : 3)
+                    : ht.value === 'timed' ? (f.volumeGoal >= 5 ? f.volumeGoal : 20)
+                    : ht.value === 'atMost' ? (f.volumeGoal >= 1 && f.volumeGoal <= 20 ? f.volumeGoal : 2)
+                    : 1,
+                }))}
+                accessibilityLabel={t('habits.form.typeA11y', { label: ht.label, hint: ht.hint })}
+              />
+            ))}
+          </View>
+          <Text style={[styles.typeHint, { color: theme.textSecondary }]}>{habitTypes.find(ht => ht.value === form.type)?.hint}</Text>
 
-                <TextField
-                  theme={theme}
-                  style={styles.field}
-                  label={t('habits.form.name')}
-                  placeholder={t('habits.form.namePlaceholder')}
-                  value={form.name}
-                  onChangeText={name => setForm(f => ({ ...f, name }))}
-                  returnKeyType="done"
-                  onSubmitEditing={Keyboard.dismiss}
-                  accessibilityLabel={t('habits.form.name')}
-                />
+          <SchedulePicker
+            schedule={form.schedule}
+            onChange={schedule => setForm(f => ({ ...f, schedule }))}
+            theme={theme}
+          />
 
-                <TextField
-                  theme={theme}
-                  style={styles.field}
-                  label={t('habits.form.plan')}
-                  placeholder={t('habits.form.planPlaceholder')}
-                  value={form.intention || ''}
-                  onChangeText={intention => setForm(f => ({ ...f, intention }))}
-                  maxLength={80}
-                  returnKeyType="done"
-                  onSubmitEditing={Keyboard.dismiss}
-                  accessibilityLabel={t('habits.form.planA11y')}
-                />
+          <FormLabel label={t('habits.form.timeOfDay')} theme={theme} />
+          <View style={styles.timeRow}>
+            {TIME_OPTIONS.map(opt => (
+              <Chip
+                key={opt}
+                theme={theme}
+                label={t(`timeOfDay.${opt}`)}
+                selected={(form.timeOfDay || 'anytime') === opt}
+                onPress={() => setForm(f => ({ ...f, timeOfDay: opt }))}
+              />
+            ))}
+          </View>
 
-                <FormLabel label={t('habits.form.type')} theme={theme} />
-                <View style={styles.typeRow}>
-                  {habitTypes.map(ht => (
-                    <Chip
-                      key={ht.value}
-                      theme={theme}
-                      label={t('habits.form.typeChip', { emoji: ht.emoji, label: ht.label })}
-                      selected={form.type === ht.value}
-                      onPress={() => setForm(f => ({
-                        ...f,
-                        type: ht.value,
-                        volumeGoal: ht.value === 'volume' ? (f.volumeGoal >= 2 ? f.volumeGoal : 3)
-                          : ht.value === 'timed' ? (f.volumeGoal >= 5 ? f.volumeGoal : 20)
-                          : ht.value === 'atMost' ? (f.volumeGoal >= 1 && f.volumeGoal <= 20 ? f.volumeGoal : 2)
-                          : 1,
-                      }))}
-                      accessibilityLabel={t('habits.form.typeA11y', { label: ht.label, hint: ht.hint })}
-                    />
-                  ))}
-                </View>
-                <Text style={[styles.typeHint, { color: theme.textSecondary }]}>{habitTypes.find(ht => ht.value === form.type)?.hint}</Text>
-
-                <SchedulePicker
-                  schedule={form.schedule}
-                  onChange={schedule => setForm(f => ({ ...f, schedule }))}
-                  theme={theme}
-                />
-
-                <FormLabel label={t('habits.form.timeOfDay')} theme={theme} />
-                <View style={styles.timeRow}>
-                  {TIME_OPTIONS.map(opt => (
-                    <Chip
-                      key={opt}
-                      theme={theme}
-                      label={t(`timeOfDay.${opt}`)}
-                      selected={(form.timeOfDay || 'anytime') === opt}
-                      onPress={() => setForm(f => ({ ...f, timeOfDay: opt }))}
-                    />
-                  ))}
-                </View>
-
-                {form.type === 'timed' && (
-                  <>
-                    <FormLabel label={t('habits.form.minutesPerDay', { count: form.volumeGoal })} theme={theme} />
-                    <Slider value={form.volumeGoal} min={5} max={180} onValueChange={v => setForm(f => ({ ...f, volumeGoal: Math.max(5, Math.round(v / 5) * 5) }))} theme={theme} label={t('habits.form.minutesLabel')} />
-                    <View style={styles.sliderLabels}>
-                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{t('habits.form.fiveMin')}</Text>
-                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{t('habits.form.threeHours')}</Text>
-                    </View>
-                  </>
-                )}
-
-                {form.type === 'atMost' && (
-                  <>
-                    <FormLabel label={t('habits.form.atMostPerDay', { count: form.volumeGoal })} theme={theme} />
-                    <Slider value={form.volumeGoal} min={0} max={20} onValueChange={v => setForm(f => ({ ...f, volumeGoal: v }))} theme={theme} label={t('habits.form.dailyLimit')} />
-                    <View style={styles.sliderLabels}>
-                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>0</Text>
-                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>20</Text>
-                    </View>
-                    <TextField
-                      theme={theme}
-                      style={styles.field}
-                      label={t('habits.form.unit')}
-                      placeholder={t('habits.form.unitPlaceholderLimit')}
-                      value={form.unit || ''}
-                      onChangeText={unit => setForm(f => ({ ...f, unit }))}
-                      maxLength={20}
-                      returnKeyType="done"
-                      onSubmitEditing={Keyboard.dismiss}
-                      accessibilityLabel={t('habits.form.unitA11y')}
-                    />
-                  </>
-                )}
-
-                {form.type === 'volume' && (
-                  <>
-                    <FormLabel label={t('habits.form.timesPerDay', { count: form.volumeGoal })} theme={theme} />
-                    <SegmentedControl
-                      theme={theme}
-                      fill
-                      style={styles.volMaxRow}
-                      accessibilityLabel={t('habits.form.timesLabel')}
-                      value={volMax}
-                      onChange={handleVolMaxChange}
-                      options={VOLUME_MAX_OPTIONS.map(opt => ({ value: opt.max, label: t('habits.form.max', { max: opt.label }) }))}
-                    />
-                    <Slider
-                      value={form.volumeGoal}
-                      min={2}
-                      max={volMax}
-                      onValueChange={v => setForm(f => ({ ...f, volumeGoal: v }))}
-                      theme={theme}
-                      label={t('habits.form.timesLabel')}
-                    />
-                    <View style={styles.sliderLabels}>
-                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>2</Text>
-                      <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{volMax}</Text>
-                    </View>
-                    <TextField
-                      theme={theme}
-                      style={styles.field}
-                      label={t('habits.form.unit')}
-                      placeholder={t('habits.form.unitPlaceholderVolume')}
-                      value={form.unit || ''}
-                      onChangeText={unit => setForm(f => ({ ...f, unit }))}
-                      maxLength={20}
-                      returnKeyType="done"
-                      onSubmitEditing={Keyboard.dismiss}
-                      accessibilityLabel={t('habits.form.unitA11y')}
-                    />
-                  </>
-                )}
+          {form.type === 'timed' && (
+            <>
+              <FormLabel label={t('habits.form.minutesPerDay', { count: form.volumeGoal })} theme={theme} />
+              <Slider value={form.volumeGoal} min={5} max={180} onValueChange={v => setForm(f => ({ ...f, volumeGoal: Math.max(5, Math.round(v / 5) * 5) }))} theme={theme} label={t('habits.form.minutesLabel')} />
+              <View style={styles.sliderLabels}>
+                <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{t('habits.form.fiveMin')}</Text>
+                <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{t('habits.form.threeHours')}</Text>
               </View>
-            </View>
+            </>
+          )}
 
-            {/* Save button at bottom of scroll */}
-            {/* Disabled until the habit has a name: disabledContainer / onDisabled (6.15:1),
-                still focusable, and a tap plays `refused` (Button's default onDisabledPress). */}
-            <Button
-              block
-              label={editingId ? t('habits.form.saveChanges') : t('habits.form.addHabit')}
-              onPress={onSave}
-              disabled={!form.name.trim()}
-              style={styles.saveBtn}
-              testID="habit-form-save"
-            />
-          </ScrollView>
-    </BottomSheet>
+          {form.type === 'atMost' && (
+            <>
+              <FormLabel label={t('habits.form.atMostPerDay', { count: form.volumeGoal })} theme={theme} />
+              <Slider value={form.volumeGoal} min={0} max={20} onValueChange={v => setForm(f => ({ ...f, volumeGoal: v }))} theme={theme} label={t('habits.form.dailyLimit')} />
+              <View style={styles.sliderLabels}>
+                <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>0</Text>
+                <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>20</Text>
+              </View>
+              <TextField
+                theme={theme}
+                style={styles.field}
+                label={t('habits.form.unit')}
+                placeholder={t('habits.form.unitPlaceholderLimit')}
+                value={form.unit || ''}
+                onChangeText={unit => setForm(f => ({ ...f, unit }))}
+                maxLength={20}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                accessibilityLabel={t('habits.form.unitA11y')}
+              />
+            </>
+          )}
+
+          {form.type === 'volume' && (
+            <>
+              <FormLabel label={t('habits.form.timesPerDay', { count: form.volumeGoal })} theme={theme} />
+              <SegmentedControl
+                theme={theme}
+                fill
+                style={styles.volMaxRow}
+                accessibilityLabel={t('habits.form.timesLabel')}
+                value={volMax}
+                onChange={handleVolMaxChange}
+                options={VOLUME_MAX_OPTIONS.map(opt => ({ value: opt.max, label: t('habits.form.max', { max: opt.label }) }))}
+              />
+              <Slider
+                value={form.volumeGoal}
+                min={2}
+                max={volMax}
+                onValueChange={v => setForm(f => ({ ...f, volumeGoal: v }))}
+                theme={theme}
+                label={t('habits.form.timesLabel')}
+              />
+              <View style={styles.sliderLabels}>
+                <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>2</Text>
+                <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{volMax}</Text>
+              </View>
+              <TextField
+                theme={theme}
+                style={styles.field}
+                label={t('habits.form.unit')}
+                placeholder={t('habits.form.unitPlaceholderVolume')}
+                value={form.unit || ''}
+                onChangeText={unit => setForm(f => ({ ...f, unit }))}
+                maxLength={20}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                accessibilityLabel={t('habits.form.unitA11y')}
+              />
+            </>
+          )}
+        </View>
+      </View>
+    </Sheet>
   );
 }
 
@@ -928,9 +893,8 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 40, marginBottom: space.sm },
   emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: space.xs },
   emptyBody: { fontSize: 14, textAlign: 'center' },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  sheetTitle: { fontSize: 20, fontWeight: 'bold' },
-  sheetCloseBtn: { padding: space.xxs },
+  // The sheet's title row ends 8 dp above the body (Sheet dragZone); 12 more keeps the old 20.
+  formBody: { paddingTop: space.sm, paddingBottom: space.xs },
   formLabel: { marginBottom: 10 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: space.sm },
   field: { marginBottom: 20 },
@@ -957,5 +921,4 @@ const styles = StyleSheet.create({
   volMaxRow: { marginBottom: space.sm },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: space.md },
   sliderLabelText: { fontSize: 12 },
-  saveBtn: { marginTop: space.sm, minHeight: 52 },
 });

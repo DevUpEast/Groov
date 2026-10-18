@@ -1,4 +1,4 @@
-// Counts the scrimmed overlays (Dialog, BottomSheet, ActionSheet, NoteModal, ...) that are open,
+// Counts the scrimmed overlays (Dialog, Sheet, ActionSheet, NoteModal, ...) that are open,
 // and separately the heavy-scrim ones (TrophyCelebration, ChallengeRewardModal: the 70 % black
 // `celebrationScrim`), so App.js can pick status-bar icons that stay readable over them.
 //
