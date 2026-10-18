@@ -28,6 +28,57 @@ export async function consumeQuota(admin: SupabaseClient, userId: string, kind: 
   return { ok: !!data, limit, pro }
 }
 
+// Give back one unit consumed by consumeQuota when the call produced nothing usable
+// (#194). Consuming first keeps the limit race-safe; refunding keeps it fair.
+export async function refundQuota(admin: SupabaseClient, userId: string, kind: QuotaKind, todayStr: string) {
+  const { error } = await admin.rpc('ai_refund', { p_user: userId, p_date: todayStr, p_kind: kind })
+  if (error) console.error(`ai_refund(${kind}) failed:`, error.message)
+}
+
+// Minimal view of the SDK client so this module does not import the SDK itself.
+type MessagesClient = { messages: { create: (params: never) => Promise<unknown> } }
+type Reply = { content?: Array<{ type: string; text?: string }>; stop_reason?: string }
+
+// Claude Haiku 5.5 runs adaptive thinking by default and thinking counts toward
+// max_tokens, so a small cap can end (stop_reason "max_tokens") after a thinking
+// block with no text at all (#194). Ask for low effort with room to spare; if the
+// text is still empty, retry once with thinking off (accepted at effort <= high)
+// and a larger cap. Returns the trimmed text, or '' when both attempts are empty.
+export async function generateText(
+  anthropic: MessagesClient,
+  params: Record<string, unknown> & { max_tokens: number },
+  label: string,
+): Promise<string> {
+  const outputConfig = (params.output_config as Record<string, unknown> | undefined) ?? {}
+  const attempts = [
+    { ...params, output_config: { ...outputConfig, effort: 'low' } },
+    { ...params, max_tokens: params.max_tokens * 2, thinking: { type: 'disabled' }, output_config: { ...outputConfig, effort: 'low' } },
+  ]
+  for (let i = 0; i < attempts.length; i++) {
+    const reply = await anthropic.messages.create(attempts[i] as never) as Reply
+    const text = textOf(reply)
+    if (text) return text
+    console.warn(`${label}: empty text on attempt ${i + 1} (stop_reason ${reply.stop_reason ?? '?'})`)
+  }
+  return ''
+}
+
+// Always pick the text block by type: a thinking block can come first.
+export function textOf(reply: Reply): string {
+  return (reply.content ?? [])
+    .filter((b) => b.type === 'text' && typeof b.text === 'string')
+    .map((b) => b.text)
+    .join('')
+    .trim()
+}
+
+export function emptyReply(corsHeaders: Record<string, string>) {
+  return new Response(
+    JSON.stringify({ error: 'The coach had nothing to say this time. Try again later.', code: 'empty_reply' }),
+    { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+  )
+}
+
 export function quotaExceeded(corsHeaders: Record<string, string>, kind: QuotaKind, limit: number, pro: boolean) {
   const what = kind === 'nudges' ? 'coaching nudges' : kind === 'reflections' ? 'reflections' : 'habit suggestions'
   return new Response(

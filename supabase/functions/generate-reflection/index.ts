@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
 import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn, goalMet } from '../_shared/schedule.ts'
-import { AI_MODEL, COACH_SYSTEM, cachedSystem, consumeQuota, quotaExceeded } from '../_shared/ai.ts'
+import { AI_MODEL, COACH_SYSTEM, cachedSystem, consumeQuota, quotaExceeded, refundQuota, generateText, emptyReply } from '../_shared/ai.ts'
 
 // Wildcard origin is intentional: CORS is a browser mechanism and does not apply to
 // native mobile clients. Supabase edge functions require this header for the OPTIONS
@@ -128,7 +128,7 @@ Deno.serve(async (req: Request) => {
       .gte('generated_at', accountCreatedStr)
       .maybeSingle()
 
-    if (cached?.message) {
+    if (cached?.message?.trim()) {
       return new Response(
         JSON.stringify({ message: cached.message, cached: true, generatedAt: cached.generated_at }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -265,17 +265,24 @@ Write the reflection:`
     const quota = await consumeQuota(supabase, user.id, 'reflections', todayStr)
     if (!quota.ok) return quotaExceeded(corsHeaders, 'reflections', quota.limit, quota.pro)
 
-    const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! })
-    const aiResponse = await anthropic.messages.create({
-      model: AI_MODEL,
-      system: cachedSystem(COACH_SYSTEM),
-      max_tokens: 400,
-      messages: [{ role: 'user', content: prompt }],
-    })
-
-    const textBlock = aiResponse.content.find((b) => b.type === 'text')
-    const raw = textBlock && textBlock.type === 'text' ? textBlock.text.trim() : ''
-    const message = stripEmDashes(raw)
+    // Never cache or charge for an empty reply (#194): refund the unit on any failure.
+    let message = ''
+    try {
+      const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! })
+      message = stripEmDashes(await generateText(anthropic, {
+        model: AI_MODEL,
+        system: cachedSystem(COACH_SYSTEM),
+        max_tokens: 1536,
+        messages: [{ role: 'user', content: prompt }],
+      }, 'generate-reflection')).trim()
+    } catch (e) {
+      await refundQuota(supabase, user.id, 'reflections', todayStr)
+      throw e
+    }
+    if (!message) {
+      await refundQuota(supabase, user.id, 'reflections', todayStr)
+      return emptyReply(corsHeaders)
+    }
     const generatedAt = new Date().toISOString()
 
     await supabase.from('ai_reflections').upsert(
