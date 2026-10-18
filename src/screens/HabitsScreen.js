@@ -75,7 +75,7 @@ function SchedulePicker({ schedule, onChange, theme }) {
   };
 
   const toggleDay = (d) => {
-    const next = days.includes(d) ? days.filter(x => x !== d) : [...days, d];
+    const next = (days.includes(d) ? days.filter(x => x !== d) : [...days, d]).sort((x, y) => x - y);
     if (next.length === 0) return; // keep at least one day; "none" is not a schedule
     onChange({ type: 'weekdays', days: next });
   };
@@ -215,7 +215,7 @@ const VOLUME_MAX_OPTIONS = [
   { label: '100', max: 100 },
 ];
 
-function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme }) {
+export function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme }) {
   const [volMax, setVolMax] = useState(10);
   const { user } = useAuth();
   const { todayStr, themeName } = useApp();

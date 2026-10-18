@@ -160,8 +160,8 @@ describe('adopters', () => {
     const cform = challenges.slice(challenges.indexOf('function ChallengeFormModal('), challenges.indexOf('function PastChallengeDetailModal('));
     expect(cform).toMatch(/<Sheet\s[\s\S]*dirty=\{dirty\}[\s\S]*footer=\{\([\s\S]*testID="challenge-form-save"[\s\S]*\)\}\s*>/);
     expect(cform).not.toMatch(/PanResponder|BottomSheet|SheetHeader|sheet\.close|useSheetAnim/);
-    // The tab change to Habits waits for the sheet to go (onDismiss), never a timer.
-    expect(cform).toMatch(/onDismiss=/);
+    // "Add a new habit" goes through the guarded close; the tab change runs after the sheet has gone.
+    expect(cform).toMatch(/sheetRef\.current\?\.requestClose\(\(\) => onAddHabit/);
     expect(cform).not.toMatch(/setTimeout/);
     // No JSX-prop spacing literal survives in the frame (the old wrapper's 40 on iOS).
     expect(read('src/components/ui/Sheet.js')).not.toMatch(/paddingBottom=\{/);
@@ -339,5 +339,20 @@ describe('Sheet lifecycle', () => {
     const frame = r.root.findByType(SheetFrame);
     expect(frame.props.rest).toBeGreaterThan(0); // the medium offset
     expect(lastTo(timings)).toBe(0); // the 150 ms fade in, to fully opaque
+  });
+});
+
+describe('keyboard (F-09b review m2, m3, m6)', () => {
+  const { keyboardLiftFor, revealOverflow, REVEAL_MARGIN } = SheetModule;
+  it('adds the bottom inset back only where Android subtracts it (API 30+)', () => {
+    expect(keyboardLiftFor(0, 24, 'android', 36)).toBe(0);
+    expect(keyboardLiftFor(300, 24, 'android', 36)).toBe(324);
+    expect(keyboardLiftFor(300, 24, 'android', 30)).toBe(324);
+    expect(keyboardLiftFor(300, 24, 'android', 29)).toBe(300);
+    expect(keyboardLiftFor(300, 24, 'web', 0)).toBe(300);
+  });
+  it('scrolls a focused input that ends at the body edge in by its border and some air', () => {
+    expect(revealOverflow({ bodyY: 100, bodyHeight: 500, inputY: 552, inputHeight: 48 })).toBe(REVEAL_MARGIN);
+    expect(revealOverflow({ bodyY: 100, bodyHeight: 500, inputY: 300, inputHeight: 48 })).toBe(0);
   });
 });

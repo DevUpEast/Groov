@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
-  View, ScrollView, Pressable, Keyboard, KeyboardAvoidingView, Platform, Animated, PanResponder, StyleSheet,
+  View, ScrollView, TextInput, Pressable, Keyboard, KeyboardAvoidingView, Platform, Animated, PanResponder, StyleSheet,
   AccessibilityInfo, findNodeHandle, useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -83,22 +83,44 @@ export function useKeyboardHeight() {
   const [height, setHeight] = useState(0);
   useEffect(() => {
     const ios = Platform.OS === 'ios';
+    const heightOf = (e) => Math.max(0, e?.endCoordinates?.height ?? 0);
     const subs = [
-      Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (e) => setHeight(Math.max(0, e?.endCoordinates?.height ?? 0))),
+      Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (e) => setHeight(heightOf(e))),
       Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => setHeight(0)),
+      // A height change while the keyboard stays up (a suggestion strip, the emoji panel). Only
+      // while it is up, so a frame change around a hide cannot lift it again. Android (RN 0.81)
+      // emits no frame-change event and re-reports a new height only on its next show.
+      Keyboard.addListener(ios ? 'keyboardWillChangeFrame' : 'keyboardDidChangeFrame', (e) => {
+        const h = heightOf(e);
+        setHeight(prev => (prev > 0 && h > 0 ? h : prev));
+      }),
     ];
     return () => subs.forEach(sub => sub.remove());
   }, []);
   return height;
 }
 
-// Android reports the keyboard height without the navigation bar under it (RN subtracts the
-// system bar inset), so the caller adds the bottom inset back.
+// From API 30 Android reports the keyboard height without the navigation bar under it (RN
+// subtracts the system bar inset), so the caller adds the bottom inset back; the legacy path
+// (API 24-29) measures from the visible frame, nav bar already included.
+export const keyboardLiftFor = (keyboardHeight, bottomInset, os = Platform.OS, version = Platform.Version) => {
+  if (!(keyboardHeight > 0)) return 0;
+  return os === 'android' && Number(version) >= 30 ? keyboardHeight + bottomInset : keyboardHeight;
+};
+
+
 function KeyboardLift({ style, lift, children }) {
   if (Platform.OS === 'ios') {
     return <KeyboardAvoidingView behavior="padding" style={style} pointerEvents="box-none">{children}</KeyboardAvoidingView>;
   }
   return <View style={[style, { paddingBottom: lift }]} pointerEvents="box-none">{children}</View>;
+}
+
+// How far the focused input (plus its field border and a little air) runs past the bottom of
+// the sheet body; 0 when it already fits. Pure, for the tests.
+export const REVEAL_MARGIN = space.xs;
+export function revealOverflow({ bodyY, bodyHeight, inputY, inputHeight }) {
+  return Math.max(0, Math.ceil(inputY + inputHeight + REVEAL_MARGIN - (bodyY + bodyHeight)));
 }
 
 /** The offset (dp below the top rest) of the medium detent for a window height. */
@@ -170,7 +192,7 @@ export function SheetFrame({
       </Animated.View>
       {/* iOS: KeyboardAvoidingView (padding). Android: the edge-to-edge Modal window does not
           resize, so the overlay is padded by the keyboard height itself (see useKeyboardHeight). */}
-      <KeyboardLift style={styles.overlay} lift={keyboardHeight > 0 ? keyboardHeight + insets.bottom : 0}>
+      <KeyboardLift style={styles.overlay} lift={keyboardLiftFor(keyboardHeight, insets.bottom)}>
         <Animated.View
           testID={testID}
           accessibilityViewIsModal
@@ -202,7 +224,7 @@ export function SheetGrabber({ theme: themeProp }) {
 
 export default function Sheet({
   visible, onClose, onDismiss, title, header, detents = ['large'], initialDetent, dirty = false, footer, children,
-  scroll = true, contentContainerStyle, accessibilityLabel, returnFocusRef, theme: themeProp, testID,
+  scroll = true, contentContainerStyle, accessibilityLabel, returnFocusRef, theme: themeProp, testID, ref,
 }) {
   const theme = useUiTheme(themeProp);
   const motion = useMotion();
@@ -260,6 +282,7 @@ export default function Sheet({
   useEffect(() => {
     if (visible) {
       closing.current = false;
+      pendingThen.current = null;
       if (!mountedRef.current) value.setValue(r ? SHEET_FADE_RANGE : SHEET_OFFSCREEN);
       setMounted(true);
       setDetent(firstDetent);
@@ -288,11 +311,19 @@ export default function Sheet({
           if (node) AccessibilityInfo.setAccessibilityFocus(node);
         } catch (_) { /* web: no native focus API */ }
         live.current.onDismiss?.();
+        const then = pendingThen.current;
+        pendingThen.current = null;
+        then?.();
       });
     }
     wasMounted.current = mounted;
     return () => { if (raf) cancelAnimationFrame(raf); };
   }, [mounted]);
+
+  // A guarded exit the host starts itself (F-09b review M1): `ref.current.requestClose(then)`
+  // asks "Discard changes?" while dirty, like the scrim; `then` runs after `onDismiss` only if
+  // the sheet really closes, and is dropped on "Keep editing" or the next request.
+  const pendingThen = useRef(null);
 
   // Every dismissal (scrim, drag, back, escape, close button) goes through here.
   // - Already closed by the host (`visible` false): (re)run the exit, so a stopped exit can
@@ -301,7 +332,9 @@ export default function Sheet({
   // - Otherwise ask the host. A drag release settles first (closeFromDrag): if the host closes,
   //   the `visible` effect replaces the settle with the exit; if it refuses, the sheet is back at
   //   its detent instead of stuck where the finger left it (m4).
-  const requestClose = useCallback(() => {
+  const requestClose = useCallback((then) => {
+    // Pressables pass their event; only a function is a follow-up.
+    pendingThen.current = typeof then === 'function' ? then : null;
     if (!live.current.visible) {
       if (mountedRef.current && !closing.current) exit();
       return;
@@ -313,6 +346,30 @@ export default function Sheet({
     }
     live.current.onClose?.();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useImperativeHandle(ref, () => ({ requestClose }), [requestClose]);
+
+  // Android scrolls only the focused EditText into view when the keyboard shrinks the body, so
+  // a TextField's 2 dp border (on its wrapper) was clipped at the edge (F-09b review m6). Once
+  // the body has been laid out again with the keyboard up, bring the field and a margin in.
+  const keyboardHeight = useKeyboardHeight();
+  const scrollRef = useRef(null);
+  const scrollY = useRef(0);
+  const revealRaf = useRef(null);
+  const onBodyScroll = (e) => { scrollY.current = e.nativeEvent.contentOffset.y; };
+  const onBodyLayout = () => {
+    if (Platform.OS !== 'android' || keyboardHeight <= 0) return;
+    cancelAnimationFrame(revealRaf.current);
+    revealRaf.current = requestAnimationFrame(() => {
+      const input = TextInput.State?.currentlyFocusedInput?.();
+      const body = scrollRef.current;
+      if (!input?.measureInWindow || !body?.measureInWindow) return;
+      body.measureInWindow((bx, by, bw, bh) => input.measureInWindow((ix, iy, iw, ih) => {
+        const overflow = revealOverflow({ bodyY: by, bodyHeight: bh, inputY: iy, inputHeight: ih });
+        if (overflow > 0) body.scrollTo({ y: scrollY.current + overflow, animated: true });
+      }));
+    });
+  };
+  useEffect(() => () => cancelAnimationFrame(revealRaf.current), []);
   const closeFromDrag = () => {
     settle(live.current.detent);
     requestClose();
@@ -409,6 +466,10 @@ export default function Sheet({
       </View>
       {scroll ? (
         <ScrollView
+          ref={scrollRef}
+          onScroll={onBodyScroll}
+          scrollEventThrottle={16}
+          onLayout={onBodyLayout}
           style={fixedHeight ? styles.bodyFill : styles.bodyFit}
           contentContainerStyle={contentContainerStyle}
           showsVerticalScrollIndicator={false}
@@ -422,12 +483,12 @@ export default function Sheet({
       {footer ? <View style={styles.footer}>{footer}</View> : null}
       <Dialog
         visible={confirming}
-        onClose={() => setConfirming(false)}
+        onClose={() => { pendingThen.current = null; setConfirming(false); }}
         onDismiss={() => { if (discardThen.current) { discardThen.current = false; live.current.onClose?.(); } }}
         title={t('common.discardChanges.title')}
         body={t('common.discardChanges.body')}
         actions={[
-          { label: t('common.discardChanges.keep'), onPress: () => setConfirming(false) },
+          { label: t('common.discardChanges.keep'), onPress: () => { pendingThen.current = null; setConfirming(false); } },
           { label: t('common.discardChanges.discard'), variant: 'destructive', onPress: () => { discardThen.current = true; setConfirming(false); } },
         ]}
       />

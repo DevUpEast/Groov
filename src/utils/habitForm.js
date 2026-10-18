@@ -60,4 +60,8 @@ export function sameFormValue(a, b) {
 
 // The dirty guard (F-09b): has the form changed since the sheet opened? Typing a character
 // and deleting it again is not an edit.
-export const isFormDirty = (initial, form) => !sameFormValue(initial, form);
+// Weekdays are a set: toggling a day off and on again (which moves it to the end) is not an edit.
+const normalised = (form) => (Array.isArray(form?.schedule?.days)
+  ? { ...form, schedule: { ...form.schedule, days: [...form.schedule.days].sort((x, y) => x - y) } }
+  : form);
+export const isFormDirty = (initial, form) => !sameFormValue(normalised(initial), normalised(form));

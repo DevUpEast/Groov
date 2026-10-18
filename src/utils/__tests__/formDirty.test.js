@@ -44,3 +44,11 @@ describe('challengeFormDirty', () => {
     expect(challengeFormDirty(opened, { ...opened, linkedHabitIds: ['a', 'c'] })).toBe(true);
   });
 });
+
+describe('isFormDirty weekdays (F-09b review m5)', () => {
+  it('treats the weekdays as a set', () => {
+    const f = formFromHabit(habit);
+    expect(isFormDirty(f, { ...f, schedule: { type: 'weekdays', days: [1, 5, 3] } })).toBe(false);
+    expect(isFormDirty(f, { ...f, schedule: { type: 'weekdays', days: [5, 1] } })).toBe(true);
+  });
+});

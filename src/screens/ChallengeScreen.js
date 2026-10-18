@@ -94,7 +94,7 @@ const CHALLENGE_ICONS = ['🏆', '🎯', '💪', '🔥', '⚡', '🌟', '🏃', 
 
 // ── Challenge form modal (includes inline habit linking) ──────────────────────
 
-function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHabit, theme }) {
+export function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHabit, theme }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [days, setDays] = useState(7);
@@ -104,8 +104,8 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
   const templates = getChallengeTemplates();
   // The values the form opened with, for the dirty guard (F-09b).
   const [opened, setOpened] = useState(null);
-  // Run once the sheet has gone (Sheet onDismiss): the tab change to Habits.
-  const afterDismiss = useRef(null);
+  // The Sheet's guarded close, for "Add a new habit" (F-09b review M1).
+  const sheetRef = useRef(null);
 
   useEffect(() => {
     if (visible) {
@@ -155,7 +155,7 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
     <Sheet
       visible={visible}
       onClose={onClose}
-      onDismiss={() => { const next = afterDismiss.current; afterDismiss.current = null; next?.(); }}
+      ref={sheetRef}
       title={initial ? t('challenges.form.editTitle') : t('challenges.form.newTitle')}
       dirty={dirty}
       contentContainerStyle={styles.formBody}
@@ -330,9 +330,9 @@ function ChallengeFormModal({ visible, initial, habits, onClose, onSave, onAddHa
 
         <TouchableOpacity
           style={[styles.addHabitInModalBtn, { borderColor: theme.border }]}
-          // Leaving for Habits discards this form (as before F-09b); the tab change starts once
-          // the sheet has gone, not underneath it.
-          onPress={() => { afterDismiss.current = () => onAddHabit?.(); onClose(); }}
+          // Leaving for Habits goes through the discard guard like any other close; the tab
+          // change runs only once the sheet has really gone (never after "Keep editing").
+          onPress={() => sheetRef.current?.requestClose(() => onAddHabit?.())}
           accessibilityRole="button"
           accessibilityLabel={t('challenges.form.addNewA11y')}
         >
