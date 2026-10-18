@@ -107,3 +107,12 @@ describe('createMilestoneArm (the stale-run guard)', () => {
     expect(createMilestoneArm().consume({ completions: c1, skips: s1 })).toBe(false);
   });
 });
+
+test('createMilestoneArm hands the arm\'s meta to the run that consumes it (m5 deferred)', () => {
+  const arm = createMilestoneArm();
+  const c0 = {};
+  arm.arm({ completions: c0 }, { deferred: true });
+  expect(arm.consume({ completions: c0 })).toBe(false);
+  expect(arm.consume({ completions: {} })).toEqual({ deferred: true });
+  expect(arm.consume({ completions: {} })).toBe(false);
+});

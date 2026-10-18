@@ -69,3 +69,23 @@ describe('reminderTimeForTimeOfDay', () => {
     expect(reminderTimeForTimeOfDay('morning').hour12).toBe(8);
   });
 });
+
+// C-08 review B1: milestones are once ever, so a pull merges them as a union.
+describe('mergeMilestones / migrateSettings milestones', () => {
+  const { mergeMilestones, migrateSettings: migrate } = require('../settings');
+  const m = (days, extra = {}) => ({ id: `streak-${days}`, days, date: '2026-10-18', ...extra });
+  test('keeps local entries the incoming copy lacks; incoming wins per id; ordered by days', () => {
+    const out = mergeMilestones([m(7, { date: '2026-10-01' })], [m(14, { silent: true }), m(7), m(3, { silent: true })]);
+    expect(out.map(x => x.id)).toEqual(['streak-3', 'streak-7', 'streak-14']);
+    expect(out[1].date).toBe('2026-10-01');
+  });
+  test('a cloud pull over local settings unions the milestones', () => {
+    const local = migrate({ reminders: [], milestones: [m(3, { silent: true })] });
+    const merged = migrate({ reminders: [], milestones: [m(1, { silent: true })] }, local);
+    expect(merged.milestones.map(x => x.id)).toEqual(['streak-1', 'streak-3']);
+  });
+  test('bad input is ignored', () => {
+    expect(mergeMilestones(null, undefined)).toEqual([]);
+    expect(mergeMilestones([null, {}], 'x')).toEqual([]);
+  });
+});

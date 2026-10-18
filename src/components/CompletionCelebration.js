@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, StyleSheet, Animated, Dimensions, Pressable, AccessibilityInfo, findNodeHandle,
+  View, StyleSheet, Animated, Dimensions, Pressable, AccessibilityInfo, findNodeHandle, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import OverlayModal from './ui/OverlayModal';
@@ -78,9 +78,12 @@ function ConfettiPiece({ index, color }) {
  * `hold` is set (mockup stills). Reduced motion: no growing circle and no confetti; the ground
  * and its content fade in and out over `duration.reduced` (150 ms).
  *
- * `onDone()` runs once the exit has finished; `onShare()` runs instead of it after Share.
+ * `onDone()` runs once the exit has finished; `onShare()` runs instead of it after Share. The
+ * host then hides it (`visible` false), and `onHidden()` runs once the Modal has gone: iOS from
+ * the Modal's `onDismiss`, elsewhere two frames after the hide. Chain the next overlay there
+ * (TodayScreen opens ShareCards from it), never in the commit that hides this one (review M1).
  */
-export default function CompletionCelebration({ visible, milestone, onDone, onShare, originKey = 'ring', hold = false }) {
+export default function CompletionCelebration({ visible, milestone, onDone, onShare, onHidden, originKey = 'ring', hold = false }) {
   useLocale();
   const theme = useUiTheme();
   const m = useMotion();
@@ -96,8 +99,29 @@ export default function CompletionCelebration({ visible, milestone, onDone, onSh
   const [canSkip, setCanSkip] = useState(false);
   const closing = useRef(false);
   const timers = useRef([]);
-  const live = useRef({ onDone, onShare });
-  live.current = { onDone, onShare };
+  const live = useRef({ onDone, onShare, onHidden });
+  live.current = { onDone, onShare, onHidden };
+  // Mounted from the first show until the Modal has gone after a hide (see onHidden).
+  const [mounted, setMounted] = useState(!!visible);
+  if (visible && !mounted) setMounted(true);
+  const hiddenPending = useRef(false);
+  const handleHidden = useCallback(() => {
+    if (!hiddenPending.current) return;
+    hiddenPending.current = false;
+    setMounted(false);
+    live.current.onHidden?.();
+  }, []);
+  const wasVisible = useRef(!!visible);
+  useEffect(() => {
+    const was = wasVisible.current;
+    wasVisible.current = !!visible;
+    if (!was || visible) return undefined;
+    hiddenPending.current = true;
+    if (Platform.OS === 'ios') return undefined; // the Modal's onDismiss calls handleHidden
+    let raf2;
+    const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(handleHidden); });
+    return () => { cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2); };
+  }, [visible, handleHidden]);
   // The last milestone stays drawn while the exit plays (the host may clear it).
   const shown = useRef(milestone);
   if (milestone) shown.current = milestone;
@@ -140,12 +164,22 @@ export default function CompletionCelebration({ visible, milestone, onDone, onSh
     closing.current = false;
     setCanSkip(false);
     reset();
+    let on = true;
     later(() => setCanSkip(true), celebration.milestoneSkipAfter);
-    if (ms) announce(`${t('today.milestone.streak', { count: ms.days })}. ${t('today.milestone.subtitle', { label: ms.label })}`);
-    // A screen-reader user needs the time to reach Share: no auto-dismiss for them.
+    // Screen readers: accessibility focus moves to the headline once the content is up (its
+    // label is the whole message); announce only when focus cannot be set (review m2).
+    // autoFocus does not fire in an Android Modal.
+    later(() => {
+      let node = null;
+      try { node = focusRef.current && findNodeHandle(focusRef.current); } catch (_) { node = null; }
+      if (node) AccessibilityInfo.setAccessibilityFocus(node);
+      else if (ms) announce(`${t('today.milestone.streak', { count: ms.days })}. ${t('today.milestone.subtitle', { label: ms.label })}`);
+    }, reduced ? m.duration.reduced : celebration.textInAt);
+    // A screen-reader user needs the time to reach Share: no auto-dismiss for them. `on`
+    // drops a check that resolves after the screen has already been hidden (review m4).
     if (!hold) {
       AccessibilityInfo.isScreenReaderEnabled().catch(() => false).then((sr) => {
-        if (!sr && !closing.current) later(() => close(), celebration.autoDismissAt);
+        if (on && !sr && !closing.current) later(() => close(), celebration.autoDismissAt);
       });
     }
 
@@ -154,11 +188,10 @@ export default function CompletionCelebration({ visible, milestone, onDone, onSh
       contentOpacity.setValue(1);
       contentScale.setValue(1);
       m.timing(fade, { toValue: 1, duration: m.duration.reduced }).start();
-      return clearTimers;
+      return () => { on = false; clearTimers(); };
     }
 
     fade.setValue(1);
-    let on = true;
     // Grow the ground from the ring, once both are measured (one frame).
     Promise.all([measureNode(rootRef.current), measureAnchor(originKey)]).then(([root, ring]) => {
       if (!on) return;
@@ -177,18 +210,7 @@ export default function CompletionCelebration({ visible, milestone, onDone, onSh
 
   useEffect(() => () => clearTimers(), []);
 
-  // Accessibility focus on the headline once the content is up (autoFocus does not fire in an
-  // Android Modal).
-  const onShow = useCallback(() => {
-    later(() => {
-      try {
-        const node = focusRef.current && findNodeHandle(focusRef.current);
-        if (node) AccessibilityInfo.setAccessibilityFocus(node);
-      } catch (_) { /* web */ }
-    }, reduced ? m.duration.reduced : celebration.textInAt);
-  }, [reduced]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!visible || !ms) return null;
+  if (!mounted || !ms) return null;
 
   const streakLabel = t('today.milestone.streak', { count: ms.days });
   const subtitle = t('today.milestone.subtitle', { label: ms.label });
@@ -196,14 +218,14 @@ export default function CompletionCelebration({ visible, milestone, onDone, onSh
 
   return (
     <OverlayModal
-      visible
+      visible={!!visible}
       transparent
       heavyScrim
       animationType="none"
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={skip}
-      onShow={onShow}
+      onDismiss={handleHidden}
     >
       <Animated.View
         ref={rootRef}
@@ -250,11 +272,19 @@ export default function CompletionCelebration({ visible, milestone, onDone, onSh
           <View ref={focusRef} accessible accessibilityRole="header" accessibilityLabel={`${streakLabel}. ${subtitle}`} style={styles.textBlock}>
             <AppText variant="display" style={[HERO, styles.center, { color: theme.onBrandGround }]}>{ms.days}</AppText>
             <AppText variant="headline" style={[styles.center, { color: theme.onBrandGround }]}>{t('today.milestone.unit', { count: ms.days })}</AppText>
-            <AppText variant="body" style={[styles.center, styles.subtitle, { color: theme.onBrandGroundSecondary }]}>{subtitle}</AppText>
+            <AppText
+              variant="body"
+              style={[styles.center, styles.subtitle, { color: theme.onBrandGroundSecondary }]}
+              textBreakStrategy="balanced"
+              lineBreakStrategyIOS="push-out"
+            >
+              {subtitle}
+            </AppText>
           </View>
           {onShare ? (
             <PressableScale
               onPress={() => close('share')}
+              disabled={!canSkip}
               style={[styles.share, { backgroundColor: theme.brandGroundCta }]}
               accessibilityLabel={t('today.milestone.share')}
               testID="milestone-share"
@@ -289,7 +319,7 @@ const styles = StyleSheet.create({
   disc: { width: DISC, height: DISC, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', marginBottom: space.md },
   textBlock: { alignItems: 'center' },
   center: { textAlign: 'center' },
-  subtitle: { marginTop: space.sm, maxWidth: 320 },
+  subtitle: { marginTop: space.sm },
   share: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs,
     minHeight: 48, borderRadius: radius.pill, paddingHorizontal: space.lg, marginTop: space.xl,

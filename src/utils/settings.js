@@ -124,7 +124,24 @@ export function migrateSettings(s, local) {
   if (local === undefined) return migrateOne(s);
   const base = migrateOne(s);
   const known = Object.fromEntries(Object.keys(DEFAULT_SETTINGS).map((k) => [k, base[k]]));
-  return { ...known, extras: mergeExtras(s ? s.extras : {}, local ? local.extras : {}) };
+  return {
+    ...known,
+    milestones: mergeMilestones(base.milestones, local ? local.milestones : []),
+    extras: mergeExtras(s ? s.extras : {}, local ? local.extras : {}),
+  };
+}
+
+// `settings.milestones` is a once-ever record (C-08 review B1): two copies merge as a union by
+// id, so a pull that read the row before this device's silent backfill landed cannot wipe it
+// (which would let a later check-off celebrate a beat retroactively). The incoming entry wins
+// for an id both sides have; the result is ordered by days.
+export function mergeMilestones(incoming, local) {
+  const a = Array.isArray(incoming) ? incoming : [];
+  const b = Array.isArray(local) ? local : [];
+  const byId = new Map();
+  for (const m of b) if (m && m.id) byId.set(m.id, m);
+  for (const m of a) if (m && m.id) byId.set(m.id, m);
+  return [...byId.values()].sort((x, y) => (x.days || 0) - (y.days || 0));
 }
 
 function migrateOne(s) {

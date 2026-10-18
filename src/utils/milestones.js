@@ -51,14 +51,21 @@ export const milestoneId = (m) => `streak-${m.days}`;
  */
 export function createMilestoneArm() {
   let before = null;
+  let info = null;
   return {
-    arm(state) { before = state; },
-    // true (and disarmed) when `state` differs from the armed one in any tracked key.
+    // `meta` rides along to the run that consumes the arm (`{ deferred: true }`: a
+    // notification Done from the background, celebrated on the next foreground).
+    arm(state, meta = null) { before = state; info = meta; },
+    // The arm's meta, or true, (and disarmed) when `state` differs from the armed one in any
+    // tracked key; false otherwise.
     consume(state) {
       if (!before) return false;
       const changed = Object.keys(before).some(k => before[k] !== state[k]);
-      if (changed) before = null;
-      return changed;
+      if (!changed) return false;
+      const out = info || true;
+      before = null;
+      info = null;
+      return out;
     },
     get armed() { return !!before; },
   };

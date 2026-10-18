@@ -163,7 +163,13 @@ export function AppProvider({ children }) {
   const skipsStateRef = useRef(null);
   const milestoneArm = useRef(null);
   if (!milestoneArm.current) milestoneArm.current = createMilestoneArm();
-  const armMilestone = () => milestoneArm.current.arm({ completions: completionsStateRef.current, skips: skipsStateRef.current });
+  const armMilestone = (meta) => milestoneArm.current.arm({ completions: completionsStateRef.current, skips: skipsStateRef.current }, meta);
+  // Mark the rest's Undo (C-08 review M2): the completions it reverted from, so the milestone
+  // effect can take back a milestone that the undone action had just recorded.
+  const milestoneUndoRef = useRef(null);
+  // A milestone a background notification Done crossed (m5): shown on the next foreground,
+  // the same day only.
+  const deferredMilestoneRef = useRef(null);
   const updateCompletions = (fnOrValue) => {
     liveRef.current.update(fnOrValue);
     setCompletions(fnOrValue);
@@ -467,9 +473,10 @@ export function AppProvider({ children }) {
         if (!h) return;
         const key = localDateKey();
         // C-08 m1: a Done tapped while the app is in the foreground (a heads-up banner over
-        // Groov) is a today action like a tap on the card, so it may celebrate. From the
-        // background it records silently: the moment would play long after the tap.
-        if (AppState.currentState === 'active') armMilestone();
+        // Groov) is a today action like a tap on the card, so it celebrates. From the
+        // background (the shade; the action does not open the app) the milestone is recorded
+        // and its moment waits for the next foreground, the same day (review m5).
+        armMilestone(AppState.currentState === 'active' ? null : { deferred: true });
         updateCompletions(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [h.id]: h.volumeGoal } }));
         setDailySnapshot(prev => withSnapshot(prev, key, habits));
         upsertCount(key, h.id, h.volumeGoal);
@@ -775,6 +782,10 @@ export function AppProvider({ children }) {
           if (cloudData.challenges) setChallenges(migrateChallenges(cloudData.challenges));
           if (cloudData.pastChallenges) setPastChallenges(cloudData.pastChallenges);
           if (cloudData.dailySnapshot) setDailySnapshot(cloudData.dailySnapshot);
+          // C-08 review B1: the history just arrived, so the next milestone evaluation is a
+          // first one again and backfills silently against it (the spec's cloudSynced gate).
+          prevStreakRef.current = null;
+          setMilestoneEpoch(e => e + 1);
           setHasOnboarded(true);
           settleAccountCreatedAt(cloudData.completions, cloudData.habits);
         } else {
@@ -1271,6 +1282,7 @@ export function AppProvider({ children }) {
   // to `before` (revertMarkRest); anything edited inside the window is kept.
   const restoreHabitCounts = useCallback((before, changedIds, key) => {
     const day = key || todayStr();
+    milestoneUndoRef.current = { before: completionsStateRef.current };
     const { syncMap } = revertMarkRest(liveCompletions(), day, before, changedIds);
     updateCompletions(prev => revertMarkRest(prev, day, before, changedIds).completions);
     // Same per-habit keys as Mark the rest's own upserts: the restored value replaces a
@@ -1568,22 +1580,54 @@ export function AppProvider({ children }) {
   // are recorded silently; only a check-off on today that takes the streak across one
   // queues the celebration (src/utils/milestones.js).
   const prevStreakRef = useRef(null);
+  const [milestoneEpoch, setMilestoneEpoch] = useState(0);
   useEffect(() => {
     if (!loaded) return;
     const streak = getOverallStreak();
+    const today = todayStr();
     const armed = milestoneArm.current.consume({ completions, skips: settings.skips });
+    let recorded = settings.milestones || [];
+    let takenBack = false;
+    // Mark the rest's Undo took the streak back below a milestone the undone action had just
+    // celebrated: forget that record, so completing the day for real celebrates it again.
+    // Silent entries stay (a first-run backfill at or below the best streak is not the undone
+    // action's).
+    const undo = milestoneUndoRef.current;
+    if (undo && undo.before !== completions) {
+      milestoneUndoRef.current = null;
+      const keep = recorded.filter(m => !(m.date === today && !m.silent && m.days > streak));
+      if (keep.length !== recorded.length) {
+        recorded = keep;
+        takenBack = true;
+        setPendingMilestone(p => (p && p.days > streak ? null : p));
+        if (deferredMilestoneRef.current?.milestone.days > streak) deferredMilestoneRef.current = null;
+      }
+    }
     const { added, celebrate } = planMilestones({
-      streak, prevStreak: prevStreakRef.current, recorded: settings.milestones, armed,
-      milestones: ALL_MILESTONES, today: todayStr(), bestStreak: getBestStreak,
+      streak, prevStreak: prevStreakRef.current, recorded, armed: !!armed,
+      milestones: ALL_MILESTONES, today, bestStreak: getBestStreak,
     });
     prevStreakRef.current = streak;
-    if (added.length === 0) return;
-    updateSettings({ milestones: [...(settings.milestones || []), ...added] });
+    if (added.length === 0 && !takenBack) return;
+    updateSettings({ milestones: [...recorded, ...added] });
     if (celebrate) {
-      setPendingMilestone(celebrate);
+      if (armed && armed.deferred) deferredMilestoneRef.current = { milestone: celebrate, date: today };
+      else setPendingMilestone(celebrate);
       track(Events.MILESTONE, { days: celebrate.days });
     }
-  }, [loaded, getOverallStreak, settings.milestones, settings.skips, completions]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loaded, getOverallStreak, settings.milestones, settings.skips, completions, milestoneEpoch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A milestone a background notification Done crossed plays when the app comes back, the
+  // same day (useCelebrationQueue then waits for Today to be the visible tab).
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      const d = deferredMilestoneRef.current;
+      if (state !== 'active' || !d) return;
+      deferredMilestoneRef.current = null;
+      if (d.date === todayStr()) setPendingMilestone(d.milestone);
+    });
+    return () => sub.remove();
+  }, [todayStr]);
 
   // Auto streak freezes: once the data is loaded and whenever the date or history
   // changes, cover up to two missed days per month in the last week. A frozen day

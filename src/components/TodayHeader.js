@@ -507,6 +507,8 @@ export function RingPulse({ live, anchorKey, children }) {
   );
 }
 
+// Two lines everywhere (review m3): on a short window (SE) the overlay also covers the top of the
+// chip row for those seconds rather than cutting the beat's own words.
 // A small streak beat (C-08: Day 1, 3 and 14 days in a row) takes the day line's place for a
 // few seconds, with an Ionicons mark in `signature`. Each change of what the line shows (the
 // beat arriving, then leaving) fades in over duration.state (150 ms under reduced motion).
@@ -530,8 +532,8 @@ function StripBanner({ banner, theme, compact, style }) {
       <Ionicons name={banner.icon || 'flame'} size={16} color={theme.signature} />
       <Text
         style={[style, styles.bannerText, { color: theme.text }]}
-        numberOfLines={compact ? 1 : 2}
-        {...(compact ? { ellipsizeMode: 'tail', adjustsFontSizeToFit: true, minimumFontScale: 0.85 } : null)}
+        numberOfLines={2}
+        {...(compact ? { adjustsFontSizeToFit: true, minimumFontScale: 0.85 } : null)}
       >
         {banner.text}
       </Text>

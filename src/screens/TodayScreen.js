@@ -150,6 +150,7 @@ export default function TodayScreen() {
   // C-08 CEL-7: Share on the milestone screen opens the streak card here, once it has closed.
   const [shareOpen, setShareOpen] = useState(false);
   const [shareMounted, setShareMounted] = useState(false);
+  const shareAfterHide = useRef(false);
   if (shareOpen && !shareMounted) setShareMounted(true);
   // Lock the pager swipe while the sheet is up, like the Habits screen does.
   useEffect(() => { setModalOpen(!!detailHabitId || shareOpen); }, [detailHabitId, shareOpen]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -904,6 +905,13 @@ export default function TodayScreen() {
         onShare={() => {
           setFullCelebration(false);
           setMilestoneShown(null);
+          shareAfterHide.current = true;
+        }}
+        // The share sheet opens once the milestone Modal has gone (review M1: presenting a Modal
+        // while another is being dismissed is dropped on iOS).
+        onHidden={() => {
+          if (!shareAfterHide.current) return;
+          shareAfterHide.current = false;
           setShareOpen(true);
         }}
       />

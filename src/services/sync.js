@@ -210,7 +210,15 @@ export async function upsertSettingsRow(row) {
 // column: without it a push could not carry extras and would only bump updated_at.
 // Resolves to true when it pushed.
 export async function writeBackSettings(userId, cloudSettings, mergedSettings, { hasExtrasColumn }) {
-  if (!userId || !hasExtrasColumn || !mergedSettings) return false;
+  if (!userId || !mergedSettings) return false;
+  // C-08: milestones merge as a union, so this device may hold entries the row lacks; send
+  // them up (the milestones column exists on every server, extras or not).
+  const cloudIds = new Set((cloudSettings?.milestones || []).map(m => m && m.id));
+  if ((mergedSettings.milestones || []).some(m => m && !cloudIds.has(m.id))) {
+    await syncSettings(userId, mergedSettings);
+    return true;
+  }
+  if (!hasExtrasColumn) return false;
   const differs = !sameExtras(cloudSettings?.extras, mergedSettings.extras);
   if (!differs && !(await isExtrasDirty())) return false;
   await syncSettings(userId, mergedSettings);

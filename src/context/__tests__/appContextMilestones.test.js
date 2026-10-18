@@ -241,6 +241,7 @@ test('m2: Skip today on the last open habit completes the day and celebrates', a
 
 // Notification and deep-link Done write the habit's volumeGoal (1 for a daily habit).
 const READ1 = [{ ...READ[0], volumeGoal: 1 }];
+// From the background the moment waits for the next foreground (m5, tested below).
 test.each([['active', 7], ['background', null]])('m1: a notification Done with the app %s', async (state, celebrates) => {
   Object.assign(mockStore, { habits: READ1, completions: history(6) });
   const r = await mount();
@@ -281,6 +282,93 @@ test('Seed perfect streak 6: streak 6, today cleared, and the next check-offs cr
   await act(async () => { app.incrementHabit('w'); });
   await flush();
   expect(app.getOverallStreak()).toBe(7);
+  expect(app.pendingMilestone?.days).toBe(7);
+  act(() => r.unmount());
+});
+
+// ── C-08 code review: B1 (pull), M2 (Undo), m5 (deferred) ───────────────────────────────────
+// A 20-day run that ended (three empty days), then `current` done days ending yesterday.
+function endedRun(current) {
+  const c = {};
+  for (let i = 6; i <= 25; i++) c[addDays(today(), -i)] = { r: 1 };
+  for (let i = 1; i <= current; i++) c[addDays(today(), -i)] = { r: 1 };
+  return c;
+}
+async function mountThenPull(cloud) {
+  let resolvePull;
+  sync.pullAllData.mockImplementationOnce(() => new Promise((res) => { resolvePull = res; }));
+  const r = await mount();
+  await act(async () => { resolvePull(cloud); });
+  await flush();
+  return r;
+}
+
+test('B1: a new device pulling a 20-day best and a 2-day streak gets no 3-day beat', async () => {
+  Object.assign(mockStore, { completions: {}, settings: { streakFreezes: [] } });
+  const r = await mountThenPull({ habits: READ, completions: endedRun(2), settings: { reminders: [], streakFreezes: [], milestones: [] } });
+  expect(app.getOverallStreak()).toBe(2);
+  expect(recordedAll()).toEqual(['streak-1', 'streak-3', 'streak-14']);
+  expect(app.settings.milestones.every(m => m.silent)).toBe(true);
+  await act(async () => { app.incrementHabit('r'); });
+  await flush();
+  expect(app.getOverallStreak()).toBe(3);
+  expect(app.pendingMilestone).toBeNull();
+  act(() => r.unmount());
+});
+
+test('B1: a returning user at streak 0 hears no "Day 1" after the pull', async () => {
+  Object.assign(mockStore, { completions: {}, settings: { streakFreezes: [] } });
+  const r = await mountThenPull({ habits: READ, completions: endedRun(0), settings: { reminders: [], streakFreezes: [], milestones: [] } });
+  expect(app.getOverallStreak()).toBe(0);
+  await act(async () => { app.incrementHabit('r'); });
+  await flush();
+  expect(app.getOverallStreak()).toBe(1);
+  expect(app.pendingMilestone).toBeNull();
+  act(() => r.unmount());
+});
+
+test('B1: a pull whose row lacks this device\'s silent entries keeps them (union merge)', async () => {
+  const silent = [{ id: 'streak-3', days: 3, date: '2026-10-01', small: true, silent: true }];
+  Object.assign(mockStore, { habits: READ, completions: history(1), settings: { reminders: [], streakFreezes: [], milestones: silent } });
+  const r = await mountThenPull({ habits: READ, completions: history(1), settings: { reminders: [], streakFreezes: [], milestones: [{ id: 'streak-1', days: 1, date: '2026-09-01', small: true, silent: true }] } });
+  expect(recordedAll()).toEqual(['streak-1', 'streak-3']);
+  act(() => r.unmount());
+});
+
+test('M2: Undo of Mark the rest takes the 7 back; completing the day later celebrates it', async () => {
+  Object.assign(mockStore, { habits: TWO, completions: historyOf(['r', 'w'], 6) });
+  const r = await mount();
+  let plan;
+  await act(async () => { plan = app.markRestDone(); });
+  await flush();
+  expect(app.pendingMilestone?.days).toBe(7);
+  expect(recorded()).toEqual(['streak-7']);
+  await act(async () => { app.restoreHabitCounts(plan.before, plan.changedIds, today()); });
+  await flush();
+  expect(app.getOverallStreak()).toBe(6);
+  expect(recorded()).toEqual([]);
+  expect(app.pendingMilestone).toBeNull();
+  await act(async () => { app.incrementHabit('r'); });
+  await act(async () => { app.incrementHabit('w'); });
+  await flush();
+  expect(app.pendingMilestone?.days).toBe(7);
+  act(() => r.unmount());
+});
+
+test('m5: a background notification Done that crosses 7 plays on the next foreground', async () => {
+  Object.assign(mockStore, { habits: READ1, completions: history(6) });
+  const r = await mount();
+  const respond = notifications.listenForNotificationResponses.mock.calls[0][0];
+  AppState.currentState = 'background';
+  await act(async () => { respond({ action: 'done', data: { kind: 'habit', habitId: 'r' } }); });
+  await flush();
+  expect(recorded()).toEqual(['streak-7']);
+  expect(app.pendingMilestone).toBeNull();
+  AppState.currentState = 'active';
+  await act(async () => {
+    AppState.addEventListener.mock.calls.filter(c => c[0] === 'change').forEach(c => c[1]('active'));
+  });
+  await flush();
   expect(app.pendingMilestone?.days).toBe(7);
   act(() => r.unmount());
 });
