@@ -93,12 +93,13 @@ export const celebration = {
   circleExpand: 650,
   textIn: 350,
   textInAt: 550,
-  autoDismissAt: 3800,
-  textOut: duration.value,
-  circleCollapse: 500,
+  // The milestone screen closes itself after this (C-08: long enough to reach Share; never
+  // while a screen reader is on).
+  autoDismissAt: 6000,
   tapTextOut: duration.state,
   tapCircleCollapse: 400,
-  staticHold: 2500, // reduced-motion milestone card
+  // Today strip: how long a small streak beat (Day 1, 3, 14) replaces the day line (C-08).
+  smallBeatHold: 5000,
   trophyOrbitAt: 600,
   trophyOrbit: 1400,
   trophyHoldAfterOrbit: 3500,

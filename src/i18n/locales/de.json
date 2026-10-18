@@ -189,11 +189,17 @@
       "markedRest": { "one": "%{count} Gewohnheit abgehakt", "other": "%{count} Gewohnheiten abgehakt" }
     },
     "milestone": {
-      "title": "%{days}-Tage-Serie!",
-      "subtitle": "%{label} dranbleiben. Das ist jetzt eine echte Gewohnheit."
+      "streak": { "one": "%{count}-Tag-Serie", "other": "%{count}-Tage-Serie" },
+      "unit": { "one": "Tag in Folge", "other": "Tage in Folge" },
+      "subtitle": "%{label} dranbleiben. Das ist jetzt eine echte Gewohnheit.",
+      "share": "Serie teilen",
+      "continue": "Tippe, um fortzufahren"
     },
-    "congrats": "Glückwunsch!",
-    "allTasks": "Du hast heute alle Aufgaben erledigt!"
+    "beat": {
+      "first": "Tag 1. Deine Serie hat begonnen.",
+      "three": "3 Tage in Folge. Ein Rhythmus entsteht.",
+      "fourteen": "14 Tage in Folge. Zwei stetige Wochen."
+    }
   },
   "onboarding": {
     "intro": {
@@ -631,6 +637,7 @@
       "sendTestSub": "Löst eine Erinnerung für deine erste Gewohnheit aus, mit Erledigt / Später",
       "sent": { "title": "Gesendet", "body": "Testbenachrichtigung ausgelöst. Schau in deinen Benachrichtigungen nach." },
       "seed": { "title": "30-Tage-Verlauf erzeugen", "body": "Dadurch werden die letzten 30 Tage mit zufälligen Erledigungen gefüllt; bereits erfasste Tage bleiben erhalten. Außerdem wird das Startdatum deiner Gewohnheiten um 31 Tage zurückgesetzt, damit der Verlauf zählt. Die Änderungen werden mit der Cloud synchronisiert und lassen sich nicht rückgängig machen.", "generate": "Erzeugen", "done": "30 Tage zufälliger Verlauf hinzugefügt.", "sub": "Zufällige Erledigungen für die letzten 30 Tage" },
+      "perfectStreak": { "title": "Perfekte Serie erzeugen", "sub": "N perfekte Tage bis gestern, heute geleert", "body": "Für deine aktuellen Gewohnheiten: Jede geplante Gewohnheit erreicht an jedem der letzten N Tage ihr Ziel, das Startdatum rückt auf den ersten davon, die heutigen Häkchen werden gelöscht und Meilensteine über N vergessen. Wird mit der Cloud synchronisiert.", "option": { "one": "%{count} Tag", "other": "%{count} Tage" } },
       "crash": { "title": "Absturz testen", "body": "Dies löst einen Darstellungsfehler aus, damit du den Absturzbildschirm und Sentry prüfen kannst.", "crash": "Absturz", "sub": "Löst einen Fehler aus, um den Absturzbildschirm zu testen" },
       "feedbackLog": { "title": "Feedback-Protokoll", "sub": "Die letzten 50 Haptik- und Tonsignale mit ihrer Verzögerung ab dem Tippen", "empty": "Noch nichts. Hake eine Gewohnheit ab und komm zurück.", "clear": "Leeren" },
       "choreography": { "title": "Choreografie beim Abhaken", "sub": "Haptik, Töne und Animationen im Takt, kein Hinweis beim Abhaken einer einzelnen Gewohnheit. Aus = das alte Timing" },
@@ -935,9 +942,6 @@
     "announce": "Challenge abgeschlossen. Trophäe verdient.",
     "a11y": "Challenge abgeschlossen, Trophäe verdient",
     "tapToContinue": "Tippe, um fortzufahren"
-  },
-  "celebration": {
-    "a11y": "%{title}. %{subtitle}. Schließen"
   },
   "whatsNew": {
     "title": "Neuigkeiten",

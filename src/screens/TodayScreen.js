@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SafeAreaView from '../components/SafeAreaView';
-import { useApp } from '../context/AppContext';
+import { useApp, STREAK_MILESTONES, SMALL_MILESTONES } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import HabitCard from '../components/HabitCard';
 import EmptyCard from '../components/EmptyCard';
@@ -16,12 +16,13 @@ import RingBurst from '../components/RingBurst';
 import CompletionCelebration from '../components/CompletionCelebration';
 import TrophyCelebration from '../components/TrophyCelebration';
 import ChallengeRewardModal from '../components/ChallengeRewardModal';
+import ShareCards from '../components/ShareCards';
 import UndoToast from '../components/UndoToast';
 import Button from '../components/ui/Button';
 import PressableScale from '../components/ui/PressableScale';
 import Dialog from '../components/ui/Dialog';
 import { radius, size, space } from '../theme/tokens';
-import { timing, duration, beat as beats } from '../theme/motion';
+import { timing, duration, beat as beats, celebration } from '../theme/motion';
 import NoteModal from '../components/NoteModal';
 import HabitDetailSheet from '../components/HabitDetailSheet';
 import { routeLeavesTab } from '../utils/links';
@@ -146,8 +147,12 @@ export default function TodayScreen() {
   // Edit lives in the Habits form: the sheet has closed (F-05 completion callback), then the
   // same route a deep link uses switches tab and opens the form.
   const editFromDetail = useCallback((habit) => openRoute({ tab: 3, habitId: habit.id, action: 'edit' }), [openRoute]);
+  // C-08 CEL-7: Share on the milestone screen opens the streak card here, once it has closed.
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareMounted, setShareMounted] = useState(false);
+  if (shareOpen && !shareMounted) setShareMounted(true);
   // Lock the pager swipe while the sheet is up, like the Habits screen does.
-  useEffect(() => { setModalOpen(!!detailHabitId); }, [detailHabitId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setModalOpen(!!detailHabitId || shareOpen); }, [detailHabitId, shareOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   // The habit vanished while its sheet was open (deleted elsewhere and pulled in, archived):
   // the sheet has unmounted, so clear its id and release the swipe lock (code review m1).
   useEffect(() => { if (detailHabitId && !detailHabit) setDetailHabitId(null); }, [detailHabitId, detailHabit]);
@@ -191,16 +196,40 @@ export default function TodayScreen() {
   // the milestone at the end of the moment, after the trophy, and only while Today is shown.
   const milestoneRing = useRef('ring');
   const tabActive = useTabActive();
+  // C-08: a small beat (Day 1, 3 or 14 days in a row) is a line in the strip (and the sticky
+  // bar), held for celebration.smallBeatHold; it adds no sound or haptic of its own, the
+  // day.complete chord that just played is its sound (plan §2.10). A big milestone is the
+  // full screen with the fanfare.
+  const [beatBanner, setBeatBanner] = useState(null);
+  const bannerTimer = useRef(null);
+  const showBeat = useCallback((milestone, { hold = false } = {}) => {
+    const text = milestone.text;
+    clearTimeout(bannerTimer.current);
+    setBeatBanner({ key: `${milestone.days}-${Date.now()}`, icon: milestone.icon, text });
+    announce(text);
+    if (!hold) bannerTimer.current = setTimeout(() => setBeatBanner(null), celebration.smallBeatHold);
+  }, []);
+  useEffect(() => () => clearTimeout(bannerTimer.current), []);
   const showMilestone = useCallback((milestone) => {
+    if (milestone.small) { showBeat(milestone); return; }
     // The milestone circle grows from the ring that is showing (the sticky one when scrolled).
     milestoneRing.current = stuckRef.current ? 'ringSticky' : 'ring';
     setMilestoneShown(milestone);
     setFullCelebration(true);
     feedback.play(EVENTS.milestone);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [showBeat]); // eslint-disable-line react-hooks/exhaustive-deps
   const { trophyCelebrating, setTrophyCelebrating, openTrophyAt, trophyDone } = useCelebrationQueue({
     pendingMilestone, clearPendingMilestone, active: tabActive, onMilestone: showMilestone,
   });
+  // The web mockup's `?celebrate=<days>` shows that milestone (held) for review stills.
+  const mockCelebrate = mockupParams.celebrate;
+  useEffect(() => {
+    if (mockCelebrate == null) return;
+    const m = [...SMALL_MILESTONES, ...STREAK_MILESTONES].find(x => x.days === mockCelebrate);
+    if (!m) return;
+    if (m.small) showBeat(m, { hold: true });
+    else { setMilestoneShown(m); setFullCelebration(true); }
+  }, [mockCelebrate, showBeat]);
   const [rewardModalVisible, setRewardModalVisible] = useState(false);
   const [rewardsToShow, setRewardsToShow] = useState([]);
   const rewardModalShown = useRef(false);
@@ -273,6 +302,13 @@ export default function TodayScreen() {
   const total = headerDue.length;
   // The strip's state: no strip before the first habit; a rest day when nothing is asked today.
   const headerState = habits.length === 0 ? null : total === 0 ? 'rest' : completed >= total ? 'complete' : 'progress';
+  // A small beat leaves with the day it celebrated: an un-check takes it down at once.
+  useEffect(() => {
+    if (headerState === 'progress' && beatBanner && mockCelebrate == null) {
+      clearTimeout(bannerTimer.current);
+      setBeatBanner(null);
+    }
+  }, [headerState]); // eslint-disable-line react-hooks/exhaustive-deps
   const liveStreak = habits.length > 0 ? getOverallStreak() : 0;
   // C-05 chips. "Frozen": a freeze covered yesterday, so the streak stands on it today.
   // Freezes are spent on the missed day itself (reconcileFreezes looks back from day -1), so
@@ -692,6 +728,7 @@ export default function TodayScreen() {
             challenges={challengeChips}
             onStreakPress={openStreakRule}
             onChallengePress={openChallenges}
+            banner={beatBanner}
           />
         </View>
 
@@ -813,6 +850,7 @@ export default function TodayScreen() {
           streak={streak}
           frozen={frozen}
           onPress={scrollToTop}
+          banner={beatBanner}
           a11yLabel={headerState ? (headerState === 'progress' ? t('today.ring.a11y', { completed, total }) : dayLine({ state: headerState, completed, total, streak })) : undefined}
         />
       </Animated.View>
@@ -854,18 +892,24 @@ export default function TodayScreen() {
 
       <CompletionCelebration
         visible={fullCelebration}
+        milestone={milestoneShown}
         originKey={milestoneRing.current}
+        hold={mockCelebrate != null}
         onDone={() => {
           setFullCelebration(false);
           // A milestone is a signature moment: the one time we may ask for a rating.
           if (milestoneShown) setTimeout(() => maybeRequestReview(`milestone-${milestoneShown.days}`), 800);
           setMilestoneShown(null);
         }}
-        primaryColor={theme.action}
-        emoji={milestoneShown?.emoji ?? '🎉'}
-        title={milestoneShown ? t('today.milestone.title', { days: milestoneShown.days }) : t('today.congrats')}
-        subtitle={milestoneShown ? t('today.milestone.subtitle', { label: milestoneShown.label }) : t('today.allTasks')}
+        onShare={() => {
+          setFullCelebration(false);
+          setMilestoneShown(null);
+          setShareOpen(true);
+        }}
       />
+      {/* Mounted from the first Share on (its cards compute a year of day summaries, which the
+          check-off path must not pay for). */}
+      {shareMounted ? <ShareCards visible={shareOpen} onClose={() => setShareOpen(false)} initialKind="streak" /> : null}
 
       <TrophyCelebration
         visible={trophyCelebrating}

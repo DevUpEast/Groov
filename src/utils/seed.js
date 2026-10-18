@@ -79,3 +79,46 @@ export function applySeedSnapshot(prev, pastSnapshot, today, habits) {
   const p = prev || {};
   return { ...pastSnapshot, ...p, [today]: p[today]?.length ? p[today] : snapshotOf(habits) };
 }
+
+// Settings → Dev tools → "Seed perfect streak N" (C-08): a deterministic run for testing the
+// milestone moments. For the current `habits` it writes `n` consecutive perfect days ending
+// yesterday (every habit scheduled that day gets its goal; a limit habit stays untouched,
+// which meets it), writes their snapshots, and moves every habit's `createdAt` to the first
+// day of the run, so the day before it has no habit and ends the chain: the overall streak is
+// exactly `n`. Today's counts for these habits are cleared, so the next check-off of every
+// habit takes the streak to n + 1. Skips on the run and today are dropped, and recorded
+// milestones above `n` are removed so crossing them can celebrate again. Pure: the caller
+// applies the result.
+export function buildPerfectStreak({ habits, completions, snapshot, skips, milestones, today, n, isScheduledOn }) {
+  const start = addDays(today, -n);
+  const ids = new Set(habits.map(h => h.id));
+  const run = habits.map(h => ({ ...h, createdAt: start }));
+  const daySnapshot = snapshotOf(run);
+  const nextCompletions = { ...(completions || {}) };
+  const nextSnapshot = { ...(snapshot || {}) };
+  const strip = (day) => Object.fromEntries(Object.entries(day || {}).filter(([id]) => !ids.has(id)));
+  for (let i = 1; i <= n; i++) {
+    const key = addDays(today, -i);
+    const day = strip(nextCompletions[key]);
+    run.forEach((h) => {
+      if (h.type === 'atMost') return;
+      if (isScheduledOn && !isScheduledOn(h.schedule, key)) return;
+      day[h.id] = h.volumeGoal || 1;
+    });
+    if (Object.keys(day).length > 0) nextCompletions[key] = day; else delete nextCompletions[key];
+    nextSnapshot[key] = daySnapshot;
+  }
+  const todayDay = strip(nextCompletions[today]);
+  if (Object.keys(todayDay).length > 0) nextCompletions[today] = todayDay; else delete nextCompletions[today];
+  if (!nextSnapshot[today]?.length) nextSnapshot[today] = daySnapshot;
+  const nextSkips = { ...(skips || {}) };
+  for (let i = 0; i <= n; i++) delete nextSkips[addDays(today, -i)];
+  return {
+    start,
+    habits: run,
+    completions: nextCompletions,
+    snapshot: nextSnapshot,
+    skips: nextSkips,
+    milestones: (milestones || []).filter(m => !(m.days > n)),
+  };
+}

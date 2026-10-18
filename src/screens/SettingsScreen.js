@@ -10,6 +10,7 @@ import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import TimePicker from '../components/TimePicker';
 import Dialog from '../components/ui/Dialog';
+import ActionSheet from '../components/ui/ActionSheet';
 import { sendTestNotification } from '../utils/notifications';
 import feedback, { EVENTS, recent as recentFeedback, clearRecent as clearFeedbackLog } from '../services/feedback';
 import { to12h, to24h, formatTime12 as formatTime } from '../utils/time';
@@ -207,7 +208,7 @@ function Section({ title, children, theme }) {
 
 export default function SettingsScreen() {
   const {
-    settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, devMode, setDevMode,
+    settings, updateSettings, theme, resetAll, dateOffset, setDateOffset, habits, updateHabit, pushAllData, seedRandomHistory, seedPerfectStreak, devMode, setDevMode,
     allHabits, completions, notes, moods, challenges, pastChallenges, dailySnapshot, accountCreatedAt, lastBackupAt, markBackedUp, importBackup,
     ensureNotificationPermission, notificationPermission, isPro, openPaywall, canAddReminder,
   } = useApp();
@@ -459,6 +460,7 @@ export default function SettingsScreen() {
   const [crashTest, setCrashTest] = useState(false);
   // Dev: the feedback service's ring buffer (null = closed). A snapshot, re-read on each open.
   const [feedbackLog, setFeedbackLog] = useState(null);
+  const [perfectSeedOpen, setPerfectSeedOpen] = useState(false);
   if (crashTest) throw new Error('Test crash from Settings dev tools');
 
   const handleVersionTap = () => {
@@ -835,6 +837,21 @@ export default function SettingsScreen() {
               <Ionicons name="calendar-outline" size={20} color={theme.link} />
             </TouchableOpacity>
 
+            {/* Seed a perfect streak of N days (C-08): a deterministic milestone crossing */}
+            <TouchableOpacity
+              style={[styles.row, { borderBottomColor: theme.border }]}
+              onPress={() => setPerfectSeedOpen(true)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.dev.perfectStreak.title')}
+            >
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.dev.perfectStreak.title')}</Text>
+                <Text style={[styles.rowSub, { color: theme.textSecondary }]}>{t('settings.dev.perfectStreak.sub')}</Text>
+              </View>
+              <Ionicons name="flame-outline" size={20} color={theme.link} />
+            </TouchableOpacity>
+
             {/* Feedback log: what fired, and when, relative to the tap (plan §7.4) */}
             <TouchableOpacity
               style={[styles.row, { borderBottomColor: theme.border }]}
@@ -1128,6 +1145,19 @@ export default function SettingsScreen() {
           linkedAlert.current = false;
           Alert.alert(t('settings.account.linked.title'), t('settings.account.linked.body'));
         }}
+      />
+
+      {/* Dev: seed a perfect streak (C-08) */}
+      <ActionSheet
+        visible={perfectSeedOpen}
+        title={t('settings.dev.perfectStreak.title')}
+        message={t('settings.dev.perfectStreak.body')}
+        haptic={false}
+        onCancel={() => setPerfectSeedOpen(false)}
+        options={[0, 2, 6, 13, 29].map(n => ({
+          label: t('settings.dev.perfectStreak.option', { count: n }),
+          onPress: () => { setPerfectSeedOpen(false); seedPerfectStreak(n); },
+        }))}
       />
 
       {/* Dev: feedback log */}
