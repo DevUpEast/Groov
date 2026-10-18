@@ -18,7 +18,8 @@ const REDUCED_MS = 150;
 
 export const duration = {
   press: 100, // press-in scale and overlay
-  state: 200, // check draw, chip fill, tint, cross-fades, the pager slide
+  state: 200, // check draw, tint, cross-fades, the pager slide
+  selection: 150, // Chip and SegmentedControl fill (PRS-6, F-07)
   value: 300, // ring and bar tweens, scrim, snackbar in
   enter: 450, // large surface enter (sheet)
   reduced: REDUCED_MS, // every slide becomes this fade
@@ -193,6 +194,7 @@ export function useMotion() {
       ? {
           press: reducedDuration(duration.press),
           state: reducedDuration(duration.state),
+          selection: reducedDuration(duration.selection),
           value: reducedDuration(duration.value),
           enter: reducedDuration(duration.enter),
           reduced: REDUCED_MS,

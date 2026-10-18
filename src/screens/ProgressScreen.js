@@ -18,7 +18,7 @@ import { t, getLocale, useLocale } from '../i18n';
 import { data, elevation } from '../theme/tokens';
 import OverlayModal from '../components/ui/OverlayModal';
 import AppText from '../components/ui/AppText';
-import PressableScale, { hitSlopFor } from '../components/ui/PressableScale';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import { numeric } from '../theme/typography';
 import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, useMotion } from '../theme/motion';
 
@@ -298,6 +298,15 @@ export default function ProgressScreen() {
   const [reflectionError, setReflectionError] = useState(false);
   const [reflectionErrorMsg, setReflectionErrorMsg] = useState('');
   const [reflectionGeneratedAt, setReflectionGeneratedAt] = useState(null);
+  // The reflection period control. A locked period is still picked, so its card shows when it
+  // unlocks; SegmentedControl plays `selection` for an enabled one, this covers the locked tap.
+  const pickReflectionPeriod = (value) => {
+    if (value === reflectionPeriod) return;
+    if (!(value === 'weekly' ? canGenerateWeekly : canGenerateMonthly)) feedback.play(EVENTS.selection);
+    setReflectionPeriod(value);
+    setReflectionMessage(null);
+    setReflectionError(false);
+  };
 
   // Days since account creation (0 = creation day).
   // Uses todayStr() so dev date offsets are reflected in the thresholds.
@@ -452,27 +461,19 @@ export default function ProgressScreen() {
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.cardHeaderRow}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>{t('progress.history')}</Text>
-            <View style={styles.periodToggle}>
-              {PERIOD_CONFIG.map((cfg, i) => (
-                <PressableScale
-                  key={cfg.key}
-                  hitSlop={PERIOD_SLOP}
-                  style={[
-                    styles.periodBtn,
-                    { borderColor: theme.controlBorder },
-                    heatPeriodIdx === i && { backgroundColor: theme.selection, borderColor: theme.selectionBorder },
-                  ]}
-                  onPress={() => { feedback.play(EVENTS.selection); setHeatPeriodIdx(i); }}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('progress.lastDaysA11y', { count: cfg.days })}
-                  accessibilityState={{ selected: heatPeriodIdx === i }}
-                >
-                  <Text style={[styles.periodBtnText, { color: heatPeriodIdx === i ? theme.onSelection : theme.textSecondary }]}>
-                    {t(`progress.period.${cfg.key}`)}
-                  </Text>
-                </PressableScale>
-              ))}
-            </View>
+            <SegmentedControl
+              theme={theme}
+              compact
+              style={styles.periodToggle}
+              accessibilityLabel={t('progress.history')}
+              value={heatPeriodIdx}
+              onChange={setHeatPeriodIdx}
+              options={PERIOD_CONFIG.map((cfg, i) => ({
+                value: i,
+                label: t(`progress.period.${cfg.key}`),
+                accessibilityLabel: t('progress.lastDaysA11y', { count: cfg.days }),
+              }))}
+            />
           </View>
 
           {/* Legend */}
@@ -588,37 +589,26 @@ export default function ProgressScreen() {
         <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.cardHeaderRow}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>{t('progress.reflection.title')}</Text>
-            <View style={styles.periodToggle}>
-              {[{ label: '7d', value: 'weekly' }, { label: '30d', value: 'monthly' }].map(({ label, value }) => {
+            <SegmentedControl
+              theme={theme}
+              compact
+              style={styles.periodToggle}
+              accessibilityLabel={t('progress.reflection.title')}
+              value={(reflectionPeriod === 'weekly' ? canGenerateWeekly : canGenerateMonthly) ? reflectionPeriod : null}
+              onChange={pickReflectionPeriod}
+              // A locked period still opens its "unlocks after N days" note (it was tappable before).
+              onDisabledPress={pickReflectionPeriod}
+              options={[{ label: '7d', value: 'weekly' }, { label: '30d', value: 'monthly' }].map(({ label, value }) => {
                 const locked = value === 'weekly' ? !canGenerateWeekly : !canGenerateMonthly;
-                const active = reflectionPeriod === value && !locked;
-                return (
-                  <PressableScale
-                    key={value}
-                    hitSlop={PERIOD_SLOP}
-                    style={[
-                      styles.periodBtn,
-                      { borderColor: theme.controlBorder },
-                      active && { backgroundColor: theme.selection, borderColor: theme.selectionBorder },
-                      locked && { opacity: 0.4 },
-                    ]}
-                    onPress={() => {
-                      feedback.play(EVENTS.selection);
-                      setReflectionPeriod(value);
-                      setReflectionMessage(null);
-                      setReflectionError(false);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={(value === 'weekly' ? t('progress.reflection.weeklyA11y') : t('progress.reflection.monthlyA11y')) + (locked ? t('progress.reflection.lockedSuffix') : '')}
-                    accessibilityState={{ selected: active, disabled: locked }}
-                  >
-                    <Text style={[styles.periodBtnText, { color: active ? theme.onSelection : theme.textSecondary }]}>
-                      {locked ? '🔒' : label}
-                    </Text>
-                  </PressableScale>
-                );
+                return {
+                  value,
+                  label,
+                  icon: locked ? 'lock-closed' : undefined,
+                  disabled: locked,
+                  accessibilityLabel: (value === 'weekly' ? t('progress.reflection.weeklyA11y') : t('progress.reflection.monthlyA11y')) + (locked ? t('progress.reflection.lockedSuffix') : ''),
+                };
               })}
-            </View>
+            />
           </View>
           <Text style={[styles.cardHint, { color: theme.textSecondary }]}>
             {t('progress.reflection.hint')}
@@ -708,9 +698,6 @@ export default function ProgressScreen() {
   );
 }
 
-const PERIOD_PILL_HEIGHT = 32;
-const PERIOD_SLOP = { ...hitSlopFor(0, PERIOD_PILL_HEIGHT), left: 4, right: 4 };
-
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: 24, paddingBottom: 48 },
@@ -732,11 +719,9 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 15, fontWeight: '700' },
   cardHint: { fontSize: 12, marginTop: 2, marginBottom: 6 },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  // Pills: 32 tall + PERIOD_SLOP to the touch minimum (F-06; F-07's SegmentedControl replaces
-  // them). The 8 px gap leaves room for the 4 px side slop without overlapping targets.
-  periodToggle: { flexDirection: 'row', gap: 8 },
-  periodBtn: { minHeight: PERIOD_PILL_HEIGHT, minWidth: 40, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12, borderRadius: 16, borderWidth: 1.5, overflow: 'hidden' },
-  periodBtnText: { fontSize: 12, fontWeight: '700' },
+  // SegmentedControl (F-07): 40 tall, slop to the touch minimum; it wraps under the title when
+  // the card is too narrow (flexShrink lets the title keep its line).
+  periodToggle: { flexShrink: 1, justifyContent: 'flex-end', marginLeft: 8 },
   heatGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
   moodStrip: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   moodDay: { alignItems: 'center', flex: 1 },

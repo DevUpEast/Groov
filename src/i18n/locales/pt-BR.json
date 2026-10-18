@@ -15,7 +15,8 @@
     "notNow": "Agora não",
     "undo": "Desfazer",
     "slider": "Controle deslizante",
-    "shortDays": "%{count}d"
+    "shortDays": "%{count}d",
+    "charCount": { "one": "%{count} de %{max} caracteres", "other": "%{count} de %{max} caracteres" }
   },
   "app": {
     "tabs": {
@@ -246,7 +247,7 @@
     "reorder": "Reordenar hábitos",
     "finishReorder": "Concluir reordenação",
     "empty": { "title": "Nenhum hábito ainda", "body": "Comece agora" },
-    "archived": "ARQUIVADOS (%{count})",
+    "archived": "Arquivados (%{count})",
     "row": {
       "detailsA11y": "%{name}, ver detalhes",
       "schedulePill": "📅 %{schedule}",
@@ -439,7 +440,7 @@
       "title": "💡 Dica",
       "body": "Você pode ter até 3 desafios ao mesmo tempo. Vincule hábitos específicos a cada desafio."
     },
-    "past": "DESAFIOS ANTERIORES",
+    "past": "Desafios anteriores",
     "pastEmpty": "Desafios concluídos ou excluídos aparecerão aqui.",
     "pastSubTier": "%{done}/%{days} dias · %{tier} ✓",
     "pastSubEnded": "%{done}/%{days} dias · Encerrado",
@@ -475,7 +476,7 @@
       "range": { "week": "Semana", "month": "Mês", "year": "Ano" },
       "rangeA11y": "%{label}, até %{max} dias",
       "durationA11y": "Duração do desafio em dias",
-      "linked": "Hábitos Vinculados",
+      "linked": "Hábitos vinculados",
       "noHabits": "Nenhum hábito ainda. Vá até a aba Hábitos para criar alguns.",
       "linkAll": "⚡ Vincular Todos os Hábitos",
       "linkAllA11y": "Vincular todos os hábitos",
@@ -570,7 +571,7 @@
   },
   "settings": {
     "title": "Ajustes",
-    "appearance": "APARÊNCIA",
+    "appearance": "Aparência",
     "theme": "Tema",
     "themeFollows": "Segue a configuração do seu dispositivo",
     "themeAlwaysLight": "Sempre claro",
@@ -582,7 +583,7 @@
     "languageSystemSub": "Padrão do sistema (%{label})",
     "languageTitle": "Idioma",
     "languageBody": "Escolha o idioma que o Groov usa.",
-    "notifications": "NOTIFICAÇÕES",
+    "notifications": "Notificações",
     "enableNotifications": "Ativar Notificações",
     "enableSubWeb": "Notificações push apenas no dispositivo",
     "enableSub": "Chave geral para todos os lembretes",
@@ -600,18 +601,18 @@
     "addReminder": "Adicionar Lembrete",
     "newReminderLabel": "Lembrete",
     "removeReminder": { "title": "Remover Lembrete", "body": "Excluir este lembrete?", "habitBody": "Desativar o lembrete de \"%{name}\"?" },
-    "feedback": "FEEDBACK",
+    "feedback": "Feedback",
     "sounds": "Sons",
     "soundsSub": "Sons ao concluir hábitos e desafios",
     "haptics": "Resposta Tátil",
     "hapticsSub": "Vibração ao marcar (apenas no dispositivo)",
     "dev": {
-      "title": "FERRAMENTAS DE DEV",
+      "title": "Ferramentas de dev",
       "simulatedDate": "Data Simulada",
       "offset": { "one": "Deslocamento: %{offset} dia", "other": "Deslocamento: %{offset} dias" },
       "prevDay": "Dia anterior",
       "resetDate": "Redefinir a data simulada para agora",
-      "now": "AGORA",
+      "now": "Agora",
       "nextDay": "Próximo dia",
       "sendTest": "Enviar Notificação de Teste",
       "sendTestSub": "Dispara um lembrete para o seu primeiro hábito, com Concluir / Adiar",
@@ -628,14 +629,14 @@
       "moreTaps": { "one": "Mais %{count} toque para desbloquear as ferramentas de dev", "other": "Mais %{count} toques para desbloquear as ferramentas de dev" }
     },
     "pro": {
-      "title": "GROOV PRO",
+      "title": "Groov Pro",
       "have": "Você tem o Groov Pro",
       "upgrade": "Assine o Groov Pro",
       "haveSub": "Obrigado por apoiar um app feito por uma pessoa só",
       "upgradeSub": "Hábitos ilimitados, mais lembretes e coaching de IA"
     },
     "account": {
-      "title": "CONTA",
+      "title": "Conta",
       "displayName": "Nome de Exibição",
       "displayNameSub": "Adicione um nome para saudações e coaching",
       "guest": "Conta de convidado",
@@ -669,7 +670,7 @@
       }
     },
     "backup": {
-      "title": "BACKUP",
+      "title": "Backup",
       "export": "Exportar backup",
       "exportSub": "%{last} · Arquivo JSON com todos os hábitos, check-ins e ajustes",
       "lastBackup": "Último backup em %{date} às %{time}",
@@ -690,7 +691,7 @@
       "importFailed": { "title": "Falha na importação", "body": "Algo deu errado durante a restauração." }
     },
     "data": {
-      "title": "DADOS",
+      "title": "Dados",
       "resetPassword": "Redefinir Senha",
       "resetPasswordSub": "Enviar um código de redefinição para o seu e-mail",
       "resetPasswordA11y": "Redefinir senha, enviar um código de redefinição para o seu e-mail",
@@ -725,7 +726,7 @@
       }
     },
     "about": {
-      "title": "SOBRE",
+      "title": "Sobre",
       "widget": "Adicionar widget à tela inicial",
       "widgetSub": "Hábitos de hoje com check-off em um toque",
       "widgetUnsupported": { "title": "Não compatível", "body": "Seu launcher não permite adicionar widgets a partir de apps. Pressione e segure a tela inicial e escolha o Groov na lista de widgets." },

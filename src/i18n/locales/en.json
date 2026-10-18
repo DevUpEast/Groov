@@ -15,7 +15,8 @@
     "notNow": "Not now",
     "undo": "Undo",
     "slider": "Slider",
-    "shortDays": "%{count}d"
+    "shortDays": "%{count}d",
+    "charCount": { "one": "%{count} of %{max} characters", "other": "%{count} of %{max} characters" }
   },
   "app": {
     "tabs": {
@@ -246,7 +247,7 @@
     "reorder": "Reorder habits",
     "finishReorder": "Finish reordering",
     "empty": { "title": "No Habits Yet", "body": "Get started" },
-    "archived": "ARCHIVED (%{count})",
+    "archived": "Archived (%{count})",
     "row": {
       "detailsA11y": "%{name}, show details",
       "schedulePill": "📅 %{schedule}",
@@ -439,7 +440,7 @@
       "title": "💡 Tip",
       "body": "You can run up to 3 challenges at once. Link specific habits to each challenge."
     },
-    "past": "PAST CHALLENGES",
+    "past": "Past challenges",
     "pastEmpty": "Completed or deleted challenges will appear here.",
     "pastSubTier": "%{done}/%{days} days · %{tier} ✓",
     "pastSubEnded": "%{done}/%{days} days · Ended",
@@ -475,7 +476,7 @@
       "range": { "week": "Week", "month": "Month", "year": "Year" },
       "rangeA11y": "%{label}, up to %{max} days",
       "durationA11y": "Challenge duration in days",
-      "linked": "Linked Habits",
+      "linked": "Linked habits",
       "noHabits": "No habits yet. Go to the Habits tab to create some.",
       "linkAll": "⚡ Link All Habits",
       "linkAllA11y": "Link all habits",
@@ -570,7 +571,7 @@
   },
   "settings": {
     "title": "Settings",
-    "appearance": "APPEARANCE",
+    "appearance": "Appearance",
     "theme": "Theme",
     "themeFollows": "Follows your device setting",
     "themeAlwaysLight": "Always light",
@@ -582,7 +583,7 @@
     "languageSystemSub": "System default (%{label})",
     "languageTitle": "Language",
     "languageBody": "Choose the language Groov uses.",
-    "notifications": "NOTIFICATIONS",
+    "notifications": "Notifications",
     "enableNotifications": "Enable Notifications",
     "enableSubWeb": "Push notifications on device only",
     "enableSub": "Master toggle for all reminders",
@@ -600,18 +601,18 @@
     "addReminder": "Add Reminder",
     "newReminderLabel": "Reminder",
     "removeReminder": { "title": "Remove Reminder", "body": "Delete this reminder?", "habitBody": "Turn off the reminder for \"%{name}\"?" },
-    "feedback": "FEEDBACK",
+    "feedback": "Feedback",
     "sounds": "Sounds",
     "soundsSub": "Chimes when you complete habits and challenges",
     "haptics": "Haptic Feedback",
     "hapticsSub": "Vibration on check-off (device only)",
     "dev": {
-      "title": "DEV TOOLS",
+      "title": "Dev tools",
       "simulatedDate": "Simulated Date",
       "offset": { "one": "Offset: %{offset} day", "other": "Offset: %{offset} days" },
       "prevDay": "Previous day",
       "resetDate": "Reset simulated date to now",
-      "now": "NOW",
+      "now": "Now",
       "nextDay": "Next day",
       "sendTest": "Send Test Notification",
       "sendTestSub": "Fires a reminder for your first habit, with Done / Snooze",
@@ -628,14 +629,14 @@
       "moreTaps": { "one": "%{count} more tap to unlock dev tools", "other": "%{count} more taps to unlock dev tools" }
     },
     "pro": {
-      "title": "GROOV PRO",
+      "title": "Groov Pro",
       "have": "You have Groov Pro",
       "upgrade": "Upgrade to Groov Pro",
       "haveSub": "Thank you for supporting a one-person app",
       "upgradeSub": "Unlimited habits, more reminders and AI coaching"
     },
     "account": {
-      "title": "ACCOUNT",
+      "title": "Account",
       "displayName": "Display Name",
       "displayNameSub": "Add a name for greetings and coaching",
       "guest": "Guest account",
@@ -669,7 +670,7 @@
       }
     },
     "backup": {
-      "title": "BACKUP",
+      "title": "Backup",
       "export": "Export backup",
       "exportSub": "%{last} · JSON file with every habit, check-in and setting",
       "lastBackup": "Last backup %{date} at %{time}",
@@ -690,7 +691,7 @@
       "importFailed": { "title": "Import failed", "body": "Something went wrong while restoring." }
     },
     "data": {
-      "title": "DATA",
+      "title": "Data",
       "resetPassword": "Reset Password",
       "resetPasswordSub": "Send a reset code to your email",
       "resetPasswordA11y": "Reset Password, send a reset code to your email",
@@ -725,7 +726,7 @@
       }
     },
     "about": {
-      "title": "ABOUT",
+      "title": "About",
       "widget": "Add home-screen widget",
       "widgetSub": "Today's habits with one-tap check-off",
       "widgetUnsupported": { "title": "Not supported", "body": "Your launcher does not support adding widgets from apps. Long-press your home screen and pick Groov from the widget list instead." },

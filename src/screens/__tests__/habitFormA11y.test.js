@@ -11,12 +11,15 @@ const form = src.slice(start, end);
 
 // Each <TouchableOpacity ...> element up to its closing tag (no nested touchables in the form).
 const touchables = form.split(/<TouchableOpacity\b/).slice(1).map(chunk => chunk.split('</TouchableOpacity>')[0]);
+// F-07: the schedule, weekday, type and time-of-day chips are ui/Chip and the volume range a
+// ui/SegmentedControl; both set their role and selected state themselves (controls.test.js).
+const sharedSelectables = (form.match(/<(Chip|SegmentedControl)\b/g) || []).length;
 
 describe('habit form accessibility (S-06)', () => {
   it('finds the form pressables', () => {
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
-    expect(touchables.length).toBeGreaterThanOrEqual(10);
+    expect(touchables.length + sharedSelectables).toBeGreaterThanOrEqual(10);
   });
 
   it('gives every pressable a role', () => {
@@ -41,11 +44,11 @@ describe('habit form accessibility (S-06)', () => {
   it('exposes selected state on every chip-like control', () => {
     // icon, photo, colour, schedule, weekday, type, time of day, volume max
     const selected = touchables.filter(tag => /accessibilityState=\{\{\s*selected:/.test(tag));
-    expect(selected.length).toBeGreaterThanOrEqual(8);
+    expect(selected.length + sharedSelectables).toBeGreaterThanOrEqual(8);
   });
 
   it('labels the Name input and the volume slider', () => {
-    expect(form).toContain("accessibilityLabel={t('habits.form.name')}");
+    expect(form).toContain("label={t('habits.form.name')}"); // TextField: the label is the accessible name
     expect(form).toContain("label={t('habits.form.timesLabel')}");
   });
 

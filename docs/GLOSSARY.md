@@ -65,7 +65,7 @@ One term per concept, used the same way everywhere: tab, title, button, accessib
 
 ### All locales
 - Placeholders (`%{name}`) and plural keys (`one` / `other`, ja included) must match `en.json`. `npx jest src/i18n` and `node scripts/i18n-check.mjs` enforce this.
-- **Sentence case** for buttons, titles and labels in every locale ("Save changes", "Got it"). Only product and feature names are capitalised: Groov Pro, Magic Fill, Kickstart. Section labels may be rendered in caps by style, but the string itself stays in sentence case. The en Title Case strings and the pt-BR Title Case strings ("Salvar Alterações", "Meus Hábitos") are swept by P-07.
+- **Sentence case** for buttons, titles and labels in every locale ("Save changes", "Got it"). Only product and feature names are capitalised: Groov Pro, Magic Fill, Kickstart. Section labels are sentence case too, in the string and on screen: since F-07 no style renders them in caps (`ui/SectionLabel`, and a jest check fails on `textTransform: 'uppercase'`). The en Title Case strings and the pt-BR Title Case strings ("Salvar Alterações", "Meus Hábitos") are swept by P-07.
 - No colons in titles ("This week", not "Habits Completed: Weekly"; P-07).
 - Ellipsis is the single character `…`, not `...`.
 - Numbers, percentages and times are formatted at render time with `Intl` (P-05). Don't hard-code `8:00 PM` or a decimal separator in a string.

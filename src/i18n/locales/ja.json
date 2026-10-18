@@ -15,7 +15,8 @@
     "notNow": "今はしない",
     "undo": "元に戻す",
     "slider": "スライダー",
-    "shortDays": "%{count}日"
+    "shortDays": "%{count}日",
+    "charCount": { "one": "%{max}文字中%{count}文字", "other": "%{max}文字中%{count}文字" }
   },
   "app": {
     "tabs": {

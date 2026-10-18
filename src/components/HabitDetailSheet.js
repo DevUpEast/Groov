@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   stat: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1, gap: 2 },
   statEmoji: { fontSize: 16 },
   statValue: { fontSize: 17, fontWeight: 'bold', ...numeric },
-  statLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  statLabel: { fontSize: 12, fontWeight: '600' },
   sectionTitle: { fontSize: 15, fontWeight: '700' },
   hint: { fontSize: 12, marginTop: 2, marginBottom: 8 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 },

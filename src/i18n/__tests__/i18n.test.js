@@ -69,7 +69,7 @@ describe('t()', () => {
   });
   it('interpolates %{name} params', () => {
     expect(t('today.greeting.withName', { greeting: 'Hi', name: 'Isaac' })).toBe('Hi, Isaac');
-    expect(t('habits.archived', { count: 3 })).toBe('ARCHIVED (3)');
+    expect(t('habits.archived', { count: 3 })).toBe('Archived (3)');
   });
   it('reports missing keys as a readable message rather than throwing', () => {
     expect(() => t('does.not.exist')).not.toThrow();

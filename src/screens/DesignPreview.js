@@ -9,7 +9,12 @@ import { contrastRatio } from '../theme/contrast';
 import ProgressRing from '../components/ProgressRing';
 import TodayHeader, { TodayStickyBar } from '../components/TodayHeader';
 import AppText from '../components/ui/AppText';
+import Chip from '../components/ui/Chip';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import TextField from '../components/ui/TextField';
+import SectionLabel from '../components/ui/SectionLabel';
 import { t } from '../i18n';
+import { weekdayLabels } from '../utils/schedule';
 
 // Dev-only token preview (F-01, plan §2.1). Opened with groov://dev/design in a dev build or
 // the web mockup (`--route dev/design`); App.js never renders it in a release build.
@@ -42,6 +47,78 @@ const TODAY_CHIP_CASES = [
   { id: '3ch', props: { ...CHIP_BASE, streak: 12, challenges: [KICK, RESET, BUILDER] } },
 ];
 
+// The F-07 controls in their states, with live state so taps can be tried. Labels are real UI
+// strings, so `?lang=de|ja` shows the translated widths.
+function ControlsPreview({ theme }) {
+  const [time, setTime] = useState('morning');
+  const [days, setDays] = useState([1, 3, 5]);
+  const [period, setPeriod] = useState(0);
+  const [kind, setKind] = useState('streak');
+  const [themeOpt, setThemeOpt] = useState('system');
+  const [name, setName] = useState('');
+  const [plan, setPlan] = useState('After I pour my morning coffee, I stretch for 2 min');
+  const dayLabels = weekdayLabels();
+  return (
+    <View testID="controls-preview">
+      <SectionLabel label={t('habits.form.timeOfDay')} icon="time-outline" theme={theme} first header={false} />
+      <View style={styles.chipRow}>
+        {['anytime', 'morning', 'afternoon', 'evening'].map(o => (
+          <Chip key={o} theme={theme} label={t(`timeOfDay.${o}`)} selected={time === o} onPress={() => setTime(o)} />
+        ))}
+        <Chip theme={theme} label={t('habitTypes.timed.label')} icon="timer-outline" disabled />
+      </View>
+      <View style={styles.chipRow}>
+        {[1, 2, 3, 4, 5, 6, 0].map(d => (
+          <Chip
+            key={d}
+            theme={theme}
+            multi
+            label={dayLabels[d]}
+            selected={days.includes(d)}
+            onPress={() => setDays(v => (v.includes(d) ? v.filter(x => x !== d) : [...v, d]))}
+          />
+        ))}
+      </View>
+
+      <SectionLabel label={t('progress.history')} theme={theme} header={false} />
+      <SegmentedControl
+        theme={theme}
+        value={period}
+        onChange={setPeriod}
+        options={[
+          { value: 0, label: t('progress.period.d7') },
+          { value: 1, label: t('progress.period.d30') },
+          { value: 2, label: t('progress.period.d90') },
+          { value: 3, label: '365d', icon: 'lock-closed', disabled: true },
+        ]}
+      />
+      <View style={styles.gap} />
+      <SegmentedControl
+        theme={theme}
+        fill
+        value={themeOpt}
+        onChange={setThemeOpt}
+        options={['light', 'dark', 'system'].map(o => ({ value: o, label: t(`settings.themeOptions.${o}`) }))}
+      />
+      <View style={styles.gap} />
+      <SegmentedControl
+        theme={theme}
+        role="tab"
+        fill
+        compact
+        value={kind}
+        onChange={setKind}
+        options={['streak', 'week', 'year'].map(k => ({ value: k, label: t(`shareCards.kinds.${k}`) }))}
+      />
+
+      <SectionLabel label={t('settings.notifications')} icon="notifications-outline" theme={theme} action={<Text style={[styles.swatchHex, { color: theme.link }]}>action</Text>} />
+      <TextField theme={theme} label={t('habits.form.name')} placeholder={t('habits.form.namePlaceholder')} value={name} onChangeText={setName} hint={t('habits.form.namePlaceholder')} maxLength={40} />
+      <TextField theme={theme} label={t('habits.form.plan')} value={plan} onChangeText={setPlan} maxLength={60} />
+      <TextField theme={theme} label={t('habits.form.unit')} value="" placeholder={t('habits.form.unitPlaceholderVolume')} error={t('auth.errors.generic')} onChangeText={() => {}} />
+    </View>
+  );
+}
+
 function Section({ title, theme, children }) {
   return (
     <View style={styles.section}>
@@ -66,23 +143,16 @@ export default function DesignPreview({ visible, onClose }) {
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]} edges={['top', 'bottom']}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <Text style={[styles.title, { color: theme.text }]} accessibilityRole="header">Design tokens</Text>
-          {['light', 'dark'].map(n => (
-            <TouchableOpacity
-              key={n}
-              onPress={() => setName(n)}
-              style={[styles.chip, { borderColor: shown === n ? theme.selectionBorder : theme.controlBorder, backgroundColor: shown === n ? theme.selection : theme.surface }]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: shown === n }}
-              accessibilityLabel={n}
-            >
-              <Text style={[styles.chipText, { color: shown === n ? theme.onSelection : theme.textSecondary }]}>{n}</Text>
-            </TouchableOpacity>
-          ))}
+          <SegmentedControl theme={theme} compact value={shown} onChange={setName} options={[{ value: 'light', label: 'light' }, { value: 'dark', label: 'dark' }]} />
           <TouchableOpacity onPress={onClose} style={styles.close} accessibilityRole="button" accessibilityLabel={t('common.close')}>
             <Text style={[styles.closeText, { color: theme.textSecondary }]}>✕</Text>
           </TouchableOpacity>
         </View>
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <Section title="Controls (F-07)" theme={theme}>
+            <ControlsPreview theme={theme} />
+          </Section>
+
           <Section title="Today header (C-04)" theme={theme}>
             {TODAY_HEADER_CASES.map(c => (
               <View key={c.id} style={styles.headerCase} testID={`today-header-${c.id}`}>
@@ -228,8 +298,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   title: { flex: 1, fontSize: 20, fontWeight: '600' },
-  chip: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, minHeight: 32, justifyContent: 'center' },
-  chipText: { fontSize: 13, fontWeight: '600' },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  gap: { height: 12 },
   close: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   closeText: { fontSize: 18 },
   scroll: { padding: 16, paddingBottom: 48 },

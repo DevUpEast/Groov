@@ -1,5 +1,5 @@
 {
-  "_comment": "Values a locale may legitimately keep identical to English (scripts/i18n-check.mjs). 'values' applies to every locale; 'keys' lists per-locale key paths that may stay English. Strings made only of %{placeholders}, digits, punctuation and emoji are always allowed.",
+  "_comment": "Values a locale may legitimately keep identical to English (scripts/i18n-check.mjs). 'values' applies to every locale; 'keys' lists per-locale key paths that may stay English. Strings made only of %{placeholders}, digits, punctuation and emoji are always allowed. F-07: ja keeps its section labels when en moves from capitals to sentence case (ja has no case); es/de/fr already had sentence case for challenges.form.linked; de/fr/pt-BR use the English loanwords Feedback, Backup and Notifications.",
   "values": [
     "Groov",
     "Groov Pro",
@@ -25,15 +25,38 @@
   ],
   "keys": {
     "es": [
-      "habits.colors.coral"
+      "habits.colors.coral",
+      "challenges.form.linked"
     ],
-    "de": [],
+    "de": [
+      "challenges.form.linked",
+      "settings.feedback",
+      "settings.backup.title"
+    ],
     "fr": [
-      "habits.icons.art"
+      "habits.icons.art",
+      "challenges.form.linked",
+      "settings.notifications"
     ],
     "pt-BR": [
-      "habits.colors.coral"
+      "habits.colors.coral",
+      "settings.feedback",
+      "settings.backup.title"
     ],
-    "ja": []
+    "ja": [
+      "habits.archived",
+      "challenges.past",
+      "challenges.form.linked",
+      "settings.appearance",
+      "settings.notifications",
+      "settings.feedback",
+      "settings.dev.title",
+      "settings.dev.now",
+      "settings.pro.title",
+      "settings.account.title",
+      "settings.backup.title",
+      "settings.data.title",
+      "settings.about.title"
+    ]
   }
 }

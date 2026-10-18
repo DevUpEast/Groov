@@ -15,7 +15,8 @@
     "notNow": "Nicht jetzt",
     "undo": "Rückgängig",
     "slider": "Schieberegler",
-    "shortDays": "%{count} T"
+    "shortDays": "%{count} T",
+    "charCount": { "one": "%{count} von %{max} Zeichen", "other": "%{count} von %{max} Zeichen" }
   },
   "app": {
     "tabs": {
@@ -246,7 +247,7 @@
     "reorder": "Gewohnheiten neu anordnen",
     "finishReorder": "Anordnen beenden",
     "empty": { "title": "Noch keine Gewohnheiten", "body": "Leg los" },
-    "archived": "ARCHIVIERT (%{count})",
+    "archived": "Archiviert (%{count})",
     "row": {
       "detailsA11y": "%{name}, Details anzeigen",
       "schedulePill": "📅 %{schedule}",
@@ -439,7 +440,7 @@
       "title": "💡 Tipp",
       "body": "Du kannst bis zu 3 Challenges gleichzeitig laufen lassen. Verknüpfe bestimmte Gewohnheiten mit jeder Challenge."
     },
-    "past": "VERGANGENE CHALLENGES",
+    "past": "Vergangene Challenges",
     "pastEmpty": "Abgeschlossene oder gelöschte Challenges erscheinen hier.",
     "pastSubTier": "%{done}/%{days} Tage · %{tier} ✓",
     "pastSubEnded": "%{done}/%{days} Tage · Beendet",
@@ -570,7 +571,7 @@
   },
   "settings": {
     "title": "Einstellungen",
-    "appearance": "DARSTELLUNG",
+    "appearance": "Darstellung",
     "theme": "Design",
     "themeFollows": "Folgt deiner Geräteeinstellung",
     "themeAlwaysLight": "Immer hell",
@@ -582,7 +583,7 @@
     "languageSystemSub": "Systemstandard (%{label})",
     "languageTitle": "Sprache",
     "languageBody": "Wähle die Sprache, die Groov verwendet.",
-    "notifications": "BENACHRICHTIGUNGEN",
+    "notifications": "Benachrichtigungen",
     "enableNotifications": "Benachrichtigungen aktivieren",
     "enableSubWeb": "Push-Benachrichtigungen nur auf dem Gerät",
     "enableSub": "Hauptschalter für alle Erinnerungen",
@@ -600,18 +601,18 @@
     "addReminder": "Erinnerung hinzufügen",
     "newReminderLabel": "Erinnerung",
     "removeReminder": { "title": "Erinnerung entfernen", "body": "Diese Erinnerung löschen?", "habitBody": "Die Erinnerung für „%{name}“ ausschalten?" },
-    "feedback": "FEEDBACK",
+    "feedback": "Feedback",
     "sounds": "Töne",
     "soundsSub": "Klänge, wenn du Gewohnheiten und Challenges abschließt",
     "haptics": "Haptisches Feedback",
     "hapticsSub": "Vibration beim Abhaken (nur auf dem Gerät)",
     "dev": {
-      "title": "ENTWICKLERTOOLS",
+      "title": "Entwicklertools",
       "simulatedDate": "Simuliertes Datum",
       "offset": { "one": "Versatz: %{offset} Tag", "other": "Versatz: %{offset} Tage" },
       "prevDay": "Vorheriger Tag",
       "resetDate": "Simuliertes Datum auf jetzt zurücksetzen",
-      "now": "JETZT",
+      "now": "Jetzt",
       "nextDay": "Nächster Tag",
       "sendTest": "Testbenachrichtigung senden",
       "sendTestSub": "Löst eine Erinnerung für deine erste Gewohnheit aus, mit Erledigt / Später",
@@ -628,14 +629,14 @@
       "moreTaps": { "one": "Noch %{count} Tipp, um die Entwicklertools zu entsperren", "other": "Noch %{count} Tipps, um die Entwicklertools zu entsperren" }
     },
     "pro": {
-      "title": "GROOV PRO",
+      "title": "Groov Pro",
       "have": "Du hast Groov Pro",
       "upgrade": "Auf Groov Pro upgraden",
       "haveSub": "Danke, dass du eine Ein-Personen-App unterstützt",
       "upgradeSub": "Unbegrenzte Gewohnheiten, mehr Erinnerungen und KI-Coaching"
     },
     "account": {
-      "title": "KONTO",
+      "title": "Konto",
       "displayName": "Anzeigename",
       "displayNameSub": "Füge einen Namen für Begrüßungen und Coaching hinzu",
       "guest": "Gastkonto",
@@ -669,7 +670,7 @@
       }
     },
     "backup": {
-      "title": "BACKUP",
+      "title": "Backup",
       "export": "Backup exportieren",
       "exportSub": "%{last} · JSON-Datei mit allen Gewohnheiten, Check-ins und Einstellungen",
       "lastBackup": "Letztes Backup am %{date} um %{time}",
@@ -690,7 +691,7 @@
       "importFailed": { "title": "Import fehlgeschlagen", "body": "Beim Wiederherstellen ist etwas schiefgelaufen." }
     },
     "data": {
-      "title": "DATEN",
+      "title": "Daten",
       "resetPassword": "Passwort zurücksetzen",
       "resetPasswordSub": "Sende einen Code zum Zurücksetzen an deine E-Mail",
       "resetPasswordA11y": "Passwort zurücksetzen, einen Code zum Zurücksetzen an deine E-Mail senden",
@@ -725,7 +726,7 @@
       }
     },
     "about": {
-      "title": "ÜBER",
+      "title": "Über",
       "widget": "Widget zum Startbildschirm hinzufügen",
       "widgetSub": "Heutige Gewohnheiten mit Abhaken per Fingertipp",
       "widgetUnsupported": { "title": "Nicht unterstützt", "body": "Dein Launcher unterstützt das Hinzufügen von Widgets aus Apps nicht. Halte stattdessen deinen Startbildschirm gedrückt und wähle Groov aus der Widget-Liste." },

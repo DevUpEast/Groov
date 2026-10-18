@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     gap: 4, marginBottom: 24,
   },
   wheelCol: { alignItems: 'center', gap: 6 },
-  colLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  colLabel: { fontSize: 12, fontWeight: '600' },
   colon: { fontSize: 26, fontWeight: 'bold', marginBottom: 22 },
   fadeTop: {
     bottom: '60%',

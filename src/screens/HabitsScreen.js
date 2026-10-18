@@ -30,6 +30,10 @@ import AppText from '../components/ui/AppText';
 import Button from '../components/ui/Button';
 import IconButton from '../components/ui/IconButton';
 import { hitSlopFor } from '../components/ui/PressableScale';
+import Chip from '../components/ui/Chip';
+import SectionLabel from '../components/ui/SectionLabel';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import TextField from '../components/ui/TextField';
 
 // Preset icons. The stored value is the emoji; `key` names it for screen readers (habits.icons.<key>).
 const ICONS = [
@@ -53,6 +57,11 @@ const SCHEDULE_OPTIONS = [
 // Monday-first display order; values are JS weekday numbers (0 = Sunday).
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
+// A form group label (F-07): the SectionLabel look, sentence case, but not a header.
+function FormLabel({ label, theme }) {
+  return <SectionLabel label={label} theme={theme} header={false} first style={styles.formLabel} />;
+}
+
 // Schedule section of the habit form: pick a pattern, then its details.
 function SchedulePicker({ schedule, onChange, theme }) {
   const type = schedule?.type ?? 'daily';
@@ -74,41 +83,33 @@ function SchedulePicker({ schedule, onChange, theme }) {
   const dayLabels = weekdayLabels();
   return (
     <>
-      <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.schedule')}</Text>
-      <View style={styles.typeRow}>
-        {SCHEDULE_OPTIONS.map(opt => {
-          const active = type === opt.type;
-          return (
-            <TouchableOpacity
-              key={opt.type}
-              style={[styles.scheduleBtn, { borderColor: active ? theme.selectionBorder : theme.controlBorder }, active && { backgroundColor: theme.selection }]}
-              onPress={() => select(opt.type)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-            >
-              <Text style={[styles.scheduleBtnText, { color: active ? theme.onSelection : theme.textSecondary }]}>{t(`habits.form.${opt.key}`)}</Text>
-            </TouchableOpacity>
-          );
-        })}
+      <FormLabel label={t('habits.form.schedule')} theme={theme} />
+      <View style={styles.chipRow}>
+        {SCHEDULE_OPTIONS.map(opt => (
+          <Chip
+            key={opt.type}
+            theme={theme}
+            label={t(`habits.form.${opt.key}`)}
+            selected={type === opt.type}
+            onPress={() => select(opt.type)}
+          />
+        ))}
       </View>
 
       {type === 'weekdays' && (
         <View style={styles.dayRow}>
-          {WEEKDAY_ORDER.map(d => {
-            const on = days.includes(d);
-            return (
-              <TouchableOpacity
-                key={d}
-                style={[styles.dayChip, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : theme.bg }]}
-                onPress={() => toggleDay(d)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={dayLabels[d]}
-              >
-                <Text style={[styles.dayChipText, { color: on ? theme.onSelection : theme.textSecondary }]}>{dayLabels[d]}</Text>
-              </TouchableOpacity>
-            );
-          })}
+          {WEEKDAY_ORDER.map(d => (
+            <Chip
+              key={d}
+              theme={theme}
+              multi
+              showCheck={false}
+              label={dayLabels[d]}
+              selected={days.includes(d)}
+              onPress={() => toggleDay(d)}
+              style={styles.dayChip}
+            />
+          ))}
         </View>
       )}
 
@@ -379,7 +380,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   </View>
                 )}
 
-                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.icon')}</Text>
+                <FormLabel label={t('habits.form.icon')} theme={theme} />
                 <IconPicker
                   selected={form.icon}
                   onSelect={icon => setForm(f => ({ ...f, icon, customIconUri: null }))}
@@ -388,7 +389,7 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   theme={theme}
                 />
 
-                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.colour')}</Text>
+                <FormLabel label={t('habits.form.colour')} theme={theme} />
                 {/* The 7 curated accents in one row (VIS-15). The stored colour is shown as the
                     accent it resolves to; only a tap writes (the accent's light-fill hex). */}
                 <View style={styles.colorRow}>
@@ -412,11 +413,11 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   })}
                 </View>
 
-                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.name')}</Text>
-                <TextInput
-                  style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+                <TextField
+                  theme={theme}
+                  style={styles.field}
+                  label={t('habits.form.name')}
                   placeholder={t('habits.form.namePlaceholder')}
-                  placeholderTextColor={theme.textSecondary}
                   value={form.name}
                   onChangeText={name => setForm(f => ({ ...f, name }))}
                   returnKeyType="done"
@@ -424,11 +425,11 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   accessibilityLabel={t('habits.form.name')}
                 />
 
-                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.plan')}</Text>
-                <TextInput
-                  style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+                <TextField
+                  theme={theme}
+                  style={styles.field}
+                  label={t('habits.form.plan')}
                   placeholder={t('habits.form.planPlaceholder')}
-                  placeholderTextColor={theme.textSecondary}
                   value={form.intention || ''}
                   onChangeText={intention => setForm(f => ({ ...f, intention }))}
                   maxLength={80}
@@ -437,34 +438,25 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   accessibilityLabel={t('habits.form.planA11y')}
                 />
 
-                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.type')}</Text>
+                <FormLabel label={t('habits.form.type')} theme={theme} />
                 <View style={styles.typeRow}>
-                  {habitTypes.map(ht => {
-                    const active = form.type === ht.value;
-                    return (
-                      <TouchableOpacity
-                        key={ht.value}
-                        style={[
-                          styles.typeChip,
-                          { borderColor: active ? theme.selectionBorder : theme.controlBorder },
-                          active && { backgroundColor: theme.selection },
-                        ]}
-                        onPress={() => setForm(f => ({
-                          ...f,
-                          type: ht.value,
-                          volumeGoal: ht.value === 'volume' ? (f.volumeGoal >= 2 ? f.volumeGoal : 3)
-                            : ht.value === 'timed' ? (f.volumeGoal >= 5 ? f.volumeGoal : 20)
-                            : ht.value === 'atMost' ? (f.volumeGoal >= 1 && f.volumeGoal <= 20 ? f.volumeGoal : 2)
-                            : 1,
-                        }))}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: active }}
-                        accessibilityLabel={t('habits.form.typeA11y', { label: ht.label, hint: ht.hint })}
-                      >
-                        <Text style={[styles.typeBtnText, { color: active ? theme.onSelection : theme.textSecondary }]}>{t('habits.form.typeChip', { emoji: ht.emoji, label: ht.label })}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                  {habitTypes.map(ht => (
+                    <Chip
+                      key={ht.value}
+                      theme={theme}
+                      label={t('habits.form.typeChip', { emoji: ht.emoji, label: ht.label })}
+                      selected={form.type === ht.value}
+                      onPress={() => setForm(f => ({
+                        ...f,
+                        type: ht.value,
+                        volumeGoal: ht.value === 'volume' ? (f.volumeGoal >= 2 ? f.volumeGoal : 3)
+                          : ht.value === 'timed' ? (f.volumeGoal >= 5 ? f.volumeGoal : 20)
+                          : ht.value === 'atMost' ? (f.volumeGoal >= 1 && f.volumeGoal <= 20 ? f.volumeGoal : 2)
+                          : 1,
+                      }))}
+                      accessibilityLabel={t('habits.form.typeA11y', { label: ht.label, hint: ht.hint })}
+                    />
+                  ))}
                 </View>
                 <Text style={[styles.typeHint, { color: theme.textSecondary }]}>{habitTypes.find(ht => ht.value === form.type)?.hint}</Text>
 
@@ -474,27 +466,22 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                   theme={theme}
                 />
 
-                <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.timeOfDay')}</Text>
+                <FormLabel label={t('habits.form.timeOfDay')} theme={theme} />
                 <View style={styles.timeRow}>
-                  {TIME_OPTIONS.map(opt => {
-                    const active = (form.timeOfDay || 'anytime') === opt;
-                    return (
-                      <TouchableOpacity
-                        key={opt}
-                        style={[styles.timeChip, { borderColor: active ? theme.selectionBorder : theme.controlBorder }, active && { backgroundColor: theme.selection }]}
-                        onPress={() => setForm(f => ({ ...f, timeOfDay: opt }))}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: active }}
-                      >
-                        <Text style={[styles.timeChipText, { color: active ? theme.onSelection : theme.textSecondary }]}>{t(`timeOfDay.${opt}`)}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                  {TIME_OPTIONS.map(opt => (
+                    <Chip
+                      key={opt}
+                      theme={theme}
+                      label={t(`timeOfDay.${opt}`)}
+                      selected={(form.timeOfDay || 'anytime') === opt}
+                      onPress={() => setForm(f => ({ ...f, timeOfDay: opt }))}
+                    />
+                  ))}
                 </View>
 
                 {form.type === 'timed' && (
                   <>
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.minutesPerDay', { count: form.volumeGoal })}</Text>
+                    <FormLabel label={t('habits.form.minutesPerDay', { count: form.volumeGoal })} theme={theme} />
                     <Slider value={form.volumeGoal} min={5} max={180} onValueChange={v => setForm(f => ({ ...f, volumeGoal: Math.max(5, Math.round(v / 5) * 5) }))} theme={theme} label={t('habits.form.minutesLabel')} />
                     <View style={styles.sliderLabels}>
                       <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{t('habits.form.fiveMin')}</Text>
@@ -505,17 +492,17 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
 
                 {form.type === 'atMost' && (
                   <>
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.atMostPerDay', { count: form.volumeGoal })}</Text>
+                    <FormLabel label={t('habits.form.atMostPerDay', { count: form.volumeGoal })} theme={theme} />
                     <Slider value={form.volumeGoal} min={0} max={20} onValueChange={v => setForm(f => ({ ...f, volumeGoal: v }))} theme={theme} label={t('habits.form.dailyLimit')} />
                     <View style={styles.sliderLabels}>
                       <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>0</Text>
                       <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>20</Text>
                     </View>
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.unit')}</Text>
-                    <TextInput
-                      style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+                    <TextField
+                      theme={theme}
+                      style={styles.field}
+                      label={t('habits.form.unit')}
                       placeholder={t('habits.form.unitPlaceholderLimit')}
-                      placeholderTextColor={theme.textSecondary}
                       value={form.unit || ''}
                       onChangeText={unit => setForm(f => ({ ...f, unit }))}
                       maxLength={20}
@@ -528,26 +515,16 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
 
                 {form.type === 'volume' && (
                   <>
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.timesPerDay', { count: form.volumeGoal })}</Text>
-                    <View style={styles.volMaxRow}>
-                      {VOLUME_MAX_OPTIONS.map(opt => (
-                        <TouchableOpacity
-                          key={opt.max}
-                          style={[
-                            styles.volMaxBtn,
-                            { borderColor: volMax === opt.max ? theme.selectionBorder : theme.controlBorder },
-                            volMax === opt.max && { backgroundColor: theme.selection },
-                          ]}
-                          onPress={() => handleVolMaxChange(opt.max)}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: volMax === opt.max }}
-                        >
-                          <Text style={[styles.volMaxBtnText, { color: volMax === opt.max ? theme.onSelection : theme.textSecondary }]}>
-                            {t('habits.form.max', { max: opt.label })}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                    <FormLabel label={t('habits.form.timesPerDay', { count: form.volumeGoal })} theme={theme} />
+                    <SegmentedControl
+                      theme={theme}
+                      fill
+                      style={styles.volMaxRow}
+                      accessibilityLabel={t('habits.form.timesLabel')}
+                      value={volMax}
+                      onChange={handleVolMaxChange}
+                      options={VOLUME_MAX_OPTIONS.map(opt => ({ value: opt.max, label: t('habits.form.max', { max: opt.label }) }))}
+                    />
                     <Slider
                       value={form.volumeGoal}
                       min={2}
@@ -560,11 +537,11 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
                       <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>2</Text>
                       <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>{volMax}</Text>
                     </View>
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>{t('habits.form.unit')}</Text>
-                    <TextInput
-                      style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.bg }]}
+                    <TextField
+                      theme={theme}
+                      style={styles.field}
+                      label={t('habits.form.unit')}
                       placeholder={t('habits.form.unitPlaceholderVolume')}
-                      placeholderTextColor={theme.textSecondary}
                       value={form.unit || ''}
                       onChangeText={unit => setForm(f => ({ ...f, unit }))}
                       maxLength={20}
@@ -849,7 +826,7 @@ export default function HabitsScreen() {
 
         {archivedHabits.length > 0 && (
           <View style={{ marginTop: 20 }}>
-            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>{t('habits.archived', { count: archivedHabits.length })}</Text>
+            <SectionLabel label={t('habits.archived', { count: archivedHabits.length })} theme={theme} first style={styles.sectionLabel} />
             {archivedHabits.map(habit => (
               <ArchivedRow
                 key={habit.id}
@@ -917,7 +894,7 @@ const styles = StyleSheet.create({
   addBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   addBtnText: { fontWeight: '700', fontSize: 15 },
   reorderBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  sectionLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 10 },
+  sectionLabel: { marginBottom: 10 },
   row: {
     flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1,
     padding: 14, marginBottom: 10, overflow: 'hidden',
@@ -928,8 +905,6 @@ const styles = StyleSheet.create({
   colorDot: { width: 36, height: 36, borderRadius: 18, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center' },
   colorCheck: { fontWeight: '800', fontSize: 14 },
   timeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  timeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5 },
-  timeChipText: { fontSize: 13, fontWeight: '600' },
   rowIcon: { fontSize: 26, marginRight: 12 },
   rowIconImage: { width: 32, height: 32, borderRadius: 6, marginRight: 12 },
   rowInfo: { flex: 1 },
@@ -955,7 +930,9 @@ const styles = StyleSheet.create({
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   sheetTitle: { fontSize: 20, fontWeight: 'bold' },
   sheetCloseBtn: { padding: 4 },
-  label: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 },
+  formLabel: { marginBottom: 10 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  field: { marginBottom: 20 },
   magicBox: { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 20 },
   magicTitle: { fontSize: 12, fontWeight: '700', marginBottom: 8 },
   magicRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
@@ -966,26 +943,17 @@ const styles = StyleSheet.create({
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: ICON_GAP, marginBottom: 20 },
   iconBtn: { width: 44, height: 44, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   iconBtnText: { fontSize: 22 },
-  input: { borderWidth: 1.5, borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 20 },
   typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  typeChip: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5 },
   typeHint: { fontSize: 12, marginBottom: 20 },
-  typeBtn: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },
-  typeBtnText: { fontSize: 14, fontWeight: '600' },
-  scheduleBtn: { flex: 1, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 12, borderWidth: 1.5, alignItems: 'center' },
-  scheduleBtnText: { fontSize: 13, fontWeight: '600' },
   dayRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  dayChip: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  dayChipText: { fontSize: 13, fontWeight: '700' },
+  dayChip: { width: 40, paddingHorizontal: 0 },
   perWeekRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   perWeekText: { fontSize: 14, flex: 1, marginRight: 12 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   stepBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   stepBtnText: { fontSize: 18, fontWeight: '600' },
   stepValue: { fontSize: 18, fontWeight: '700', minWidth: 20, textAlign: 'center' },
-  volMaxRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  volMaxBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
-  volMaxBtnText: { fontSize: 12, fontWeight: '700' },
+  volMaxRow: { marginBottom: 12 },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   sliderLabelText: { fontSize: 12 },
   saveBtn: { marginTop: 12, minHeight: 52 },

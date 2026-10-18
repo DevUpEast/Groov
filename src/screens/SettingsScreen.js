@@ -21,6 +21,8 @@ import { WIDGET_NAME } from '../widgets/widgetData';
 import { summarizeBackup } from '../utils/backup';
 import { t, getLocale, useLocale, setLocale, SUPPORTED_LOCALES } from '../i18n';
 import AppText from '../components/ui/AppText';
+import SectionLabel from '../components/ui/SectionLabel';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import { useDevFlag, setDevFlag } from '../utils/devFlags';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
@@ -31,7 +33,17 @@ const DEV_CODE = 'devmode';
 // switchTrackOff (white on slate in light, a muted #CBD5E1 on #334155 in dark, so an off row
 // does not outshine an on one). react-native-web ignores thumbColor for the on state and
 // draws its own teal unless activeThumbColor is set.
-export function switchColors(theme, on) {
+// A dimmed Switch (master off or permission missing, F-07): the disabledContainer track and
+// the off thumb, never an opacity, so it reads as unavailable rather than faded.
+export function switchColors(theme, on, disabled = false) {
+  if (disabled) {
+    return {
+      trackColor: { false: theme.disabledContainer, true: theme.disabledContainer },
+      thumbColor: theme.switchThumb,
+      activeThumbColor: theme.switchThumb,
+      ios_backgroundColor: theme.disabledContainer,
+    };
+  }
   return {
     trackColor: { false: theme.switchTrackOff, true: theme.action },
     thumbColor: on ? theme.onAction : theme.switchThumb,
@@ -158,21 +170,20 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
         <Switch
           value={enabled && masterOn && permitted}
           onValueChange={(v) => { feedback.toggled(v); toggle(v); }}
-          {...switchColors(theme, enabled && masterOn && permitted)}
-          style={{ opacity: masterOn && permitted ? 1 : 0.4 }}
+          {...switchColors(theme, enabled && masterOn && permitted, !(masterOn && permitted))}
           accessibilityLabel={label}
           accessibilityState={{ disabled: !masterOn }}
         />
       </View>
       <View style={styles.reminderActionsRow}>
         <TouchableOpacity
-          style={[styles.timeBtn, { borderColor: theme.border, opacity: timeActive ? 1 : 0.4 }]}
+          style={[styles.timeBtn, timeActive ? { borderColor: theme.border } : { borderColor: theme.disabledContainer, backgroundColor: theme.disabledContainer }]}
           onPress={() => timeActive && onTime()}
           accessibilityRole="button"
           accessibilityLabel={t('settings.changeTimeA11y', { time: formatTime(time) })}
           accessibilityState={{ disabled: !timeActive }}
         >
-          <Text style={[styles.timeBtnText, { color: theme.link }]}>{formatTime(time)}</Text>
+          <Text style={[styles.timeBtnText, { color: timeActive ? theme.link : theme.onDisabled }]}>{formatTime(time)}</Text>
         </TouchableOpacity>
         {onRemove && (
           <TouchableOpacity style={styles.deleteReminderBtn} onPress={onRemove} accessibilityRole="button" accessibilityLabel={t('settings.removeReminderA11y')}>
@@ -187,7 +198,7 @@ function ReminderBlock({ theme, label, icon, badge, sublabel, enabled, masterOn,
 function Section({ title, children, theme }) {
   return (
     <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-      <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
+      <SectionLabel label={title} theme={theme} first style={styles.sectionTitle} />
       {children}
     </View>
   );
@@ -572,32 +583,26 @@ export default function SettingsScreen() {
 
         {/* Appearance */}
         <Section title={t('settings.appearance')} theme={theme}>
-          <View style={[styles.row, { borderBottomColor: theme.border }]}>
-            <View style={styles.rowLeft}>
+          <View style={[styles.row, styles.themeRow, { borderBottomColor: theme.border }]}>
+            <View>
               <Text style={[styles.rowLabel, { color: theme.text }]}>{t('settings.theme')}</Text>
               <Text style={[styles.rowSub, { color: theme.textSecondary }]}>
                 {settings.theme === 'system' ? t('settings.themeFollows') : settings.theme === 'dark' ? t('settings.themeAlwaysDark') : t('settings.themeAlwaysLight')}
               </Text>
             </View>
-            <View style={[styles.segment, { borderColor: theme.controlBorder }]}>
-              {THEME_OPTIONS.map(opt => {
-                const active = (settings.theme ?? 'system') === opt;
+            <SegmentedControl
+              style={styles.themeSegment}
+              fill
+              compact
+              theme={theme}
+              accessibilityLabel={t('settings.theme')}
+              value={settings.theme ?? 'system'}
+              onChange={opt => updateSettings({ theme: opt })}
+              options={THEME_OPTIONS.map(opt => {
                 const label = t(`settings.themeOptions.${opt}`);
-                return (
-                  <TouchableOpacity
-                    key={opt}
-                    style={[styles.segmentBtn, active && { backgroundColor: theme.selection, borderColor: theme.selectionBorder }]}
-                    onPress={() => { feedback.play(EVENTS.selection); updateSettings({ theme: opt }); }}
-                    activeOpacity={0.7}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('settings.themeA11y', { label })}
-                    accessibilityState={{ selected: active }}
-                  >
-                    <Text style={[styles.segmentText, { color: active ? theme.onSelection : theme.textSecondary }]}>{label}</Text>
-                  </TouchableOpacity>
-                );
+                return { value: opt, label, accessibilityLabel: t('settings.themeA11y', { label }) };
               })}
-            </View>
+            />
           </View>
           <TouchableOpacity
             style={[styles.row, { borderBottomColor: 'transparent' }]}
@@ -693,15 +698,15 @@ export default function SettingsScreen() {
           ))}
 
           <TouchableOpacity
-            style={[styles.addReminderBtn, { borderColor: theme.border, opacity: masterOn ? 1 : 0.4 }]}
+            style={[styles.addReminderBtn, { borderColor: masterOn ? theme.border : theme.disabledContainer }]}
             onPress={() => masterOn && addReminder()}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={t('settings.addReminder')}
             accessibilityState={{ disabled: !masterOn }}
           >
-            <Ionicons name="add-circle-outline" size={18} color={theme.link} />
-            <Text style={[styles.addReminderText, { color: theme.link }]}>{t('settings.addReminder')}</Text>
+            <Ionicons name="add-circle-outline" size={18} color={masterOn ? theme.link : theme.onDisabled} />
+            <Text style={[styles.addReminderText, { color: masterOn ? theme.link : theme.onDisabled }]}>{t('settings.addReminder')}</Text>
           </TouchableOpacity>
         </Section>
 
@@ -1282,10 +1287,7 @@ const styles = StyleSheet.create({
   scroll: { padding: 24, paddingBottom: 48 },
   heading: { marginBottom: 20 },
   section: { borderRadius: 16, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
-  sectionTitle: {
-    fontSize: 12, fontWeight: '700', letterSpacing: 1,
-    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4,
-  },
+  sectionTitle: { paddingHorizontal: 16, paddingTop: 12, marginBottom: 0, paddingBottom: 4 },
   row: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1,
@@ -1294,9 +1296,8 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 15, fontWeight: '500' },
   rowSub: { fontSize: 12, marginTop: 2 },
   rowRight: { marginLeft: 12 },
-  segment: { flexDirection: 'row', borderWidth: 1, borderRadius: 10, overflow: 'hidden', marginLeft: 12 },
-  segmentBtn: { paddingHorizontal: 11, paddingVertical: 6, borderWidth: 1, borderColor: 'transparent', borderRadius: 9 },
-  segmentText: { fontSize: 13, fontWeight: '600' },
+  themeRow: { flexDirection: 'column', alignItems: 'stretch' },
+  themeSegment: { marginTop: 12 },
   reminderBlock: {
     borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8,
   },
