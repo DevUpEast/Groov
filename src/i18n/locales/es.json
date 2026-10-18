@@ -148,6 +148,8 @@
       "empty": "Toca un hábito para empezar"
     },
     "coach": "Coach IA",
+    "coachMore": "Ver más",
+    "coachLess": "Ver menos",
     "beats": { "a11y": { "one": "Último %{count} día: %{done} completos, %{rest} de descanso, %{missed} perdidos", "other": "Últimos %{count} días: %{done} completos, %{rest} de descanso, %{missed} perdidos" } },
     "sticky": { "hint": "Vuelve al principio" },
     "hint": { "longPress": "Consejo: mantén pulsado un hábito (o toca ⋯) para omitir un día, corregir ayer o añadir una nota.", "longPressA11y": "Consejo: mantén pulsado un hábito, o usa su botón Más opciones, para omitir un día, corregir ayer o añadir una nota." },
@@ -575,7 +577,8 @@
       "generatingWeekly": "Generando tu reflexión semanal...",
       "generatingMonthly": "Generando tu reflexión mensual...",
       "generated": "Generada el %{date}",
-      "failed": "No se pudo generar. Inténtalo de nuevo.",
+      "unavailable": "Tu coach no puede escribir una reflexión ahora. Inténtalo más tarde.",
+      "limitReached": "Ya usaste las reflexiones de hoy. Mañana hay más.",
       "seePro": "  Ver Groov Pro",
       "generateWeekly": "Generar resumen semanal",
       "generateMonthly": "Generar resumen mensual"

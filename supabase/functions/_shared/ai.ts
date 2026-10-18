@@ -87,9 +87,66 @@ export function quotaExceeded(corsHeaders: Record<string, string>, kind: QuotaKi
   )
 }
 
+// The app's UI languages (src/i18n/locales). The client sends its UI locale; anything
+// else falls back to English. The value is also the cache key (#201).
+export const COACH_LANGUAGES: Record<string, string> = {
+  en: 'English',
+  es: 'Spanish',
+  de: 'German (informal "du")',
+  fr: 'French (informal "tu")',
+  'pt-BR': 'Brazilian Portuguese (informal "você")',
+  ja: 'Japanese (polite です/ます form)',
+}
+
+export function coachLocale(value: unknown): string {
+  return typeof value === 'string' && Object.hasOwn(COACH_LANGUAGES, value) ? value : 'en'
+}
+
+// The app's words for its core concepts (docs/GLOSSARY.md), so the coach matches the UI.
+const COACH_TERMS: Record<string, string> = {
+  es: 'racha (streak), día perfecto (perfect day), día de descanso (rest day)',
+  de: 'Serie (streak, never "Streak"), perfekter Tag (perfect day), Ruhetag (rest day)',
+  fr: 'série (streak), jour parfait (perfect day), jour de repos (rest day)',
+  'pt-BR': 'sequência (streak), dia perfeito (perfect day), dia de descanso (rest day)',
+  ja: '連続記録 or N日連続 (streak, never ストリーク), パーフェクト日 (perfect day), 休みの日 (rest day); no exclamation marks',
+}
+
+// Appended to the user prompt (the system block stays the same for every language).
+export function languageRule(locale: string): string {
+  const terms = COACH_TERMS[locale] ? ` Use these app terms: ${COACH_TERMS[locale]}.` : ''
+  return `LANGUAGE: Write your whole reply in ${COACH_LANGUAGES[locale] ?? 'English'}. Keep habit names exactly as the user wrote them.${terms}`
+}
+
+// Hard cap for the Today nudge (#201: it must fit about 3 short lines above the fold).
+// Japanese glyphs are about twice as wide, so its budget is about half.
+export function nudgeMaxChars(locale: string): number {
+  return locale === 'ja' ? 80 : 160
+}
+
+// Trim `text` to whole sentences within `max` characters. The first sentence is always
+// kept (the client clamps it to 3 lines), so the reply is never cut mid-word.
+export function capToSentences(text: string, max: number, locale = 'en'): string {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  let sentences: string[]
+  try {
+    const seg = new Intl.Segmenter(locale, { granularity: 'sentence' })
+    sentences = Array.from(seg.segment(clean), (s) => s.segment)
+  } catch {
+    sentences = clean.match(/[^.!?。！？]+[.!?。！？]+\s*|[^.!?。！？]+$/g) ?? [clean]
+  }
+  let out = sentences[0] ?? clean
+  for (const s of sentences.slice(1)) {
+    if ((out + s).trim().length > max) break
+    out += s
+  }
+  return out.trim()
+}
+
 // Stable coaching persona, sent as a cached system block so every call shares the
 // prefix. Keep this text byte-stable: any edit invalidates the cache for everyone.
-export const COACH_SYSTEM = `You are Groov's habit coach: warm, specific and brief. You write in plain English for a general audience, use the user's own numbers, and never moralise. Never use em dashes (the long dash) or en dashes in your response - use commas, hyphens, or separate sentences instead. Avoid generic openers like "Great job" or "Keep it up".`
+// The reply language comes from languageRule() in the user prompt.
+export const COACH_SYSTEM = `You are Groov's habit coach: warm, specific and brief. You write in plain, everyday language for a general audience, use the user's own numbers, and never moralise. Never use em dashes (the long dash) or en dashes in your response - use commas, hyphens, or separate sentences instead. Avoid generic openers like "Great job" or "Keep it up" (or their equivalent in other languages). Reply with the message only: no title, no preamble, no quotation marks, no markdown.`
 
 export const cachedSystem = (text: string) => [
   { type: 'text' as const, text, cache_control: { type: 'ephemeral' as const } },

@@ -148,6 +148,8 @@
       "empty": "習慣をタップして始めよう"
     },
     "coach": "AIコーチ",
+    "coachMore": "続きを読む",
+    "coachLess": "閉じる",
     "beats": { "a11y": { "one": "過去%{count}日間: 達成%{done}日、休み%{rest}日、未達成%{missed}日", "other": "過去%{count}日間: 達成%{done}日、休み%{rest}日、未達成%{missed}日" } },
     "sticky": { "hint": "先頭に戻ります" },
     "hint": { "longPress": "ヒント：習慣を長押し（または⋯をタップ）すると、スキップ、昨日の記録の修正、メモの追加ができます。", "longPressA11y": "ヒント：習慣を長押しするか、「その他のオプション」ボタンを使うと、スキップ、昨日の記録の修正、メモの追加ができます。" },
@@ -575,7 +577,8 @@
       "generatingWeekly": "週間ふりかえりを作成中...",
       "generatingMonthly": "月間ふりかえりを作成中...",
       "generated": "%{date}に作成",
-      "failed": "作成に失敗しました。もう一度お試しください。",
+      "unavailable": "今はふりかえりを作成できません。しばらくしてからもう一度お試しください。",
+      "limitReached": "今日のふりかえりは上限に達しました。明日また作成できます。",
       "seePro": "  Groov Proを見る",
       "generateWeekly": "週間サマリーを作成",
       "generateMonthly": "月間サマリーを作成"

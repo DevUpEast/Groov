@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, Dimensions,
   TouchableOpacity, ActivityIndicator,
@@ -271,6 +271,14 @@ export default function ProgressScreen() {
   const [reflectionError, setReflectionError] = useState(false);
   const [reflectionErrorMsg, setReflectionErrorMsg] = useState('');
   const [reflectionGeneratedAt, setReflectionGeneratedAt] = useState(null);
+  // A reflection is written in the UI language (#201): a language change drops the shown one.
+  const reflectionLocale = useRef(locale);
+  useEffect(() => {
+    if (reflectionLocale.current === locale) return;
+    reflectionLocale.current = locale;
+    setReflectionMessage(null);
+    setReflectionError(false);
+  }, [locale]);
   // The reflection period control. A locked period is still picked, so its card shows when it
   // unlocks; SegmentedControl plays `selection` for an enabled one, this covers the locked tap.
   const pickReflectionPeriod = (value) => {
@@ -313,11 +321,16 @@ export default function ProgressScreen() {
       if (data?.message) {
         setReflectionMessage(data.message);
         setReflectionGeneratedAt(data.generatedAt ?? new Date().toISOString());
+      } else {
+        // Nothing usable came back: the calm "try again later" note, never an empty card.
+        setReflectionError(true);
+        setReflectionErrorMsg('');
       }
     } catch (e) {
       feedback.play(EVENTS.error);
       setReflectionError(true);
-      setReflectionErrorMsg(e?.message || '');
+      // Only the code decides the copy; the server's English text is never shown (#201).
+      setReflectionErrorMsg(e?.code === 'quota_exceeded' ? 'quota' : '');
     } finally {
       setReflectionLoading(false);
     }
@@ -622,9 +635,9 @@ export default function ProgressScreen() {
           ) : (
             <>
               {reflectionError && (
-                <Text style={[styles.cardHint, { color: theme.dangerText, marginTop: space.xxs }]}>
-                  {reflectionErrorMsg && /limit/i.test(reflectionErrorMsg) ? reflectionErrorMsg : t('progress.reflection.failed')}
-                  {reflectionErrorMsg && /limit/i.test(reflectionErrorMsg) && !isPro ? (
+                <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: space.xxs }]} accessibilityLiveRegion="polite">
+                  {reflectionErrorMsg === 'quota' ? t('progress.reflection.limitReached') : t('progress.reflection.unavailable')}
+                  {reflectionErrorMsg === 'quota' && !isPro ? (
                     <Text style={{ color: theme.link, fontWeight: '700' }} onPress={() => openPaywall('ai')}>{t('progress.reflection.seePro')}</Text>
                   ) : null}
                 </Text>

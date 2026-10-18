@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk'
 import { normalizeSchedule, describeSchedule, expectedDays, isScheduledOn, goalMet } from '../_shared/schedule.ts'
-import { AI_MODEL, COACH_SYSTEM, cachedSystem, consumeQuota, quotaExceeded, refundQuota, generateText, emptyReply } from '../_shared/ai.ts'
+import { AI_MODEL, COACH_SYSTEM, cachedSystem, consumeQuota, quotaExceeded, refundQuota, generateText, emptyReply, coachLocale, languageRule, nudgeMaxChars, capToSentences } from '../_shared/ai.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,7 +78,9 @@ Deno.serve(async (req: Request) => {
       typeof body.accountCreatedAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.accountCreatedAt)
         ? body.accountCreatedAt
         : null
-    const displayName: string | null = typeof body.displayName === 'string' ? body.displayName : null
+    const displayName: string | null = typeof body.displayName === 'string' ? body.displayName.slice(0, 60) : null
+    // The app's UI language (#201): the reply is written in it and cached under it.
+    const locale = coachLocale(body.locale)
 
     // Use the app-level accountCreatedAt if provided; fall back to auth creation date.
     // This ensures the coach only analyses data from the current "session" of the account
@@ -98,6 +100,7 @@ Deno.serve(async (req: Request) => {
       .select('message')
       .eq('user_id', user.id)
       .eq('date', todayStr)
+      .eq('locale', locale)
       .gte('date', accountCreatedStr)
       .maybeSingle()
 
@@ -236,9 +239,11 @@ Deno.serve(async (req: Request) => {
         ? `DATA WINDOW: ${accountActiveDays} days of data. You may reference trends over the past week. Do not reference monthly patterns.`
         : `DATA WINDOW: ${accountActiveDays} days of data. Weekly and multi-week trends are appropriate.`
 
+    const maxChars = nudgeMaxChars(locale)
     const namePrefix = displayName ? `The user's name is ${displayName}. ` : ''
 
-    const prompt = `${namePrefix}Based on the user's data below, write a concise daily nudge (2-3 sentences). Acknowledge what they are doing well using specific numbers, then give ONE actionable tip for the habit they struggle with most.
+    const prompt = `${namePrefix}Based on the user's data below, write a short daily nudge: at most 2 short sentences and under ${maxChars} characters in total, so it fits 3 lines on a phone. Name one specific number they can be proud of, then give ONE small, concrete tip for the habit they struggle with most.
+${languageRule(locale)}
 
 ${timeSpanRule}
 IMPORTANT: Each habit shows its own expected days since it was created, based on its schedule (some habits are only due on certain days or N times a week). Use each habit's own denominator for its completion rate and never call an unscheduled day a miss.
@@ -267,6 +272,8 @@ Write the nudge:`
         max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }],
       }, 'generate-nudge')).trim()
+      // The prompt asks for the length; this enforces it with whole sentences.
+      message = capToSentences(message, maxChars, locale)
     } catch (e) {
       await refundQuota(supabase, user.id, 'nudges', todayStr)
       throw e
@@ -276,7 +283,7 @@ Write the nudge:`
       return emptyReply(corsHeaders)
     }
 
-    await supabase.from('ai_nudges').upsert({ user_id: user.id, date: todayStr, message })
+    await supabase.from('ai_nudges').upsert({ user_id: user.id, date: todayStr, locale, message }, { onConflict: 'user_id,date,locale' })
 
     return new Response(
       JSON.stringify({ message, cached: false }),
