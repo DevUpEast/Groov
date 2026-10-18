@@ -19,7 +19,7 @@ import {
   syncSettings,
 } from '../services/sync';
 import {
-  applyReminderSchedule, scheduleEveningHabitReminder, cancelEveningHabitReminder,
+  requestReminderSchedule, clearRemindersOnSignOut, requestEveningCheckIn,
   getPermissionState, requestOsPermission, listenForNotificationResponses, snoozeNotification, setBadge,
   ACTION_DONE, ACTION_SNOOZE, BACKOFF_AFTER_MISSES,
 } from '../utils/notifications';
@@ -346,9 +346,15 @@ export function AppProvider({ children }) {
     // Never show the OS permission dialog from the launch pass; only after the user
     // changes a reminder (which is what the later runs of this effect represent).
     // Re-runs when permission is granted, so already-stored reminders get scheduled.
-    applyReminderSchedule(settings, habits, { prompt: false, missesByHabit, today: localDateKey() });
+    // Debounced and serialized (#186): only the latest state's pass survives, so a
+    // reminder turned off cannot be re-added by an older pass still in flight.
+    requestReminderSchedule(settings, habits, { prompt: false, missesByHabit, today: localDateKey() });
     remindersAppliedOnce.current = true;
   }, [loaded, settings.notificationsEnabled, settings.reminders, habitReminderKey, backoffKey, clockTick, notificationPermission]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Sign-out / account switch unmounts this provider: a pass queued here must not run
+  // for the next user, and the old user's reminders must stop firing. The sweep runs
+  // on the scheduling chain, ahead of the next user's first pass.
+  useEffect(() => () => { clearRemindersOnSignOut(localDateKey()); }, []);
 
   // ── Notification permission priming ──────────────────────────────────────────
   // Screens call ensureNotificationPermission() before turning a reminder on. If the
@@ -547,18 +553,17 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!loaded) return;
     const realToday = localDateKey();
+    // Serialized with the reminder passes (#186) so the latest state wins.
     if (!settings.eveningReminderEnabled || !settings.notificationsEnabled) {
-      cancelEveningHabitReminder(realToday);
+      requestEveningCheckIn(realToday, { schedule: false });
       return;
     }
     const due = habits.filter(h => isScheduledOn(h.schedule, realToday));
     const allDone = due.length > 0 && due.every(h =>
       isSatisfiedOn(h.schedule, realToday, (k) => isHabitDoneOnDay(h, k, completions) === true));
-    if (allDone) {
-      cancelEveningHabitReminder(realToday);
-    } else {
-      scheduleEveningHabitReminder(realToday, settings.eveningReminderHour ?? 20, settings.eveningReminderMinute ?? 0);
-    }
+    requestEveningCheckIn(realToday, allDone
+      ? { schedule: false }
+      : { schedule: true, hour: settings.eveningReminderHour ?? 20, minute: settings.eveningReminderMinute ?? 0 });
   }, [completions, habits, settings.eveningReminderEnabled, settings.notificationsEnabled, settings.eveningReminderHour, settings.eveningReminderMinute, loaded, clockTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cloud sync ───────────────────────────────────────────────────────────────
