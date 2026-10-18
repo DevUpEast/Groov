@@ -1,7 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Text, TouchableOpacity, StyleSheet, View } from 'react-native';
+import { Animated, Text, StyleSheet, View } from 'react-native';
 import { t } from '../i18n';
 import { duration, easing, useMotion } from '../theme/motion';
+import { themes } from '../theme/colors';
+import { radius } from '../theme/tokens';
+import PressableScale, { hitSlopFor } from './ui/PressableScale';
+
+// The toast is a dark surface in both themes, so its Undo press uses the dark theme's
+// pressedOverlay / ripple (a light-theme ripple would not show on it).
+const UNDO_PRESS_THEME = themes.dark;
+const UNDO_HEIGHT = 36;
+const UNDO_SLOP = hitSlopFor(0, UNDO_HEIGHT);
 
 const OFFSET = 80; // starts this far below its resting place
 
@@ -56,9 +65,16 @@ export default function UndoToast({ toast, onUndo, onHide, theme, bottom = 16, d
     >
       <View style={[styles.toast, { backgroundColor: theme.toast, borderColor: theme.toastEdge, shadowColor: theme.shadow }]}>
         <Text style={[styles.msg, { color: theme.onToast }]} numberOfLines={1}>{shown.message}</Text>
-        <TouchableOpacity onPress={onUndo} style={styles.undoBtn} accessibilityRole="button" accessibilityLabel={t('common.undo')}>
+        <PressableScale
+          onPress={onUndo}
+          theme={UNDO_PRESS_THEME}
+          style={styles.undoBtn}
+          hitSlop={{ top: UNDO_SLOP.top, bottom: UNDO_SLOP.bottom, left: 4, right: 4 }}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.undo')}
+        >
           <Text style={[styles.undo, { color: theme.toastAction }]}>{t('common.undo')}</Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
     </Animated.View>
   );
@@ -73,6 +89,7 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   msg: { fontSize: 14, fontWeight: '600', flexShrink: 1 },
-  undoBtn: { paddingHorizontal: 10, paddingVertical: 6 },
+  // 36 tall + hitSlop to the touch minimum; it is wider than 48 with its label.
+  undoBtn: { minHeight: UNDO_HEIGHT, justifyContent: 'center', paddingHorizontal: 12, borderRadius: radius.control, overflow: 'hidden' },
   undo: { fontSize: 14, fontWeight: '800', letterSpacing: 0.3 },
 });

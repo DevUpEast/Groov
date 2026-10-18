@@ -26,6 +26,9 @@ import { ACCENT_IDS, resolveAccent, storedHexFor } from '../theme/accents';
 import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, handoff } from '../theme/motion';
 import { BLANK_FORM, formFromHabit, habitFromForm, pickAccent, selectedAccentId, suggestedColor } from '../utils/habitForm';
 import AppText from '../components/ui/AppText';
+import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
+import { hitSlopFor } from '../components/ui/PressableScale';
 
 // Preset icons. The stored value is the emoji; `key` names it for screen readers (habits.icons.<key>).
 const ICONS = [
@@ -574,15 +577,16 @@ function HabitModal({ visible, editingId, form, setForm, onSave, onClose, theme 
             </View>
 
             {/* Save button at bottom of scroll */}
-            <TouchableOpacity
-              style={[styles.saveBtn, { backgroundColor: form.name.trim() ? theme.action : theme.disabledContainer, marginTop: 12 }]}
+            {/* Disabled until the habit has a name: disabledContainer / onDisabled (6.15:1),
+                still focusable, and a tap plays `refused` (Button's default onDisabledPress). */}
+            <Button
+              block
+              label={editingId ? t('habits.form.saveChanges') : t('habits.form.addHabit')}
               onPress={onSave}
               disabled={!form.name.trim()}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !form.name.trim() }}
-            >
-              <Text style={[styles.saveBtnText, { color: form.name.trim() ? theme.onAction : theme.onDisabled }]}>{editingId ? t('habits.form.saveChanges') : t('habits.form.addHabit')}</Text>
-            </TouchableOpacity>
+              style={styles.saveBtn}
+              testID="habit-form-save"
+            />
           </ScrollView>
     </BottomSheet>
   );
@@ -633,19 +637,17 @@ function HabitRow({ habit, theme, themeName, onEdit, onDelete, onBell, onOpen, r
         </>
       ) : (
         <>
-          <TouchableOpacity style={styles.bellBtn} onPress={onBell} accessibilityRole="button" accessibilityLabel={reminderOn ? t('habits.row.reminderOff') : t('habits.row.setReminder')}>
-            <Ionicons
-              name={reminderOn ? 'notifications' : 'notifications-outline'}
-              size={20}
-              color={reminderOn ? theme.link : theme.textSecondary}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.editBtn} onPress={onEdit} accessibilityRole="button" accessibilityLabel={t('habits.row.editA11y')}>
-            <Text style={[styles.editBtnText, { color: theme.textSecondary }]}>{t('common.edit')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} accessibilityRole="button" accessibilityLabel={t('habits.row.archiveA11y')}>
-            <Ionicons name="archive-outline" size={18} color={theme.textSecondary} />
-          </TouchableOpacity>
+          {/* 40 visual + hitSlop to the touch minimum; rowIconBtn spaces the targets apart. */}
+          <IconButton
+            icon={reminderOn ? 'notifications' : 'notifications-outline'}
+            iconSize={20}
+            color={reminderOn ? theme.link : undefined}
+            theme={theme}
+            onPress={onBell}
+            accessibilityLabel={reminderOn ? t('habits.row.reminderOff') : t('habits.row.setReminder')}
+          />
+          <IconButton icon="create-outline" iconSize={20} theme={theme} style={styles.rowIconBtn} onPress={onEdit} accessibilityLabel={t('habits.row.editA11y')} />
+          <IconButton icon="archive-outline" iconSize={20} theme={theme} style={styles.rowIconBtn} onPress={onDelete} accessibilityLabel={t('habits.row.archiveA11y')} />
         </>
       )}
     </View>
@@ -927,7 +929,9 @@ const styles = StyleSheet.create({
   typePillText: { fontSize: 12, fontWeight: '600' },
   reminderPill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   reminderPillText: { fontSize: 12, fontWeight: '600' },
-  bellBtn: { padding: 6, marginRight: 2 },
+  // Neighbouring 40 pt IconButtons sit two slops apart, so their touch targets meet without
+  // overlapping (8 dp on Android, 4 pt on iOS). H-02 replaces the three with one control.
+  rowIconBtn: { marginLeft: 2 * hitSlopFor(40).left },
   editBtn: { padding: 6, marginRight: 4 },
   editBtnText: { fontSize: 13, fontWeight: '600' },
   deleteBtn: { padding: 6 },
@@ -974,6 +978,5 @@ const styles = StyleSheet.create({
   volMaxBtnText: { fontSize: 12, fontWeight: '700' },
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   sliderLabelText: { fontSize: 12 },
-  saveBtn: { marginTop: 12, padding: 16, borderRadius: 14, alignItems: 'center' },
-  saveBtnText: { fontSize: 16, fontWeight: '700' },
+  saveBtn: { marginTop: 12, minHeight: 52 },
 });

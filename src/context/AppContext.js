@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+// The context object is its own module so the ui primitives can read it without this file.
+import { AppContext } from './appContextObject';
 import { AppState, useColorScheme, Linking, Alert, Platform } from 'react-native';
 import * as ExpoLinking from 'expo-linking';
 import * as QuickActions from 'expo-quick-actions';
@@ -42,8 +44,6 @@ import { DEFAULT_SETTINGS, migrateSettings } from '../utils/settings';
 
 // The one feedback gate (src/services/feedback.js): callers never check these settings.
 const applyFeedbackSettings = (s) => feedback.configure({ haptics: s?.hapticsEnabled !== false, sound: s?.soundEnabled !== false });
-
-const AppContext = createContext(null);
 
 const DEFAULT_HABITS = [
   { id: '1', name: 'Drink 8 glasses of water', icon: '💧', type: 'volume', volumeGoal: 8, createdAt: '2025-01-01' },

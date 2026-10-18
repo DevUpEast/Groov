@@ -50,9 +50,10 @@ describe('habit form accessibility (S-06)', () => {
   });
 
   it('exposes the disabled state on Save', () => {
-    const save = touchables.find(tag => tag.includes('onPress={onSave}'));
+    // F-06: Save is the shared Button, which sets accessibilityRole="button" and
+    // accessibilityState.disabled itself (src/components/ui/__tests__/pressables.test.js).
+    const save = form.split(/<Button\b/).slice(1).map(chunk => chunk.split('/>')[0]).find(tag => tag.includes('onPress={onSave}'));
     expect(save).toBeDefined();
-    expect(save).toMatch(/accessibilityRole="button"/);
-    expect(save).toMatch(/accessibilityState=\{\{\s*disabled:\s*!form\.name\.trim\(\)\s*\}\}/);
+    expect(save).toMatch(/disabled=\{!form\.name\.trim\(\)\}/);
   });
 });

@@ -18,6 +18,7 @@ import { t, getLocale, useLocale } from '../i18n';
 import { data, elevation } from '../theme/tokens';
 import OverlayModal from '../components/ui/OverlayModal';
 import AppText from '../components/ui/AppText';
+import PressableScale, { hitSlopFor } from '../components/ui/PressableScale';
 import { numeric } from '../theme/typography';
 import { SHEET_OFFSCREEN, sheetIn, sheetOut, sheetSettle, useMotion } from '../theme/motion';
 
@@ -453,8 +454,9 @@ export default function ProgressScreen() {
             <Text style={[styles.cardTitle, { color: theme.text }]}>{t('progress.history')}</Text>
             <View style={styles.periodToggle}>
               {PERIOD_CONFIG.map((cfg, i) => (
-                <TouchableOpacity
+                <PressableScale
                   key={cfg.key}
+                  hitSlop={PERIOD_SLOP}
                   style={[
                     styles.periodBtn,
                     { borderColor: theme.controlBorder },
@@ -468,7 +470,7 @@ export default function ProgressScreen() {
                   <Text style={[styles.periodBtnText, { color: heatPeriodIdx === i ? theme.onSelection : theme.textSecondary }]}>
                     {t(`progress.period.${cfg.key}`)}
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
               ))}
             </View>
           </View>
@@ -591,8 +593,9 @@ export default function ProgressScreen() {
                 const locked = value === 'weekly' ? !canGenerateWeekly : !canGenerateMonthly;
                 const active = reflectionPeriod === value && !locked;
                 return (
-                  <TouchableOpacity
+                  <PressableScale
                     key={value}
+                    hitSlop={PERIOD_SLOP}
                     style={[
                       styles.periodBtn,
                       { borderColor: theme.controlBorder },
@@ -612,7 +615,7 @@ export default function ProgressScreen() {
                     <Text style={[styles.periodBtnText, { color: active ? theme.onSelection : theme.textSecondary }]}>
                       {locked ? '🔒' : label}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                 );
               })}
             </View>
@@ -705,6 +708,9 @@ export default function ProgressScreen() {
   );
 }
 
+const PERIOD_PILL_HEIGHT = 32;
+const PERIOD_SLOP = { ...hitSlopFor(0, PERIOD_PILL_HEIGHT), left: 4, right: 4 };
+
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: 24, paddingBottom: 48 },
@@ -726,8 +732,10 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 15, fontWeight: '700' },
   cardHint: { fontSize: 12, marginTop: 2, marginBottom: 6 },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  periodToggle: { flexDirection: 'row', gap: 5 },
-  periodBtn: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 16, borderWidth: 1.5 },
+  // Pills: 32 tall + PERIOD_SLOP to the touch minimum (F-06; F-07's SegmentedControl replaces
+  // them). The 8 px gap leaves room for the 4 px side slop without overlapping targets.
+  periodToggle: { flexDirection: 'row', gap: 8 },
+  periodBtn: { minHeight: PERIOD_PILL_HEIGHT, minWidth: 40, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12, borderRadius: 16, borderWidth: 1.5, overflow: 'hidden' },
   periodBtnText: { fontSize: 12, fontWeight: '700' },
   heatGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
   moodStrip: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
