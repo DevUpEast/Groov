@@ -14,6 +14,7 @@
     "error": "エラー",
     "notNow": "今はしない",
     "undo": "元に戻す",
+    "gotIt": "OK",
     "slider": "スライダー",
     "shortDays": "%{count}日",
     "charCount": { "one": "%{max}文字中%{count}文字", "other": "%{max}文字中%{count}文字" },
@@ -149,6 +150,7 @@
     "coach": "AIコーチ",
     "beats": { "a11y": { "one": "過去%{count}日間: 達成%{done}日、休み%{rest}日、未達成%{missed}日", "other": "過去%{count}日間: 達成%{done}日、休み%{rest}日、未達成%{missed}日" } },
     "sticky": { "hint": "先頭に戻ります" },
+    "hint": { "longPress": "ヒント：習慣を長押し（または⋯をタップ）すると、スキップ、昨日の記録の修正、メモの追加ができます。", "longPressA11y": "ヒント：習慣を長押しするか、「その他のオプション」ボタンを使うと、スキップ、昨日の記録の修正、メモの追加ができます。" },
     "empty": {
       "title": "リズムをつかもう",
       "body": "最初の習慣を追加",
@@ -368,6 +370,8 @@
     "skippedToday": "今日はスキップ",
     "timer": "⏱ %{time}",
     "doneCount": "%{name}、%{goal}のうち%{count}、完了",
+    "more": "%{name}のその他のオプション",
+    "moreShort": "その他のオプション",
     "longPress": {
       "body": "いろいろな日があります。選んでください。",
       "unskip": "今日のスキップを解除",
@@ -377,14 +381,19 @@
       "minusOne": "1つ減らす",
       "minusMany": "%{count}減らす",
       "editNote": "メモを編集",
-      "addNote": "メモを追加"
+      "addNote": "メモを追加",
+      "details": "習慣の詳細"
     },
     "announce": {
       "countMax": "%{name}、上限%{goal}のうち%{count}",
       "count": "%{name}、%{goal}のうち%{count}",
       "unchecked": "%{name}のチェックを外しました",
       "avoided": "%{name}、今日は我慢できました",
-      "done": "%{name}を完了しました"
+      "done": "%{name}を完了しました",
+      "skipped": "%{name}を今日はスキップしました",
+      "unskipped": "%{name}の今日のスキップを解除しました",
+      "yesterdayDone": "%{name}を昨日完了にしました",
+      "yesterdayUndone": "%{name}の昨日のチェックを外しました"
     },
     "a11y": {
       "count": "、%{goal}のうち%{count}",

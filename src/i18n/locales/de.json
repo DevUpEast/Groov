@@ -14,6 +14,7 @@
     "error": "Fehler",
     "notNow": "Nicht jetzt",
     "undo": "Rückgängig",
+    "gotIt": "OK",
     "slider": "Schieberegler",
     "shortDays": "%{count} T",
     "charCount": { "one": "%{count} von %{max} Zeichen", "other": "%{count} von %{max} Zeichen" },
@@ -149,6 +150,7 @@
     "coach": "KI-Coach",
     "beats": { "a11y": { "one": "Letzter %{count} Tag: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst", "other": "Letzte %{count} Tage: %{done} geschafft, %{rest} Ruhetage, %{missed} verpasst" } },
     "sticky": { "hint": "Scrollt zurück nach oben" },
+    "hint": { "longPress": "Tipp: Halte eine Gewohnheit gedrückt (oder tippe auf ⋯), um einen Tag zu überspringen, gestern nachzutragen oder eine Notiz hinzuzufügen.", "longPressA11y": "Tipp: Halte eine Gewohnheit gedrückt oder nutze ihre Taste „Weitere Optionen“, um einen Tag zu überspringen, gestern nachzutragen oder eine Notiz hinzuzufügen." },
     "empty": {
       "title": "Finde deinen Rhythmus",
       "body": "Füge deine erste Gewohnheit hinzu",
@@ -368,6 +370,8 @@
     "skippedToday": "Heute übersprungen",
     "timer": "⏱ %{time}",
     "doneCount": "%{name}, %{count} von %{goal}, erledigt",
+    "more": "Weitere Optionen für %{name}",
+    "moreShort": "Weitere Optionen",
     "longPress": {
       "body": "Das Leben passiert. Wähle eine Option:",
       "unskip": "Heute nicht mehr überspringen",
@@ -377,14 +381,19 @@
       "minusOne": "Eins abziehen",
       "minusMany": "%{count} abziehen",
       "editNote": "Notiz bearbeiten",
-      "addNote": "Notiz hinzufügen"
+      "addNote": "Notiz hinzufügen",
+      "details": "Details zur Gewohnheit"
     },
     "announce": {
       "countMax": "%{name}, %{count} von maximal %{goal}",
       "count": "%{name}, %{count} von %{goal}",
       "unchecked": "%{name} zurückgesetzt",
       "avoided": "%{name} heute vermieden",
-      "done": "%{name} erledigt"
+      "done": "%{name} erledigt",
+      "skipped": "%{name} heute übersprungen",
+      "unskipped": "%{name} heute nicht mehr übersprungen",
+      "yesterdayDone": "%{name} gestern als erledigt markiert",
+      "yesterdayUndone": "%{name} für gestern zurückgesetzt"
     },
     "a11y": {
       "count": ", %{count} von %{goal}",

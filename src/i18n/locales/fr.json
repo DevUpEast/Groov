@@ -14,6 +14,7 @@
     "error": "Erreur",
     "notNow": "Pas maintenant",
     "undo": "Annuler",
+    "gotIt": "Compris",
     "slider": "Curseur",
     "shortDays": "%{count}j",
     "charCount": { "one": "%{count} caractère sur %{max}", "other": "%{count} caractères sur %{max}" },
@@ -149,6 +150,7 @@
     "coach": "Coach IA",
     "beats": { "a11y": { "one": "%{count} dernier jour : %{done} réussis, %{rest} de repos, %{missed} manqués", "other": "%{count} derniers jours : %{done} réussis, %{rest} de repos, %{missed} manqués" } },
     "sticky": { "hint": "Revient en haut" },
+    "hint": { "longPress": "Astuce : appuie longuement sur une habitude (ou touche ⋯) pour sauter un jour, corriger hier ou ajouter une note.", "longPressA11y": "Astuce : appuie longuement sur une habitude, ou utilise son bouton Plus d'options, pour sauter un jour, corriger hier ou ajouter une note." },
     "empty": {
       "title": "Trouve ton rythme",
       "body": "Ajoute ta première habitude",
@@ -368,6 +370,8 @@
     "skippedToday": "Sautée aujourd'hui",
     "timer": "⏱ %{time}",
     "doneCount": "%{name}, %{count} sur %{goal}, objectif atteint",
+    "more": "Plus d'options pour %{name}",
+    "moreShort": "Plus d'options",
     "longPress": {
       "body": "La vie est imprévisible. Choisis une option :",
       "unskip": "Ne plus sauter aujourd'hui",
@@ -377,14 +381,19 @@
       "minusOne": "Retirer un",
       "minusMany": "Retirer %{count}",
       "editNote": "Modifier la note",
-      "addNote": "Ajouter une note"
+      "addNote": "Ajouter une note",
+      "details": "Détails de l'habitude"
     },
     "announce": {
       "countMax": "%{name}, %{count} sur %{goal} maximum",
       "count": "%{name}, %{count} sur %{goal}",
       "unchecked": "%{name} décochée",
       "avoided": "%{name} évitée aujourd'hui",
-      "done": "%{name} faite"
+      "done": "%{name} faite",
+      "skipped": "%{name} sautée aujourd'hui",
+      "unskipped": "%{name} n'est plus sautée aujourd'hui",
+      "yesterdayDone": "%{name} marquée comme faite hier",
+      "yesterdayUndone": "%{name} décochée pour hier"
     },
     "a11y": {
       "count": ", %{count} sur %{goal}",

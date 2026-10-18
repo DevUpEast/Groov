@@ -14,6 +14,7 @@
     "error": "Error",
     "notNow": "Not now",
     "undo": "Undo",
+    "gotIt": "Got it",
     "slider": "Slider",
     "shortDays": "%{count}d",
     "charCount": { "one": "%{count} of %{max} characters", "other": "%{count} of %{max} characters" },
@@ -149,6 +150,7 @@
     "coach": "AI Coach",
     "beats": { "a11y": { "one": "Last %{count} day: %{done} complete, %{rest} rest, %{missed} missed", "other": "Last %{count} days: %{done} complete, %{rest} rest, %{missed} missed" } },
     "sticky": { "hint": "Scrolls back to the top" },
+    "hint": { "longPress": "Tip: press and hold a habit (or tap ⋯) to skip a day, fix yesterday or add a note.", "longPressA11y": "Tip: press and hold a habit, or use its More options button, to skip a day, fix yesterday or add a note." },
     "empty": {
       "title": "Get into Rhythm",
       "body": "Add your first habit",
@@ -368,6 +370,8 @@
     "skippedToday": "Skipped today",
     "timer": "⏱ %{time}",
     "doneCount": "%{name}, %{count} of %{goal}, done",
+    "more": "More options for %{name}",
+    "moreShort": "More options",
     "longPress": {
       "body": "Life happens. Pick an option:",
       "unskip": "Unskip today",
@@ -377,14 +381,19 @@
       "minusOne": "Remove one",
       "minusMany": "Remove %{count}",
       "editNote": "Edit note",
-      "addNote": "Add a note"
+      "addNote": "Add a note",
+      "details": "Habit details"
     },
     "announce": {
       "countMax": "%{name}, %{count} of %{goal} max",
       "count": "%{name}, %{count} of %{goal}",
       "unchecked": "%{name} unchecked",
       "avoided": "%{name} avoided today",
-      "done": "%{name} done"
+      "done": "%{name} done",
+      "skipped": "%{name} skipped today",
+      "unskipped": "%{name} no longer skipped today",
+      "yesterdayDone": "%{name} marked done yesterday",
+      "yesterdayUndone": "%{name} unchecked for yesterday"
     },
     "a11y": {
       "count": ", %{count} of %{goal}",

@@ -47,6 +47,9 @@ import { KINDS as BEAT, ladderIndex, MOMENT_MS } from '../utils/beats';
 import { useTabActive } from '../utils/tabScope';
 import useCelebrationQueue from '../hooks/useCelebrationQueue';
 import { useDevFlag } from '../utils/devFlags';
+import { useDeviceSettings } from '../utils/deviceSettings';
+import { type as typeScale } from '../theme/typography';
+import { shouldShowLongPressHint, hintSeen } from '../utils/hints';
 
 // Today list sections. Habits without a time of day go under "Anytime", which is
 // omitted (plain list) when no habit has a time set at all.
@@ -118,9 +121,10 @@ export default function TodayScreen() {
     pendingMilestone, clearPendingMilestone,
     moods, setMood,
     themeName, allHabits, getOverallStreak, habitsOnDay, isSnapshotHabitDone, isExcused, isDayFrozen,
-    getStreakForHabit,
+    getStreakForHabit, setHint,
   } = useApp();
   useLocale();
+  const device = useDeviceSettings();
   // C-06a: the check-off timeline (plan §4.1 / §4.2). `choreography` is the device-local dev
   // flag (Settings → Dev tools); off restores the pre-C-06a feedback calls and the per-check
   // toast.
@@ -360,6 +364,34 @@ export default function TodayScreen() {
           <Text style={[styles.nudgeText, { color: theme.text }]}>{shownNudge}</Text>
         )}
       </View>
+    </View>
+  ) : null;
+
+  // C-03 (BTN-5): the one-time tip above the first card, from the 2nd app open until "Got it"
+  // (or until a card's options have been opened). The mockup shows it only with ?hint=longPress,
+  // so review shots stay deterministic.
+  const showLongPressHint = mockupParams.active
+    ? mockupParams.hint === 'longPress' && !hintSeen(settings, 'longPress') && dueHabits.length > 0
+    : shouldShowLongPressHint({ settings, appOpens: device.appOpens, cardCount: dueHabits.length });
+  const longPressHint = showLongPressHint ? (
+    <View
+      testID="hint-longpress"
+      style={[styles.hintCard, { backgroundColor: theme.brandSurface, borderColor: theme.border }]}
+    >
+      <Ionicons name="hand-left-outline" size={18} color={theme.link} style={styles.hintIcon} />
+      <Text
+        style={[styles.hintText, { color: theme.text }]}
+        accessibilityLabel={t('today.hint.longPressA11y')}
+      >
+        {t('today.hint.longPress')}
+      </Text>
+      <Button
+        variant="tertiary"
+        size="sm"
+        label={t('common.gotIt')}
+        onPress={() => setHint('longPress')}
+        style={styles.hintBtn}
+      />
     </View>
   ) : null;
 
@@ -710,6 +742,7 @@ export default function TodayScreen() {
             </View>
           ) : (
             <>
+              {longPressHint}
               {grouped ? grouped.map((section, i) => (
                 <View key={section.key}>
                   <SectionLabel icon={SECTION_ICONS[section.key]} label={t(`today.sections.${section.key}`)} theme={theme} style={i > 0 ? styles.groupAfterCards : compactRing && styles.sectionCompact} />
@@ -883,6 +916,16 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: radius.card, padding: 14, marginTop: space.md,
   },
   nudgeIcon: { marginTop: 1 },
+  // C-03 tip: brandSurface like the other informational cards; "Got it" sits beside the text
+  // so the card stays short (the SE fold).
+  hintCard: {
+    flexDirection: 'row', alignItems: 'center', gap: space.sm,
+    borderWidth: 1, borderRadius: radius.card, paddingLeft: space.md, paddingRight: space.xxs,
+    paddingVertical: space.sm, marginTop: space.md,
+  },
+  hintIcon: { alignSelf: 'flex-start' },
+  hintText: { ...typeScale.footnote, flex: 1 },
+  hintBtn: { paddingHorizontal: space.sm },
   nudgeLabel: { marginBottom: space.xxs },
   nudgeText: { fontSize: 13, lineHeight: 20 },
   empty: {

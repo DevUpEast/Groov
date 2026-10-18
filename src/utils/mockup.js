@@ -5,7 +5,8 @@
 //     demo=1 (seed starter habits + 30 days of history), lang=<locale code> (UI language
 //     for this page load, not persisted), nudge=1 (a sample AI nudge card on Today),
 //     streak=<n>|frozen (the Today streak chip state), challenges=<n> (n challenge chips on
-//     Today, padded with samples), mockup=1
+//     Today, padded with samples), hint=longPress (the C-03 one-time tip on Today; without it
+//     the mockup never shows the tip), mockup=1
 //   window messages from the host: { type: 'mockup:theme', theme }, { type: 'mockup:navigate', route }
 //   messages to the host: { type: 'mockup:statusbar', style }, { type: 'mockup:ready' }
 import { Platform } from 'react-native';
@@ -38,6 +39,8 @@ export const mockupParams = {
     const raw = isWeb && this.active ? params().get('challenges') : null;
     return raw != null && /^\d+$/.test(raw) ? Number(raw) : null;
   },
+  // hint=<id>: Today shows that one-time tip (until it is dismissed in this profile).
+  get hint() { return (isWeb && this.active && params().get('hint')) || null; },
   get theme() { const t = params().get('theme'); return t === 'light' || t === 'dark' ? t : null; },
   get insets() {
     const raw = params().get('insets');

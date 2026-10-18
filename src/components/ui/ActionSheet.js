@@ -15,16 +15,19 @@ import { useUiTheme } from './PressableScale';
  * - iOS: the native `ActionSheetIOS` sheet, with Cancel as `cancelButtonIndex`.
  * - Android and web: a bottom list on the shared `Sheet` (F-10: grabber, drag to close, scrim,
  *   translucent bars), with a Cancel row. Back, a scrim tap, a drag and Cancel all close it.
- * - The longPress feedback (iOS medium impact, Android Long_Press) plays when it opens.
+ * - The longPress feedback (iOS medium impact, Android Long_Press) plays when it opens, unless
+ *   `haptic={false}` (opened from a plain button such as a card's "⋯", which is silent, §2.10).
  *
  * Props:
  * - `visible`, `title`, `message` (optional secondary line)
- * - `options`: [{ label, onPress, destructive? }]
+ * - `options`: [{ label, onPress, destructive?, afterClose? }]. `afterClose`: run `onPress` once
+ *   the sheet has gone (an option that opens another overlay; on iOS the native callback
+ *   already fires after the sheet is gone).
  * - Each open runs at most one option, however fast the taps.
  * - `onCancel`: hides the sheet. Called on Cancel, back and scrim, and also right before an
  *   option's `onPress`, so the caller only keeps one piece of state.
  */
-export default function ActionSheet({ visible, title, message, options = [], onCancel }) {
+export default function ActionSheet({ visible, title, message, options = [], onCancel, haptic = true }) {
   useLocale();
   const theme = useUiTheme();
   const native = Platform.OS === 'ios';
@@ -43,11 +46,16 @@ export default function ActionSheet({ visible, title, message, options = [], onC
   // At most one option runs per open: a second tap landing during the fade-out would otherwise
   // run a toggle twice (undoing it). Re-armed each time the sheet opens.
   const fired = useRef(false);
+  // An `afterClose` option waiting for the exit to finish.
+  const pending = useRef(null);
 
   useEffect(() => {
     if (!visible) return;
     fired.current = false;
-    feedback.play(EVENTS.longPress);
+    // A reopen during the exit (Sheet springs back, no dismiss) drops an afterClose option
+    // picked before it, so it can never run on a later Cancel.
+    pending.current = null;
+    if (haptic) feedback.play(EVENTS.longPress);
     if (!native) return;
     const opts = latest.current.options;
     const destructiveButtonIndex = opts
@@ -77,7 +85,14 @@ export default function ActionSheet({ visible, title, message, options = [], onC
     if (fired.current) return;
     fired.current = true;
     onCancel?.();
-    option.onPress?.();
+    if (option.afterClose) pending.current = option;
+    else option.onPress?.();
+  };
+  const handleDismiss = () => {
+    setInUse(false);
+    const next = pending.current;
+    pending.current = null;
+    next?.onPress?.();
   };
 
   const shown = visible ? { title, message, options } : last.current;
@@ -96,7 +111,7 @@ export default function ActionSheet({ visible, title, message, options = [], onC
     <Sheet
       visible={!!visible}
       onClose={() => onCancel?.()}
-      onDismiss={() => setInUse(false)}
+      onDismiss={handleDismiss}
       header={header}
       accessibilityLabel={shown.title}
       theme={theme}

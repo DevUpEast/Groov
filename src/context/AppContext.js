@@ -40,7 +40,8 @@ import { persistPickedIcon, uploadIcon, downloadIcon, removeIcon, isDurableLocal
 import { t, useLocale } from '../i18n';
 import feedback, { EVENTS as FEEDBACK } from '../services/feedback';
 import { DEFAULT_SETTINGS, migrateSettings, withHint, normalizeExtras, withCloudExtras } from '../utils/settings';
-import { loadDeviceSettings, setDeviceSettings, migrateBadgeFlag, clearUserScopedDeviceSettings } from '../utils/deviceSettings';
+import { loadDeviceSettings, setDeviceSettings, getDeviceSetting, migrateBadgeFlag, clearUserScopedDeviceSettings } from '../utils/deviceSettings';
+import { nextAppOpens, isNewOpen } from '../utils/hints';
 import { afterMoment, flushMoment, dropMoment } from '../utils/afterMoment';
 import { announce } from '../utils/a11y';
 import { queueUpsert, queueUpserts, withoutPendingRows, configurePendingUpserts, resendPendingUpserts, retryPendingUpserts, overlayPendingUpserts, dropPendingUpserts } from '../utils/completionUpserts';
@@ -198,8 +199,14 @@ export function AppProvider({ children }) {
   // is open or suspended (streaks, challenge expiry, "today" completions).
   const [clockTick, setClockTick] = useState(0);
   useEffect(() => {
+    // C-03: a return after NEW_OPEN_AFTER_MS in the background counts as another app open.
+    let backgroundAt = null;
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') setClockTick(t => t + 1);
+      if (state === 'active') {
+        setClockTick(t => t + 1);
+        if (isNewOpen(backgroundAt, Date.now())) setDeviceSettings({ appOpens: nextAppOpens(getDeviceSetting('appOpens')) });
+        backgroundAt = null;
+      } else if (state === 'background' && backgroundAt == null) backgroundAt = Date.now();
     });
     let timer;
     const armMidnight = () => {
@@ -265,6 +272,10 @@ export function AppProvider({ children }) {
       loadDeviceSettings(),
     ]);
 
+    // C-03: this load is one app open (device-local; one-time tips start on the 2nd open).
+    // Written (the emit is synchronous) before any state below lets Today render, so on the
+    // 2nd open the tip is there in Today's first frame instead of pushing the cards down.
+    setDeviceSettings({ appOpens: nextAppOpens(device?.appOpens) });
     if (h) setHabits(migrateHabits(h, c || {}));
     if (c) updateCompletions(c);
     if (n) setNotes(n);
