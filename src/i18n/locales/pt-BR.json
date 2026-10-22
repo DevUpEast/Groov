@@ -474,9 +474,9 @@
       "percentComplete": "%{percent}% concluído",
       "linkedHabits": "Hábitos Vinculados (%{count})",
       "linkedA11y": "Hábitos vinculados, %{count}",
-      "noneLinked": "Nenhum hábito vinculado",
+      "noneLinked": "Todos os seus hábitos",
       "todayLogged": "✅ Hoje já foi registrado!",
-      "tapEdit": "Toque em Editar para vincular hábitos a este desafio.",
+      "tapEdit": "Complete todos os seus hábitos para garantir o dia de hoje automaticamente. Toque em Editar para escolher alguns.",
       "completeLinked": "Complete seus hábitos vinculados para garantir o dia de hoje automaticamente."
     },
     "form": {

@@ -474,9 +474,9 @@
       "percentComplete": "%{percent}%達成",
       "linkedHabits": "ひも付けた習慣（%{count}）",
       "linkedA11y": "ひも付けた習慣、%{count}個",
-      "noneLinked": "ひも付けた習慣はありません",
+      "noneLinked": "すべての習慣",
       "todayLogged": "✅ 今日の記録完了！",
-      "tapEdit": "「編集」をタップして、このチャレンジに習慣をひも付けましょう。",
+      "tapEdit": "すべての習慣を完了すると、今日が自動で記録されます。特定の習慣を選ぶには「編集」をタップします。",
       "completeLinked": "ひも付けた習慣を完了すると、今日が自動で記録されます。"
     },
     "form": {

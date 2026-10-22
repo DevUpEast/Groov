@@ -474,9 +474,9 @@
       "percentComplete": "%{percent}% complete",
       "linkedHabits": "Linked Habits (%{count})",
       "linkedA11y": "Linked habits, %{count}",
-      "noneLinked": "No habits linked",
+      "noneLinked": "All your habits",
       "todayLogged": "✅ Today's logged!",
-      "tapEdit": "Tap Edit to link habits to this challenge.",
+      "tapEdit": "Complete all your habits to auto-claim today. Tap Edit to pick specific ones.",
       "completeLinked": "Complete your linked habits to auto-claim today."
     },
     "form": {

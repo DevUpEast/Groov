@@ -474,9 +474,9 @@
       "percentComplete": "%{percent}% accompli",
       "linkedHabits": "Habitudes associées (%{count})",
       "linkedA11y": "Habitudes associées, %{count}",
-      "noneLinked": "Aucune habitude associée",
+      "noneLinked": "Toutes tes habitudes",
       "todayLogged": "✅ Aujourd'hui est validé !",
-      "tapEdit": "Appuie sur Modifier pour associer des habitudes à ce défi.",
+      "tapEdit": "Accomplis toutes tes habitudes pour valider automatiquement aujourd'hui. Appuie sur Modifier pour en choisir certaines.",
       "completeLinked": "Accomplis tes habitudes associées pour valider automatiquement aujourd'hui."
     },
     "form": {

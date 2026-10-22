@@ -474,9 +474,9 @@
       "percentComplete": "%{percent}% completado",
       "linkedHabits": "Hábitos vinculados (%{count})",
       "linkedA11y": "Hábitos vinculados, %{count}",
-      "noneLinked": "Ningún hábito vinculado",
+      "noneLinked": "Todos tus hábitos",
       "todayLogged": "✅ ¡Hoy está registrado!",
-      "tapEdit": "Toca Editar para vincular hábitos a este reto.",
+      "tapEdit": "Completa todos tus hábitos para reclamar el día automáticamente. Toca Editar para elegir algunos.",
       "completeLinked": "Completa tus hábitos vinculados para reclamar el día automáticamente."
     },
     "form": {
