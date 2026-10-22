@@ -226,6 +226,19 @@
       "stretch": "Dehnen",
       "unitGlasses": "Gläser"
     },
+    "first": {
+      "welcomeBody": "Wähle eine Gewohnheit, hak sie jeden Tag ab und sieh deine Serie wachsen. Auslassen, Ruhetage und Freezes sorgen dafür, dass ein schlechter Tag sie nicht löscht.",
+      "getStarted": "Los geht's",
+      "title": "Welche Gewohnheit willst du aufbauen?",
+      "body": "Fang mit einer an. Weitere kannst du jederzeit im Tab Gewohnheiten hinzufügen.",
+      "nameLabel": "Name der Gewohnheit",
+      "placeholder": "z. B. Spazieren gehen",
+      "whenLabel": "Wann machst du es meistens?",
+      "create": "Gewohnheit erstellen",
+      "skip": "Jetzt nicht",
+      "skipA11y": "Überspringen und ohne Gewohnheit starten",
+      "reminderBody": "Du bekommst täglich eine Erinnerung zu dieser Zeit. Ändere oder deaktiviere sie jederzeit in den Einstellungen."
+    },
     "stepA11y": "Schritt %{step} von %{total}",
     "skipA11y": "Einführung überspringen",
     "pick": {

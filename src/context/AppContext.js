@@ -86,22 +86,6 @@ export const SMALL_MILESTONES = [
 ];
 const ALL_MILESTONES = [...SMALL_MILESTONES, ...STREAK_MILESTONES].sort((a, b) => a.days - b.days);
 
-// The challenge promised on the last onboarding slide. An empty linkedHabitIds means
-// "every habit", so it works however many habits the user goes on to create.
-function makeStarterChallenge(startDate) {
-  return {
-    id: Date.now().toString(),
-    name: t('app.kickstart.name'),
-    description: t('app.kickstart.description'),
-    days: 3,
-    icon: '🌱',
-    completedDays: [],
-    completed: false,
-    startDate,
-    linkedHabitIds: [],
-  };
-}
-
 export function getChallengeTier(completedCount, totalDays) {
   const ratio = totalDays > 0 ? completedCount / totalDays : 0;
   if (ratio >= 1.0) return 'platinum';
@@ -1431,9 +1415,9 @@ export function AppProvider({ children }) {
 
   // ── Onboarding / reset ───────────────────────────────────────────────────────
 
-  // `starterHabits` (optional) are created in order with the onboarding plan the user
-  // chose. The 3-Day Kickstart is only created on a true first run: a returning user
-  // restored from the cloud already has history.
+  // `starterHabits` (optional): the habit the user created in onboarding. Nothing else is
+  // made for them (no starter challenge); a returning user restored from the cloud keeps
+  // what they have.
   const completeOnboarding = useCallback((starterHabits = []) => {
     setHasOnboarded(true);
     const today = todayStr();
@@ -1450,12 +1434,7 @@ export function AppProvider({ children }) {
       if (userId) created.forEach(h => syncHabit(userId, h));
     }
     track(Events.ONBOARDING_COMPLETED, { starters: starterHabits.length });
-    if (challenges.length === 0 && pastChallenges.length === 0) {
-      const starter = makeStarterChallenge(today);
-      setChallenges([starter]);
-      if (userId) syncChallenge(userId, starter);
-    }
-  }, [challenges.length, pastChallenges.length, habits.length, todayStr, userId]);
+  }, [habits.length, todayStr, userId]);
   completeOnboardingRef.current = completeOnboarding;
 
   const resetAll = useCallback(async () => {

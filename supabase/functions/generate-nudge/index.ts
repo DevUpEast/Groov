@@ -155,6 +155,15 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    // The coach only talks about what the user has actually logged: no check-off yet,
+    // no nudge (a new account would otherwise get advice about days it never tracked).
+    if (!(completionRows ?? []).some((row) => (row.count ?? 0) > 0)) {
+      return new Response(
+        JSON.stringify({ message: null, reason: 'no_history' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const completions: Record<string, Record<string, number>> = {}
     for (const row of completionRows ?? []) {
       if (!completions[row.date]) completions[row.date] = {}

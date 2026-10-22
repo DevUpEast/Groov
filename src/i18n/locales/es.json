@@ -226,6 +226,19 @@
       "stretch": "Estirar",
       "unitGlasses": "vasos"
     },
+    "first": {
+      "welcomeBody": "Elige un hábito, márcalo cada día y mira cómo crece tu racha. Los saltos, los días de descanso y los congelamientos evitan que un mal día la borre.",
+      "getStarted": "Empezar",
+      "title": "¿Qué hábito quieres crear?",
+      "body": "Empieza con uno. Puedes añadir más cuando quieras desde la pestaña Hábitos.",
+      "nameLabel": "Nombre del hábito",
+      "placeholder": "p. ej. Salir a caminar",
+      "whenLabel": "¿Cuándo sueles hacerlo?",
+      "create": "Crear hábito",
+      "skip": "Ahora no",
+      "skipA11y": "Omitir y empezar sin hábito",
+      "reminderBody": "Recibe un recordatorio al día a esta hora. Cámbialo o desactívalo cuando quieras en Ajustes."
+    },
     "stepA11y": "Paso %{step} de %{total}",
     "skipA11y": "Omitir la introducción",
     "pick": {

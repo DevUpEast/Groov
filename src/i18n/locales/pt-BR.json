@@ -226,6 +226,19 @@
       "stretch": "Alongar",
       "unitGlasses": "copos"
     },
+    "first": {
+      "welcomeBody": "Escolha um hábito, marque-o todo dia e veja sua sequência crescer. Pulos, dias de descanso e congelamentos impedem que um dia ruim apague tudo.",
+      "getStarted": "Começar",
+      "title": "Qual hábito você quer criar?",
+      "body": "Comece com um. Você pode adicionar mais quando quiser na aba Hábitos.",
+      "nameLabel": "Nome do hábito",
+      "placeholder": "ex.: Fazer uma caminhada",
+      "whenLabel": "Quando você costuma fazer?",
+      "create": "Criar hábito",
+      "skip": "Agora não",
+      "skipA11y": "Pular e começar sem hábito",
+      "reminderBody": "Receba um lembrete por dia neste horário. Altere ou desative quando quiser em Ajustes."
+    },
     "stepA11y": "Passo %{step} de %{total}",
     "skipA11y": "Pular a introdução",
     "pick": {
