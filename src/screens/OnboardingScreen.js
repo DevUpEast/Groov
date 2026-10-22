@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Keyboard,
-  KeyboardAvoidingView, Platform,
+  View, Text, StyleSheet, TouchableOpacity, TextInput, Keyboard,
+  KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import SafeAreaView from '../components/SafeAreaView';
@@ -9,25 +9,21 @@ import { useApp } from '../context/AppContext';
 import { palette, space, radius } from '../theme/tokens';
 import feedback, { EVENTS } from '../services/feedback';
 import { t, useLocale } from '../i18n';
-import { STARTER_HABITS, getStarterHabits } from '../utils/habits';
+import { STARTER_HABITS } from '../utils/habits';
 import { reminderTimeForTimeOfDay } from '../utils/settings';
 import { formatTimeForClock } from '../utils/time';
 import { usesDevice24hClock } from '../utils/clock';
+import { DEFAULT_ACCENT_HEX } from '../theme/accents';
 
-// First-run flow: two intro slides, pick starter habits, an implementation intention
-// ("after X, I will Y") per habit, then reminders at each habit's time of day.
-// Finishing creates the habits and the 3-Day Kickstart challenge.
+// First-run flow, kept short: a welcome, then the user names their own first habit and
+// picks when they do it, then (native, with a time of day) a reminder for it. Finishing
+// creates only that habit; nothing is pre-filled and no challenge is started for them.
 
-const INTRO = [
-  { emoji: '🌱', key: 'stick' },
-  { emoji: '🔥', key: 'streaks' },
-];
-
+// Kept for the web mockup's demo seed, which still imports it from here.
 export { STARTER_HABITS };
-const DEFAULT_PICK = ['water', 'move', 'read'];
-const MAX_PICK = 5;
 
 const TIME_CHIPS = ['morning', 'afternoon', 'evening', 'anytime'];
+const NAME_MAX = 60;
 
 // App renders onboarding before its own <StatusBar>, so without this the platform default
 // (dark icons on iOS) sits on the brand ground (ONB-9). Both grounds are dark enough for light
@@ -43,46 +39,33 @@ export default function OnboardingScreen() {
 
 function OnboardingFlow() {
   const { completeOnboarding, theme, ensureNotificationPermission } = useApp();
-  const { locale } = useLocale();
-  const [step, setStep] = useState(0); // 0,1 intro · 2 pick · 3 intentions · 4 reminders
+  useLocale();
+  const [step, setStep] = useState(0); // 0 welcome · 1 first habit · 2 reminder
   const [asking, setAsking] = useState(false);
-  const [picked, setPicked] = useState(DEFAULT_PICK);
-  const [plans, setPlans] = useState({}); // key -> { timeOfDay, intention }
+  const [name, setName] = useState('');
+  const [timeOfDay, setTimeOfDay] = useState('anytime');
+  const nameRef = useRef(null);
 
-  const togglePick = (key) => {
-    feedback.play(EVENTS.selection);
-    setPicked(p => (p.includes(key) ? p.filter(k => k !== key) : p.length >= MAX_PICK ? p : [...p, key]));
-  };
-
-  const starters = useMemo(() => getStarterHabits(), [locale]);
-  const chosen = useMemo(() => starters.filter(h => picked.includes(h.key)), [picked, starters]);
-
-  // Each chosen habit's reminder time comes from its time of day (WID-6); anytime has none.
-  const reminderRows = useMemo(() => chosen.map(h => {
-    const tod = (plans[h.key] || {}).timeOfDay ?? h.timeOfDay;
-    return { habit: h, time: reminderTimeForTimeOfDay(tod) };
-  }), [chosen, plans]);
-  // Web has no notification permission to ask for, so the step would only end with
-  // reminders silently off; skip it there (the mockup included).
-  const hasReminders = Platform.OS !== 'web' && reminderRows.some(r => r.time);
+  const trimmed = name.trim();
+  const time = reminderTimeForTimeOfDay(timeOfDay);
+  // Web has no notification permission to ask for, so the step would only end with the
+  // reminder silently off; skip it there (the mockup included), and for "anytime".
+  const hasReminder = Platform.OS !== 'web' && !!time;
   const uses24h = useMemo(() => usesDevice24hClock(), []);
 
-  // `remindersOn`: the user allowed notifications on the reminders step. Otherwise the
-  // times are still saved, switched off, so Settings can turn them on later.
-  const finish = (withHabits, remindersOn = false) => {
-    const habits = withHabits
-      ? chosen.map(h => {
-          const plan = plans[h.key] || {};
-          const { key, ...rest } = h;
-          const timeOfDay = plan.timeOfDay ?? h.timeOfDay;
-          const time = reminderTimeForTimeOfDay(timeOfDay);
-          return {
-            ...rest,
-            timeOfDay,
-            intention: (plan.intention || '').trim() || null,
-            ...(time ? { reminder: { ...time, enabled: remindersOn } } : {}),
-          };
-        })
+  // `remindersOn`: the user allowed notifications on the reminder step. Otherwise the time
+  // is still saved, switched off, so Settings can turn it on later.
+  const finish = (withHabit, remindersOn = false) => {
+    const habits = withHabit && trimmed
+      ? [{
+          name: trimmed,
+          icon: '⭐',
+          type: 'daily',
+          volumeGoal: 1,
+          color: DEFAULT_ACCENT_HEX,
+          timeOfDay,
+          ...(time ? { reminder: { ...time, enabled: remindersOn } } : {}),
+        }]
       : [];
     completeOnboarding(habits);
   };
@@ -95,7 +78,14 @@ function OnboardingFlow() {
     finish(true, granted);
   };
 
-  const totalSteps = hasReminders ? 5 : 4;
+  const createHabit = () => {
+    if (!trimmed) { feedback.play(EVENTS.refused); nameRef.current?.focus(); return; }
+    Keyboard.dismiss();
+    if (hasReminder) setStep(2);
+    else finish(true);
+  };
+
+  const totalSteps = hasReminder ? 3 : 2;
   const dots = (
     <View style={styles.dots} accessibilityLabel={t('onboarding.stepA11y', { step: step + 1, total: totalSteps })}>
       {Array.from({ length: totalSteps }).map((_, i) => (
@@ -104,85 +94,28 @@ function OnboardingFlow() {
     </View>
   );
 
-  // ── Intro slides ────────────────────────────────────────────────────────────
-  if (step < 2) {
-    const s = INTRO[step];
+  // ── Welcome ─────────────────────────────────────────────────────────────────
+  if (step === 0) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.brandGround }]}>
         <View style={styles.container}>
           {dots}
           <View style={[styles.card, { backgroundColor: theme.surface }]}>
-            <Text style={styles.emoji}>{s.emoji}</Text>
-            <Text style={[styles.title, { color: theme.text }]}>{t(`onboarding.intro.${s.key}.title`)}</Text>
-            <Text style={[styles.body, { color: theme.textSecondary }]}>{t(`onboarding.intro.${s.key}.body`)}</Text>
+            <Text style={styles.emoji}>🌱</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.intro.stick.title')}</Text>
+            <Text style={[styles.body, { color: theme.textSecondary }]}>{t('onboarding.first.welcomeBody')}</Text>
           </View>
-          <TouchableOpacity style={[styles.btn, { backgroundColor: theme.brandGroundCta }]} onPress={() => { setStep(step + 1); }} accessibilityRole="button">
-            <Text style={[styles.btnText, { color: theme.onBrandGroundCta }]}>{t('common.next')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => finish(false)} style={styles.skipBtn} accessibilityRole="button" accessibilityLabel={t('onboarding.skipA11y')}>
-            <Text style={[styles.skipText, { color: theme.onBrandGroundSecondary }]}>{t('common.skip')}</Text>
+          <TouchableOpacity style={[styles.btn, { backgroundColor: theme.brandGroundCta }]} onPress={() => { setStep(1); }} accessibilityRole="button">
+            <Text style={[styles.btnText, { color: theme.onBrandGroundCta }]}>{t('onboarding.first.getStarted')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  // ── Pick starter habits ─────────────────────────────────────────────────────
+  // ── Reminder ────────────────────────────────────────────────────────────────
   if (step === 2) {
-    return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.brandGround }]}>
-        <View style={styles.container}>
-          {dots}
-          <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.pick.title')}</Text>
-            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: space.md }]}>
-              {t('onboarding.pick.body')}
-            </Text>
-            <ScrollView style={{ alignSelf: 'stretch', maxHeight: 340 }} showsVerticalScrollIndicator={false}>
-              {starters.map(h => {
-                const on = picked.includes(h.key);
-                return (
-                  <TouchableOpacity
-                    key={h.key}
-                    style={[styles.pickRow, { borderColor: on ? theme.selectionBorder : theme.border, backgroundColor: on ? theme.selection : theme.bg }]}
-                    onPress={() => togglePick(h.key)}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: on }}
-                    accessibilityLabel={h.name}
-                  >
-                    <Text style={styles.pickIcon}>{h.icon}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.pickName, { color: theme.text }]}>{h.name}</Text>
-                      <Text style={[styles.pickSub, { color: theme.textSecondary }]}>
-                        {h.type === 'volume' ? t('onboarding.pick.perDay', { goal: h.volumeGoal, unit: h.unit }) : t('onboarding.pick.onceADay')}
-                      </Text>
-                    </View>
-                    <View style={[styles.check, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selectionBorder : 'transparent' }]}>
-                      {on && <Text style={[styles.checkMark, { color: theme.onAction }]}>✓</Text>}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-            <Text style={[styles.counter, { color: theme.textSecondary }]}>{t('onboarding.pick.selected', { count: picked.length, max: MAX_PICK })}</Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.btn, { backgroundColor: theme.brandGroundCta, opacity: picked.length === 0 ? 0.6 : 1 }]}
-            onPress={() => { picked.length === 0 ? finish(false) : setStep(3); }}
-            accessibilityRole="button"
-          >
-            <Text style={[styles.btnText, { color: theme.onBrandGroundCta }]}>{picked.length === 0 ? t('onboarding.pick.startEmpty') : t('common.next')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => { setStep(1); }} style={styles.skipBtn} accessibilityRole="button">
-            <Text style={[styles.skipText, { color: theme.onBrandGroundSecondary }]}>{t('common.back')}</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // ── Reminders ───────────────────────────────────────────────────────────────
-  if (step === 4) {
+    const label = formatTimeForClock(time, uses24h);
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.brandGround }]}>
         <View style={styles.container}>
@@ -191,25 +124,17 @@ function OnboardingFlow() {
             <Text style={styles.emojiSmall}>🔔</Text>
             <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.reminders.title')}</Text>
             <Text style={[styles.body, { color: theme.textSecondary, marginBottom: space.md }]}>
-              {t('onboarding.reminders.body')}
+              {t('onboarding.first.reminderBody')}
             </Text>
-            <ScrollView style={{ alignSelf: 'stretch', maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-              {reminderRows.map(({ habit, time }) => {
-                const label = time ? formatTimeForClock(time, uses24h) : t('onboarding.reminders.none');
-                return (
-                  <View
-                    key={habit.key}
-                    style={[styles.reminderRow, { borderColor: theme.border, backgroundColor: theme.bg }]}
-                    accessible
-                    accessibilityLabel={t('onboarding.reminders.rowA11y', { name: habit.name, time: label })}
-                  >
-                    <Text style={styles.pickIcon}>{habit.icon}</Text>
-                    <Text style={[styles.pickName, { color: theme.text, flex: 1 }]} numberOfLines={2}>{habit.name}</Text>
-                    <Text style={[styles.reminderTime, { color: time ? theme.link : theme.textSecondary }]}>{label}</Text>
-                  </View>
-                );
-              })}
-            </ScrollView>
+            <View
+              style={[styles.reminderRow, { borderColor: theme.border, backgroundColor: theme.bg }]}
+              accessible
+              accessibilityLabel={t('onboarding.reminders.rowA11y', { name: trimmed, time: label })}
+            >
+              <Text style={styles.pickIcon}>⭐</Text>
+              <Text style={[styles.pickName, { color: theme.text, flex: 1 }]} numberOfLines={2}>{trimmed}</Text>
+              <Text style={[styles.reminderTime, { color: theme.link }]}>{label}</Text>
+            </View>
           </View>
           <TouchableOpacity
             style={[styles.btn, { backgroundColor: theme.brandGroundCta, opacity: asking ? 0.6 : 1 }]}
@@ -223,7 +148,7 @@ function OnboardingFlow() {
           <TouchableOpacity onPress={() => finish(true, false)} disabled={asking} style={styles.skipBtn} accessibilityRole="button" accessibilityLabel={t('onboarding.reminders.notNowA11y')}>
             <Text style={[styles.skipText, { color: theme.onBrandGroundSecondary }]}>{t('common.notNow')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { setStep(3); }} disabled={asking} style={styles.backBtn} accessibilityRole="button">
+          <TouchableOpacity onPress={() => { setStep(1); }} disabled={asking} style={styles.backBtn} accessibilityRole="button">
             <Text style={[styles.skipText, { color: theme.onBrandGroundSecondary }]}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
@@ -231,67 +156,65 @@ function OnboardingFlow() {
     );
   }
 
-  // ── Implementation intentions ───────────────────────────────────────────────
+  // ── First habit ─────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.brandGround }]}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {dots}
           <View style={[styles.card, styles.cardWide, { backgroundColor: theme.surface }]}>
-            <Text style={[styles.title, { color: theme.text }]}>{t('onboarding.plan.title')}</Text>
-            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: space.sm }]}>
-              {t('onboarding.plan.body')}
+            <Text style={[styles.title, { color: theme.text }]} accessibilityRole="header">{t('onboarding.first.title')}</Text>
+            <Text style={[styles.body, { color: theme.textSecondary, marginBottom: space.md }]}>
+              {t('onboarding.first.body')}
             </Text>
-            <ScrollView style={{ alignSelf: 'stretch', maxHeight: 360 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              {chosen.map(h => {
-                const plan = plans[h.key] || {};
-                const tod = plan.timeOfDay ?? h.timeOfDay;
+            <Text style={[styles.fieldLabel, { color: theme.text }]} importantForAccessibility="no" accessibilityElementsHidden>
+              {t('onboarding.first.nameLabel')}
+            </Text>
+            <TextInput
+              ref={nameRef}
+              testID="onboarding-habit-name"
+              style={[styles.input, { borderColor: theme.controlBorder, color: theme.text, backgroundColor: theme.bg }]}
+              placeholder={t('onboarding.first.placeholder')}
+              placeholderTextColor={theme.textSecondary}
+              value={name}
+              onChangeText={setName}
+              maxLength={NAME_MAX}
+              autoCapitalize="sentences"
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+              accessibilityLabel={t('onboarding.first.nameLabel')}
+            />
+            <Text style={[styles.fieldLabel, { color: theme.text, marginTop: space.md }]}>{t('onboarding.first.whenLabel')}</Text>
+            <View style={styles.chipRow} accessibilityRole="radiogroup">
+              {TIME_CHIPS.map(c => {
+                const on = timeOfDay === c;
                 return (
-                  <View key={h.key} style={[styles.planBlock, { borderColor: theme.border, backgroundColor: theme.bg }]}>
-                    <Text style={[styles.planName, { color: theme.text }]}>{h.icon} {h.name}</Text>
-                    <View style={styles.chipRow}>
-                      {TIME_CHIPS.map(c => {
-                        const on = tod === c;
-                        return (
-                          <TouchableOpacity
-                            key={c}
-                            style={[styles.chip, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : 'transparent' }]}
-                            onPress={() => { feedback.play(EVENTS.selection); setPlans(p => ({ ...p, [h.key]: { ...p[h.key], timeOfDay: c } })); }}
-                            accessibilityRole="button"
-                            accessibilityState={{ selected: on }}
-                          >
-                            <Text style={[styles.chipText, { color: on ? theme.onSelection : theme.textSecondary }]}>{t(`timeOfDay.${c}`)}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                    <TextInput
-                      style={[styles.input, { borderColor: theme.border, color: theme.text, backgroundColor: theme.surface }]}
-                      placeholder={t('onboarding.plan.placeholder')}
-                      placeholderTextColor={theme.textSecondary}
-                      value={plan.intention ?? ''}
-                      onChangeText={text => setPlans(p => ({ ...p, [h.key]: { ...p[h.key], intention: text } }))}
-                      maxLength={80}
-                      returnKeyType="done"
-                      onSubmitEditing={Keyboard.dismiss}
-                      accessibilityLabel={t('onboarding.plan.a11y', { name: h.name })}
-                    />
-                  </View>
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.chip, { borderColor: on ? theme.selectionBorder : theme.controlBorder, backgroundColor: on ? theme.selection : 'transparent' }]}
+                    onPress={() => { feedback.play(EVENTS.selection); setTimeOfDay(c); }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                  >
+                    <Text style={[styles.chipText, { color: on ? theme.onSelection : theme.textSecondary }]}>{t(`timeOfDay.${c}`)}</Text>
+                  </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
           <TouchableOpacity
-            style={[styles.btn, { backgroundColor: theme.brandGroundCta }]}
-            onPress={() => { if (hasReminders) { Keyboard.dismiss(); setStep(4); } else finish(true); }}
+            testID="onboarding-create"
+            style={[styles.btn, { backgroundColor: theme.brandGroundCta, opacity: trimmed ? 1 : 0.6 }]}
+            onPress={createHabit}
             accessibilityRole="button"
+            accessibilityState={{ disabled: !trimmed }}
           >
-            <Text style={[styles.btnText, { color: theme.onBrandGroundCta }]}>{hasReminders ? t('common.next') : t('onboarding.plan.start')}</Text>
+            <Text style={[styles.btnText, { color: theme.onBrandGroundCta }]}>{hasReminder ? t('common.next') : t('onboarding.first.create')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => { setStep(2); }} style={styles.skipBtn} accessibilityRole="button">
-            <Text style={[styles.skipText, { color: theme.onBrandGroundSecondary }]}>{t('common.back')}</Text>
+          <TouchableOpacity onPress={() => finish(false)} style={styles.skipBtn} accessibilityRole="button" accessibilityLabel={t('onboarding.first.skipA11y')}>
+            <Text style={[styles.skipText, { color: theme.onBrandGroundSecondary }]}>{t('onboarding.first.skip')}</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -300,6 +223,7 @@ function OnboardingFlow() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.lg },
+  scroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: space.lg },
   dots: { flexDirection: 'row', gap: space.xs, marginBottom: space.lg },
   dot: { width: 8, height: 8, borderRadius: radius.cell },
   dotActive: { width: 24 },
@@ -320,17 +244,11 @@ const styles = StyleSheet.create({
   emojiSmall: { fontSize: 40, textAlign: 'center', marginBottom: space.xs },
   reminderRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderWidth: 1, borderRadius: radius.card, padding: space.sm, marginBottom: space.xs },
   reminderTime: { fontSize: 14, fontWeight: '700' },
-  pickRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, borderWidth: 1.5, borderRadius: radius.card, padding: space.sm, marginBottom: space.xs },
   pickIcon: { fontSize: 24 },
   pickName: { fontSize: 15, fontWeight: '600' },
-  pickSub: { fontSize: 12, marginTop: 1 },
-  check: { width: 24, height: 24, borderRadius: radius.pill, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  checkMark: { fontSize: 13, fontWeight: 'bold' },
-  counter: { fontSize: 12, textAlign: 'center', marginTop: space.xs },
-  planBlock: { borderWidth: 1, borderRadius: radius.card, padding: space.sm, marginBottom: 10 },
-  planName: { fontSize: 15, fontWeight: '700', marginBottom: space.xs },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: space.xs },
-  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.card, borderWidth: 1.5 },
-  chipText: { fontSize: 12, fontWeight: '600' },
-  input: { borderWidth: 1, borderRadius: radius.control, paddingHorizontal: space.sm, paddingVertical: 10, fontSize: 14 },
+  fieldLabel: { fontSize: 14, fontWeight: '600', marginBottom: space.xs },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
+  chip: { paddingHorizontal: space.sm, paddingVertical: space.xs, borderRadius: radius.pill, borderWidth: 1.5 },
+  chipText: { fontSize: 14, fontWeight: '600' },
+  input: { borderWidth: 2, borderRadius: radius.control, paddingHorizontal: space.sm, paddingVertical: space.sm, fontSize: 16 },
 });

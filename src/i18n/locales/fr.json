@@ -226,6 +226,19 @@
       "stretch": "S'étirer",
       "unitGlasses": "verres"
     },
+    "first": {
+      "welcomeBody": "Choisis une habitude, coche-la chaque jour et regarde ta série grandir. Les sauts, les jours de repos et les gels empêchent une mauvaise journée de tout effacer.",
+      "getStarted": "Commencer",
+      "title": "Quelle habitude veux-tu prendre ?",
+      "body": "Commence par une seule. Tu pourras en ajouter d'autres à tout moment dans l'onglet Habitudes.",
+      "nameLabel": "Nom de l'habitude",
+      "placeholder": "ex. Aller marcher",
+      "whenLabel": "Quand le fais-tu d'habitude ?",
+      "create": "Créer l'habitude",
+      "skip": "Plus tard",
+      "skipA11y": "Passer et commencer sans habitude",
+      "reminderBody": "Reçois un rappel par jour à cette heure. Modifie-le ou désactive-le à tout moment dans les Réglages."
+    },
     "stepA11y": "Étape %{step} sur %{total}",
     "skipA11y": "Passer l'introduction",
     "pick": {

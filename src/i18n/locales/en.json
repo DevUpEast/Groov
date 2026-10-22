@@ -226,6 +226,19 @@
       "stretch": "Stretch",
       "unitGlasses": "glasses"
     },
+    "first": {
+      "welcomeBody": "Pick one habit, check it off each day, and watch your streak grow. Skips, rest days and freezes keep one bad day from wiping it out.",
+      "getStarted": "Get started",
+      "title": "What's one habit you want to build?",
+      "body": "Start with one. You can add more any time from the Habits tab.",
+      "nameLabel": "Habit name",
+      "placeholder": "e.g. Go for a walk",
+      "whenLabel": "When do you usually do it?",
+      "create": "Create habit",
+      "skip": "Skip for now",
+      "skipA11y": "Skip, start without a habit",
+      "reminderBody": "Get one reminder a day at this time. Change it or turn it off any time in Settings."
+    },
     "stepA11y": "Step %{step} of %{total}",
     "skipA11y": "Skip onboarding",
     "pick": {
