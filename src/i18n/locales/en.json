@@ -418,9 +418,9 @@
       "openDetail": "Double tap for details. Long press for skip, yesterday and note options.",
       "startTimer": "Start timer",
       "stopTimer": "Stop timer and log minutes",
-      "removeOne": "Remove one %{unit}",
+      "removeOne": "Remove one",
       "removeMany": "Remove %{count} %{unit}",
-      "addOne": "Add one %{unit}",
+      "addOne": "Add one",
       "addMany": "Add %{count} %{unit}"
     }
   },

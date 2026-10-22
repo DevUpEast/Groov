@@ -123,7 +123,9 @@ const { themes } = jest.requireActual('../../theme/colors');
 const { StyleSheet } = require('react-native');
 const { resolveAccent } = jest.requireActual('../../theme/accents');
 const flat = (node) => StyleSheet.flatten(node.props.style);
-const textOf = (r) => r.root.findAll(n => n.type === 'Text').map(n => [].concat(n.props.children).join(''));
+// The drawn sub-line glues each part (keepPartsWhole): read it back as plain text.
+const plain = (s) => s.replace(/⁠/g, '').replace(/ /g, ' ');
+const textOf = (r) => r.root.findAll(n => n.type === 'Text').map(n => plain([].concat(n.props.children).join('')));
 
 it('the disabled − is lighter than the +: no fill, a disabledContainer hairline, textTertiary glyph (a tone lighter than the enabled textSecondary)', () => {
   const { r } = render(counter);
@@ -220,6 +222,15 @@ describe('joinSubLine', () => {
   });
 });
 
+describe('keepPartsWhole (M3 MF-5)', () => {
+  const { keepPartsWhole } = require('../HabitCard');
+  it('breaks only between parts: no split at a hyphen, a space or inside CJK', () => {
+    expect(keepPartsWhole('5/8 glasses · 12-day streak')).toBe('5/8 glasses · 12-⁠day streak');
+    expect(keepPartsWhole('12日連続')).toBe('1⁠2⁠日⁠連⁠続');
+    expect(keepPartsWhole('')).toBe('');
+  });
+});
+
 it('a running timer survives a re-render from a check on another card (no remount)', () => {
   const timed = { id: 'h3', name: 'Stretch', type: 'timed', volumeGoal: 10, createdAt: '2026-01-01' };
   const { r } = render(timed);
@@ -256,7 +267,7 @@ describe('C-02a review round', () => {
 
   it('m2: counter and timer sub-lines may wrap to 2 lines; daily stays on 1', () => {
     mockCount = 3;
-    const sub = (r, re) => r.root.findAll(n => n.type === 'Text' && re.test([].concat(n.props.children).join('')))[0];
+    const sub = (r, re) => r.root.findAll(n => n.type === 'Text' && re.test(plain([].concat(n.props.children).join(''))))[0];
     expect(sub(render(counter).r, /glasses/).props.numberOfLines).toBe(2);
     expect(sub(render(daily).r, /Every day/).props.numberOfLines).toBe(1);
   });
@@ -338,7 +349,7 @@ describe('C-02b counter semantics', () => {
     const p = pill(r);
     expect(p.props.accessibilityRole).toBe('button');
     expect(p.props.accessibilityLabel).toBe('Water, 8 of 8, done');
-    expect(p.props.accessibilityHint).toBe('Add one glasses');
+    expect(p.props.accessibilityHint).toBe('Add one');
     const accent = resolveAccent(counter.color, 'light');
     expect(flat(p)).toMatchObject({ backgroundColor: accent.fill, height: 36 });
     expect(p.findAll(n => n.type === 'CheckMark')[0].props.color).toBe(accent.onFill);

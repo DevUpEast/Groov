@@ -154,7 +154,7 @@ const dark = {
   onToast: '#F8FAFC',
   toastAction: '#A5B4FC',
   toastEdge: '#475569',
-  disabledContainer: '#2C3647',
+  disabledContainer: '#3A4558', // M3 MF-1: distinct from raised (1.26:1), so a disabled CTA in a sheet keeps its shape
   onDisabled: '#A3B1C5',
   onCelebration: '#FFFFFF',
   onCelebrationSecondary: '#CBD5E1',
@@ -383,7 +383,7 @@ export const pairs = [
   P('dark', 'brand strip: signature arc on brandSurface', 'signature', 'brandSurface', LARGE, 8.96),
   P('dark', 'brand strip: empty dashed ring on brandSurface', 'brandInk', 'brandSurface', LARGE, 5.59),
   P('dark', 'brand strip: beat-row outlines (beatOutline) on brandSurface', 'beatOutline', 'brandSurface', LARGE, 5.59),
-  P('dark', 'onDisabled on disabledContainer (exempt)', 'onDisabled', 'disabledContainer', null, 5.59),
+  P('dark', 'onDisabled on disabledContainer (exempt)', 'onDisabled', 'disabledContainer', null, 4.44),
   P('dark', 'data partial vs surface', 'data.partial', 'surface', LARGE, 4.44),
   P('dark', 'data perfect vs surface', 'data.perfect', 'surface', LARGE, 10.42),
   P('dark', 'data missed / frozen / rest outline vs surface', 'controlBorder', 'surface', LARGE, 5.12),

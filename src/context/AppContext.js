@@ -8,6 +8,7 @@ import {
 } from '../utils/habits';
 import { refreshWidget } from '../widgets/refreshWidget';
 import { configurePurchases, checkPro, FREE_LIMITS } from '../services/entitlements';
+import { freeTierAllows, paywallAvailable, purchasesConfigured } from '../utils/freeTier';
 import { loadData, saveData, clearAll as storeClearAll } from '../utils/storage';
 import { themes } from '../theme/colors';
 import { useAuth } from './AuthContext';
@@ -602,7 +603,10 @@ export function AppProvider({ children }) {
   // RevenueCat entitlement. `paywall` is the sheet request screens consume.
   const [isPro, setIsPro] = useState(false);
   const [paywall, setPaywall] = useState(null); // { reason } | null
-  const openPaywall = useCallback((reason) => setPaywall({ reason }), []);
+  // No paywall until purchases are configured (src/utils/freeTier.js): a request is dropped.
+  const openPaywall = useCallback((reason) => {
+    if (paywallAvailable({ configured: purchasesConfigured })) setPaywall({ reason });
+  }, []);
   const closePaywall = useCallback(() => setPaywall(null), []);
   const refreshPro = useCallback(async () => {
     if (!userId) { setIsPro(false); return false; }
@@ -617,13 +621,13 @@ export function AppProvider({ children }) {
   // Free-tier checks. Each returns true when the action may proceed, otherwise opens
   // the paywall with the matching reason.
   const canAddHabit = useCallback(() => {
-    if (isPro || habits.length < FREE_LIMITS.habits) return true;
+    if (freeTierAllows({ configured: purchasesConfigured, isPro, count: habits.length, limit: FREE_LIMITS.habits })) return true;
     feedback.play(FEEDBACK.refused);
     openPaywall('habits');
     return false;
   }, [isPro, habits.length, openPaywall]);
   const canAddReminder = useCallback(() => {
-    if (isPro || (settings.reminders || []).length < FREE_LIMITS.reminders) return true;
+    if (freeTierAllows({ configured: purchasesConfigured, isPro, count: (settings.reminders || []).length, limit: FREE_LIMITS.reminders })) return true;
     feedback.play(FEEDBACK.refused);
     openPaywall('reminders');
     return false;

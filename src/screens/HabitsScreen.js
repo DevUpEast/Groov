@@ -19,6 +19,7 @@ import { useTabActive } from '../utils/tabScope';
 import { describeSchedule, weekdayLabels, DEFAULT_SCHEDULE } from '../utils/schedule';
 import { getHabitTypes, describeGoal } from '../utils/habits';
 import { suggestHabit } from '../services/aiCoaching';
+import { stripProUpsell, purchasesConfigured } from '../utils/freeTier';
 import { useAuth } from '../context/AuthContext';
 import { t, useLocale } from '../i18n';
 import { ACCENT_IDS, resolveAccent, storedHexFor } from '../theme/accents';
@@ -246,7 +247,7 @@ export function HabitModal({ visible, editingId, form, setForm, onSave, onClose,
       }));
       if (habit.type === 'volume' && habit.volumeGoal > 10) setVolMax(habit.volumeGoal > 25 ? 100 : 25);
     } catch (e) {
-      setMagicError(e.message || t('habits.form.magicError'));
+      setMagicError(stripProUpsell(e.message, { configured: purchasesConfigured }) || t('habits.form.magicError'));
     } finally {
       setMagicBusy(false);
     }
@@ -269,29 +270,33 @@ export function HabitModal({ visible, editingId, form, setForm, onSave, onClose,
     if (form.volumeGoal > newMax) setForm(f => ({ ...f, volumeGoal: newMax }));
   };
 
+  // Each source asks only for what it needs, when it is picked: the camera needs the camera
+  // permission; the library uses the system photo picker (iOS PHPicker, Android Photo
+  // Picker), which needs no storage permission, so Android blocks READ/WRITE_EXTERNAL_STORAGE.
   const handlePickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      const cam = await ImagePicker.requestCameraPermissionsAsync();
-      if (cam.status !== 'granted') {
-        Alert.alert(t('habits.permission.title'), t('habits.permission.body'));
-        return;
+    const applyPick = (result) => {
+      if (result && !result.canceled && result.assets?.[0]?.uri) {
+        setForm(f => ({ ...f, customIconUri: result.assets[0].uri, icon: null }));
       }
-    }
-
+    };
+    const denied = () => Alert.alert(t('habits.permission.title'), t('habits.permission.body'));
     Alert.alert(t('habits.customIcon.title'), t('habits.customIcon.body'), [
       {
         text: t('habits.customIcon.camera'),
         onPress: async () => {
-          const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 });
-          if (!result.canceled) setForm(f => ({ ...f, customIconUri: result.assets[0].uri, icon: null }));
+          try {
+            const cam = await ImagePicker.requestCameraPermissionsAsync();
+            if (cam.status !== 'granted') { denied(); return; }
+            applyPick(await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 }));
+          } catch { denied(); }
         },
       },
       {
         text: t('habits.customIcon.library'),
         onPress: async () => {
-          const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 });
-          if (!result.canceled) setForm(f => ({ ...f, customIconUri: result.assets[0].uri, icon: null }));
+          try {
+            applyPick(await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 }));
+          } catch { denied(); }
         },
       },
       { text: t('common.cancel'), style: 'cancel' },

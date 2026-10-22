@@ -469,7 +469,12 @@ export default function Sheet({
     marginBottom: -pad,
     borderTopWidth: rest > 0 ? StyleSheet.hairlineWidth : 0,
     borderTopColor: theme.border,
-  } : null;
+  } : {
+    // A single-detent sheet's pinned footer (the habit and challenge forms' Save) gets the
+    // same hairline edge, so the body visibly scrolls under it (M3 MF-4).
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.border,
+  };
   const footerLift = !twoDetents ? null : r
     ? { transform: [{ translateY: -rest }] }
     : { transform: [{ translateY: value.interpolate({ inputRange: [0, mediumOffset], outputRange: [0, -mediumOffset], extrapolate: 'clamp' }) }] };

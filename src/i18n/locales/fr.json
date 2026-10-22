@@ -418,9 +418,9 @@
       "openDetail": "Appuie deux fois pour voir le détail. Appui long pour sauter, agir sur hier ou ajouter une note.",
       "startTimer": "Démarrer le minuteur",
       "stopTimer": "Arrêter le minuteur et enregistrer les minutes",
-      "removeOne": "Retirer un %{unit}",
+      "removeOne": "Retirer un",
       "removeMany": "Retirer %{count} %{unit}",
-      "addOne": "Ajouter un %{unit}",
+      "addOne": "Ajouter un",
       "addMany": "Ajouter %{count} %{unit}"
     }
   },

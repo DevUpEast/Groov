@@ -418,9 +418,9 @@
       "openDetail": "Toca dos veces para ver los detalles. Mantén pulsado para omitir, registrar ayer o añadir una nota.",
       "startTimer": "Iniciar temporizador",
       "stopTimer": "Detener temporizador y registrar minutos",
-      "removeOne": "Quitar un %{unit}",
+      "removeOne": "Quitar uno",
       "removeMany": "Quitar %{count} %{unit}",
-      "addOne": "Añadir un %{unit}",
+      "addOne": "Añadir uno",
       "addMany": "Añadir %{count} %{unit}"
     }
   },

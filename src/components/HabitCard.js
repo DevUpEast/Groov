@@ -73,6 +73,19 @@ const FRAME_MS = 16;
 // The sub-line parts joined with " · ", first letter capitalised for the locale: the streak
 // strings are lower case so they read naturally after "Done ·" (G-01: "Día completo · racha
 // de 12 días") and still start the line in upper case when they come first.
+// The drawn sub-line breaks only between its " · " parts (M3 MF-5): on a narrow counter card
+// "12-day streak" used to split at the hyphen ("12-/day streak", "12/日連続"). Inside a part,
+// spaces become no-break spaces and a word joiner (U+2060, zero width) follows each hyphen;
+// a CJK part gets a word joiner between its characters. A part wider than the line still
+// wraps (the line breaker falls back to characters) and the line truncates as before.
+const CJK = /[぀-ヿ㐀-鿿豈-﫿＀-￯]/;
+export function keepPartsWhole(line) {
+  if (!line) return line;
+  return line.split(' · ').map(part => (CJK.test(part)
+    ? Array.from(part).join('⁠')
+    : part.replace(/ /g, ' ').replace(/-/g, '-⁠'))).join(' · ');
+}
+
 export function joinSubLine(parts, locale) {
   const line = parts.filter(Boolean).join(' · ');
   if (!line) return '';
@@ -340,7 +353,7 @@ export default function HabitCard({ habit, onIncrement, onDecrement, onNote, onS
           <View style={styles.subRow}>
             <View style={styles.subText}>
               <Animated.View pointerEvents="none" style={[styles.subFlash, { backgroundColor: theme.signatureTint, opacity: streakFlash }]} />
-              <Animated.Text style={[styles.sub, { color: theme.textSecondary, transform: [{ scale: streakPulse }], transformOrigin: 'left center' }]} numberOfLines={isVolume ? 2 : 1}>{subLine}</Animated.Text>
+              <Animated.Text style={[styles.sub, { color: theme.textSecondary, transform: [{ scale: streakPulse }], transformOrigin: 'left center' }]} numberOfLines={isVolume ? 2 : 1}>{keepPartsWhole(subLine)}</Animated.Text>
             </View>
             <IconButton
               testID="habit-more"
@@ -518,7 +531,8 @@ const styles = StyleSheet.create({
   sub: { ...type.footnote, marginTop: 2, ...numeric },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
   subText: { flex: 1, minWidth: 0 },
-  more: { marginVertical: -(MORE_BTN - type.footnote.lineHeight) / 2 },
+  // A fixed trailing slot (M3 MF-5): the sub-line never takes width from the ⋯.
+  more: { width: MORE_BTN, flexShrink: 0, marginVertical: -(MORE_BTN - type.footnote.lineHeight) / 2 },
   slot: { width: size.trailingSlot, alignItems: 'center', justifyContent: 'center' },
   // C-06b fade layers: they cover the border too (the card clips them to its rounded box).
   subFlash: { position: 'absolute', top: 1, bottom: -1, left: -space.xxs, right: 0, borderRadius: radius.cell },

@@ -418,9 +418,9 @@
       "openDetail": "Toque duas vezes para ver os detalhes. Pressione e segure para as opções de pular, ontem e nota.",
       "startTimer": "Iniciar cronômetro",
       "stopTimer": "Parar cronômetro e registrar os minutos",
-      "removeOne": "Remover um %{unit}",
+      "removeOne": "Remover um",
       "removeMany": "Remover %{count} %{unit}",
-      "addOne": "Adicionar um %{unit}",
+      "addOne": "Adicionar um",
       "addMany": "Adicionar %{count} %{unit}"
     }
   },

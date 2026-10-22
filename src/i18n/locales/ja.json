@@ -418,9 +418,9 @@
       "openDetail": "ダブルタップで詳細を表示します。長押しでスキップ、昨日の記録、メモを選べます。",
       "startTimer": "タイマーを開始",
       "stopTimer": "タイマーを止めて分数を記録",
-      "removeOne": "%{unit}を1つ減らす",
+      "removeOne": "1つ減らす",
       "removeMany": "%{unit}を%{count}減らす",
-      "addOne": "%{unit}を1つ増やす",
+      "addOne": "1つ増やす",
       "addMany": "%{unit}を%{count}増やす"
     }
   },

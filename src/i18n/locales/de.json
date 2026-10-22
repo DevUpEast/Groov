@@ -418,9 +418,9 @@
       "openDetail": "Doppeltippen für Details. Lange drücken für Überspringen, Gestern und Notiz.",
       "startTimer": "Timer starten",
       "stopTimer": "Timer stoppen und Minuten erfassen",
-      "removeOne": "Eine Einheit %{unit} entfernen",
+      "removeOne": "Eins entfernen",
       "removeMany": "%{count} %{unit} entfernen",
-      "addOne": "Eine Einheit %{unit} hinzufügen",
+      "addOne": "Eins hinzufügen",
       "addMany": "%{count} %{unit} hinzufügen"
     }
   },

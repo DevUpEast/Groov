@@ -26,6 +26,8 @@ import SectionLabel from '../components/ui/SectionLabel';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import { useSnackbar } from '../components/ui/Snackbar';
 import { useDevFlag, setDevFlag } from '../utils/devFlags';
+import { devToolsAllowed } from '../utils/appEnv';
+import { paywallAvailable, purchasesConfigured } from '../utils/freeTier';
 import { space, radius } from '../theme/tokens';
 
 // Secret code for first-time dev unlock (tap version label 7× then enter)
@@ -460,7 +462,7 @@ export default function SettingsScreen() {
   const [devCodeDraft, setDevCodeDraft] = useState('');
   const devInputRef = useRef(null);
   const devTapTimer = useRef(null);
-  const showDevTools = devMode;
+  const showDevTools = devMode && devToolsAllowed;
   const choreography = useDevFlag('choreography');
   const frameLog = useDevFlag('frameLog');
   // Throws during render so the root ErrorBoundary (and Sentry, when configured) can be exercised.
@@ -471,7 +473,8 @@ export default function SettingsScreen() {
   if (crashTest) throw new Error('Test crash from Settings dev tools');
 
   const handleVersionTap = () => {
-    if (showDevTools) return;
+    // Production builds have no way into the dev tools (src/utils/appEnv.js).
+    if (showDevTools || !devToolsAllowed) return;
     const next = devTapCount + 1;
     setDevTapCount(next);
     clearTimeout(devTapTimer.current);
@@ -1021,16 +1024,18 @@ export default function SettingsScreen() {
           </Section>
         )}
 
-        {/* Pro */}
-        <Section title={t('settings.pro.title')} theme={theme}>
-          <Row
-            label={isPro ? t('settings.pro.have') : t('settings.pro.upgrade')}
-            sublabel={isPro ? t('settings.pro.haveSub') : t('settings.pro.upgradeSub')}
-            theme={theme}
-            onPress={isPro ? undefined : () => openPaywall('settings')}
-            right={<Ionicons name={isPro ? 'checkmark-circle' : 'sparkles-outline'} size={20} color={theme.link} />}
-          />
-        </Section>
+        {/* Pro: only once purchases are configured (src/utils/freeTier.js) */}
+        {paywallAvailable({ configured: purchasesConfigured }) && (
+          <Section title={t('settings.pro.title')} theme={theme}>
+            <Row
+              label={isPro ? t('settings.pro.have') : t('settings.pro.upgrade')}
+              sublabel={isPro ? t('settings.pro.haveSub') : t('settings.pro.upgradeSub')}
+              theme={theme}
+              onPress={isPro ? undefined : () => openPaywall('settings')}
+              right={<Ionicons name={isPro ? 'checkmark-circle' : 'sparkles-outline'} size={20} color={theme.link} />}
+            />
+          </Section>
+        )}
 
         {/* Account */}
         <Section title={t('settings.account.title')} theme={theme}>
