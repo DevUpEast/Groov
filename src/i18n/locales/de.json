@@ -418,9 +418,9 @@
       "openDetail": "Doppeltippen für Details. Lange drücken für Überspringen, Gestern und Notiz.",
       "startTimer": "Timer starten",
       "stopTimer": "Timer stoppen und Minuten erfassen",
-      "removeOne": "Eine Einheit %{unit} entfernen",
+      "removeOne": "Eins entfernen",
       "removeMany": "%{count} %{unit} entfernen",
-      "addOne": "Eine Einheit %{unit} hinzufügen",
+      "addOne": "Eins hinzufügen",
       "addMany": "%{count} %{unit} hinzufügen"
     }
   },
@@ -474,9 +474,9 @@
       "percentComplete": "%{percent}% abgeschlossen",
       "linkedHabits": "Verknüpfte Gewohnheiten (%{count})",
       "linkedA11y": "Verknüpfte Gewohnheiten, %{count}",
-      "noneLinked": "Keine Gewohnheiten verknüpft",
+      "noneLinked": "Alle deine Gewohnheiten",
       "todayLogged": "✅ Heute ist erfasst!",
-      "tapEdit": "Tippe auf Bearbeiten, um Gewohnheiten mit dieser Challenge zu verknüpfen.",
+      "tapEdit": "Erledige alle deine Gewohnheiten, um heute automatisch zu verbuchen. Tippe auf Bearbeiten, um bestimmte auszuwählen.",
       "completeLinked": "Erledige deine verknüpften Gewohnheiten, um heute automatisch zu verbuchen."
     },
     "form": {

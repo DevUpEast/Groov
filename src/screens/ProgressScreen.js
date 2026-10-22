@@ -7,6 +7,7 @@ import SafeAreaView from '../components/SafeAreaView';
 import { useApp, STREAK_MILESTONES, TIER_STYLES } from '../context/AppContext';
 import feedback, { EVENTS } from '../services/feedback';
 import { fetchReflection } from '../services/aiCoaching';
+import { paywallAvailable, purchasesConfigured } from '../utils/freeTier';
 import { localDateKey, addDays } from '../utils/dates';
 import { moodSummary, habitMoodCorrelations, describeCorrelation, moodEmoji, MIN_SAMPLES } from '../utils/mood';
 import { overallDayStatus } from '../utils/streaks';
@@ -637,7 +638,7 @@ export default function ProgressScreen() {
               {reflectionError && (
                 <Text style={[styles.cardHint, { color: theme.textSecondary, marginTop: space.xxs }]} accessibilityLiveRegion="polite">
                   {reflectionErrorMsg === 'quota' ? t('progress.reflection.limitReached') : t('progress.reflection.unavailable')}
-                  {reflectionErrorMsg === 'quota' && !isPro ? (
+                  {reflectionErrorMsg === 'quota' && !isPro && paywallAvailable({ configured: purchasesConfigured }) ? (
                     <Text style={{ color: theme.link, fontWeight: '700' }} onPress={() => openPaywall('ai')}>{t('progress.reflection.seePro')}</Text>
                   ) : null}
                 </Text>

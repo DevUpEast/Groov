@@ -418,9 +418,9 @@
       "openDetail": "Double tap for details. Long press for skip, yesterday and note options.",
       "startTimer": "Start timer",
       "stopTimer": "Stop timer and log minutes",
-      "removeOne": "Remove one %{unit}",
+      "removeOne": "Remove one",
       "removeMany": "Remove %{count} %{unit}",
-      "addOne": "Add one %{unit}",
+      "addOne": "Add one",
       "addMany": "Add %{count} %{unit}"
     }
   },
@@ -474,9 +474,9 @@
       "percentComplete": "%{percent}% complete",
       "linkedHabits": "Linked Habits (%{count})",
       "linkedA11y": "Linked habits, %{count}",
-      "noneLinked": "No habits linked",
+      "noneLinked": "All your habits",
       "todayLogged": "✅ Today's logged!",
-      "tapEdit": "Tap Edit to link habits to this challenge.",
+      "tapEdit": "Complete all your habits to auto-claim today. Tap Edit to pick specific ones.",
       "completeLinked": "Complete your linked habits to auto-claim today."
     },
     "form": {

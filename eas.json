@@ -10,7 +10,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://fdplqvebauivtlywornw.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkcGxxdmViYXVpdnRseXdvcm53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NDQwNDcsImV4cCI6MjA5NjEyMDA0N30.3cFPMtH3zyb_QAFOnZHU22e74_2P0nAbNN68GtZfsEY",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://26b5de36b78c2946c231e81dc4b265ca@o4512253373775872.ingest.us.sentry.io/4512253446586368"
+        "EXPO_PUBLIC_SENTRY_DSN": "https://26b5de36b78c2946c231e81dc4b265ca@o4512253373775872.ingest.us.sentry.io/4512253446586368",
+        "EXPO_PUBLIC_APP_ENV": "development"
       }
     },
     "preview": {
@@ -18,7 +19,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://fdplqvebauivtlywornw.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkcGxxdmViYXVpdnRseXdvcm53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NDQwNDcsImV4cCI6MjA5NjEyMDA0N30.3cFPMtH3zyb_QAFOnZHU22e74_2P0nAbNN68GtZfsEY",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://26b5de36b78c2946c231e81dc4b265ca@o4512253373775872.ingest.us.sentry.io/4512253446586368"
+        "EXPO_PUBLIC_SENTRY_DSN": "https://26b5de36b78c2946c231e81dc4b265ca@o4512253373775872.ingest.us.sentry.io/4512253446586368",
+        "EXPO_PUBLIC_APP_ENV": "preview"
       },
       "ios": {
         "simulator": false
@@ -29,7 +31,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://fdplqvebauivtlywornw.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkcGxxdmViYXVpdnRseXdvcm53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NDQwNDcsImV4cCI6MjA5NjEyMDA0N30.3cFPMtH3zyb_QAFOnZHU22e74_2P0nAbNN68GtZfsEY",
-        "EXPO_PUBLIC_SENTRY_DSN": "https://26b5de36b78c2946c231e81dc4b265ca@o4512253373775872.ingest.us.sentry.io/4512253446586368"
+        "EXPO_PUBLIC_SENTRY_DSN": "https://26b5de36b78c2946c231e81dc4b265ca@o4512253373775872.ingest.us.sentry.io/4512253446586368",
+        "EXPO_PUBLIC_APP_ENV": "production"
       }
     }
   },
@@ -40,7 +43,7 @@
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "production"
+        "track": "internal"
       }
     }
   }

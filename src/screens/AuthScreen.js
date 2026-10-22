@@ -5,6 +5,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import SafeAreaView from '../components/SafeAreaView';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth, AUTH_CANCELLED } from '../context/AuthContext';
@@ -150,6 +151,9 @@ export default function AuthScreen() {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: theme.bg }]}>
+      {/* Its own status bar: after sign-out the last style set was onboarding's 'light',
+          which left white icons on the light auth background. */}
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.kav}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 

@@ -177,6 +177,7 @@ export default function ShareCards({ visible, onClose, initialKind = 'streak' })
       onDismiss={() => setOpen(false)}
       title={t('shareCards.title')}
       detents={['medium', 'large']}
+      initialDetent="large"
       theme={theme}
       testID="share-sheet"
       contentContainerStyle={styles.body}

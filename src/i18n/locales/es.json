@@ -418,9 +418,9 @@
       "openDetail": "Toca dos veces para ver los detalles. Mantén pulsado para omitir, registrar ayer o añadir una nota.",
       "startTimer": "Iniciar temporizador",
       "stopTimer": "Detener temporizador y registrar minutos",
-      "removeOne": "Quitar un %{unit}",
+      "removeOne": "Quitar uno",
       "removeMany": "Quitar %{count} %{unit}",
-      "addOne": "Añadir un %{unit}",
+      "addOne": "Añadir uno",
       "addMany": "Añadir %{count} %{unit}"
     }
   },
@@ -474,9 +474,9 @@
       "percentComplete": "%{percent}% completado",
       "linkedHabits": "Hábitos vinculados (%{count})",
       "linkedA11y": "Hábitos vinculados, %{count}",
-      "noneLinked": "Ningún hábito vinculado",
+      "noneLinked": "Todos tus hábitos",
       "todayLogged": "✅ ¡Hoy está registrado!",
-      "tapEdit": "Toca Editar para vincular hábitos a este reto.",
+      "tapEdit": "Completa todos tus hábitos para reclamar el día automáticamente. Toca Editar para elegir algunos.",
       "completeLinked": "Completa tus hábitos vinculados para reclamar el día automáticamente."
     },
     "form": {

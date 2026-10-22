@@ -1,5 +1,5 @@
-import { Platform } from 'react-native';
 import { supabase } from '../utils/supabase';
+import { RC_KEY, purchasesConfigured } from '../utils/freeTier';
 import { t } from '../i18n';
 
 // Groov Pro (#40). Source of truth for entitlement is `profiles.is_pro`, which the
@@ -29,13 +29,8 @@ export const PRO_FEATURES = [
 ];
 
 const ENTITLEMENT_ID = 'pro';
-const RC_KEY = Platform.select({
-  ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
-  android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
-  default: null,
-}) || '';
-
-export const purchasesConfigured = RC_KEY.length > 0 && Platform.OS !== 'web';
+// Whether purchases are on lives in src/utils/freeTier.js (no SDK import there).
+export { purchasesConfigured };
 
 let Purchases = null;
 function sdk() {

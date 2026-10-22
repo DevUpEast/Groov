@@ -418,9 +418,9 @@
       "openDetail": "Appuie deux fois pour voir le détail. Appui long pour sauter, agir sur hier ou ajouter une note.",
       "startTimer": "Démarrer le minuteur",
       "stopTimer": "Arrêter le minuteur et enregistrer les minutes",
-      "removeOne": "Retirer un %{unit}",
+      "removeOne": "Retirer un",
       "removeMany": "Retirer %{count} %{unit}",
-      "addOne": "Ajouter un %{unit}",
+      "addOne": "Ajouter un",
       "addMany": "Ajouter %{count} %{unit}"
     }
   },
@@ -474,9 +474,9 @@
       "percentComplete": "%{percent}% accompli",
       "linkedHabits": "Habitudes associées (%{count})",
       "linkedA11y": "Habitudes associées, %{count}",
-      "noneLinked": "Aucune habitude associée",
+      "noneLinked": "Toutes tes habitudes",
       "todayLogged": "✅ Aujourd'hui est validé !",
-      "tapEdit": "Appuie sur Modifier pour associer des habitudes à ce défi.",
+      "tapEdit": "Accomplis toutes tes habitudes pour valider automatiquement aujourd'hui. Appuie sur Modifier pour en choisir certaines.",
       "completeLinked": "Accomplis tes habitudes associées pour valider automatiquement aujourd'hui."
     },
     "form": {
